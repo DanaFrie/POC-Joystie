@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@400;600;700&family=Rubik:wght@600&family=Varela+Round&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-bg: #F6F6F6;
+  --secondary-bg: #E6F19A;
+  --card-bg: #FFFCF8;
+  --accent-green: #E6F19A;
+  --accent-blue: #273143;
+  --text-primary: #262135;
+  --text-secondary: #494358;
+  --text-muted: #948DA9;
+  --success: #28a745;
+  --warning: #ffc107;
+  --danger: #dc3545;
+  --white: #FFFFFF;
+  --shadow: rgba(0, 0, 0, 0.25);
+}
+
+/* RTL Support */
+html[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Typography Classes */
+.heading-large {
+  @apply font-montserrat font-bold text-2xl leading-tight;
+}
+
+.heading-medium {
+  @apply font-montserrat font-semibold text-base leading-snug;
+}
+
+.body-text {
+  @apply font-varela text-sm leading-normal;
+}
+
+.small-text {
+  @apply font-varela text-xs leading-tight;
+}
