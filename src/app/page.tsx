@@ -2,13 +2,18 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { isLoggedIn } from '@/utils/session';
 
 export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to dashboard by default
-    router.push('/dashboard');
+    // Check if logged in, redirect accordingly
+    if (isLoggedIn()) {
+      router.push('/dashboard');
+    } else {
+      router.push('/login');
+    }
   }, [router]);
 
   return (

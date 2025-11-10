@@ -1,0 +1,1181 @@
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
+import Image from 'next/image';
+import { formatNumber } from '@/utils/formatting';
+
+interface UploadResult {
+  screenTimeUsed: number;
+  screenTimeGoal: number;
+  coinsEarned: number;
+  coinsMaxPossible: number;
+  success: boolean;
+  parentName: string;
+}
+
+interface SelectableDay {
+  date: Date;
+  dateStr: string;
+  dayName: string;
+  displayText: string;
+}
+
+export default function ChildUploadPage() {
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
+  const [selectedDay, setSelectedDay] = useState<SelectableDay | null>(null);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<'ios' | 'android'>('ios');
+  const [ocrProgress, setOcrProgress] = useState<string>('');
+  const [extractedText, setExtractedText] = useState<string>('');
+  const [showApprovedWarning, setShowApprovedWarning] = useState(false);
+  const [approvedDayInfo, setApprovedDayInfo] = useState<{ date: string; dayName: string; isApproved?: boolean } | null>(null);
+
+  const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
+  // Generate list of selectable days (only past days - at least one day back)
+  const selectableDays = useMemo(() => {
+  const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const days: SelectableDay[] = [];
+    
+    // Start from yesterday (at least one day back)
+    for (let i = 1; i <= 7; i++) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      
+      const dateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const dayName = dayNames[date.getDay()];
+      
+      let displayText = '';
+      if (i === 1) {
+        displayText = 'אתמול';
+      } else if (i === 2) {
+        displayText = 'שלשום';
+      } else {
+        displayText = `${dayName}, ${dateStr}`;
+      }
+      
+      days.push({
+        date,
+        dateStr,
+        dayName,
+        displayText
+      });
+    }
+    
+    return days;
+  }, []);
+
+  // Set default selected day to yesterday
+  useEffect(() => {
+    if (selectableDays.length > 0 && !selectedDay) {
+      setSelectedDay(selectableDays[0]);
+    }
+  }, [selectableDays, selectedDay]);
+
+  // Check if there's an approved upload for the selected day
+  useEffect(() => {
+    if (!selectedDay) return;
+    
+    try {
+      if (typeof window !== 'undefined') {
+        let foundApproved = false;
+        let approvedInfo: { date: string; dayName: string; isApproved?: boolean } | null = null;
+        
+        // Check dashboard test data for approved days
+        const dashboardData = localStorage.getItem('dashboardTestData');
+        if (dashboardData) {
+          try {
+            const parsed = JSON.parse(dashboardData);
+            const week = parsed.week || [];
+            
+            // Find if there's an approved day matching the selected day
+            const approvedDay = week.find((day: any) => 
+              day.date === selectedDay.dateStr && 
+              day.parentAction === 'approved'
+            );
+            
+            if (approvedDay) {
+              foundApproved = true;
+              approvedInfo = {
+                date: approvedDay.date,
+                dayName: approvedDay.dayName || selectedDay.dayName,
+                isApproved: true
+              };
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        // Also check if there's an existing upload in childUploads
+        if (!foundApproved) {
+          try {
+            const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
+            const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
+            
+            if (existingUpload) {
+              foundApproved = true;
+              approvedInfo = {
+                date: selectedDay.dateStr,
+                dayName: selectedDay.dayName,
+                isApproved: false
+              };
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        if (foundApproved && approvedInfo) {
+          setApprovedDayInfo(approvedInfo);
+          setShowApprovedWarning(true);
+        } else {
+          setShowApprovedWarning(false);
+          setApprovedDayInfo(null);
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+      setShowApprovedWarning(false);
+      setApprovedDayInfo(null);
+    }
+  }, [selectedDay]);
+
+  // Get challenge data from localStorage (mock - in real app this would come from API)
+  const getChallengeData = () => {
+    // Try to get from localStorage or use defaults
+    const challengeData = {
+      dailyScreenTimeGoal: 3, // hours
+      dailyBudget: 12.9, // שקלים
+      parentName: 'אמא' // default
+    };
+
+    // Try to get parent name from localStorage or mock data
+    try {
+      // In a real app, this would come from API/backend
+      // For now, we'll try to get from localStorage or use mock data
+      let parentNameFromStorage = '';
+      
+      // Try to get from localStorage first
+      if (typeof window !== 'undefined') {
+        const storedChallenge = localStorage.getItem('challengeData');
+        if (storedChallenge) {
+          try {
+            const parsed = JSON.parse(storedChallenge);
+            parentNameFromStorage = parsed.parentName || '';
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+      
+      // If not found, use mock data (from dashboard)
+      if (!parentNameFromStorage) {
+        parentNameFromStorage = 'דנה'; // Default from dashboard mock data
+      }
+      
+      // Simple heuristic: if name ends with 'ה' or 'ית', it's likely female
+      // In a real app, this would be stored explicitly
+      if (parentNameFromStorage && typeof parentNameFromStorage === 'string') {
+        const name = parentNameFromStorage.trim();
+        if (name.endsWith('ה') || name.endsWith('ית')) {
+          challengeData.parentName = 'אמא';
+        } else {
+          challengeData.parentName = 'אבא';
+        }
+      }
+      
+      return challengeData;
+    } catch (e) {
+      return challengeData;
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setScreenshot(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setScreenshotPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Map Hebrew day names to single letter abbreviations used in Screen Time
+  const getDayAbbreviation = (dayName: string): { hebrew: string; english: string[] } => {
+    const dayMap: { [key: string]: { hebrew: string; english: string[] } } = {
+      'ראשון': { hebrew: 'א', english: ['Sun', 'S', 'Sunday'] },
+      'שני': { hebrew: 'ב', english: ['Mon', 'M', 'Monday'] },
+      'שלישי': { hebrew: 'ג', english: ['Tue', 'T', 'Tuesday'] },
+      'רביעי': { hebrew: 'ד', english: ['Wed', 'W', 'Wednesday'] },
+      'חמישי': { hebrew: 'ה', english: ['Thu', 'Th', 'Thursday'] },
+      'שישי': { hebrew: 'ו', english: ['Fri', 'F', 'Friday'] },
+      'שבת': { hebrew: 'ש', english: ['Sat', 'Sa', 'Saturday'] }
+    };
+    return dayMap[dayName] || { hebrew: '', english: [] };
+  };
+
+  // Parse time string to hours (decimal) - supports both Hebrew and English
+  const parseTimeToHours = (timeText: string): number => {
+    // Hebrew patterns: "שעה ו-21 דק'", "2 שעות", "1:30"
+    const hourMatchHeb = timeText.match(/(\d+)\s*שעה/);
+    const minuteMatchHeb = timeText.match(/(\d+)\s*דק/);
+    
+    // English patterns: "1h 21m", "1 hour 21 min", "1:30", "1.5 hours"
+    const hourMatchEng = timeText.match(/(\d+)\s*(?:h|hour|hours|hr|hrs)/i);
+    const minuteMatchEng = timeText.match(/(\d+)\s*(?:m|min|minute|minutes)/i);
+    
+    // Colon format: "1:30" (works for both)
+    const colonMatch = timeText.match(/(\d+):(\d+)/);
+    
+    let hours = 0;
+    let minutes = 0;
+    
+    if (colonMatch) {
+      // Format like "1:30"
+      hours = parseInt(colonMatch[1]) || 0;
+      minutes = parseInt(colonMatch[2]) || 0;
+    } else {
+      // Try Hebrew first
+      if (hourMatchHeb) {
+        hours = parseInt(hourMatchHeb[1]) || 0;
+      }
+      if (minuteMatchHeb) {
+        minutes = parseInt(minuteMatchHeb[1]) || 0;
+      }
+      
+      // Try English if Hebrew didn't match
+      if (hours === 0 && hourMatchEng) {
+        hours = parseInt(hourMatchEng[1]) || 0;
+      }
+      if (minutes === 0 && minuteMatchEng) {
+        minutes = parseInt(minuteMatchEng[1]) || 0;
+      }
+      
+      // Try decimal format: "1.5 hours" or "1.5 שעות"
+      if (hours === 0) {
+        const decimalMatch = timeText.match(/(\d+\.?\d*)\s*(?:hours?|שעות?)/i);
+        if (decimalMatch) {
+          hours = parseFloat(decimalMatch[1]) || 0;
+        }
+      }
+    }
+    
+    return hours + (minutes / 60);
+  };
+
+  // Analyze image pixels to find bar height in graph
+  const analyzeGraphPixels = async (
+    imageFile: File,
+    targetDayIndex: number,
+    maxTime: number
+  ): Promise<number> => {
+    return new Promise((resolve) => {
+      const img = document.createElement('img');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(0);
+          return;
+        }
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        // Find graph area - look for bar chart colors (typically blue/cyan)
+        // Screen Time bars are usually blue/cyan (#007AFF or similar)
+        const barColorThreshold = 80; // Minimum blue value to consider as bar
+        
+        // Estimate graph area (usually in middle/lower part of screen)
+        // We need to find the actual graph boundaries by looking for the baseline (0 hours) and top (max hours)
+        let graphStartY = Math.floor(canvas.height * 0.3);
+        let graphEndY = Math.floor(canvas.height * 0.85);
+        
+        // Find the actual baseline (0 hours) - usually at the bottom of the graph
+        // Look for horizontal lines or grid lines that might indicate the baseline
+        // The baseline is typically where the bars start (bottom of the graph)
+        let baselineY = graphEndY;
+        let foundBaseline = false;
+        
+        // Scan from bottom up to find the baseline
+        for (let y = graphEndY; y >= graphStartY; y -= 2) {
+          // Check if this might be a baseline (look for consistent color or grid line)
+          let consistentPixels = 0;
+          let darkPixels = 0;
+          for (let x = Math.floor(canvas.width * 0.1); x < Math.floor(canvas.width * 0.9); x += 5) {
+            const index = (y * canvas.width + x) * 4;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+            // Baseline might be light colored (background) or dark (grid line)
+            if (r > 200 && g > 200 && b > 200) {
+              consistentPixels++;
+            }
+            if (r < 100 && g < 100 && b < 100) {
+              darkPixels++;
+            }
+          }
+          // If we found a consistent line (either light or dark), this might be the baseline
+          if (consistentPixels > 15 || darkPixels > 10) {
+            baselineY = y;
+            foundBaseline = true;
+            break;
+          }
+        }
+        
+        // If we didn't find a baseline, use the estimated bottom
+        if (!foundBaseline) {
+          baselineY = graphEndY;
+        }
+        
+        // Find the top of the graph (max hours) - usually where the highest bar ends
+        // Look for the highest point where we can find bar pixels
+        let graphTopY = graphStartY;
+        for (let y = graphStartY; y < baselineY; y += 2) {
+          // Check if there are any bar pixels at this height
+          for (let x = Math.floor(canvas.width * 0.1); x < Math.floor(canvas.width * 0.9); x += 5) {
+            const index = (y * canvas.width + x) * 4;
+            const r = data[index];
+            const g = data[index + 1];
+            const b = data[index + 2];
+            if (b > barColorThreshold && b > r * 1.2 && b > g * 1.2) {
+              graphTopY = y; // Found a bar pixel, update top
+              break;
+            }
+          }
+        }
+        
+        // Use the actual graph boundaries
+        // graphStartY is the top (max hours), baselineY is the bottom (0 hours)
+        graphStartY = graphTopY;
+        graphEndY = baselineY;
+        const graphHeightPixels = graphEndY - graphStartY;
+        
+        // Find all bars by scanning horizontally for blue/cyan pixels
+        // First, find the approximate X positions of all bars
+        const barPositions: number[] = [];
+        const barWidth = Math.floor(canvas.width / 12); // Approximate bar width
+        const scanY = Math.floor((graphStartY + graphEndY) / 2); // Scan at middle of graph
+        
+        // Find all potential bar positions
+        for (let x = Math.floor(canvas.width * 0.1); x < Math.floor(canvas.width * 0.9); x++) {
+          const index = (scanY * canvas.width + x) * 4;
+          const r = data[index];
+          const g = data[index + 1];
+          const b = data[index + 2];
+          
+          // Check if this pixel is part of a bar (blue/cyan color)
+          if (b > barColorThreshold && b > r * 1.2 && b > g * 1.2) {
+            // Check if this is a new bar (not too close to existing ones)
+            const isNewBar = barPositions.every(pos => Math.abs(x - pos) > barWidth * 2);
+            if (isNewBar) {
+              barPositions.push(x);
+            }
+          }
+        }
+        
+        // Sort bar positions
+        barPositions.sort((a, b) => a - b);
+        
+        // If we found bars, use the target day's bar
+        if (barPositions.length > targetDayIndex && barPositions[targetDayIndex]) {
+          const targetBarX = barPositions[targetDayIndex];
+          
+          // Scan the entire width of the bar to find its height
+          const scanWidth = Math.min(barWidth * 2, 30); // Scan a reasonable width
+          
+          // Scan vertically from bottom to top to find the top of the bar
+          // The bar starts at graphEndY (baseline - 0 hours) and goes up
+          let barTop = graphEndY; // Start from baseline
+          
+          // Scan from bottom (baseline) to top to find where the bar ends
+          // Start from baseline (graphEndY) and scan up to find the top of the bar
+          for (let y = graphEndY; y >= graphStartY; y--) {
+            let hasBarPixels = false;
+            let barPixelsInRow = 0;
+            
+            // Scan horizontally across the bar width to find bar pixels
+            for (let offset = -scanWidth / 2; offset <= scanWidth / 2; offset += 1) {
+              const x = Math.floor(targetBarX + offset);
+              if (x < 0 || x >= canvas.width) continue;
+              
+              const index = (y * canvas.width + x) * 4;
+              const r = data[index];
+              const g = data[index + 1];
+              const b = data[index + 2];
+              
+              // Check if this pixel is part of a bar (blue/cyan color)
+              if (b > barColorThreshold && b > r * 1.2 && b > g * 1.2) {
+                hasBarPixels = true;
+                barPixelsInRow++;
+              }
+            }
+            
+            // If we found bar pixels in this row, update the top
+            if (hasBarPixels && barPixelsInRow > 2) {
+              barTop = y; // Update top as we go up (this is the highest point of the bar)
+            } else if (barTop < graphEndY) {
+              // We've left the bar area, stop scanning
+              break;
+            }
+          }
+          
+          // Calculate bar height from baseline (graphEndY) to top of bar (barTop)
+          // The bar height represents the time in hours
+          const barHeight = graphEndY - barTop;
+          
+          // Convert bar height to time (proportional to max time)
+          // graphHeightPixels represents maxTime hours (from 0 to maxTime)
+          if (barHeight > 5 && graphHeightPixels > 0) { // Minimum bar height of 5 pixels
+            const timeRatio = barHeight / graphHeightPixels;
+            const timeInHours = timeRatio * maxTime;
+            // Round to 2 decimal places for better accuracy (e.g., 2.67 hours = 2 hours 40 minutes)
+            const result = Math.max(0, Math.min(timeInHours, maxTime));
+            resolve(Math.round(result * 100) / 100);
+            return;
+          }
+        }
+        
+        // Fallback: try estimated positions if we didn't find bars
+        const barSpacing = Math.floor(canvas.width / 8);
+        const graphStartX = Math.floor(canvas.width * 0.1);
+        const targetBarX = graphStartX + (targetDayIndex * barSpacing) + (barWidth / 2);
+        
+        let barTop = graphEndY; // Start from baseline
+        
+        // Scan vertically at the estimated bar position from bottom to top
+        for (let y = graphEndY; y >= graphStartY; y--) {
+          const index = (y * canvas.width + targetBarX) * 4;
+          const r = data[index];
+          const g = data[index + 1];
+          const b = data[index + 2];
+          
+          // Check if this pixel is part of a bar
+          if (b > barColorThreshold && b > r * 1.2 && b > g * 1.2) {
+            barTop = y; // Update top as we go up
+          } else if (barTop < graphEndY) {
+            // We've left the bar area, stop
+            break;
+          }
+        }
+        
+        // Calculate bar height from baseline to top
+        const barHeight = graphEndY - barTop;
+        if (barHeight > 5 && graphHeightPixels > 0) {
+          const timeRatio = barHeight / graphHeightPixels;
+          const timeInHours = timeRatio * maxTime;
+          // Round to 2 decimal places for better accuracy
+          resolve(Math.round(Math.max(0, Math.min(timeInHours, maxTime)) * 100) / 100);
+        } else {
+          resolve(0);
+        }
+      };
+      
+      img.onerror = () => resolve(0);
+      img.src = URL.createObjectURL(imageFile);
+    });
+  };
+
+  // Extract screen time from screenshot using OCR and pixel analysis
+  const extractScreenTimeFromImage = async (
+    imageFile: File,
+    targetDay: SelectableDay
+  ): Promise<{ time: number; extractedText: string }> => {
+    setOcrProgress('מתחיל ניתוח תמונה...');
+    
+    // Dynamically import tesseract.js only on client side
+    const { createWorker } = await import('tesseract.js');
+    
+    const worker = await createWorker('heb+eng', 1, {
+      logger: (m) => {
+        if (m.status === 'recognizing text') {
+          setOcrProgress(`מנתח תמונה... ${Math.round(m.progress * 100)}%`);
+        }
+      }
+    });
+
+    try {
+      // First, do OCR to find day position and time scale
+      const { data: { text } } = await worker.recognize(imageFile);
+      await worker.terminate();
+      
+      // Store extracted text for display
+      setExtractedText(text);
+      
+      setOcrProgress('מחפש את היום הנכון...');
+      
+      // Get the day abbreviation we're looking for (both Hebrew and English)
+      const dayAbbrs = getDayAbbreviation(targetDay.dayName);
+      const targetDayAbbr = dayAbbrs.hebrew;
+      const targetDayAbbrEng = dayAbbrs.english;
+      
+      // Find day position in the week (0-6, where 0 is Sunday/ראשון)
+      const allDaysHeb = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
+      const allDaysEng = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      let targetDayIndex = -1;
+      
+      // Find the day index by looking at the graph labels
+      const lines = text.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const hasDays = allDaysHeb.some(day => line.includes(day)) || 
+                       allDaysEng.some(day => line.includes(day));
+        
+        if (hasDays) {
+          // This is likely the graph row with day labels
+          // Find position of our target day
+          const dayAbbrPattern = new RegExp(`['"]?${targetDayAbbr}['"]?`, 'g');
+          const matchesHeb = line.match(dayAbbrPattern);
+          const matchesEng = targetDayAbbrEng.some(engDay => {
+            const engPattern = new RegExp(`\\b${engDay}\\b`, 'i');
+            return line.match(engPattern);
+          });
+          
+          if (matchesHeb || matchesEng) {
+            // Find the index of this day in the sequence
+            const daySequence = allDaysHeb.map((day, idx) => {
+              const hebMatch = line.includes(day) || line.includes(`'${day}'`) || line.includes(`"${day}"`);
+              const engMatch = allDaysEng[idx] && line.includes(allDaysEng[idx]);
+              return hebMatch || engMatch;
+            });
+            
+            targetDayIndex = daySequence.findIndex((found, idx) => {
+              const isTarget = (targetDayAbbr === allDaysHeb[idx]) || 
+                               targetDayAbbrEng.some(eng => eng === allDaysEng[idx]);
+              return found && isTarget;
+            });
+            
+            if (targetDayIndex === -1) {
+              // Fallback: find by position in sequence
+              for (let idx = 0; idx < allDaysHeb.length; idx++) {
+                if (targetDayAbbr === allDaysHeb[idx] || 
+                    targetDayAbbrEng.includes(allDaysEng[idx])) {
+                  targetDayIndex = idx;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+      
+      // Find max time from Y-axis labels
+      setOcrProgress('מחפש קנה מידה...');
+      const timeScalePattern = /(\d+)\s*(?:שעות?|hours?|hrs?)/gi;
+      const timeMatches: RegExpMatchArray[] = [];
+      let match;
+      while ((match = timeScalePattern.exec(text)) !== null) {
+        timeMatches.push(match);
+      }
+      let maxTime = 4; // Default max time
+      
+      for (const match of timeMatches) {
+        const time = parseFloat(match[1]) || 0;
+        if (time > maxTime && time <= 24) {
+          maxTime = time;
+        }
+      }
+      
+      // If we found the day index, do pixel analysis
+      if (targetDayIndex >= 0 && targetDayIndex < 7) {
+        setOcrProgress('מנתח גובה עמודה בגרף...');
+        const pixelTime = await analyzeGraphPixels(imageFile, targetDayIndex, maxTime);
+        
+        if (pixelTime > 0) {
+          setOcrProgress(`נמצא: ${formatNumber(pixelTime, 2)} שעות (מניתוח גרף)`);
+          return { time: Math.round(pixelTime * 100) / 100, extractedText: text };
+        }
+      }
+      
+      // Fallback to OCR-based text search if pixel analysis didn't work
+      setOcrProgress('מחפש זמן בטקסט...');
+      
+      let foundTime = 0;
+      
+      // Strategy 1: Look for the day abbreviation in the graph
+      // The graph shows days as: א', ב', ג', ד', ה', ו', ש'
+      // We need to find the position of our target day and estimate time from graph height
+      const dayAbbrPattern = new RegExp(`['"]?${targetDayAbbr}['"]?`, 'g');
+      let dayFound = false;
+      let dayIndex = -1;
+      
+      // Note: allDaysHeb and allDaysEng are already defined above (lines 389-390)
+      // Use the existing definitions
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        // Check if this line contains day abbreviations (likely the graph labels)
+        const hasDaysHeb = allDaysHeb.some(day => line.includes(day) || line.includes(`'${day}'`) || line.includes(`"${day}"`));
+        const hasDaysEng = allDaysEng.some(day => line.includes(day));
+        const hasDays = hasDaysHeb || hasDaysEng;
+        
+        if (hasDays) {
+          // Check for Hebrew day abbreviation
+          const matchesHeb = line.match(dayAbbrPattern);
+          // Check for English day abbreviations
+          const matchesEng = targetDayAbbrEng.some(engDay => {
+            const engPattern = new RegExp(`\\b${engDay}\\b`, 'i');
+            return line.match(engPattern);
+          });
+          
+          // This might be the graph row - look for our target day
+          if (matchesHeb || matchesEng) {
+            dayFound = true;
+            dayIndex = i;
+            
+            // Try to find time patterns near this day
+            const searchLines = [
+              lines[Math.max(0, i - 3)] || '',
+              lines[Math.max(0, i - 2)] || '',
+              lines[Math.max(0, i - 1)] || '',
+              line,
+              lines[i + 1] || '',
+              lines[i + 2] || '',
+              lines[i + 3] || ''
+            ].join(' ');
+            
+            // Try to find time patterns (both Hebrew and English)
+            const timePatterns = [
+              // Hebrew patterns
+              /(\d+)\s*שעה\s*ו?-?\s*(\d+)\s*דק/,
+              /(\d+)\s*שעות?\s*ו?-?\s*(\d+)\s*דק/,
+              /(\d+\.\d+)\s*שעות?/,
+              /(\d+)\s*שעות?/,
+              // English patterns
+              /(\d+)\s*(?:h|hour|hours|hr|hrs)\s*(?:and|&)?\s*(\d+)\s*(?:m|min|minute|minutes)/i,
+              /(\d+)\s*(?:h|hour|hours|hr|hrs)/i,
+              /(\d+)\s*(?:m|min|minute|minutes)/i,
+              // Common format (works for both)
+              /(\d+):(\d+)/
+            ];
+            
+            for (const pattern of timePatterns) {
+              const match = searchLines.match(pattern);
+              if (match) {
+                // Use parseTimeToHours directly on the matched text
+                const time = parseTimeToHours(match[0]);
+                if (time > 0 && time <= 24) {
+                  foundTime = time;
+                  setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות`);
+                  return { time: Math.round(foundTime * 10) / 10, extractedText: text };
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Strategy 1.5: If we found the day but no time, look for time values in the graph area
+      // The graph might have time labels on the Y-axis (0, 1, 2, 3, 4 שעות or hours)
+      if (dayFound && foundTime === 0) {
+        // Look for time scale values near the graph
+        const graphArea = lines.slice(Math.max(0, dayIndex - 5), dayIndex + 10).join(' ');
+        const timeScalePattern = /(\d+)\s*(?:שעות?|hours?|hrs?)/gi;
+        const timeMatches: RegExpMatchArray[] = [];
+        let match;
+        while ((match = timeScalePattern.exec(graphArea)) !== null) {
+          timeMatches.push(match);
+        }
+        
+        // Try to estimate based on graph structure
+        // This is a heuristic - we'll use the maximum time found in the graph area
+        let maxTime = 0;
+        for (const match of timeMatches) {
+          const time = parseFloat(match[1]) || 0;
+          if (time > maxTime && time <= 24) {
+            maxTime = time;
+          }
+        }
+        
+        // If we found a reasonable max time, use a portion of it as estimate
+        // This is a rough estimate - in a real scenario, we'd need to analyze the bar height
+        if (maxTime > 0) {
+          // Use 50-80% of max as a reasonable estimate (bars are usually in this range)
+          foundTime = maxTime * 0.65;
+          setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות (משוער)`);
+          return { time: Math.round(foundTime * 10) / 10, extractedText: text };
+        }
+      }
+      
+      // Strategy 2: Look for time patterns in the entire text
+      // This is a fallback if we can't find the specific day
+      setOcrProgress('מחפש זמן מסך בכל התמונה...');
+      
+      const allTimePatterns = [
+        // Hebrew patterns
+        /(\d+)\s*שעה\s*ו?-?\s*(\d+)\s*דק/,
+        /(\d+)\s*שעות?\s*ו?-?\s*(\d+)\s*דק/,
+        /(\d+\.\d+)\s*שעות?/,
+        /(\d+)\s*שעות?/,
+        // English patterns
+        /(\d+)\s*(?:h|hour|hours|hr|hrs)\s*(?:and|&)?\s*(\d+)\s*(?:m|min|minute|minutes)/i,
+        /(\d+)\s*(?:h|hour|hours|hr|hrs)/i,
+        // Common format
+        /(\d+):(\d+)/
+      ];
+      
+      for (const pattern of allTimePatterns) {
+        const regex = new RegExp(pattern, 'g');
+        const matches: RegExpMatchArray[] = [];
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          matches.push(match);
+        }
+        if (matches.length > 0) {
+          // Take the first reasonable match (between 0 and 24 hours)
+          for (const match of matches) {
+            // Use parseTimeToHours directly on the matched text
+            const time = parseTimeToHours(match[0]);
+            if (time > 0 && time <= 24) {
+              foundTime = time;
+              break;
+            }
+          }
+          if (foundTime > 0) break;
+        }
+      }
+      
+      if (foundTime > 0) {
+        setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות`);
+        return { time: Math.round(foundTime * 10) / 10, extractedText: text };
+      }
+      
+      // If we still can't find it, return a default based on goal
+      setOcrProgress('לא נמצא זמן מדויק, משתמש בערך משוער');
+      const challengeData = getChallengeData();
+      return { time: challengeData.dailyScreenTimeGoal, extractedText: text };
+      
+    } catch (error) {
+      console.error('OCR Error:', error);
+      setOcrProgress('שגיאה בניתוח התמונה');
+      // Fallback to goal-based estimate
+      const challengeData = getChallengeData();
+      return { time: challengeData.dailyScreenTimeGoal, extractedText: '' };
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!screenshot || !selectedDay) return;
+
+    // Check if there's an approved upload for this day
+    try {
+      if (typeof window !== 'undefined') {
+        const dashboardData = localStorage.getItem('dashboardTestData');
+        if (dashboardData) {
+          try {
+            const parsed = JSON.parse(dashboardData);
+            const week = parsed.week || [];
+            
+            const approvedDay = week.find((day: any) => 
+              day.date === selectedDay.dateStr && 
+              day.parentAction === 'approved'
+            );
+            
+            if (approvedDay) {
+              alert(`שימו לב: נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDay.dayName || selectedDay.dayName}, ${approvedDay.date}.\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
+              return;
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        // Also check if there's an existing upload in childUploads
+        const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
+        const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
+        
+        if (existingUpload) {
+          alert(`שימו לב: כבר הועלתה תמונה עבור ${selectedDay.displayText} (${selectedDay.dateStr}).\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
+          return;
+        }
+      }
+    } catch (e) {
+      // Ignore errors and continue
+    }
+
+    setIsSubmitting(true);
+    setOcrProgress('');
+
+    const challengeData = getChallengeData();
+    
+    // Extract screen time from screenshot using OCR
+    const { time: screenTimeUsed, extractedText: ocrText } = await extractScreenTimeFromImage(screenshot, selectedDay);
+    setExtractedText(ocrText);
+    const screenTimeGoal = challengeData.dailyScreenTimeGoal;
+    
+    // Calculate if goal was met
+    const success = screenTimeUsed <= screenTimeGoal;
+    
+    // Calculate coins earned
+    // If goal met: full daily budget
+    // If not met: proportional reduction
+    const coinsMaxPossible = challengeData.dailyBudget;
+    const coinsEarned = success 
+      ? coinsMaxPossible 
+      : Math.max(0, coinsMaxPossible * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
+
+    const coinsEarnedRounded = Math.round(coinsEarned * 10) / 10;
+    
+    const result: UploadResult = {
+      screenTimeUsed,
+      screenTimeGoal,
+      coinsEarned: coinsEarnedRounded,
+      coinsMaxPossible,
+      success,
+      parentName: challengeData.parentName
+    };
+
+    // Calculate weekly total BEFORE saving new upload
+    const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
+    const weeklyTotalBefore = existingUploads.reduce((sum: number, upload: any) => {
+      return sum + (upload.coinsEarned || 0);
+    }, 0);
+    const weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
+
+    // Save to localStorage for demo purposes
+    const uploadData = {
+      date: selectedDay.dateStr,
+      dayName: selectedDay.dayName,
+      screenTime: screenTimeUsed,
+      screenshot: screenshotPreview,
+      uploadedAt: new Date().toISOString(),
+      requiresApproval: true,
+      coinsEarned: result.coinsEarned,
+      coinsMaxPossible: result.coinsMaxPossible,
+      success: result.success
+    };
+
+    // Add new upload
+    existingUploads.push(uploadData);
+    localStorage.setItem('childUploads', JSON.stringify(existingUploads));
+
+    // Store weekly total in result for display
+    (result as any).weeklyTotal = weeklyTotal;
+    setUploadResult(result);
+
+    // Trigger event for parent dashboard to update
+    window.dispatchEvent(new Event('childUploaded'));
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'childUploads',
+      newValue: JSON.stringify(existingUploads)
+    }));
+
+    setIsSubmitting(false);
+    setSubmitted(true);
+  };
+
+
+  // Get child gender for pronouns
+  const getChildGender = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const dashboardData = localStorage.getItem('dashboardTestData');
+        if (dashboardData) {
+          const parsed = JSON.parse(dashboardData);
+          return parsed.child?.gender || 'boy';
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    return 'boy';
+  };
+
+  // Show result in the same form instead of separate screen
+  if (submitted && uploadResult && selectedDay) {
+    const weeklyTotal = (uploadResult as any).weeklyTotal || uploadResult.coinsEarned;
+    const childGender = getChildGender();
+    const isYesterday = selectedDay.displayText === 'אתמול';
+    const isDayBeforeYesterday = selectedDay.displayText === 'שלשום';
+    const parentName = uploadResult.parentName;
+    
+    // Determine message based on day and gender
+    const accumulatedVerb = childGender === 'boy' ? 'צברת' : 'צברת';
+    
+    let dayMessage = '';
+    if (isYesterday || isDayBeforeYesterday) {
+      dayMessage = `${selectedDay.displayText} היית ${uploadResult.screenTimeUsed} שעות בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+    } else {
+      dayMessage = `ביום ${selectedDay.dayName} היית ${uploadResult.screenTimeUsed} שעות בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+    }
+
+    // Success message based on goal and gender
+    const successMessage = uploadResult.success 
+      ? `כל הכבוד! ${childGender === 'boy' ? 'עמדת' : 'עמדת'} ביעד!`
+      : childGender === 'boy' ? 'נסה מחר לעבוד יותר טוב!' : 'נסי מחר לעבוד יותר טוב!';
+
+    return (
+      <div className="min-h-screen bg-transparent pb-24">
+        <div className="max-w-md mx-auto px-4 py-8 relative">
+          {/* Piggy Bank - פינה ימנית עליונה */}
+          <div className="absolute right-0 top-0 z-10">
+            <Image
+              src="/piggy-bank.png"
+              alt="Piggy Bank"
+              width={120}
+              height={120}
+              className="object-contain"
+            />
+          </div>
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mt-20">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
+              הסטטוס הועלה!
+            </h1>
+            
+            <div className="space-y-4">
+              <div className="bg-white rounded-[12px] p-4">
+                <p className="font-varela text-base text-[#282743] text-center mb-3 leading-relaxed">
+                  {dayMessage}
+                </p>
+                <p className="font-varela text-sm text-[#262135] text-center font-semibold">
+                  {successMessage}
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4">
+                <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                  בכל מקרה {parentName} {parentName.endsWith('ה') || parentName.endsWith('ית') ? 'צריכה' : 'צריך'} לאשר לך את הסטטוס ש{childGender === 'boy' ? 'העלית' : 'העלית'}!
+                  <br />
+                  בסוף השבוע תפגשו כאן ו{childGender === 'boy' ? 'תוכל' : 'תוכלי'} לזכות במה ש{childGender === 'boy' ? 'צברת' : 'צברת'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-transparent pb-24">
+      <div className="max-w-md mx-auto px-4 py-8 relative">
+        {/* Piggy Bank - פינה ימנית עליונה */}
+        <div className="absolute right-0 top-0 z-10">
+          <Image
+            src="/piggy-bank.png"
+            alt="Piggy Bank"
+            width={120}
+            height={120}
+            className="object-contain"
+          />
+        </div>
+        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
+          <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
+            העלאת סטטוס יומי
+          </h1>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Day Selection */}
+            <div>
+              <label className="block font-varela font-semibold text-base text-[#282743] mb-2">
+                עבור איזה יום אתה מעלה?
+              </label>
+              <select
+                value={selectedDay ? selectableDays.findIndex(d => d.dateStr === selectedDay.dateStr) : -1}
+                onChange={(e) => {
+                  const index = parseInt(e.target.value);
+                  if (index >= 0 && index < selectableDays.length) {
+                    setSelectedDay(selectableDays[index]);
+                  }
+                }}
+                className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-white font-varela text-base text-[#282743] focus:outline-none focus:border-[#273143]"
+                required
+              >
+                {selectableDays.map((day, index) => (
+                  <option key={index} value={index}>
+                    {day.displayText}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Approved Warning */}
+            {showApprovedWarning && approvedDayInfo && (
+              <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4">
+                <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-2">
+                  <strong>שימו לב:</strong> {approvedDayInfo.isApproved 
+                    ? `נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}.`
+                    : `כבר הועלתה תמונה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}.`}
+                </p>
+                <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                  אם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.
+                </p>
+              </div>
+            )}
+
+            {/* Screenshot Upload */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block font-varela font-semibold text-base text-[#282743]">
+                העלה צילום מסך של זמן מסך
+              </label>
+                <button
+                  type="button"
+                  onClick={() => setShowHelpModal(true)}
+                  className="font-varela text-xs text-[#273143] underline hover:text-[#273143]/80"
+                >
+                  הסבר כיצד לצלם מסך
+                </button>
+              </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-[18px] p-6 text-center">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="screenshot-upload"
+                  required
+                />
+                <label
+                  htmlFor="screenshot-upload"
+                  className="cursor-pointer block"
+                >
+                  {screenshotPreview ? (
+                    <div className="space-y-3">
+                      <Image
+                        src={screenshotPreview}
+                        alt="Screenshot preview"
+                        width={300}
+                        height={200}
+                        className="mx-auto rounded-lg object-contain max-h-64"
+                      />
+                      <p className="font-varela text-sm text-[#273143]">
+                        לחץ לשנות תמונה
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="font-varela text-base text-[#948DA9]">
+                        לחץ להעלאת צילום מסך
+                      </p>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={!screenshot || !selectedDay || isSubmitting}
+              className={`w-full py-4 px-6 rounded-[18px] text-lg font-varela font-semibold transition-all ${
+                screenshot && selectedDay && !isSubmitting
+                  ? 'bg-[#273143] text-white hover:bg-opacity-90'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              {isSubmitting ? (ocrProgress || 'מעבד תמונה...') : 'שלח סטטוס'}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Help Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="font-varela font-semibold text-xl text-[#262135]">
+                איך להעלות צילום מסך של זמן מסך?
+              </h2>
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="text-[#948DA9] hover:text-[#282743] text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Platform Selection */}
+            <div className="mb-4">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setSelectedPlatform('ios')}
+                  className={`flex-1 py-2 px-4 rounded-[12px] font-varela font-semibold transition-all ${
+                    selectedPlatform === 'ios'
+                      ? 'bg-[#273143] text-white'
+                      : 'bg-gray-200 text-[#282743]'
+                  }`}
+                >
+                  iPhone
+                </button>
+                <button
+                  onClick={() => setSelectedPlatform('android')}
+                  className={`flex-1 py-2 px-4 rounded-[12px] font-varela font-semibold transition-all ${
+                    selectedPlatform === 'android'
+                      ? 'bg-[#273143] text-white'
+                      : 'bg-gray-200 text-[#282743]'
+                  }`}
+                >
+                  Android
+                </button>
+              </div>
+            </div>
+
+            {/* Video Container */}
+            <div className="mb-4">
+              <div className="relative w-full aspect-video bg-gray-100 rounded-[12px] overflow-hidden">
+                {selectedPlatform === 'ios' ? (
+                  <video
+                    controls
+                    className="w-full h-full object-contain"
+                    poster="/video-poster-ios.jpg"
+                  >
+                    <source src="/screenshot-tutorial-ios.mp4" type="video/mp4" />
+                    <source src="/screenshot-tutorial-ios.webm" type="video/webm" />
+                    <p className="font-varela text-base text-[#282743] p-4 text-center">
+                      הדפדפן שלך לא תומך בהצגת סרטונים. 
+                      <br />
+                      <a href="/screenshot-tutorial-ios.mp4" className="underline" download>
+                        הורד את הסרטון כאן
+                      </a>
+                    </p>
+                  </video>
+                ) : (
+                  <video
+                    controls
+                    className="w-full h-full object-contain"
+                    poster="/video-poster-android.jpg"
+                  >
+                    <source src="/screenshot-tutorial-android.mp4" type="video/mp4" />
+                    <source src="/screenshot-tutorial-android.webm" type="video/webm" />
+                    <p className="font-varela text-base text-[#282743] p-4 text-center">
+                      הדפדפן שלך לא תומך בהצגת סרטונים. 
+                      <br />
+                      <a href="/screenshot-tutorial-android.mp4" className="underline" download>
+                        הורד את הסרטון כאן
+                      </a>
+                    </p>
+                  </video>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowHelpModal(false)}
+              className="w-full py-3 px-6 rounded-[12px] bg-[#273143] text-white font-varela font-semibold hover:bg-opacity-90 transition-all"
+            >
+              הבנתי
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+

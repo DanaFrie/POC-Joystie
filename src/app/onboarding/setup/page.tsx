@@ -2,91 +2,465 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { formatNumber } from '@/utils/formatting';
 
 export default function OnboardingSetupPage() {
+  const [step, setStep] = useState(1);
+  const [showBudgetExplanation, setShowBudgetExplanation] = useState(false);
   const [formData, setFormData] = useState({
-    parentName: '',
-    email: '',
-    notificationsEnabled: true,
+    gender: '',
+    name: '',
+    age: '',
+    deviceType: '',
+    currentScreenTime: '',
+    targetScreenTime: '',
+    weeklyBudget: '',
+    customBudget: ''
   });
+
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Here we would typically save the data to your backend
-    console.log('Form data:', formData);
-    router.push('/dashboard');
+  const genderOptions = [
+    { value: 'boy', label: 'בן' },
+    { value: 'girl', label: 'בת' }
+  ];
+
+  const budgetOptions = [
+    { value: '20', label: '₪20', amount: 20 },
+    { value: '40', label: '₪40', amount: 40 },
+    { value: 'custom', label: 'התאמה אישית', amount: 0 }
+  ];
+
+  const piggyMessages = [
+    'עכשיו בואו נגדיר יחד את הילד שלכם!',
+    'אני רוצה להכיר את הילד שלכם טוב יותר',
+    'נתחיל עם השאלות הבסיסיות',
+    'עכשיו נדבר על זמן מסך',
+    'וכעת נקבע את התקציב השבועי'
+  ];
+
+  const deviceOptions = [
+    { value: 'ios', label: 'iPhone (iOS)' },
+    { value: 'android', label: 'Android' }
+  ];
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => {
+      const updated = {
+        ...prev,
+        [name]: value
+      };
+      
+      // Show budget explanation if budget is selected and target hours are set
+      if (name === 'targetScreenTime' && updated.weeklyBudget !== '' && value !== '') {
+        setShowBudgetExplanation(true);
+      }
+      
+      return updated;
+    });
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+  const handleBudgetChange = (value: string, amount?: number) => {
+    setFormData(prev => {
+      const updated = {
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+        weeklyBudget: value,
+        customBudget: value === 'custom' ? prev.customBudget : ''
+      };
+      
+      // Show explanation after selecting budget if target hours are already set
+      if (value !== '' && updated.targetScreenTime !== '') {
+        setShowBudgetExplanation(true);
+      }
+      
+      return updated;
+    });
+  };
+
+  // Calculate budget explanation
+  const getBudgetExplanation = () => {
+    const selectedBudget = formData.weeklyBudget === 'custom' 
+      ? parseFloat(formData.customBudget) 
+      : parseFloat(formData.weeklyBudget) || 0;
+    const targetHours = parseFloat(formData.targetScreenTime) || 0;
+
+    if (selectedBudget === 0 || targetHours === 0) {
+      return null;
+    }
+
+    // תקציב שבועי = תקציב נבחר (ללא בונוס)
+    const weeklyBudget = selectedBudget;
+    const dailyBudget = weeklyBudget / 7;
+    const hourlyRate = targetHours > 0 ? dailyBudget / targetHours : 0;
+    const weeklyHours = targetHours * 7;
+
+    return {
+      selectedBudget,
+      weeklyBudget,
+      dailyBudget,
+      hourlyRate,
+      targetHours,
+      weeklyHours
+    };
+  };
+
+  const explanation = getBudgetExplanation();
+
+  // Get parent data from localStorage
+  const getParentData = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const parentData = localStorage.getItem('parentData');
+        if (parentData) {
+          try {
+            const parsed = JSON.parse(parentData);
+            return {
+              parentGender: parsed.gender === 'female' ? 'female' : 'male'
+            };
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        const signupData = localStorage.getItem('signupFormData');
+        if (signupData) {
+          try {
+            const parsed = JSON.parse(signupData);
+            return {
+              parentGender: parsed.gender === 'female' ? 'female' : 'male'
+            };
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    return {
+      parentGender: 'female'
+    };
+  };
+
+  const parentData = getParentData();
+  
+  // Parent pronouns
+  const parentPronouns = {
+    female: { you: 'את' },
+    male: { you: 'אתה' }
+  };
+  const parentP = parentPronouns[parentData.parentGender as 'female' | 'male'] || parentPronouns.female;
+
+  const handleNext = () => {
+    if (step < 6) {
+      setStep(step + 1);
+    } else {
+      // Save challenge data to localStorage
+      if (typeof window !== 'undefined') {
+        const selectedBudget = formData.weeklyBudget === 'custom' 
+          ? parseFloat(formData.customBudget) 
+          : parseFloat(formData.weeklyBudget) || 0;
+        const dailyBudget = selectedBudget / 7;
+        
+        // Get parent name from localStorage
+        let parentName = 'דנה';
+        try {
+          const parentData = localStorage.getItem('parentData');
+          if (parentData) {
+            const parsed = JSON.parse(parentData);
+            parentName = parsed.firstName || parsed.username || 'דנה';
+          }
+        } catch (e) {
+          // Ignore errors
+        }
+        
+        const challengeData = {
+          parentName: parentName,
+          childName: formData.name || '',
+          childGender: formData.gender || 'boy',
+          childAge: formData.age || '',
+          deviceType: formData.deviceType || 'ios',
+          weeklyBudget: selectedBudget,
+          dailyBudget: dailyBudget,
+          dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || 3
+        };
+        
+        localStorage.setItem('challengeData', JSON.stringify(challengeData));
+      }
+      
+      // Save data and move to next screen with query params
+      const params = new URLSearchParams({
+        name: formData.name,
+        gender: formData.gender
+      });
+      router.push(`/onboarding/complete?${params.toString()}`);
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+    } else {
+      router.push('/onboarding');
+    }
+  };
+
+  const canProceed = () => {
+    switch (step) {
+      case 1:
+        return formData.gender !== '';
+      case 2:
+        return formData.name.trim() !== '';
+      case 3:
+        return formData.age !== '';
+      case 4:
+        return formData.deviceType !== '';
+      case 5:
+        return formData.targetScreenTime !== '';
+      case 6:
+        return formData.weeklyBudget !== '' && (formData.weeklyBudget !== 'custom' || formData.customBudget !== '');
+      default:
+        return false;
+    }
   };
 
   return (
-    <div className="min-h-[80vh] flex flex-col items-center justify-center py-12 px-4">
-      <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold text-dark-blue mb-8 text-center">
-          הגדרת חשבון הורה
-        </h1>
-        
-        <form onSubmit={handleSubmit} className="bg-white shadow-lg rounded-lg p-8">
-          <div className="space-y-6">
+    <div className="min-h-screen bg-transparent pb-24">
+      <div className="max-w-md mx-auto px-4 py-8 relative">
+        {/* Piggy Bank - פינה ימנית עליונה */}
+        <div className="absolute right-0 top-0 z-10">
+          <Image
+            src="/piggy-bank.png"
+            alt="Piggy Bank"
+            width={120}
+            height={120}
+            className="object-contain"
+          />
+        </div>
+
+        {/* Progress indicator */}
+        <div className="mb-6 mt-20">
+          <div className="flex justify-between mb-2">
+            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 6</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-[#273143] h-2 rounded-full transition-all"
+              style={{ width: `${(step / 6) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Form Content */}
+        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
+          {step === 1 && (
             <div>
-              <label htmlFor="parentName" className="block text-lg font-medium text-gray-700 mb-2">
-                שם ההורה
-              </label>
+              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
+                מין הילד/ה
+              </h2>
+        
+              <div className="space-y-3">
+                {genderOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setFormData(prev => ({ ...prev, gender: option.value }))}
+                    className={`w-full p-4 rounded-[18px] border-2 transition-all text-center ${
+                      formData.gender === option.value
+                        ? 'border-[#273143] bg-[#273143] bg-opacity-10'
+                        : 'border-gray-200 bg-white hover:border-[#273143] hover:border-opacity-50'
+                    }`}
+                  >
+                    <span className="font-varela font-semibold text-base text-[#282743]">
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div>
+              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
+                שם ה{formData.gender === 'boy' ? 'ילד' : 'ילדה'}
+              </h2>
               <input
                 type="text"
-                id="parentName"
-                name="parentName"
-                required
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-blue"
-                value={formData.parentName}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
+                placeholder="הכניסו את השם"
+                className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
               />
             </div>
+          )}
 
+          {step === 3 && (
             <div>
-              <label htmlFor="email" className="block text-lg font-medium text-gray-700 mb-2">
-                כתובת דוא״ל
-              </label>
+              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
+                {formData.gender === 'boy' ? 'בן' : 'בת'} כמה {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}?
+              </h2>
               <input
-                type="email"
-                id="email"
-                name="email"
-                required
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-blue"
-                value={formData.email}
+                type="number"
+                name="age"
+                value={formData.age}
                 onChange={handleChange}
+                placeholder="הכניסו את הגיל"
+                min="1"
+                max="18"
+                className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
               />
             </div>
+          )}
 
-            <div className="flex items-center">
+          {step === 4 && (
+            <div>
+              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
+                איזה מכשיר יש ל{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}?
+              </h2>
+              <div className="space-y-3">
+                {deviceOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setFormData(prev => ({ ...prev, deviceType: option.value }))}
+                    className={`w-full p-4 rounded-[18px] border-2 transition-all text-center ${
+                      formData.deviceType === option.value
+                        ? 'border-[#273143] bg-[#273143] bg-opacity-10'
+                        : 'border-gray-200 bg-white hover:border-[#273143] hover:border-opacity-50'
+                    }`}
+                  >
+                    <span className="font-varela font-semibold text-base text-[#282743]">
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div>
+              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
+                כמה זמן מסך ביום, טוב מבחינתך שיהיה ל{formData.name || 'הילד/ה'}?
+              </h2>
               <input
-                type="checkbox"
-                id="notificationsEnabled"
-                name="notificationsEnabled"
-                className="h-5 w-5 text-accent-green rounded border-gray-300 focus:ring-accent-blue ml-2"
-                checked={formData.notificationsEnabled}
+                type="number"
+                name="targetScreenTime"
+                value={formData.targetScreenTime}
                 onChange={handleChange}
+                placeholder="מספר שעות"
+                step="0.5"
+                min="0"
+                className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
               />
-              <label htmlFor="notificationsEnabled" className="text-lg text-gray-700">
-                אפשר התראות
-              </label>
+            </div>
+          )}
+
+          {step === 6 && (
+            <div>
+              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
+                תקציב שבועי לדמי כיס
+              </h2>
+              <div className="space-y-3 mb-4">
+                {budgetOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleBudgetChange(option.value, option.amount)}
+                    className={`w-full p-4 rounded-[18px] border-2 transition-all text-center ${
+                      formData.weeklyBudget === option.value
+                        ? 'border-[#273143] bg-[#273143] bg-opacity-10'
+                        : 'border-gray-200 bg-white hover:border-[#273143] hover:border-opacity-50'
+                    }`}
+                  >
+                    <span className="font-varela font-semibold text-base text-[#282743]">
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {formData.weeklyBudget === 'custom' && (
+                <div className="mb-4">
+                  <input
+                    type="number"
+                    name="customBudget"
+                    value={formData.customBudget}
+                    onChange={(e) => {
+                      handleChange(e);
+                      if (e.target.value && formData.targetScreenTime) {
+                        setShowBudgetExplanation(true);
+                      }
+                    }}
+                    placeholder="הכניסו סכום (₪)"
+                    min="0"
+                    className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
+                  />
+                </div>
+              )}
+
+              {/* Budget Explanation */}
+              {showBudgetExplanation && formData.weeklyBudget !== '' && (
+                <div className="mt-4 p-4 bg-[#E6F19A] bg-opacity-30 rounded-[18px] border-2 border-[#E6F19A]">
+                  {formData.weeklyBudget === 'custom' && (!formData.customBudget || formData.customBudget === '') ? (
+                    <div className="text-center">
+                      <p className="font-varela text-base text-[#282743]">
+                        נא הכנס תקציב רצוי
+                      </p>
+                    </div>
+                  ) : explanation ? (
+                    <>
+                      <h3 className="font-varela font-semibold text-base text-[#262135] mb-3">
+                        מה זה אומר?
+                      </h3>
+                      <div className="space-y-2 font-varela text-sm text-[#282743]">
+                        <p>
+                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד {explanation.targetHours} {explanation.targetHours === 1 ? 'שעה' : 'שעות'} זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong>₪{formatNumber(explanation.weeklyBudget)}</strong> של תקציב השבועי (₪{formatNumber(explanation.dailyBudget)} ליום). אם {formData.gender === 'boy' ? 'הוא יגדיל' : 'היא תגדיל'} את זמן המסך, התקציב יקטן בהתאם.
+                        </p>
+                        <p className="mt-2">
+                          במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / 6, 2)}</strong>.
+                        </p>
+                        <p className="mt-2">
+                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-1.5 שעות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
+                        </p>
+                        <p className="mt-2 pt-2 border-t border-[#E6F19A]">
+                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} הגדרת.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowBudgetExplanation(false)}
+                        className="mt-3 w-full py-2 px-4 bg-[#273143] text-white rounded-[12px] font-varela font-semibold text-sm hover:bg-opacity-90 transition-all"
+                      >
+                        הבנתי ✓
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
             </div>
 
+        {/* Navigation buttons */}
+        <div className="flex gap-4">
+          <button
+            onClick={handleBack}
+            className="flex-1 py-4 px-6 rounded-[18px] border-2 border-gray-300 text-lg font-varela font-semibold text-[#282743] hover:bg-gray-50 transition-all"
+          >
+            חזרה
+          </button>
             <button
-              type="submit"
-              className="w-full bg-dark-blue text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-opacity-90 transition-colors mt-8"
-            >
-              המשך ללוח הבקרה
+            onClick={handleNext}
+            disabled={!canProceed()}
+            className={`flex-1 py-4 px-6 rounded-[18px] text-lg font-varela font-semibold transition-all ${
+              canProceed()
+                ? 'bg-[#273143] text-white hover:bg-opacity-90'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {step === 6 ? 'סיום' : 'המשך'}
             </button>
           </div>
-        </form>
       </div>
     </div>
   );

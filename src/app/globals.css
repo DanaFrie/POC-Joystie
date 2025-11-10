@@ -42,3 +42,37 @@ html[dir="rtl"] {
 .small-text {
   @apply font-varela text-xs leading-tight;
 }
+
+/* Remove unwanted border in mobile view */
+@media (max-width: 1023px) {
+  main {
+    border: none !important;
+    outline: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  main > * {
+    border-bottom: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+  
+  main > * > * {
+    border-bottom: none !important;
+  }
+  
+  main::after,
+  main::before {
+    content: none !important;
+    display: none !important;
+  }
+  
+  /* Remove any horizontal line in mobile */
+  main hr,
+  main > div > hr,
+  main > div > div > hr {
+    display: none !important;
+  }
+}

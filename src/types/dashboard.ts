@@ -9,10 +9,12 @@ export interface Child {
   name: string;
   id: string;
   profilePicture: string;
+  gender?: 'boy' | 'girl';
 }
 
 export interface Challenge {
-  weeklyBudget: number;
+  selectedBudget: number; // תקציב נבחר (100%)
+  weeklyBudget: number; // תקציב שבועי (90% מהתקציב הנבחר)
   dailyBudget: number;
   dailyScreenTimeGoal: number;
   penaltyRate: number;
@@ -44,11 +46,16 @@ export interface Today {
 export interface WeekDay {
   dayName: string;
   date: string;
-  status: 'success' | 'warning' | 'pending' | 'missing' | 'future' | 'redemption';
+  status: 'success' | 'warning' | 'pending' | 'missing' | 'future' | 'redemption' | 'awaiting_approval' | 'rejected';
   coinsEarned: number;
   screenTimeUsed: number;
   screenTimeGoal: number;
   isRedemptionDay: boolean;
+  requiresApproval?: boolean; // האם דורש אישור הורה
+  uploadedAt?: string; // תאריך ושעה של העלאה
+  parentAction?: 'approved' | 'rejected' | null; // פעולה של ההורה
+  screenshotUrl?: string; // קישור לצילום מסך שהועלה
+  apps?: App[]; // אפליקציות ששימשו באותו יום
 }
 
 export interface WeeklyTotals {
@@ -66,6 +73,7 @@ export interface DashboardState {
   week: WeekDay[];
   weeklyTotals: WeeklyTotals;
 }
+
 
 
 

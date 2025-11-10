@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Lato } from 'next/font/google'
 import Navigation from '@/components/ui/Navigation'
+import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
 
 const lato = Lato({
   subsets: ['latin'],
@@ -20,9 +21,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={lato.variable}>
+    <html lang="he" dir="rtl" className={lato.variable} style={{ overflowX: 'hidden' }}>
       <body 
-        className="font-lato min-h-screen fixed inset-0" 
+        className="font-lato min-h-screen overflow-y-auto overflow-x-hidden" 
         style={{ 
           background: `
             radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
@@ -37,8 +38,8 @@ export default function RootLayout({
         }}
       >
         <div className="relative min-h-screen">
-          <Navigation />
-          <main className="max-w-7xl mx-auto px-4 py-8" style={{ borderRadius: '20px' }}>
+          <ConditionalNavigation />
+          <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8 lg:[&>*]:rounded-[20px] lg:rounded-[20px] rounded-none overflow-x-hidden" style={{ border: 'none', outline: 'none' }}>
             {children}
           </main>
         </div>
