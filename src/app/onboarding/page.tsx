@@ -56,6 +56,10 @@ export default function OnboardingPage() {
 
   const handleContinue = () => {
     if (selectedReason) {
+      // שמור את הבחירה ב-sessionStorage כדי להעביר לדף הבא
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('motivationReason', selectedReason);
+      }
       router.push('/onboarding/setup');
     }
   };

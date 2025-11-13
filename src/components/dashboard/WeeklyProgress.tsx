@@ -88,9 +88,9 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
         {day.isRedemptionDay ? '🎉' : config.icon}
       </div>
 
-      {/* Money earned */}
+      {/* Money earned - don't show money for redemption day (Saturday) */}
       <div className="font-varela font-semibold text-[9px] text-[#282743] text-center whitespace-nowrap">
-        {day.isRedemptionDay ? 'פדיון!' : `₪${formatNumber(day.coinsEarned)}`}
+        {day.isRedemptionDay ? 'פדיון!' : day.coinsEarned > 0 ? `₪${formatNumber(day.coinsEarned)}` : ''}
       </div>
     </div>
   );

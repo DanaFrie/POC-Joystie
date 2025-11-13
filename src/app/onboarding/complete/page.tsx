@@ -219,16 +219,16 @@ function OnboardingCompleteContent() {
               <h3 className="font-varela font-semibold text-sm text-[#273143] mb-3">
                 העתק קישור בלבד
               </h3>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 sm:gap-2">
                 <input
                   type="text"
                   value={shareLink}
                   readOnly
-                  className="flex-1 p-3 border-2 border-gray-200 rounded-[12px] font-varela text-sm text-[#273143] bg-white"
+                  className="flex-1 min-w-0 p-2 sm:p-3 border-2 border-gray-200 rounded-[12px] font-varela text-xs sm:text-sm text-[#273143] bg-white"
                 />
                 <button
                   onClick={handleCopyLink}
-                  className={`px-4 py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
+                  className={`px-2.5 sm:px-3 md:px-4 py-2 sm:py-3 rounded-[12px] font-varela font-semibold text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
                     copied && copiedType === 'link'
                       ? 'bg-[#E6F19A] text-[#273143]'
                       : 'bg-[#273143] text-white hover:bg-opacity-90'

@@ -4,11 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:intgr": "next dev",
     "build": "next build",
+    "build:prod": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "firebase:use:intgr": "firebase use intgr",
+    "firebase:use:prod": "firebase use prod",
+    "deploy:rules:intgr": "firebase use intgr && firebase deploy --only firestore:rules,storage:rules",
+    "deploy:rules:prod": "node -e \"const fs=require('fs');fs.copyFileSync('firebase/firestore.rules.prod','firebase/firestore.rules');fs.copyFileSync('firebase/storage.rules.prod','firebase/storage.rules');\" && firebase use prod && firebase deploy --only firestore:rules,storage:rules && git checkout firebase/firestore.rules firebase/storage.rules",
+    "deploy:all:intgr": "firebase use intgr && firebase deploy",
+    "deploy:all:prod": "node -e \"const fs=require('fs');fs.copyFileSync('firebase/firestore.rules.prod','firebase/firestore.rules');fs.copyFileSync('firebase/storage.rules.prod','firebase/storage.rules');\" && firebase use prod && firebase deploy && git checkout firebase/firestore.rules firebase/storage.rules"
   },
   "dependencies": {
+    "firebase": "^9.23.0",
     "next": "13.4.19",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -19,6 +28,7 @@
     "@types/react": "18.2.7",
     "@types/react-dom": "18.2.4",
     "autoprefixer": "10.4.14",
+    "dotenv": "^17.2.3",
     "postcss": "8.4.23",
     "tailwindcss": "3.3.2",
     "typescript": "5.0.4"

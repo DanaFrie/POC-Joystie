@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
 
@@ -21,6 +22,7 @@ interface SelectableDay {
 }
 
 export default function ChildUploadPage() {
+  const router = useRouter();
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,6 +35,7 @@ export default function ChildUploadPage() {
   const [extractedText, setExtractedText] = useState<string>('');
   const [showApprovedWarning, setShowApprovedWarning] = useState(false);
   const [approvedDayInfo, setApprovedDayInfo] = useState<{ date: string; dayName: string; isApproved?: boolean } | null>(null);
+  const [showFridayWarning, setShowFridayWarning] = useState(false);
 
   const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
@@ -77,6 +80,15 @@ export default function ChildUploadPage() {
       setSelectedDay(selectableDays[0]);
     }
   }, [selectableDays, selectedDay]);
+
+  // Check if selected day is Friday and show warning
+  useEffect(() => {
+    if (selectedDay && selectedDay.dayName === 'שישי') {
+      setShowFridayWarning(true);
+    } else {
+      setShowFridayWarning(false);
+    }
+  }, [selectedDay]);
 
   // Check if there's an approved upload for the selected day
   useEffect(() => {
@@ -489,283 +501,33 @@ export default function ChildUploadPage() {
     });
   };
 
-  // Extract screen time from screenshot using OCR and pixel analysis
+  // Extract screen time from screenshot - DUMMY PROCESSING
   const extractScreenTimeFromImage = async (
     imageFile: File,
     targetDay: SelectableDay
   ): Promise<{ time: number; extractedText: string }> => {
-    setOcrProgress('מתחיל ניתוח תמונה...');
+    setOcrProgress('מעבד תמונה...');
     
-    // Dynamically import tesseract.js only on client side
-    const { createWorker } = await import('tesseract.js');
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    const worker = await createWorker('heb+eng', 1, {
-      logger: (m) => {
-        if (m.status === 'recognizing text') {
-          setOcrProgress(`מנתח תמונה... ${Math.round(m.progress * 100)}%`);
-        }
-      }
-    });
-
-    try {
-      // First, do OCR to find day position and time scale
-      const { data: { text } } = await worker.recognize(imageFile);
-      await worker.terminate();
-      
-      // Store extracted text for display
-      setExtractedText(text);
-      
-      setOcrProgress('מחפש את היום הנכון...');
-      
-      // Get the day abbreviation we're looking for (both Hebrew and English)
-      const dayAbbrs = getDayAbbreviation(targetDay.dayName);
-      const targetDayAbbr = dayAbbrs.hebrew;
-      const targetDayAbbrEng = dayAbbrs.english;
-      
-      // Find day position in the week (0-6, where 0 is Sunday/ראשון)
-      const allDaysHeb = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-      const allDaysEng = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      let targetDayIndex = -1;
-      
-      // Find the day index by looking at the graph labels
-      const lines = text.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const hasDays = allDaysHeb.some(day => line.includes(day)) || 
-                       allDaysEng.some(day => line.includes(day));
-        
-        if (hasDays) {
-          // This is likely the graph row with day labels
-          // Find position of our target day
-          const dayAbbrPattern = new RegExp(`['"]?${targetDayAbbr}['"]?`, 'g');
-          const matchesHeb = line.match(dayAbbrPattern);
-          const matchesEng = targetDayAbbrEng.some(engDay => {
-            const engPattern = new RegExp(`\\b${engDay}\\b`, 'i');
-            return line.match(engPattern);
-          });
-          
-          if (matchesHeb || matchesEng) {
-            // Find the index of this day in the sequence
-            const daySequence = allDaysHeb.map((day, idx) => {
-              const hebMatch = line.includes(day) || line.includes(`'${day}'`) || line.includes(`"${day}"`);
-              const engMatch = allDaysEng[idx] && line.includes(allDaysEng[idx]);
-              return hebMatch || engMatch;
-            });
-            
-            targetDayIndex = daySequence.findIndex((found, idx) => {
-              const isTarget = (targetDayAbbr === allDaysHeb[idx]) || 
-                               targetDayAbbrEng.some(eng => eng === allDaysEng[idx]);
-              return found && isTarget;
-            });
-            
-            if (targetDayIndex === -1) {
-              // Fallback: find by position in sequence
-              for (let idx = 0; idx < allDaysHeb.length; idx++) {
-                if (targetDayAbbr === allDaysHeb[idx] || 
-                    targetDayAbbrEng.includes(allDaysEng[idx])) {
-                  targetDayIndex = idx;
-                  break;
-                }
-              }
-            }
-            break;
-          }
-        }
-      }
-      
-      // Find max time from Y-axis labels
-      setOcrProgress('מחפש קנה מידה...');
-      const timeScalePattern = /(\d+)\s*(?:שעות?|hours?|hrs?)/gi;
-      const timeMatches: RegExpMatchArray[] = [];
-      let match;
-      while ((match = timeScalePattern.exec(text)) !== null) {
-        timeMatches.push(match);
-      }
-      let maxTime = 4; // Default max time
-      
-      for (const match of timeMatches) {
-        const time = parseFloat(match[1]) || 0;
-        if (time > maxTime && time <= 24) {
-          maxTime = time;
-        }
-      }
-      
-      // If we found the day index, do pixel analysis
-      if (targetDayIndex >= 0 && targetDayIndex < 7) {
-        setOcrProgress('מנתח גובה עמודה בגרף...');
-        const pixelTime = await analyzeGraphPixels(imageFile, targetDayIndex, maxTime);
-        
-        if (pixelTime > 0) {
-          setOcrProgress(`נמצא: ${formatNumber(pixelTime, 2)} שעות (מניתוח גרף)`);
-          return { time: Math.round(pixelTime * 100) / 100, extractedText: text };
-        }
-      }
-      
-      // Fallback to OCR-based text search if pixel analysis didn't work
-      setOcrProgress('מחפש זמן בטקסט...');
-      
-      let foundTime = 0;
-      
-      // Strategy 1: Look for the day abbreviation in the graph
-      // The graph shows days as: א', ב', ג', ד', ה', ו', ש'
-      // We need to find the position of our target day and estimate time from graph height
-      const dayAbbrPattern = new RegExp(`['"]?${targetDayAbbr}['"]?`, 'g');
-      let dayFound = false;
-      let dayIndex = -1;
-      
-      // Note: allDaysHeb and allDaysEng are already defined above (lines 389-390)
-      // Use the existing definitions
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        // Check if this line contains day abbreviations (likely the graph labels)
-        const hasDaysHeb = allDaysHeb.some(day => line.includes(day) || line.includes(`'${day}'`) || line.includes(`"${day}"`));
-        const hasDaysEng = allDaysEng.some(day => line.includes(day));
-        const hasDays = hasDaysHeb || hasDaysEng;
-        
-        if (hasDays) {
-          // Check for Hebrew day abbreviation
-          const matchesHeb = line.match(dayAbbrPattern);
-          // Check for English day abbreviations
-          const matchesEng = targetDayAbbrEng.some(engDay => {
-            const engPattern = new RegExp(`\\b${engDay}\\b`, 'i');
-            return line.match(engPattern);
-          });
-          
-          // This might be the graph row - look for our target day
-          if (matchesHeb || matchesEng) {
-            dayFound = true;
-            dayIndex = i;
-            
-            // Try to find time patterns near this day
-            const searchLines = [
-              lines[Math.max(0, i - 3)] || '',
-              lines[Math.max(0, i - 2)] || '',
-              lines[Math.max(0, i - 1)] || '',
-              line,
-              lines[i + 1] || '',
-              lines[i + 2] || '',
-              lines[i + 3] || ''
-            ].join(' ');
-            
-            // Try to find time patterns (both Hebrew and English)
-            const timePatterns = [
-              // Hebrew patterns
-              /(\d+)\s*שעה\s*ו?-?\s*(\d+)\s*דק/,
-              /(\d+)\s*שעות?\s*ו?-?\s*(\d+)\s*דק/,
-              /(\d+\.\d+)\s*שעות?/,
-              /(\d+)\s*שעות?/,
-              // English patterns
-              /(\d+)\s*(?:h|hour|hours|hr|hrs)\s*(?:and|&)?\s*(\d+)\s*(?:m|min|minute|minutes)/i,
-              /(\d+)\s*(?:h|hour|hours|hr|hrs)/i,
-              /(\d+)\s*(?:m|min|minute|minutes)/i,
-              // Common format (works for both)
-              /(\d+):(\d+)/
-            ];
-            
-            for (const pattern of timePatterns) {
-              const match = searchLines.match(pattern);
-              if (match) {
-                // Use parseTimeToHours directly on the matched text
-                const time = parseTimeToHours(match[0]);
-                if (time > 0 && time <= 24) {
-                  foundTime = time;
-                  setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות`);
-                  return { time: Math.round(foundTime * 10) / 10, extractedText: text };
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      // Strategy 1.5: If we found the day but no time, look for time values in the graph area
-      // The graph might have time labels on the Y-axis (0, 1, 2, 3, 4 שעות or hours)
-      if (dayFound && foundTime === 0) {
-        // Look for time scale values near the graph
-        const graphArea = lines.slice(Math.max(0, dayIndex - 5), dayIndex + 10).join(' ');
-        const timeScalePattern = /(\d+)\s*(?:שעות?|hours?|hrs?)/gi;
-        const timeMatches: RegExpMatchArray[] = [];
-        let match;
-        while ((match = timeScalePattern.exec(graphArea)) !== null) {
-          timeMatches.push(match);
-        }
-        
-        // Try to estimate based on graph structure
-        // This is a heuristic - we'll use the maximum time found in the graph area
-        let maxTime = 0;
-        for (const match of timeMatches) {
-          const time = parseFloat(match[1]) || 0;
-          if (time > maxTime && time <= 24) {
-            maxTime = time;
-          }
-        }
-        
-        // If we found a reasonable max time, use a portion of it as estimate
-        // This is a rough estimate - in a real scenario, we'd need to analyze the bar height
-        if (maxTime > 0) {
-          // Use 50-80% of max as a reasonable estimate (bars are usually in this range)
-          foundTime = maxTime * 0.65;
-          setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות (משוער)`);
-          return { time: Math.round(foundTime * 10) / 10, extractedText: text };
-        }
-      }
-      
-      // Strategy 2: Look for time patterns in the entire text
-      // This is a fallback if we can't find the specific day
-      setOcrProgress('מחפש זמן מסך בכל התמונה...');
-      
-      const allTimePatterns = [
-        // Hebrew patterns
-        /(\d+)\s*שעה\s*ו?-?\s*(\d+)\s*דק/,
-        /(\d+)\s*שעות?\s*ו?-?\s*(\d+)\s*דק/,
-        /(\d+\.\d+)\s*שעות?/,
-        /(\d+)\s*שעות?/,
-        // English patterns
-        /(\d+)\s*(?:h|hour|hours|hr|hrs)\s*(?:and|&)?\s*(\d+)\s*(?:m|min|minute|minutes)/i,
-        /(\d+)\s*(?:h|hour|hours|hr|hrs)/i,
-        // Common format
-        /(\d+):(\d+)/
-      ];
-      
-      for (const pattern of allTimePatterns) {
-        const regex = new RegExp(pattern, 'g');
-        const matches: RegExpMatchArray[] = [];
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          matches.push(match);
-        }
-        if (matches.length > 0) {
-          // Take the first reasonable match (between 0 and 24 hours)
-          for (const match of matches) {
-            // Use parseTimeToHours directly on the matched text
-            const time = parseTimeToHours(match[0]);
-            if (time > 0 && time <= 24) {
-              foundTime = time;
-              break;
-            }
-          }
-          if (foundTime > 0) break;
-        }
-      }
-      
-      if (foundTime > 0) {
-        setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות`);
-        return { time: Math.round(foundTime * 10) / 10, extractedText: text };
-      }
-      
-      // If we still can't find it, return a default based on goal
-      setOcrProgress('לא נמצא זמן מדויק, משתמש בערך משוער');
-      const challengeData = getChallengeData();
-      return { time: challengeData.dailyScreenTimeGoal, extractedText: text };
-      
-    } catch (error) {
-      console.error('OCR Error:', error);
-      setOcrProgress('שגיאה בניתוח התמונה');
-      // Fallback to goal-based estimate
-      const challengeData = getChallengeData();
-      return { time: challengeData.dailyScreenTimeGoal, extractedText: '' };
-    }
+    setOcrProgress('מחשב זמן מסך...');
+    
+    // DUMMY: Generate random screen time between 1-4 hours
+    // This will be replaced with actual ML model when ready
+    const randomMinutes = Math.floor(Math.random() * (240 - 60 + 1)) + 60; // 1-4 hours
+    const dummyTime = randomMinutes / 60;
+    
+    // Simulate second processing step
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    setOcrProgress('סיום עיבוד...');
+    
+    // Return dummy processed time
+    return {
+      time: dummyTime,
+      extractedText: `[DUMMY PROCESSING] זמן מסך משוער ליום ${targetDay.dayName}: ${dummyTime.toFixed(2)} שעות`
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -877,6 +639,14 @@ export default function ChildUploadPage() {
 
     setIsSubmitting(false);
     setSubmitted(true);
+
+    // If Friday was uploaded, redirect immediately to redemption page (don't show result screen)
+    if (selectedDay.dayName === 'שישי') {
+      // Redirect immediately to redemption page with Friday earnings
+      setTimeout(() => {
+        router.push(`/child/redemption?fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
+      }, 500); // Short delay to ensure state is saved
+    }
   };
 
 
@@ -895,6 +665,12 @@ export default function ChildUploadPage() {
     }
     return 'boy';
   };
+
+  // If Friday was uploaded, redirect immediately to redemption (don't show result screen)
+  if (submitted && uploadResult && selectedDay && selectedDay.dayName === 'שישי') {
+    // Already redirected in handleSubmit, but in case it didn't work, redirect here too
+    return null; // Component will unmount and redirect
+  }
 
   // Show result in the same form instead of separate screen
   if (submitted && uploadResult && selectedDay) {
@@ -975,15 +751,18 @@ export default function ChildUploadPage() {
           />
         </div>
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
-          <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
-            העלאת סטטוס יומי
+          <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-2 text-center">
+            עדכון זמן מסך
           </h1>
+          <p className="font-varela text-base text-[#282743] mb-6 text-center">
+            כדי להתקדם, צלמו את מסך 'זמן המסך' בטלפון והעלו אותו כאן.
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Day Selection */}
             <div>
               <label className="block font-varela font-semibold text-base text-[#282743] mb-2">
-                עבור איזה יום אתה מעלה?
+                איזה יום אתה מעלה?
               </label>
               <select
                 value={selectedDay ? selectableDays.findIndex(d => d.dateStr === selectedDay.dateStr) : -1}
@@ -1003,6 +782,27 @@ export default function ChildUploadPage() {
                 ))}
               </select>
             </div>
+
+            {/* Friday Warning - need parent nearby */}
+            {showFridayWarning && (() => {
+              const challengeData = getChallengeData();
+              const parentName = challengeData.parentName || 'אמא';
+              const parentPronoun = parentName === 'אמא' ? 'שלה' : 'שלו';
+              
+              return (
+                <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] border-2 border-[#E6F19A] rounded-[12px] p-4 shadow-sm">
+                  <p className="font-varela text-base text-[#262135] text-center leading-relaxed font-bold mb-3">
+                    🎉 התראה חגיגית!
+                  </p>
+                  <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-3">
+                    אתה מעלה סטטוס של יום שישי - זה אומר שאוטוטו אתה מרוויח את הזכיה שלך!
+                  </p>
+                  <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                    ודא ש{parentName} לידך כי אחרי ההעלאה תעבור למסך הפדיון שבו תצטרך את האישור {parentPronoun}.
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Approved Warning */}
             {showApprovedWarning && approvedDayInfo && (

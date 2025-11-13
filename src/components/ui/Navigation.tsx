@@ -85,7 +85,7 @@ export default function Navigation() {
                   width={120}
                   height={40}
                   className="h-10 sm:h-8 w-auto"
-                  style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)' }}
+                  style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
                   priority
                   onError={() => setImageError(true)}
                 />

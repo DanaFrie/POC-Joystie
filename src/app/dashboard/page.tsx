@@ -45,8 +45,8 @@ function generateCurrentWeek(): WeekDay[] {
       status = 'future';
     }
     
-    // Friday is redemption day
-    const isRedemptionDay = i === 5; // Friday (ו׳)
+    // Saturday is redemption day (index 6)
+    const isRedemptionDay = i === 6; // Saturday (ש׳) - יום הפדיון
     
     // Mock data for past days - deterministic values
     const screenTimeGoal = 3;
@@ -388,6 +388,9 @@ export default function DashboardPage() {
   };
 
   const handleApprove = async (dayDate: string) => {
+    const approvedDay = dashboardData.week.find(day => day.date === dayDate);
+    const isFriday = approvedDay?.dayName === 'ו׳' || approvedDay?.dayName === 'שישי';
+    
     const updatedWeek = dashboardData.week.map(day => {
       if (day.date === dayDate) {
         return {
@@ -400,6 +403,24 @@ export default function DashboardPage() {
       return day;
     });
 
+    // Save to localStorage first
+    if (typeof window !== 'undefined') {
+      const updatedData = {
+        ...dashboardData,
+        week: updatedWeek
+      };
+      localStorage.setItem('dashboardTestData', JSON.stringify(updatedData));
+      
+      // If Friday was approved, notify child redemption page
+      if (isFriday && approvedDay) {
+        localStorage.setItem('fridayApproved', 'true');
+        localStorage.setItem('fridayEarnings', approvedDay.coinsEarned.toString());
+        // Trigger event for child redemption page
+        window.dispatchEvent(new Event('fridayApproved'));
+      }
+    }
+    
+    // Update state
     setDashboardData(prev => ({
       ...prev,
       week: updatedWeek

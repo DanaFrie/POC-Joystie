@@ -409,9 +409,14 @@ function ChildSetupContent() {
                     ₪{formatNumber(dealData.dailyBudget)}
                   </p>
                 </div>
-                <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
+                <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
                   <p className="font-varela text-xs text-[#282743] text-center leading-relaxed">
                     אם {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תעמודי' : 'תעמוד') : 'תעמוד'} ביעד של {dealData.dailyScreenTimeGoal} שעות ביום, {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
+                  </p>
+                </div>
+                <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">
+                  <p className="font-varela text-xs text-[#262135] text-center leading-relaxed font-semibold">
+                    האתגר נמשך 6 ימים: מיום ראשון עד יום שישי. יום שבת הוא יום הפדיון שבו {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תוכלי' : 'תוכל') : 'תוכל'} לראות כמה כסף {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'צברת' : 'צברת') : 'צברת'} ולפדות אותו!
                   </p>
                 </div>
               </div>
