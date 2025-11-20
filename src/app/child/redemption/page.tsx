@@ -3,6 +3,11 @@
 import { useState, Suspense, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import { getCurrentUserId } from '@/utils/auth';
+import { getActiveChallenge } from '@/lib/api/challenges';
+import { getUploadsByChallenge } from '@/lib/api/uploads';
+import { getChild } from '@/lib/api/children';
+import { getUser } from '@/lib/api/users';
 
 function ChildRedemptionContent() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -28,47 +33,33 @@ function ChildRedemptionContent() {
     parentGender: 'female' as 'female' | 'male'
   });
 
-  // Load data from localStorage only on client side
+  // Load data from Firebase
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const loadData = async () => {
       try {
-        // Try to get from dashboard test data
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            setChildData({
-              childName: parsed.child?.name || 'יובל',
-              childGender: parsed.child?.gender || 'boy',
-              parentName: parsed.parent?.name || 'דנה',
-              parentGender: parsed.parent?.gender || 'female'
-            });
-            return;
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-        
-        // Try to get from challengeData
-        const storedChallenge = localStorage.getItem('challengeData');
-        if (storedChallenge) {
-          try {
-            const parsed = JSON.parse(storedChallenge);
-            setChildData({
-              childName: parsed.childName || 'יובל',
-              childGender: parsed.childGender || 'boy',
-              parentName: parsed.parentName || 'דנה',
-              parentGender: parsed.parentGender || 'female'
-            });
-            return;
-          } catch (e) {
-            // Ignore parse errors
-          }
+        const userId = await getCurrentUserId();
+        if (!userId) return;
+
+        const challenge = await getActiveChallenge(userId);
+        if (!challenge) return;
+
+        const child = await getChild(challenge.childId);
+        const parent = await getUser(challenge.parentId);
+
+        if (child && parent) {
+          setChildData({
+            childName: child.name || 'יובל',
+            childGender: child.gender || 'boy',
+            parentName: parent.firstName || 'דנה',
+            parentGender: parent.gender || 'female'
+          });
         }
       } catch (e) {
-        // Ignore errors
+        console.error('Error loading data from Firebase:', e);
       }
-    }
+    };
+
+    loadData();
   }, []);
 
   const childName = childData.childName;
@@ -78,27 +69,37 @@ function ChildRedemptionContent() {
   const fridayEarnings = fridayEarningsParam ? parseFloat(fridayEarningsParam) : 0;
   const weeklyTotalFromParams = weeklyTotalParam ? parseFloat(weeklyTotalParam) : 0;
   
-  // Calculate total earnings from localStorage if not from params
-  const calculateTotalEarnings = () => {
-    if (weeklyTotalFromParams > 0) {
-      return weeklyTotalFromParams;
-    }
-    
-    try {
-      if (typeof window !== 'undefined') {
-        const uploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-        const total = uploads.reduce((sum: number, upload: any) => {
-          return sum + (upload.coinsEarned || 0);
-        }, 0);
-        return total > 0 ? total : 89.5; // Default fallback
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-    return 89.5; // Default fallback
-  };
+  // Calculate total earnings from Firebase if not from params
+  const [totalEarnings, setTotalEarnings] = useState(weeklyTotalFromParams || 89.5);
   
-  const totalEarnings = calculateTotalEarnings();
+  useEffect(() => {
+    const loadTotalEarnings = async () => {
+      if (weeklyTotalFromParams > 0) {
+        setTotalEarnings(weeklyTotalFromParams);
+        return;
+      }
+      
+      try {
+        const userId = await getCurrentUserId();
+        if (!userId) return;
+
+        const challenge = await getActiveChallenge(userId);
+        if (!challenge) return;
+
+        const uploads = await getUploadsByChallenge(challenge.id);
+        const approvedUploads = uploads.filter(u => u.parentAction === 'approved');
+        const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
+        
+        if (total > 0) {
+          setTotalEarnings(total);
+        }
+      } catch (e) {
+        console.error('Error loading total earnings:', e);
+      }
+    };
+
+    loadTotalEarnings();
+  }, [weeklyTotalFromParams]);
   
   // Calculate redemption date - always Saturday (Friday + 1 day)
   const getRedemptionDate = () => {
@@ -120,8 +121,6 @@ function ChildRedemptionContent() {
       // Reset approval state when coming from Friday upload
       setAwaitingParentApproval(true);
       setFridayApproved(false);
-      // Clear any previous approval state
-      localStorage.removeItem('fridayApproved');
       
       // Clear any existing timer
       if (autoApproveTimerRef.current) {
@@ -129,48 +128,69 @@ function ChildRedemptionContent() {
         autoApproveTimerRef.current = null;
       }
       
-      // For testing: Auto-approve after 10 seconds to simulate parent approval
-      autoApproveTimerRef.current = setTimeout(() => {
-        setAwaitingParentApproval(false);
-        setFridayApproved(true);
-        // Also update localStorage for consistency
-        localStorage.setItem('fridayApproved', 'true');
-        localStorage.setItem('fridayEarnings', fridayEarnings.toString());
-        window.dispatchEvent(new Event('fridayApproved'));
-        autoApproveTimerRef.current = null;
-      }, 10000); // 10 seconds
-      
-      // Listen for parent approval (from dashboard)
-      const handleFridayApproved = () => {
-        const approved = localStorage.getItem('fridayApproved') === 'true';
-        if (approved) {
-          // Cancel auto-approve if parent already approved
-          if (autoApproveTimerRef.current) {
-            clearTimeout(autoApproveTimerRef.current);
-            autoApproveTimerRef.current = null;
+      // Check Firebase for Friday approval status
+      const checkFridayApproval = async () => {
+        try {
+          const userId = await getCurrentUserId();
+          if (!userId) return;
+
+          const challenge = await getActiveChallenge(userId);
+          if (!challenge) return;
+
+          // Get Friday upload (assuming Friday is the last day before Saturday)
+          const today = new Date();
+          const fridayDate = new Date(today);
+          fridayDate.setDate(today.getDate() - (today.getDay() === 6 ? 1 : today.getDay() === 0 ? 2 : today.getDay() + 1));
+          const fridayDateStr = `${String(fridayDate.getDate()).padStart(2, '0')}/${String(fridayDate.getMonth() + 1).padStart(2, '0')}`;
+          
+          const { getUploadByDate } = await import('@/lib/api/uploads');
+          const fridayUpload = await getUploadByDate(challenge.id, fridayDateStr);
+          
+          if (fridayUpload && fridayUpload.parentAction === 'approved') {
+            // Cancel auto-approve if parent already approved
+            if (autoApproveTimerRef.current) {
+              clearTimeout(autoApproveTimerRef.current);
+              autoApproveTimerRef.current = null;
+            }
+            setAwaitingParentApproval(false);
+            setFridayApproved(true);
+            return true;
           }
-          setAwaitingParentApproval(false);
-          setFridayApproved(true);
+          return false;
+        } catch (e) {
+          console.error('Error checking Friday approval:', e);
+          return false;
         }
       };
       
       // Check initial state
-      handleFridayApproved();
+      checkFridayApproval();
+      
+      // Listen for approval event from dashboard
+      const handleFridayApproved = (event: CustomEvent) => {
+        // Cancel auto-approve if parent already approved
+        if (autoApproveTimerRef.current) {
+          clearTimeout(autoApproveTimerRef.current);
+          autoApproveTimerRef.current = null;
+        }
+        setAwaitingParentApproval(false);
+        setFridayApproved(true);
+      };
       
       // Listen for approval event
-      window.addEventListener('fridayApproved', handleFridayApproved);
+      window.addEventListener('fridayApproved', handleFridayApproved as EventListener);
       
-      // Also check localStorage periodically (in case event didn't fire)
+      // Check Firebase periodically for approval status
       const checkInterval = setInterval(() => {
-        handleFridayApproved();
-      }, 1000);
+        checkFridayApproval();
+      }, 2000); // Check every 2 seconds
       
       return () => {
         if (autoApproveTimerRef.current) {
           clearTimeout(autoApproveTimerRef.current);
           autoApproveTimerRef.current = null;
         }
-        window.removeEventListener('fridayApproved', handleFridayApproved);
+        window.removeEventListener('fridayApproved', handleFridayApproved as EventListener);
         clearInterval(checkInterval);
       };
     }

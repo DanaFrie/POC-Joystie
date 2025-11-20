@@ -1,0 +1,8 @@
+# Flask and CORS for HTTP service
+Flask==3.0.0
+flask-cors==4.0.0
+
+# Note: Python dependencies for graph_telemetry_service
+# are installed from services/graph-telemetry/requirements.txt
+# in the Dockerfile
+

@@ -25,20 +25,33 @@ const nextConfig = {
       config.externals.push('tesseract.js');
     }
     
-    // Fix for Firebase - ignore Node.js specific modules in client bundle
-    if (!isServer) {
-      // Use IgnorePlugin to ignore Node.js modules that Firebase tries to import
-      const webpack = require('webpack');
-      if (!config.plugins) {
-        config.plugins = [];
+      // Fix for Firebase - ignore Node.js specific modules in client bundle
+      if (!isServer) {
+        // Use IgnorePlugin to ignore Node.js modules that Firebase tries to import
+        const webpack = require('webpack');
+        if (!config.plugins) {
+          config.plugins = [];
+        }
+        config.plugins.push(
+          new webpack.IgnorePlugin({
+            resourceRegExp: /^undici$/,
+            contextRegExp: /node_modules\/firebase/,
+          }),
+          // Fix for encoding module warning
+          new webpack.IgnorePlugin({
+            resourceRegExp: /^encoding$/,
+            contextRegExp: /node_modules\/node-fetch/,
+          })
+        );
       }
-      config.plugins.push(
-        new webpack.IgnorePlugin({
-          resourceRegExp: /^undici$/,
-          contextRegExp: /node_modules\/firebase/,
-        })
-      );
-    }
+      
+      // Fix encoding module resolution for server-side
+      if (isServer) {
+        config.resolve.fallback = {
+          ...config.resolve.fallback,
+          encoding: false,
+        };
+      }
     
     return config;
   },

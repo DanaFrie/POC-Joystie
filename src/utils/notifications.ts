@@ -1,6 +1,8 @@
 // Utility functions for push notifications
 import type { PushNotification, PushNotificationType } from '@/types/notifications';
 import type { WeekDay } from '@/types/dashboard';
+import { createNotification, getNotifications as getFirestoreNotifications, markNotificationAsRead as markFirestoreNotificationAsRead, deleteNotification, deleteAllNotifications as deleteAllFirestoreNotifications, getUnreadCount as getFirestoreUnreadCount } from '@/lib/api/notifications';
+import type { FirestoreNotification } from '@/types/firestore';
 
 export function createPushNotification(
   type: PushNotificationType,
@@ -78,53 +80,103 @@ export function createPushNotification(
   }
 }
 
-export function saveNotification(notification: PushNotification): void {
-  if (typeof window === 'undefined') return;
-  
-  const notifications = getNotifications();
-  notifications.unshift(notification);
-  localStorage.setItem('parentNotifications', JSON.stringify(notifications));
-  
-  // Trigger event for UI update
-  window.dispatchEvent(new Event('notificationsUpdated'));
+// Convert PushNotification to FirestoreNotification
+function pushToFirestore(pushNotif: PushNotification, parentId: string, relatedUploadId?: string): Omit<FirestoreNotification, 'id' | 'createdAt' | 'updatedAt'> {
+  return {
+    parentId,
+    type: pushNotif.type,
+    title: pushNotif.title,
+    message: pushNotif.message,
+    timestamp: pushNotif.timestamp,
+    read: pushNotif.read,
+    dayDate: pushNotif.dayDate,
+    dayName: pushNotif.dayName,
+    relatedUploadId
+  };
 }
 
-export function getNotifications(): PushNotification[] {
+// Convert FirestoreNotification to PushNotification
+function firestoreToPush(firestoreNotif: FirestoreNotification): PushNotification {
+  return {
+    id: firestoreNotif.id,
+    type: firestoreNotif.type,
+    title: firestoreNotif.title,
+    message: firestoreNotif.message,
+    timestamp: firestoreNotif.timestamp,
+    read: firestoreNotif.read,
+    dayDate: firestoreNotif.dayDate,
+    dayName: firestoreNotif.dayName
+  };
+}
+
+export async function saveNotification(notification: PushNotification, parentId: string, relatedUploadId?: string): Promise<void> {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const firestoreData = pushToFirestore(notification, parentId, relatedUploadId);
+    await createNotification(firestoreData);
+    
+    // Trigger event for UI update
+    window.dispatchEvent(new Event('notificationsUpdated'));
+  } catch (error) {
+    console.error('Error saving notification to Firebase:', error);
+    // Fallback: still trigger event even if save fails
+    window.dispatchEvent(new Event('notificationsUpdated'));
+  }
+}
+
+export async function getNotifications(parentId: string): Promise<PushNotification[]> {
   if (typeof window === 'undefined') return [];
   
-  const stored = localStorage.getItem('parentNotifications');
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const firestoreNotifications = await getFirestoreNotifications(parentId);
+    return firestoreNotifications.map(firestoreToPush);
+  } catch (error) {
+    console.error('Error getting notifications from Firebase:', error);
+    return [];
+  }
 }
 
-export function markNotificationAsRead(id: string): void {
+export async function markNotificationAsRead(id: string): Promise<void> {
   if (typeof window === 'undefined') return;
   
-  const notifications = getNotifications();
-  const updated = notifications.map(n => 
-    n.id === id ? { ...n, read: true } : n
-  );
-  localStorage.setItem('parentNotifications', JSON.stringify(updated));
-  window.dispatchEvent(new Event('notificationsUpdated'));
+  try {
+    await markFirestoreNotificationAsRead(id);
+    window.dispatchEvent(new Event('notificationsUpdated'));
+  } catch (error) {
+    console.error('Error marking notification as read in Firebase:', error);
+  }
 }
 
-export function removeNotification(id: string): void {
+export async function removeNotification(id: string): Promise<void> {
   if (typeof window === 'undefined') return;
   
-  const notifications = getNotifications();
-  const updated = notifications.filter(n => n.id !== id);
-  localStorage.setItem('parentNotifications', JSON.stringify(updated));
-  window.dispatchEvent(new Event('notificationsUpdated'));
+  try {
+    await deleteNotification(id);
+    window.dispatchEvent(new Event('notificationsUpdated'));
+  } catch (error) {
+    console.error('Error removing notification from Firebase:', error);
+  }
 }
 
-export function getUnreadCount(): number {
-  return getNotifications().filter(n => !n.read).length;
+export async function getUnreadCount(parentId: string): Promise<number> {
+  try {
+    return await getFirestoreUnreadCount(parentId);
+  } catch (error) {
+    console.error('Error getting unread count from Firebase:', error);
+    return 0;
+  }
 }
 
-export function clearAllNotifications(): void {
+export async function clearAllNotifications(parentId: string): Promise<void> {
   if (typeof window === 'undefined') return;
   
-  localStorage.removeItem('parentNotifications');
-  window.dispatchEvent(new Event('notificationsUpdated'));
+  try {
+    await deleteAllFirestoreNotifications(parentId);
+    window.dispatchEvent(new Event('notificationsUpdated'));
+  } catch (error) {
+    console.error('Error clearing all notifications from Firebase:', error);
+  }
 }
 
 // Check if goal was met

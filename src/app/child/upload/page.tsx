@@ -4,6 +4,10 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { processScreenshot } from '@/lib/api/screenshot';
+import { createUpload } from '@/lib/api/uploads';
+import { uploadScreenshot } from '@/lib/api/storage';
+import { getCurrentUserId } from '@/utils/auth';
 
 interface UploadResult {
   screenTimeUsed: number;
@@ -501,42 +505,104 @@ export default function ChildUploadPage() {
     });
   };
 
-  // Extract screen time from screenshot - DUMMY PROCESSING
+  // Extract screen time from screenshot using Python service
   const extractScreenTimeFromImage = async (
     imageFile: File,
     targetDay: SelectableDay
-  ): Promise<{ time: number; extractedText: string }> => {
-    setOcrProgress('מעבד תמונה...');
-    
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    setOcrProgress('מחשב זמן מסך...');
-    
-    // DUMMY: Generate random screen time between 1-4 hours
-    // This will be replaced with actual ML model when ready
-    const randomMinutes = Math.floor(Math.random() * (240 - 60 + 1)) + 60; // 1-4 hours
-    const dummyTime = randomMinutes / 60;
-    
-    // Simulate second processing step
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setOcrProgress('סיום עיבוד...');
-    
-    // Return dummy processed time
-    return {
-      time: dummyTime,
-      extractedText: `[DUMMY PROCESSING] זמן מסך משוער ליום ${targetDay.dayName}: ${dummyTime.toFixed(2)} שעות`
-    };
+  ): Promise<{ time: number; minutes: number; extractedText: string }> => {
+    console.log('[Upload] Starting screen time extraction', {
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+      targetDay: targetDay.dayName
+    });
+
+    try {
+      setOcrProgress('מעבד תמונה...');
+      console.log('[Upload] Step 1: Sending image to processing service');
+
+      // Call the API to process the screenshot
+      const result = await processScreenshot(imageFile, targetDay.dayName);
+
+      console.log('[Upload] Processing complete:', result);
+
+      if (result.error) {
+        console.error('[Upload] Processing error:', result.error);
+        throw new Error(result.error);
+      }
+
+      if (!result.found) {
+        console.warn('[Upload] Target day not found in image');
+        setOcrProgress('יום לא נמצא בתמונה');
+        return {
+          time: 0,
+          minutes: 0,
+          extractedText: `יום ${targetDay.dayName} לא נמצא בתמונה`
+        };
+      }
+
+      setOcrProgress('מחשב זמן מסך...');
+      console.log('[Upload] Step 2: Calculating screen time', {
+        minutes: result.minutes,
+        hours: result.time,
+        metadata: result.metadata
+      });
+
+      // Convert minutes to hours
+      const timeInHours = result.time || (result.minutes / 60);
+      const minutes = result.minutes || 0;
+
+      setOcrProgress('סיום עיבוד...');
+      console.log('[Upload] Step 3: Processing complete', {
+        timeInHours,
+        minutes
+      });
+
+      // Format message with hours and minutes
+      const hoursInt = Math.floor(minutes / 60);
+      const minutesInt = Math.round(minutes % 60);
+      let timeText = '';
+      if (hoursInt > 0 && minutesInt > 0) {
+        timeText = `${hoursInt} שעות ו-${minutesInt} דקות`;
+      } else if (hoursInt > 0) {
+        timeText = `${hoursInt} שעות`;
+      } else {
+        timeText = `${minutesInt} דקות`;
+      }
+
+      return {
+        time: timeInHours,
+        minutes: minutes,
+        extractedText: `זמן מסך מזוהה ליום ${targetDay.dayName}: ${timeText}`
+      };
+    } catch (error: any) {
+      console.error('[Upload] Error processing screenshot:', error);
+      setOcrProgress('שגיאה בעיבוד התמונה');
+      
+      // Return error result
+      return {
+        time: 0,
+        minutes: 0,
+        extractedText: `שגיאה בעיבוד התמונה: ${error.message || 'שגיאה לא ידועה'}`
+      };
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!screenshot || !selectedDay) return;
+    console.log('[Upload] Form submitted', {
+      hasScreenshot: !!screenshot,
+      selectedDay: selectedDay?.displayText
+    });
+
+    if (!screenshot || !selectedDay) {
+      console.warn('[Upload] Missing screenshot or selected day');
+      return;
+    }
 
     // Check if there's an approved upload for this day
     try {
       if (typeof window !== 'undefined') {
+        console.log('[Upload] Checking for existing uploads...');
         const dashboardData = localStorage.getItem('dashboardTestData');
         if (dashboardData) {
           try {
@@ -549,6 +615,7 @@ export default function ChildUploadPage() {
             );
             
             if (approvedDay) {
+              console.warn('[Upload] Found approved upload for this day, blocking submission');
               alert(`שימו לב: נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDay.dayName || selectedDay.dayName}, ${approvedDay.date}.\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
               return;
             }
@@ -562,11 +629,14 @@ export default function ChildUploadPage() {
         const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
         
         if (existingUpload) {
+          console.warn('[Upload] Found existing upload for this day, blocking submission');
           alert(`שימו לב: כבר הועלתה תמונה עבור ${selectedDay.displayText} (${selectedDay.dateStr}).\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
           return;
         }
+        console.log('[Upload] No existing uploads found, proceeding');
       }
     } catch (e) {
+      console.warn('[Upload] Error checking existing uploads:', e);
       // Ignore errors and continue
     }
 
@@ -574,14 +644,58 @@ export default function ChildUploadPage() {
     setOcrProgress('');
 
     const challengeData = getChallengeData();
+    console.log('[Upload] Challenge data:', {
+      dailyScreenTimeGoal: challengeData.dailyScreenTimeGoal,
+      dailyBudget: challengeData.dailyBudget,
+      parentName: challengeData.parentName
+    });
     
     // Extract screen time from screenshot using OCR
-    const { time: screenTimeUsed, extractedText: ocrText } = await extractScreenTimeFromImage(screenshot, selectedDay);
-    setExtractedText(ocrText);
+    console.log('[Upload] Starting screen time extraction...');
+    let screenTimeUsed: number;
+    let screenTimeMinutes: number;
+    let ocrText: string;
+    
+    try {
+      const extractionResult = await extractScreenTimeFromImage(screenshot, selectedDay);
+      screenTimeUsed = extractionResult.time;
+      screenTimeMinutes = extractionResult.minutes;
+      ocrText = extractionResult.extractedText;
+      
+      // Check if extraction failed (error or day not found)
+      const hasError = ocrText.includes('שגיאה') || ocrText.includes('לא נמצא');
+      const hasNoTime = screenTimeUsed === 0 && screenTimeMinutes === 0;
+      
+      if (hasError || (hasNoTime && !extractionResult.extractedText.includes('זמן מסך מזוהה'))) {
+        console.error('[Upload] Extraction failed:', { hasError, hasNoTime, ocrText });
+        throw new Error(ocrText);
+      }
+      
+      setExtractedText(ocrText);
+      console.log('[Upload] Screen time extracted:', {
+        screenTimeUsed,
+        screenTimeMinutes,
+        extractedText: ocrText
+      });
+    } catch (extractionError: any) {
+      console.error('[Upload] Screen time extraction failed:', extractionError);
+      setIsSubmitting(false);
+      setOcrProgress('');
+      setExtractedText('');
+      // Show error to user - don't save anything
+      alert(`שגיאה בעיבוד התמונה: ${extractionError.message || 'לא הצלחנו לעבד את התמונה. אנא נסה שוב.'}`);
+      return; // Exit early - don't save anything
+    }
+
     const screenTimeGoal = challengeData.dailyScreenTimeGoal;
     
     // Calculate if goal was met
     const success = screenTimeUsed <= screenTimeGoal;
+    console.log('[Upload] Goal check:', {
+      screenTimeUsed,
+      screenTimeGoal,
+      success
+    });
     
     // Calculate coins earned
     // If goal met: full daily budget
@@ -592,6 +706,11 @@ export default function ChildUploadPage() {
       : Math.max(0, coinsMaxPossible * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
 
     const coinsEarnedRounded = Math.round(coinsEarned * 10) / 10;
+    console.log('[Upload] Coins calculation:', {
+      coinsMaxPossible,
+      coinsEarned,
+      coinsEarnedRounded
+    });
     
     const result: UploadResult = {
       screenTimeUsed,
@@ -602,18 +721,27 @@ export default function ChildUploadPage() {
       parentName: challengeData.parentName
     };
 
+    // Store minutes in result for display
+    (result as any).screenTimeMinutes = screenTimeMinutes;
+
     // Calculate weekly total BEFORE saving new upload
     const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
     const weeklyTotalBefore = existingUploads.reduce((sum: number, upload: any) => {
       return sum + (upload.coinsEarned || 0);
     }, 0);
     const weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
+    console.log('[Upload] Weekly totals:', {
+      before: weeklyTotalBefore,
+      new: coinsEarnedRounded,
+      total: weeklyTotal
+    });
 
-    // Save to localStorage for demo purposes
+    // Prepare upload data with minutes
     const uploadData = {
       date: selectedDay.dateStr,
       dayName: selectedDay.dayName,
       screenTime: screenTimeUsed,
+      screenTimeMinutes: screenTimeMinutes, // Store minutes for display
       screenshot: screenshotPreview,
       uploadedAt: new Date().toISOString(),
       requiresApproval: true,
@@ -622,9 +750,78 @@ export default function ChildUploadPage() {
       success: result.success
     };
 
-    // Add new upload
-    existingUploads.push(uploadData);
-    localStorage.setItem('childUploads', JSON.stringify(existingUploads));
+    console.log('[Upload] Saving upload data:', uploadData);
+
+    // Save to localStorage (for demo/testing) - only if extraction succeeded
+    try {
+      existingUploads.push(uploadData);
+      localStorage.setItem('childUploads', JSON.stringify(existingUploads));
+      console.log('[Upload] Upload saved to localStorage');
+    } catch (localStorageError) {
+      console.error('[Upload] Failed to save to localStorage:', localStorageError);
+      setIsSubmitting(false);
+      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
+      return; // Exit early
+    }
+
+    // Try to save to Firestore if user is authenticated
+    try {
+      const userId = await getCurrentUserId();
+      if (userId) {
+        // Get challenge ID from localStorage or context (for now, use a placeholder)
+        // In production, this should come from the challenge context
+        const challengeId = localStorage.getItem('currentChallengeId') || 'demo-challenge';
+        const parentId = localStorage.getItem('currentParentId') || userId; // Fallback
+        
+        // Upload screenshot to Cloud Storage
+        let screenshotUrl = screenshotPreview;
+        let screenshotStoragePath = '';
+        try {
+          if (screenshot) {
+            const storageResult = await uploadScreenshot(
+              screenshot,
+              userId,
+              challengeId,
+              selectedDay.dateStr
+            );
+            screenshotUrl = storageResult.url;
+            screenshotStoragePath = storageResult.path;
+            console.log('[Upload] Screenshot uploaded to Cloud Storage:', storageResult);
+          }
+        } catch (storageError) {
+          console.warn('[Upload] Failed to upload to Cloud Storage, using preview:', storageError);
+          // Continue with preview URL - not critical
+        }
+
+        // Save to Firestore
+        const firestoreUpload = {
+          challengeId,
+          parentId,
+          childId: userId, // For now, child and user are same
+          date: selectedDay.dateStr,
+          dayName: selectedDay.dayName,
+          screenTimeUsed: screenTimeUsed,
+          screenTimeGoal: screenTimeGoal,
+          coinsEarned: coinsEarnedRounded,
+          coinsMaxPossible: coinsMaxPossible,
+          success: success,
+          screenshotUrl: screenshotUrl,
+          screenshotStoragePath: screenshotStoragePath,
+          requiresApproval: true,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        const uploadId = await createUpload(firestoreUpload);
+        console.log('[Upload] Upload saved to Firestore:', uploadId);
+      } else {
+        console.log('[Upload] User not authenticated, skipping Firestore save');
+      }
+    } catch (firestoreError) {
+      console.error('[Upload] Failed to save to Firestore:', firestoreError);
+      // Firestore save failed, but localStorage already succeeded
+      // Don't fail the whole operation - user can see the result
+      // In production, you might want to rollback localStorage here
+    }
 
     // Store weekly total in result for display
     (result as any).weeklyTotal = weeklyTotal;
@@ -636,6 +833,11 @@ export default function ChildUploadPage() {
       key: 'childUploads',
       newValue: JSON.stringify(existingUploads)
     }));
+
+    console.log('[Upload] Upload complete!', {
+      result,
+      weeklyTotal
+    });
 
     setIsSubmitting(false);
     setSubmitted(true);
@@ -683,11 +885,24 @@ export default function ChildUploadPage() {
     // Determine message based on day and gender
     const accumulatedVerb = childGender === 'boy' ? 'צברת' : 'צברת';
     
+    // Format time with hours and minutes
+    const screenTimeMinutes = (uploadResult as any).screenTimeMinutes || (uploadResult.screenTimeUsed * 60);
+    const hoursInt = Math.floor(screenTimeMinutes / 60);
+    const minutesInt = Math.round(screenTimeMinutes % 60);
+    let timeText = '';
+    if (hoursInt > 0 && minutesInt > 0) {
+      timeText = `${hoursInt} שעות ו-${minutesInt} דקות`;
+    } else if (hoursInt > 0) {
+      timeText = `${hoursInt} שעות`;
+    } else {
+      timeText = `${minutesInt} דקות`;
+    }
+
     let dayMessage = '';
     if (isYesterday || isDayBeforeYesterday) {
-      dayMessage = `${selectedDay.displayText} היית ${uploadResult.screenTimeUsed} שעות בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+      dayMessage = `${selectedDay.displayText} היית ${timeText} בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
     } else {
-      dayMessage = `ביום ${selectedDay.dayName} היית ${uploadResult.screenTimeUsed} שעות בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+      dayMessage = `ביום ${selectedDay.dayName} היית ${timeText} בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
     }
 
     // Success message based on goal and gender
