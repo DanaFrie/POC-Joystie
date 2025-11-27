@@ -52,7 +52,8 @@ export const processScreenshot = functions.https.onCall(
     try {
       // Get Cloud Run service URL from environment variable
       // For Gen 2, use environment variables or secrets
-      const cloudRunUrl = process.env.CLOUD_RUN_SERVICE_URL || '';
+      const cloudRunUrl = process.env.CLOUD_RUN_SERVICE_URL || 
+        'https://process-screenshot-506217601121.us-central1.run.app';
       
       if (!cloudRunUrl) {
         throw new Error(

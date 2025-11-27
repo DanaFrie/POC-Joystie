@@ -3,6 +3,7 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
+import type { Functions } from 'firebase/functions';
 
 // Firebase configuration
 // Next.js automatically loads NEXT_PUBLIC_* variables at build time
@@ -39,6 +40,7 @@ let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let storageInstance: FirebaseStorage | null = null;
+let functionsInstance: Functions | null = null;
 let initPromise: Promise<void> | null = null;
 
 // Initialize Firebase (lazy, client-side only)
@@ -58,6 +60,7 @@ async function initializeFirebase(): Promise<void> {
       const { getAuth } = await import('firebase/auth');
       const { getFirestore } = await import('firebase/firestore');
       const { getStorage } = await import('firebase/storage');
+      const { getFunctions } = await import('firebase/functions');
 
       // Get config at runtime (Next.js embeds NEXT_PUBLIC_* vars at build time)
       const config = getFirebaseConfig();
@@ -83,6 +86,7 @@ async function initializeFirebase(): Promise<void> {
       // Initialize services
       authInstance = getAuth(app);
       dbInstance = getFirestore(app);
+      functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
 
       // Initialize Storage (optional)
       try {
@@ -141,6 +145,16 @@ export async function getStorageInstance(): Promise<FirebaseStorage | null> {
   return storageInstance;
 }
 
+export async function getFunctionsInstance(): Promise<Functions> {
+  if (!functionsInstance) {
+    await initializeFirebase();
+  }
+  if (!functionsInstance) {
+    throw new Error('Failed to initialize Firebase Functions');
+  }
+  return functionsInstance;
+}
+
 // Synchronous getters (for backward compatibility, but will throw if not initialized)
 // These should only be used after initialization
 export function getAuthSync(): Auth {
@@ -162,6 +176,13 @@ export function getStorageSync(): FirebaseStorage | null {
     return null;
   }
   return storageInstance;
+}
+
+export function getFunctionsSync(): Functions {
+  if (typeof window === 'undefined' || !functionsInstance) {
+    throw new Error('Firebase Functions not initialized. Use getFunctionsInstance() instead.');
+  }
+  return functionsInstance;
 }
 
 // Don't auto-initialize - let it be lazy-loaded when needed
@@ -202,6 +223,17 @@ export const storage = typeof window !== 'undefined'
       }
     })
   : (null as any as FirebaseStorage);
+
+export const functions = typeof window !== 'undefined'
+  ? new Proxy({} as Functions, {
+      get(target, prop) {
+        if (!functionsInstance) {
+          throw new Error('Firebase Functions not initialized. Ensure you are on the client side and Firebase is loaded. Use getFunctionsInstance() instead.');
+        }
+        return (functionsInstance as any)[prop];
+      }
+    })
+  : ({} as Functions);
 
 export default app;
 
