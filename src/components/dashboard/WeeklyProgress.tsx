@@ -148,6 +148,26 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
 
   const yAxisLabels = generateYAxisLabels();
 
+  // If week is empty, show empty state
+  if (week.length === 0) {
+    return (
+      <div className="my-4 w-full overflow-visible">
+        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card mb-4 w-full overflow-visible relative">
+          {childName && (
+            <h2 className="font-varela font-semibold text-base text-[#282743] mb-3 text-right p-4 pb-3">
+              השבוע של {childName}
+            </h2>
+          )}
+          <div className="px-4 pb-6 text-center">
+            <p className="font-varela text-sm text-[#948DA9] py-8">
+              האתגר עדיין לא התחיל. הגרף יופיע כשהאתגר יתחיל.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="my-4 w-full overflow-visible">
       <div className="bg-[#FFFCF8] rounded-[18px] shadow-card mb-4 w-full overflow-visible relative">

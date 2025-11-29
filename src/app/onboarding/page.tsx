@@ -77,6 +77,7 @@ export default function OnboardingPage() {
               width={120}
               height={120}
               className="object-contain"
+              priority
             />
           </div>
 
@@ -114,6 +115,7 @@ export default function OnboardingPage() {
             width={120}
             height={120}
             className="object-contain"
+            priority
           />
         </div>
 

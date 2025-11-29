@@ -35,10 +35,8 @@ export interface FirestoreChallenge {
   childId: string; // Reference to children collection
   motivationReason?: 'balance' | 'education' | 'communication'; // למה אתם עושים את זה?
   selectedBudget: number; // תקציב נבחר (100%)
-  weeklyBudget: number; // תקציב שבועי
   dailyBudget: number; // תקציב יומי
   dailyScreenTimeGoal: number; // שעות זמן מסך יומי
-  penaltyRate: number; // אחוז קנס
   weekNumber: number;
   totalWeeks: number;
   startDate: string; // ISO date

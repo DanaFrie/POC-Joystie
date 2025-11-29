@@ -1,6 +1,7 @@
 // Challenge Management API
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreChallenge } from '@/types/firestore';
+import { withRetry } from '@/utils/firestore-retry';
 
 const CHALLENGES_COLLECTION = 'challenges';
 
@@ -10,26 +11,31 @@ const CHALLENGES_COLLECTION = 'challenges';
 export async function createChallenge(
   challengeData: Omit<FirestoreChallenge, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
-  try {
-    const { collection, doc, setDoc } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const challengesRef = collection(db, CHALLENGES_COLLECTION);
-    const challengeRef = doc(challengesRef);
-    const now = new Date().toISOString();
-    
-    const challenge: FirestoreChallenge = {
-      id: challengeRef.id,
-      ...challengeData,
-      createdAt: now,
-      updatedAt: now,
-    };
-    
-    await setDoc(challengeRef, challenge);
-    return challengeRef.id;
-  } catch (error) {
-    console.error('Error creating challenge:', error);
-    throw new Error('שגיאה ביצירת אתגר. נסה שוב.');
-  }
+  return withRetry(async () => {
+    try {
+      const { collection, doc, setDoc } = await import('firebase/firestore');
+      const db = await getFirestoreInstance();
+      const challengesRef = collection(db, CHALLENGES_COLLECTION);
+      const challengeRef = doc(challengesRef);
+      const now = new Date().toISOString();
+      
+      const challenge: FirestoreChallenge = {
+        id: challengeRef.id,
+        ...challengeData,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      await setDoc(challengeRef, challenge);
+      return challengeRef.id;
+    } catch (error: any) {
+      console.error('Error creating challenge:', error);
+      if (error.code === 'permission-denied') {
+        throw new Error('אין הרשאה ליצור אתגר. אנא בדוק את ההרשאות.');
+      }
+      throw new Error('שגיאה ביצירת אתגר. נסה שוב.');
+    }
+  });
 }
 
 /**
@@ -82,6 +88,20 @@ export async function getActiveChallenge(parentId: string): Promise<FirestoreCha
     const { collection, query, where, getDocs } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
     const challengesRef = collection(db, CHALLENGES_COLLECTION);
+    
+    // First, check all challenges for this user (for debugging)
+    const allChallengesQuery = query(challengesRef, where('parentId', '==', parentId));
+    const allChallengesSnapshot = await getDocs(allChallengesQuery);
+    console.log(`[Challenges] Found ${allChallengesSnapshot.size} total challenges for user ${parentId}`);
+    
+    if (allChallengesSnapshot.size > 0) {
+      allChallengesSnapshot.docs.forEach(doc => {
+        const challenge = doc.data() as FirestoreChallenge;
+        console.log(`[Challenges] Challenge ${doc.id}: isActive=${challenge.isActive}, childId=${challenge.childId}`);
+      });
+    }
+    
+    // Now query for active challenges
     const q = query(
       challengesRef,
       where('parentId', '==', parentId),
@@ -90,11 +110,14 @@ export async function getActiveChallenge(parentId: string): Promise<FirestoreCha
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
+      console.warn(`[Challenges] No active challenge found for user ${parentId}`);
       return null;
     }
     
     // Return the first active challenge (should only be one)
-    return querySnapshot.docs[0].data() as FirestoreChallenge;
+    const challenge = querySnapshot.docs[0].data() as FirestoreChallenge;
+    console.log(`[Challenges] Found active challenge: ${querySnapshot.docs[0].id}`);
+    return challenge;
   } catch (error) {
     console.error('Error getting active challenge:', error);
     throw new Error('שגיאה בטעינת האתגר הפעיל.');

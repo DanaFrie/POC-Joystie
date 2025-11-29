@@ -1,7 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Lato } from 'next/font/google'
-import Navigation from '@/components/ui/Navigation'
 import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
 
 const lato = Lato({

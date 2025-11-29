@@ -182,8 +182,8 @@ async function main() {
     console.log('\n🎯 שלב 3: יצירת אתגר...');
     const startDate = getNextSunday();
     const selectedBudget = 100;
-    const weeklyBudget = selectedBudget * 0.9; // 90%
-    const dailyBudget = weeklyBudget / 7;
+    const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
+    const dailyBudget = selectedBudget / 6; // Divide selected budget by 6 days (Sunday-Friday)
     const dailyScreenTimeGoal = 3; // hours
 
     const challengeData = {
@@ -191,10 +191,8 @@ async function main() {
       childId: childId,
       motivationReason: 'balance',
       selectedBudget: selectedBudget,
-      weeklyBudget: weeklyBudget,
       dailyBudget: dailyBudget,
       dailyScreenTimeGoal: dailyScreenTimeGoal,
-      penaltyRate: 0.1,
       weekNumber: 1,
       totalWeeks: 4,
       startDate: startDate.toISOString(),

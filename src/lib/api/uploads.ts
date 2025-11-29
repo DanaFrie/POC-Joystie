@@ -1,6 +1,7 @@
 // Upload Management API
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreDailyUpload } from '@/types/firestore';
+import { withRetry } from '@/utils/firestore-retry';
 
 const UPLOADS_COLLECTION = 'daily_uploads';
 
@@ -10,26 +11,32 @@ const UPLOADS_COLLECTION = 'daily_uploads';
 export async function createUpload(
   uploadData: Omit<FirestoreDailyUpload, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
-  try {
-    const { collection, doc, setDoc } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    const uploadRef = doc(uploadsRef);
-    const now = new Date().toISOString();
-    
-    const upload: FirestoreDailyUpload = {
-      id: uploadRef.id,
-      ...uploadData,
-      createdAt: now,
-      updatedAt: now,
-    };
-    
-    await setDoc(uploadRef, upload);
-    return uploadRef.id;
-  } catch (error) {
-    console.error('Error creating upload:', error);
-    throw new Error('שגיאה בשמירת ההעלאה. נסה שוב.');
-  }
+  return withRetry(async () => {
+    try {
+      const { collection, doc, setDoc } = await import('firebase/firestore');
+      const db = await getFirestoreInstance();
+      const uploadsRef = collection(db, UPLOADS_COLLECTION);
+      const uploadRef = doc(uploadsRef);
+      const now = new Date().toISOString();
+      
+      const upload: FirestoreDailyUpload = {
+        id: uploadRef.id,
+        ...uploadData,
+        createdAt: now,
+        updatedAt: now,
+      };
+      
+      await setDoc(uploadRef, upload);
+      return uploadRef.id;
+    } catch (error: any) {
+      console.error('Error creating upload:', error);
+      // Re-throw with user-friendly message
+      if (error.code === 'permission-denied') {
+        throw new Error('אין הרשאה ליצור העלאה. אנא בדוק את ההרשאות.');
+      }
+      throw new Error('שגיאה בשמירת ההעלאה. נסה שוב.');
+    }
+  });
 }
 
 /**
@@ -55,20 +62,36 @@ export async function getUpload(uploadId: string): Promise<FirestoreDailyUpload 
 
 /**
  * Get uploads for a specific challenge
+ * Note: parentId is required for Firestore security rules validation
  */
 export async function getUploadsByChallenge(
   challengeId: string,
+  parentId?: string,
   limitCount?: number
 ): Promise<FirestoreDailyUpload[]> {
   try {
     const { collection, query, where, orderBy, limit, getDocs } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
     const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    let q = query(
-      uploadsRef,
-      where('challengeId', '==', challengeId),
-      orderBy('date', 'desc')
-    );
+    
+    // Build query - must include parentId for security rules
+    let q;
+    if (parentId) {
+      // Query with both challengeId and parentId (required for security rules)
+      q = query(
+        uploadsRef,
+        where('challengeId', '==', challengeId),
+        where('parentId', '==', parentId),
+        orderBy('date', 'desc')
+      );
+    } else {
+      // Fallback: query by challengeId only (may fail if security rules require parentId)
+      q = query(
+        uploadsRef,
+        where('challengeId', '==', challengeId),
+        orderBy('date', 'desc')
+      );
+    }
     
     if (limitCount) {
       q = query(q, limit(limitCount));
@@ -139,44 +162,60 @@ export async function getPendingApprovals(parentId: string): Promise<FirestoreDa
  * Approve an upload
  */
 export async function approveUpload(uploadId: string): Promise<void> {
-  try {
-    const { doc, updateDoc } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-    const now = new Date().toISOString();
-    
-    await updateDoc(uploadRef, {
-      requiresApproval: false,
-      parentAction: 'approved',
-      approvedAt: now,
-      updatedAt: now,
-    });
-  } catch (error) {
-    console.error('Error approving upload:', error);
-    throw new Error('שגיאה באישור ההעלאה.');
-  }
+  return withRetry(async () => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const db = await getFirestoreInstance();
+      const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
+      const now = new Date().toISOString();
+      
+      await updateDoc(uploadRef, {
+        requiresApproval: false,
+        parentAction: 'approved',
+        approvedAt: now,
+        updatedAt: now,
+      });
+    } catch (error: any) {
+      console.error('Error approving upload:', error);
+      if (error.code === 'permission-denied') {
+        throw new Error('אין הרשאה לאשר העלאה. אנא בדוק את ההרשאות.');
+      }
+      if (error.code === 'not-found') {
+        throw new Error('ההעלאה לא נמצאה.');
+      }
+      throw new Error('שגיאה באישור ההעלאה.');
+    }
+  });
 }
 
 /**
  * Reject an upload
  */
 export async function rejectUpload(uploadId: string): Promise<void> {
-  try {
-    const { doc, updateDoc } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-    const now = new Date().toISOString();
-    
-    await updateDoc(uploadRef, {
-      requiresApproval: false,
-      parentAction: 'rejected',
-      rejectedAt: now,
-      updatedAt: now,
-    });
-  } catch (error) {
-    console.error('Error rejecting upload:', error);
-    throw new Error('שגיאה בדחיית ההעלאה.');
-  }
+  return withRetry(async () => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const db = await getFirestoreInstance();
+      const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
+      const now = new Date().toISOString();
+      
+      await updateDoc(uploadRef, {
+        requiresApproval: false,
+        parentAction: 'rejected',
+        rejectedAt: now,
+        updatedAt: now,
+      });
+    } catch (error: any) {
+      console.error('Error rejecting upload:', error);
+      if (error.code === 'permission-denied') {
+        throw new Error('אין הרשאה לדחות העלאה. אנא בדוק את ההרשאות.');
+      }
+      if (error.code === 'not-found') {
+        throw new Error('ההעלאה לא נמצאה.');
+      }
+      throw new Error('שגיאה בדחיית ההעלאה.');
+    }
+  });
 }
 
 /**

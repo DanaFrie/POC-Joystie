@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
 import { processScreenshot } from '@/lib/api/screenshot';
 import { createUpload } from '@/lib/api/uploads';
 import { uploadScreenshot } from '@/lib/api/storage';
 import { getCurrentUserId } from '@/utils/auth';
+import { validateUploadUrl } from '@/utils/url-validation';
+import { generateRedemptionUrl } from '@/utils/url-encoding';
+import { getActiveChallenge } from '@/lib/api/challenges';
+import { getUser } from '@/lib/api/users';
+import { getChild } from '@/lib/api/children';
 
 interface UploadResult {
   screenTimeUsed: number;
@@ -25,8 +30,10 @@ interface SelectableDay {
   displayText: string;
 }
 
-export default function ChildUploadPage() {
+function ChildUploadContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') || '';
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,8 +47,57 @@ export default function ChildUploadPage() {
   const [showApprovedWarning, setShowApprovedWarning] = useState(false);
   const [approvedDayInfo, setApprovedDayInfo] = useState<{ date: string; dayName: string; isApproved?: boolean } | null>(null);
   const [showFridayWarning, setShowFridayWarning] = useState(false);
+  const [urlValid, setUrlValid] = useState<boolean | null>(null);
+  const [urlError, setUrlError] = useState<string>('');
+  const [parentId, setParentId] = useState<string>('');
+  const [childId, setChildId] = useState<string>('');
+  const [challengeId, setChallengeId] = useState<string>('');
+  const [challengeNotStarted, setChallengeNotStarted] = useState<boolean>(false);
+  const [challengeStartDate, setChallengeStartDate] = useState<string>('');
+  const [parentName, setParentName] = useState<string>('אמא');
+  const [childGender, setChildGender] = useState<'boy' | 'girl'>('boy');
 
   const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+
+  // Validate URL token on mount
+  useEffect(() => {
+    const validateUrl = async () => {
+      if (!token) {
+        setUrlValid(false);
+        setUrlError('כתובת לא תקינה - חסר טוקן');
+        return;
+      }
+
+      try {
+        const validation = await validateUploadUrl(token);
+        if (validation.isValid && validation.parentId) {
+          setUrlValid(true);
+          setParentId(validation.parentId);
+          if (validation.childId) {
+            setChildId(validation.childId);
+          }
+          if (validation.challengeId) {
+            setChallengeId(validation.challengeId);
+          }
+          if (validation.challengeNotStarted) {
+            setChallengeNotStarted(true);
+          }
+          if (validation.challengeStartDate) {
+            setChallengeStartDate(validation.challengeStartDate);
+          }
+        } else {
+          setUrlValid(false);
+          setUrlError(validation.error || 'כתובת לא תקינה');
+        }
+      } catch (error) {
+        console.error('Error validating URL:', error);
+        setUrlValid(false);
+        setUrlError('שגיאה בבדיקת הכתובת');
+      }
+    };
+
+    validateUrl();
+  }, [token]);
 
   // Generate list of selectable days (only past days - at least one day back)
   const selectableDays = useMemo(() => {
@@ -594,6 +650,13 @@ export default function ChildUploadPage() {
       selectedDay: selectedDay?.displayText
     });
 
+    // Prevent submission if challenge hasn't started
+    if (challengeNotStarted) {
+      console.warn('[Upload] Challenge has not started yet');
+      alert('האתגר עדיין לא התחיל. בדוק עם ההורה שלך.');
+      return;
+    }
+
     if (!screenshot || !selectedDay) {
       console.warn('[Upload] Missing screenshot or selected day');
       return;
@@ -764,14 +827,14 @@ export default function ChildUploadPage() {
       return; // Exit early
     }
 
-    // Try to save to Firestore if user is authenticated
+    // Try to save to Firestore if we have challengeId
     try {
       const userId = await getCurrentUserId();
-      if (userId) {
-        // Get challenge ID from localStorage or context (for now, use a placeholder)
-        // In production, this should come from the challenge context
-        const challengeId = localStorage.getItem('currentChallengeId') || 'demo-challenge';
-        const parentId = localStorage.getItem('currentParentId') || userId; // Fallback
+      const uploadChallengeId = challengeId || localStorage.getItem('currentChallengeId') || 'demo-challenge';
+      const uploadParentId = parentId || localStorage.getItem('currentParentId') || userId;
+      const uploadChildId = childId || userId;
+      
+      if (uploadChallengeId && uploadParentId) {
         
         // Upload screenshot to Cloud Storage
         let screenshotUrl = screenshotPreview;
@@ -795,9 +858,9 @@ export default function ChildUploadPage() {
 
         // Save to Firestore
         const firestoreUpload = {
-          challengeId,
-          parentId,
-          childId: userId, // For now, child and user are same
+          challengeId: uploadChallengeId,
+          parentId: uploadParentId,
+          childId: uploadChildId,
           date: selectedDay.dateStr,
           dayName: selectedDay.dayName,
           screenTimeUsed: screenTimeUsed,
@@ -844,9 +907,13 @@ export default function ChildUploadPage() {
 
     // If Friday was uploaded, redirect immediately to redemption page (don't show result screen)
     if (selectedDay.dayName === 'שישי') {
-      // Redirect immediately to redemption page with Friday earnings
+      // Redirect immediately to redemption page with Friday earnings and token
+      const redemptionUrl = parentId 
+        ? generateRedemptionUrl(parentId, childId || undefined)
+        : `/child/redemption?fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
+      
       setTimeout(() => {
-        router.push(`/child/redemption?fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
+        router.push(`${redemptionUrl}${redemptionUrl.includes('?') ? '&' : '?'}fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
       }, 500); // Short delay to ensure state is saved
     }
   };
@@ -945,6 +1012,120 @@ export default function ChildUploadPage() {
                   בסוף השבוע תפגשו כאן ו{childGender === 'boy' ? 'תוכל' : 'תוכלי'} לזכות במה ש{childGender === 'boy' ? 'צברת' : 'צברת'}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if URL is invalid
+  if (urlValid === false) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+              כתובת לא תקינה
+            </h1>
+            <p className="font-varela text-base text-[#282743] mb-4">
+              {urlError || 'הכתובת ששותפה איתך לא תקינה או שהאתגר לא פעיל.'}
+            </p>
+            <p className="font-varela text-sm text-[#948DA9]">
+              בדוק עם ההורה שלך לקבלת כתובת חדשה.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while validating
+  if (urlValid === null) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <p className="font-varela text-base text-[#282743]">בודק כתובת...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Load parent and child data when challenge not started
+  useEffect(() => {
+    const loadData = async () => {
+      if (!challengeNotStarted || !parentId) return;
+      
+      try {
+        const challenge = await getActiveChallenge(parentId);
+        if (!challenge) return;
+
+        const childIdToUse = childId || challenge.childId;
+        if (childIdToUse) {
+          const child = await getChild(childIdToUse);
+          if (child) {
+            setChildGender(child.gender || 'boy');
+          }
+        }
+
+        const parent = await getUser(parentId);
+        if (parent) {
+          const name = parent.firstName || 'דנה';
+          // Determine if parent is mom or dad
+          if (name.endsWith('ה') || name.endsWith('ית')) {
+            setParentName('אמא');
+          } else {
+            setParentName('אבא');
+          }
+        }
+      } catch (e) {
+        console.error('Error loading data:', e);
+      }
+    };
+
+    loadData();
+  }, [challengeNotStarted, parentId, childId]);
+
+  // Fix scroll position to 0 when challenge not started
+  useEffect(() => {
+    if (challengeNotStarted) {
+      window.scrollTo(0, 0);
+    }
+  }, [challengeNotStarted]);
+
+  // Show message if challenge hasn't started yet
+  if (challengeNotStarted) {
+    const startDate = challengeStartDate ? new Date(challengeStartDate) : null;
+    const formattedDate = startDate 
+      ? `${String(startDate.getDate()).padStart(2, '0')}/${String(startDate.getMonth() + 1).padStart(2, '0')}`
+      : '';
+    
+    return (
+      <div className="min-h-screen bg-transparent pb-24">
+        <div className="max-w-md mx-auto px-4 py-8 relative">
+          {/* Piggy Bank - פינה ימנית עליונה */}
+          <div className="absolute right-0 top-0 z-10">
+            <Image
+              src="/piggy-bank.png"
+              alt="Piggy Bank"
+              width={120}
+              height={120}
+              className="object-contain"
+            />
+          </div>
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
+              ממש בקרוב האתגר יתחיל
+            </h1>
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4 mb-4">
+              <p className="font-varela text-base text-[#262135] text-center leading-relaxed mb-2">
+                יום ראשון הקרוב {formattedDate ? formattedDate : ''} זה קורה
+              </p>
+              <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                כדי ש{childGender === 'boy' ? 'אתה' : 'את'} תרוויח{childGender === 'boy' ? '' : 'י'}! תתחיל{childGender === 'boy' ? '' : 'י'} לחשוב עם {parentName} איך הכי כדאי לנצל את הזמן במסך ומחוצה לו.
+              </p>
             </div>
           </div>
         </div>
@@ -1191,6 +1372,14 @@ export default function ChildUploadPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChildUploadPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">טוען...</div>}>
+      <ChildUploadContent />
+    </Suspense>
   );
 }
 

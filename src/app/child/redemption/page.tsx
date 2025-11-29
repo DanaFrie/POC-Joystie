@@ -8,15 +8,23 @@ import { getActiveChallenge } from '@/lib/api/challenges';
 import { getUploadsByChallenge } from '@/lib/api/uploads';
 import { getChild } from '@/lib/api/children';
 import { getUser } from '@/lib/api/users';
+import { validateRedemptionUrl, isRedemptionCompleted } from '@/utils/url-validation';
+import { deactivateChallenge } from '@/lib/api/challenges';
 
 function ChildRedemptionContent() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const token = searchParams.get('token') || '';
   const childId = searchParams.get('childId') || '';
   const fridayEarningsParam = searchParams.get('fridayEarnings');
   const weeklyTotalParam = searchParams.get('weeklyTotal');
+  const [urlValid, setUrlValid] = useState<boolean | null>(null);
+  const [urlError, setUrlError] = useState<string>('');
+  const [parentId, setParentId] = useState<string>('');
+  const [validatedChildId, setValidatedChildId] = useState<string>('');
+  const [challengeId, setChallengeId] = useState<string>('');
   
   // Initialize approval states based on whether we came from Friday upload
   const [awaitingParentApproval, setAwaitingParentApproval] = useState(() => {
@@ -24,6 +32,47 @@ function ChildRedemptionContent() {
     return fridayEarningsParam ? true : false;
   });
   const [fridayApproved, setFridayApproved] = useState(false);
+  const [redemptionCompleted, setRedemptionCompleted] = useState(false);
+
+  // Validate URL token on mount
+  useEffect(() => {
+    const validateUrl = async () => {
+      if (!token) {
+        setUrlValid(false);
+        setUrlError('כתובת לא תקינה - חסר טוקן');
+        return;
+      }
+
+      try {
+        const validation = await validateRedemptionUrl(token);
+        if (validation.isValid && validation.parentId) {
+          setUrlValid(true);
+          setParentId(validation.parentId);
+          if (validation.childId) {
+            setValidatedChildId(validation.childId);
+          }
+          if (validation.challengeId) {
+            setChallengeId(validation.challengeId);
+            
+            // Check if redemption has already been completed
+            const completed = await isRedemptionCompleted(validation.parentId);
+            if (completed) {
+              setRedemptionCompleted(true);
+            }
+          }
+        } else {
+          setUrlValid(false);
+          setUrlError(validation.error || 'כתובת לא תקינה');
+        }
+      } catch (error) {
+        console.error('Error validating URL:', error);
+        setUrlValid(false);
+        setUrlError('שגיאה בבדיקת הכתובת');
+      }
+    };
+
+    validateUrl();
+  }, [token]);
 
   // Get child and parent data - use state to avoid hydration mismatch
   const [childData, setChildData] = useState({
@@ -36,14 +85,14 @@ function ChildRedemptionContent() {
   // Load data from Firebase
   useEffect(() => {
     const loadData = async () => {
+      if (!urlValid || !parentId) return;
+      
       try {
-        const userId = await getCurrentUserId();
-        if (!userId) return;
-
-        const challenge = await getActiveChallenge(userId);
+        const challenge = await getActiveChallenge(parentId);
         if (!challenge) return;
 
-        const child = await getChild(challenge.childId);
+        const childIdToUse = validatedChildId || challenge.childId;
+        const child = await getChild(childIdToUse);
         const parent = await getUser(challenge.parentId);
 
         if (child && parent) {
@@ -60,7 +109,7 @@ function ChildRedemptionContent() {
     };
 
     loadData();
-  }, []);
+  }, [urlValid, parentId, validatedChildId]);
 
   const childName = childData.childName;
   const childGender = childData.childGender;
@@ -86,7 +135,7 @@ function ChildRedemptionContent() {
         const challenge = await getActiveChallenge(userId);
         if (!challenge) return;
 
-        const uploads = await getUploadsByChallenge(challenge.id);
+        const uploads = await getUploadsByChallenge(challenge.id, userId);
         const approvedUploads = uploads.filter(u => u.parentAction === 'approved');
         const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
         
@@ -232,13 +281,81 @@ function ChildRedemptionContent() {
     if (!selectedOption) return;
 
     setIsProcessing(true);
-    // Here you would typically process redemption with backend
-    setTimeout(() => {
+    try {
+      // Deactivate challenge to mark redemption as complete
+      if (challengeId) {
+        await deactivateChallenge(challengeId);
+        setRedemptionCompleted(true);
+      }
+      
+      // Here you would typically process redemption with backend
+      // For now, just show success
+      setTimeout(() => {
+        setIsProcessing(false);
+        alert('הפדיון בוצע בהצלחה!');
+      }, 2000);
+    } catch (error) {
+      console.error('Error processing redemption:', error);
       setIsProcessing(false);
-      // Show success and redirect or show message
-      alert('הפדיון בוצע בהצלחה!');
-    }, 2000);
+      alert('שגיאה בעיבוד הפדיון. נסה שוב.');
+    }
   };
+
+  // Show error if URL is invalid
+  if (urlValid === false) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+              כתובת לא תקינה
+            </h1>
+            <p className="font-varela text-base text-[#282743] mb-4">
+              {urlError || 'הכתובת ששותפה איתך לא תקינה או שהפדיון הושלם כבר.'}
+            </p>
+            <p className="font-varela text-sm text-[#948DA9]">
+              בדוק עם ההורה שלך לקבלת כתובת חדשה.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while validating
+  if (urlValid === null) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <p className="font-varela text-base text-[#282743]">בודק כתובת...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show redemption completed message
+  if (redemptionCompleted) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <div className="text-6xl mb-4">✅</div>
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+              הפדיון הושלם!
+            </h1>
+            <p className="font-varela text-base text-[#282743] mb-4">
+              הפדיון בוצע בהצלחה. הכתובת הזו לא פעילה יותר.
+            </p>
+            <p className="font-varela text-sm text-[#948DA9]">
+              לשבוע הבא, ההורה שלך ישלח לך כתובת חדשה.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-transparent pb-24">

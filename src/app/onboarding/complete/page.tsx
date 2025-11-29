@@ -4,15 +4,19 @@ import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { generateSetupUrl } from '@/utils/url-encoding';
+import { getCurrentUserId } from '@/utils/auth';
+import { getActiveChallenge } from '@/lib/api/challenges';
 
 function OnboardingCompleteContent() {
-  const shareLink = 'https://joystie.app/join?child=123456';
+  const [shareLink, setShareLink] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [copiedType, setCopiedType] = useState<'link' | 'text' | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const childName = searchParams.get('name') || '';
   const childGender = searchParams.get('gender') || 'boy';
+  const childId = searchParams.get('childId') || '';
 
   // Get parent data and challenge data from localStorage
   const getParentData = () => {
@@ -82,6 +86,51 @@ function OnboardingCompleteContent() {
   };
   const parentP = parentPronouns[parentGender as 'female' | 'male'] || parentPronouns.female;
 
+  // Generate setup URL with token
+  useEffect(() => {
+    const generateUrl = async () => {
+      try {
+        // Wait a bit for Firebase to initialize if needed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          // User not logged in - show error message instead of invalid token
+          console.error('Cannot generate URL: User not logged in (getCurrentUserId returned null)');
+          setShareLink(''); // Empty string - UI should handle this
+          return;
+        }
+
+        console.log('User ID found:', userId);
+        
+        try {
+          const challenge = await getActiveChallenge(userId);
+          const childIdToUse = childId || challenge?.childId;
+          console.log('Challenge found:', challenge?.id, 'Child ID:', childIdToUse);
+          
+          const url = generateSetupUrl(userId, childIdToUse);
+          console.log('Generated URL successfully');
+          setShareLink(url);
+        } catch (challengeError) {
+          console.error('Error getting challenge:', challengeError);
+          // Still generate URL with just parentId if challenge fetch fails
+          const url = generateSetupUrl(userId, childId);
+          setShareLink(url);
+        }
+      } catch (error) {
+        console.error('Error generating setup URL:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        // On error, set empty string - UI should show error message
+        setShareLink('');
+      }
+    };
+
+    generateUrl();
+  }, [childId]);
+
   // Set challenge exists when onboarding is complete
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -103,6 +152,7 @@ function OnboardingCompleteContent() {
   const shareText = `${displayName}! מצאתי משהו חדש שגם נותן לך יותר שליטה בכסף שלך וגם ייתן לך יותר חופש בטלפון\n\nזה הקישור שלך – רוצה לגלות איך זה עובד ביחד?\n\n${shareLink}`;
 
   const handleCopyLink = async () => {
+    if (!shareLink) return;
     try {
       await navigator.clipboard.writeText(shareLink);
       setCopied(true);
@@ -117,6 +167,7 @@ function OnboardingCompleteContent() {
   };
 
   const handleCopyFullText = async () => {
+    if (!shareLink) return;
     try {
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
@@ -204,8 +255,11 @@ function OnboardingCompleteContent() {
               </div>
               <button
                 onClick={handleCopyFullText}
+                disabled={!shareLink}
                 className={`w-full py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
-                  copied && copiedType === 'text'
+                  !shareLink
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : copied && copiedType === 'text'
                     ? 'bg-[#E6F19A] text-[#273143]'
                     : 'bg-[#273143] text-white hover:bg-opacity-90'
                 }`}
@@ -219,24 +273,35 @@ function OnboardingCompleteContent() {
               <h3 className="font-varela font-semibold text-sm text-[#273143] mb-3">
                 העתק קישור בלבד
               </h3>
-              <div className="flex gap-1.5 sm:gap-2">
-                <input
-                  type="text"
-                  value={shareLink}
-                  readOnly
-                  className="flex-1 min-w-0 p-2 sm:p-3 border-2 border-gray-200 rounded-[12px] font-varela text-xs sm:text-sm text-[#273143] bg-white"
-                />
-                <button
-                  onClick={handleCopyLink}
-                  className={`px-2.5 sm:px-3 md:px-4 py-2 sm:py-3 rounded-[12px] font-varela font-semibold text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
-                    copied && copiedType === 'link'
-                      ? 'bg-[#E6F19A] text-[#273143]'
-                      : 'bg-[#273143] text-white hover:bg-opacity-90'
-                  }`}
-                >
-                  {copied && copiedType === 'link' ? 'הועתק! ✓' : 'העתק'}
-                </button>
-              </div>
+              {!shareLink ? (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-3">
+                  <p className="font-varela text-sm text-[#262135] text-center">
+                    שגיאה ביצירת הקישור. אנא רענן את הדף או בדוק שהתחברת למערכת.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-1.5 sm:gap-2">
+                  <input
+                    type="text"
+                    value={shareLink}
+                    readOnly
+                    className="flex-1 min-w-0 p-2 sm:p-3 border-2 border-gray-200 rounded-[12px] font-varela text-xs sm:text-sm text-[#273143] bg-white"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    disabled={!shareLink}
+                    className={`px-2.5 sm:px-3 md:px-4 py-2 sm:py-3 rounded-[12px] font-varela font-semibold text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
+                      !shareLink
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : copied && copiedType === 'link'
+                        ? 'bg-[#E6F19A] text-[#273143]'
+                        : 'bg-[#273143] text-white hover:bg-opacity-90'
+                    }`}
+                  >
+                    {copied && copiedType === 'link' ? 'הועתק! ✓' : 'העתק'}
+                  </button>
+                </div>
+              )}
             </div>
 
 

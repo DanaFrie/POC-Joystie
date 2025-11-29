@@ -29,6 +29,24 @@
       ]
     },
     {
+      "collectionGroup": "daily_uploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "challengeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "parentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [
@@ -38,6 +56,28 @@
         },
         {
           "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "daily_uploads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "parentId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "requiresApproval",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "parentAction",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "uploadedAt",
           "order": "DESCENDING"
         }
       ]

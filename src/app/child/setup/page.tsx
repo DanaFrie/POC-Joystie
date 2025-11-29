@@ -4,6 +4,11 @@ import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { validateSetupUrl } from '@/utils/url-validation';
+import { generateUploadUrl } from '@/utils/url-encoding';
+import { updateChild } from '@/lib/api/children';
+import { getChild } from '@/lib/api/children';
+import { getActiveChallenge } from '@/lib/api/challenges';
 
 function ChildSetupContent() {
   const [step, setStep] = useState(1);
@@ -13,8 +18,15 @@ function ChildSetupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showCompleteScreen, setShowCompleteScreen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState<'ios' | 'android'>('ios');
+  const [urlValid, setUrlValid] = useState<boolean | null>(null);
+  const [urlError, setUrlError] = useState<string>('');
+  const [parentId, setParentId] = useState<string>('');
+  const [validatedChildId, setValidatedChildId] = useState<string | null>(null);
+  const [childGender, setChildGender] = useState<'boy' | 'girl'>('boy');
+  const [copied, setCopied] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const token = searchParams.get('token') || '';
   const childId = searchParams.get('childId') || '';
   const nameFromUrl = searchParams.get('name') || '';
 
@@ -115,6 +127,54 @@ function ChildSetupContent() {
     { id: 'girlsseries', label: 'Kpop gift' }
   ];
 
+  // Validate URL token on mount
+  useEffect(() => {
+    const validateUrl = async () => {
+      if (!token) {
+        setUrlValid(false);
+        setUrlError('כתובת לא תקינה - חסר טוקן');
+        return;
+      }
+
+      try {
+        const validation = await validateSetupUrl(token);
+        if (validation.isValid && validation.parentId) {
+          setUrlValid(true);
+          setParentId(validation.parentId);
+          setValidatedChildId(validation.childId || null);
+          
+          // Load child data if childId exists
+          if (validation.childId) {
+            try {
+              const child = await getChild(validation.childId);
+              if (child) {
+                setChildName(child.name || '');
+                setChildGender(child.gender || 'boy');
+                if (child.nickname) {
+                  setSelectedNickname(child.nickname);
+                }
+                if (child.moneyGoals && child.moneyGoals.length > 0) {
+                  setSelectedMoneyGoals(child.moneyGoals);
+                }
+              }
+            } catch (error) {
+              console.error('Error loading child data:', error);
+            }
+          }
+        } else {
+          setUrlValid(false);
+          setUrlError(validation.error || 'כתובת לא תקינה');
+        }
+      } catch (error) {
+        console.error('Error validating URL:', error);
+        setUrlValid(false);
+        setUrlError('שגיאה בבדיקת הכתובת');
+      }
+    };
+
+    validateUrl();
+  }, [token]);
+
   // Initialize child name from URL or localStorage
   useEffect(() => {
     if (nameFromUrl) {
@@ -139,19 +199,37 @@ function ChildSetupContent() {
     });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Save data and show complete screen
-      if (typeof window !== 'undefined') {
-        if (childName) {
-          localStorage.setItem('childName', childName);
+      // Save data to Firestore and localStorage
+      setIsLoading(true);
+      try {
+        // Save to Firestore if we have childId
+        if (validatedChildId) {
+          await updateChild(validatedChildId, {
+            nickname: selectedNickname,
+            moneyGoals: selectedMoneyGoals
+          });
         }
-        localStorage.setItem('childNickname', selectedNickname);
-        localStorage.setItem('childMoneyGoals', JSON.stringify(selectedMoneyGoals));
+        
+        // Also save to localStorage for backward compatibility
+        if (typeof window !== 'undefined') {
+          if (childName) {
+            localStorage.setItem('childName', childName);
+          }
+          localStorage.setItem('childNickname', selectedNickname);
+          localStorage.setItem('childMoneyGoals', JSON.stringify(selectedMoneyGoals));
+        }
+        
+        setShowCompleteScreen(true);
+      } catch (error) {
+        console.error('Error saving setup data:', error);
+        alert('שגיאה בשמירת הנתונים. נסה שוב.');
+      } finally {
+        setIsLoading(false);
       }
-      setShowCompleteScreen(true);
     }
   };
 
@@ -174,19 +252,56 @@ function ChildSetupContent() {
     }
   };
 
-  // Generate upload URL
-  const uploadUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/child/upload${childId ? `?childId=${childId}` : ''}`
+  // Generate upload URL with token
+  const uploadUrl = parentId 
+    ? generateUploadUrl(parentId, validatedChildId || undefined)
     : '';
 
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(uploadUrl);
-      alert('הכתובת הועתקה!');
+      setCopied(true);
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
     }
   };
+
+  // Show error if URL is invalid
+  if (urlValid === false) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+              כתובת לא תקינה
+            </h1>
+            <p className="font-varela text-base text-[#282743] mb-4">
+              {urlError || 'הכתובת ששותפה איתך לא תקינה או שכבר הושלמה ההגדרה.'}
+            </p>
+            <p className="font-varela text-sm text-[#948DA9]">
+              בדוק עם ההורה שלך לקבלת כתובת חדשה.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while validating
+  if (urlValid === null) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <p className="font-varela text-base text-[#282743]">בודק כתובת...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Complete screen with URL and instructions
   if (showCompleteScreen) {
@@ -216,7 +331,7 @@ function ChildSetupContent() {
                 שמור את הכתובת הזו במקום בטוח!
               </h2>
               <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
-                כל יום תצטרך להיכנס לכתובת הזו ולהעלות את צילום המסך שלך של זמן מסך
+                כל יום {childGender === 'boy' ? 'תצטרך' : 'תצטרכי'} להיכנס לכתובת הזו ולהעלות את צילום המסך שלך של זמן מסך
               </p>
               
               <div className="bg-white rounded-[12px] p-4 mb-4">
@@ -230,9 +345,13 @@ function ChildSetupContent() {
                   />
                   <button
                     onClick={handleCopyUrl}
-                    className="px-4 py-2 bg-[#273143] text-white rounded-[8px] font-varela font-semibold text-xs hover:bg-opacity-90 transition-all"
+                    className={`px-4 py-2 rounded-[8px] font-varela font-semibold text-xs transition-all ${
+                      copied
+                        ? 'bg-[#E6F19A] text-[#273143]'
+                        : 'bg-[#273143] text-white hover:bg-opacity-90'
+                    }`}
                   >
-                    העתק
+                    {copied ? 'הועתק! ✓' : 'העתק'}
                   </button>
                 </div>
               </div>
@@ -268,12 +387,12 @@ function ChildSetupContent() {
                   </div>
                 </div>
 
-                {/* Video Container */}
-                <div className="relative w-full aspect-video bg-gray-100 rounded-[8px] overflow-hidden mb-3">
+                {/* Video Container - Full width for long video */}
+                <div className="relative w-full bg-gray-100 rounded-[8px] overflow-hidden mb-3" style={{ minHeight: '300px' }}>
                   {selectedPlatform === 'ios' ? (
                     <video
                       controls
-                      className="w-full h-full object-contain"
+                      className="w-full h-auto object-contain"
                       poster="/video-poster-ios.jpg"
                     >
                       <source src="/screenshot-tutorial-ios.mp4" type="video/mp4" />
@@ -285,7 +404,7 @@ function ChildSetupContent() {
                   ) : (
                     <video
                       controls
-                      className="w-full h-full object-contain"
+                      className="w-full h-auto object-contain"
                       poster="/video-poster-android.jpg"
                     >
                       <source src="/screenshot-tutorial-android.mp4" type="video/mp4" />
@@ -300,7 +419,7 @@ function ChildSetupContent() {
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4">
                 <p className="font-varela text-xs text-[#262135] text-center leading-relaxed">
-                  <strong>טיפ:</strong> שמור את הכתובת במועדפים או שלח אותה לעצמך בהודעה כדי שתוכל לגשת אליה כל יום בקלות!
+                  <strong>טיפ:</strong> שמור את הכתובת בקיצור דרך או שלח אותה לעצמך בהודעה כדי שתוכל לגשת אליה כל יום בקלות!
                 </p>
               </div>
             </div>

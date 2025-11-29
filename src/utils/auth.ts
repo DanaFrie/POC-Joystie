@@ -83,10 +83,31 @@ export async function isAuthenticated(): Promise<boolean> {
 
 /**
  * Get current user ID
+ * Waits for auth state to be ready if needed
  */
 export async function getCurrentUserId(): Promise<string | null> {
   const auth = await getAuthInstance();
-  return auth.currentUser?.uid || null;
+  
+  // If we have a current user, return it immediately
+  if (auth.currentUser) {
+    return auth.currentUser.uid;
+  }
+  
+  // Otherwise, wait a bit for auth state to initialize
+  // Firebase Auth persists sessions, but it might take a moment to restore
+  return new Promise(async (resolve) => {
+    const { onAuthStateChanged } = await import('firebase/auth');
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      unsubscribe(); // Only listen once
+      resolve(user?.uid || null);
+    });
+    
+    // Timeout after 2 seconds if auth state doesn't change
+    setTimeout(() => {
+      unsubscribe();
+      resolve(auth.currentUser?.uid || null);
+    }, 2000);
+  });
 }
 
 /**

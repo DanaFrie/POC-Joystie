@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
@@ -10,8 +10,13 @@ import ReminderButton from '@/components/dashboard/ReminderButton';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import { createPushNotification, saveNotification, checkGoalMet } from '@/utils/notifications';
 import type { PushNotification } from '@/types/notifications';
-import { isLoggedIn, updateLastActivity } from '@/utils/session';
+import { isLoggedIn, updateLastActivity, getCurrentUserId } from '@/utils/session';
 import { formatNumber } from '@/utils/formatting';
+import { getDashboardData } from '@/lib/api/dashboard';
+import { generateUploadUrl, generateRedemptionUrl } from '@/utils/url-encoding';
+import { getActiveChallenge } from '@/lib/api/challenges';
+import { approveUpload, rejectUpload, getUploadByDate } from '@/lib/api/uploads';
+import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange, isAuthenticated } from '@/utils/auth';
 
 // Helper function to generate current week data - deterministic (no random)
 function generateCurrentWeek(): WeekDay[] {
@@ -76,124 +81,36 @@ function generateCurrentWeek(): WeekDay[] {
   return week;
 }
 
-// Create initial mock data - will be generated on client side
-const getInitialMockData = (): DashboardState => {
-  // Check if test data exists in localStorage
-  if (typeof window !== 'undefined') {
-    const testData = localStorage.getItem('dashboardTestData');
-    if (testData) {
-      try {
-        const parsed = JSON.parse(testData);
-        // Merge with today's data
-        const today = new Date();
-        const todayDateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`;
-        const todayDay = parsed.week.find((d: WeekDay) => d.date === todayDateStr) || parsed.week[today.getDay()];
-        
-        return {
-          ...parsed,
-          today: {
-            date: todayDateStr,
-            hebrewDate: 'ה׳ באדר תשפ״ד',
-            screenshotStatus: 'pending',
-            screenTimeUsed: todayDay?.screenTimeUsed || 0,
-            screenTimeGoal: todayDay?.screenTimeGoal || 3,
-            coinsEarned: todayDay?.coinsEarned || 0,
-            coinsMaxPossible: todayDay?.screenTimeGoal * (12.9 / 3) || 12.9,
-            requiresApproval: todayDay?.requiresApproval || false,
-            uploadedAt: new Date().toISOString(),
-            apps: todayDay?.apps || []
-          }
-        };
-      } catch (e) {
-        console.error('Error parsing test data:', e);
-      }
-    }
-  }
-  
-  const currentWeek = generateCurrentWeek();
-  const today = new Date();
-  const todayDateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`;
-  const todayDay = currentWeek.find(d => d.date === todayDateStr) || currentWeek[today.getDay()];
-
-  return {
-    parent: {
-      name: 'דנה',
-      id: '123',
-      googleAuth: {},
-      profilePicture: '/profile.jpg'
-    },
-    child: {
-      name: 'יובל',
-      id: '456',
-      profilePicture: '/child.jpg'
-    },
-    challenge: {
-      selectedBudget: 100, // תקציב נבחר (100%)
-      weeklyBudget: 90, // תקציב שבועי (90% מהתקציב הנבחר)
-      dailyBudget: 12.9, // 90 / 7
-      dailyScreenTimeGoal: 3,
-      penaltyRate: 10,
-      weekNumber: 1,
-      totalWeeks: 4,
-      startDate: new Date().toISOString().split('T')[0],
-      isActive: true
-    },
-    today: {
-      date: todayDateStr,
-      hebrewDate: 'ה׳ באדר תשפ״ד', // TODO: Calculate Hebrew date
-      screenshotStatus: 'pending',
-      screenTimeUsed: todayDay.screenTimeUsed,
-      screenTimeGoal: todayDay.screenTimeGoal,
-      coinsEarned: todayDay.coinsEarned,
-      coinsMaxPossible: todayDay.screenTimeGoal * (12.9 / 3),
-      requiresApproval: false,
-      uploadedAt: new Date().toISOString(),
-      apps: [
-        { name: 'YouTube', timeUsed: 1.2, icon: '/youtube.png' },
-        { name: 'TikTok', timeUsed: 0.8, icon: '/tiktok.png' },
-        { name: 'Instagram', timeUsed: 0.5, icon: '/instagram.png' }
-      ]
-    },
-    week: currentWeek,
-    weeklyTotals: {
-      coinsEarned: currentWeek.reduce((sum, day) => sum + day.coinsEarned, 0),
-      coinsMaxPossible: 100,
-      redemptionDate: currentWeek[5].date, // Friday
-      redemptionDay: 'ו׳'
-    }
-  };
-};
-
-// Empty initial state - will be populated on client side
-const initialMockData: DashboardState = {
+// Empty initial state - will be populated from Firestore only
+const emptyDashboardState: DashboardState = {
   parent: {
-    name: 'דנה',
-    id: '123',
+    name: '',
+    id: '',
     googleAuth: {},
-    profilePicture: '/profile.jpg'
+    profilePicture: ''
   },
   child: {
-    name: 'יובל',
-    id: '456',
-    profilePicture: '/child.jpg'
+    name: '',
+    id: '',
+    profilePicture: '',
+    gender: 'boy'
   },
   challenge: {
-    selectedBudget: 100,
-    weeklyBudget: 90,
-    dailyBudget: 12.9,
-    dailyScreenTimeGoal: 3,
-    penaltyRate: 10,
-    weekNumber: 1,
-    totalWeeks: 4,
+    selectedBudget: 0,
+    weeklyBudget: 0,
+    dailyBudget: 0,
+    dailyScreenTimeGoal: 0,
+    weekNumber: 0,
+    totalWeeks: 0,
     startDate: '',
-    isActive: true
+    isActive: false
   },
   today: {
     date: '',
     hebrewDate: '',
     screenshotStatus: 'pending',
     screenTimeUsed: 0,
-    screenTimeGoal: 3,
+    screenTimeGoal: 0,
     coinsEarned: 0,
     coinsMaxPossible: 0,
     requiresApproval: false,
@@ -203,7 +120,7 @@ const initialMockData: DashboardState = {
   week: [],
   weeklyTotals: {
     coinsEarned: 0,
-    coinsMaxPossible: 100,
+    coinsMaxPossible: 0,
     redemptionDate: '',
     redemptionDay: ''
   }
@@ -215,18 +132,39 @@ function calculateWeeklyScreenTime(week: WeekDay[]): number {
 }
 
 export default function DashboardPage() {
-  const [dashboardData, setDashboardData] = useState<DashboardState>(initialMockData);
+  const [dashboardData, setDashboardData] = useState<DashboardState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   
-  // Check session on mount
+  // Check Firebase Auth state on mount
   useEffect(() => {
-    if (!isLoggedIn()) {
-      router.push('/login');
-      return;
-    }
+    let unsubscribe: (() => void) | null = null;
     
-    // Update activity on page load
-    updateLastActivity();
+    const checkAuth = async () => {
+      try {
+        // Wait for Firebase Auth to be ready
+        unsubscribe = await onAuthStateChange(async (user) => {
+          if (!user) {
+            // Not authenticated with Firebase Auth - redirect to login
+            console.warn('[Dashboard] User not authenticated with Firebase Auth, redirecting to login');
+            router.push('/login');
+            return;
+          }
+          
+          // User is authenticated - update activity
+          updateLastActivity();
+        });
+      } catch (error) {
+        console.error('[Dashboard] Error checking auth state:', error);
+        // Fallback: check localStorage session
+        if (!isLoggedIn()) {
+          router.push('/login');
+        }
+      }
+    };
+    
+    checkAuth();
     
     // Set up activity tracking
     const handleActivity = () => {
@@ -239,13 +177,17 @@ export default function DashboardPage() {
     window.addEventListener('scroll', handleActivity);
     
     // Check session validity periodically
-    const sessionCheckInterval = setInterval(() => {
-      if (!isLoggedIn()) {
+    const sessionCheckInterval = setInterval(async () => {
+      const authenticated = await isAuthenticated();
+      if (!authenticated && !isLoggedIn()) {
         router.push('/login');
       }
     }, 60000); // Check every minute
     
     return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
       window.removeEventListener('mousedown', handleActivity);
       window.removeEventListener('keydown', handleActivity);
       window.removeEventListener('scroll', handleActivity);
@@ -253,129 +195,125 @@ export default function DashboardPage() {
     };
   }, [router]);
   
-  // Initialize data on client side only (to avoid hydration mismatch)
+  // Load dashboard data from Firestore - prevent double loading
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (!isLoggedIn()) return;
+    if (hasLoadedRef.current) return;
     
-    setDashboardData(getInitialMockData());
-    
-    // Add a test notification for testing (only if no unread notifications exist)
-    if (typeof window !== 'undefined') {
-      const existingNotifications = JSON.parse(localStorage.getItem('parentNotifications') || '[]');
-      const unreadNotifications = existingNotifications.filter((n: PushNotification) => !n.read);
-      
-      // Add test notification if there are no unread notifications
-      if (unreadNotifications.length === 0) {
-        const today = new Date();
-        const dateStr = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}`;
-        const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-        const dayName = dayNames[today.getDay()];
+    const loadDashboardData = async () => {
+      try {
+        // Wait for Firebase Auth to be ready
+        const authenticated = await isAuthenticated();
+        if (!authenticated) {
+          console.warn('[Dashboard] User not authenticated, waiting for auth state...');
+          // Wait a bit for auth state to settle
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const retryAuth = await isAuthenticated();
+          if (!retryAuth) {
+            router.push('/login');
+            return;
+          }
+        }
         
-        const testNotification = createPushNotification(
-          'upload_success',
-          'יובל',
-          dateStr,
-          dayName,
-          undefined,
-          dashboardData.child.gender as 'boy' | 'girl' || 'boy'
-        );
-        saveNotification(testNotification);
+        setIsLoading(true);
+        setError(null);
+        hasLoadedRef.current = true;
+        
+        let userId = await getCurrentUserIdAsync();
+        if (!userId) {
+          // Try one more time after a short delay (Firebase Auth might still be initializing)
+          console.warn('[Dashboard] User ID not found, retrying after delay...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          userId = await getCurrentUserIdAsync();
+          if (!userId) {
+            throw new Error('User ID not found. Please log in again.');
+          }
+        }
+        
+        console.log('[Dashboard] Got user ID:', userId);
+        
+        // Try to load from Firestore - NO MOCK DATA FALLBACK
+        const data = await getDashboardData(userId);
+        
+        if (data) {
+          console.log('[Dashboard] ✅ Loaded data from Firestore:', data);
+          setDashboardData(data);
+        } else {
+          // No active challenge - redirect to onboarding
+          console.warn('[Dashboard] ⚠️ No active challenge found, redirecting to onboarding');
+          setError('לא נמצא אתגר פעיל. אנא צור אתגר חדש.');
+          setTimeout(() => {
+            router.push('/onboarding');
+          }, 2000);
+          return;
+        }
+      } catch (err: any) {
+        console.error('[Dashboard] ❌ Error loading dashboard data:', err);
+        
+        // If it's an auth error, redirect to login
+        if (err.message?.includes('User ID not found') || err.message?.includes('not authenticated')) {
+          console.warn('[Dashboard] Authentication error, redirecting to login');
+          router.push('/login');
+          return;
+        }
+        
+        setError(err.message || 'שגיאה בטעינת נתוני הדשבורד. אנא רענן את הדף.');
+        hasLoadedRef.current = false; // Allow retry on error
+        // NO FALLBACK - show error instead
+        // Don't set mock data - let user see the error
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, []);
+    };
+    
+    loadDashboardData();
+  }, [router]);
   const [isChallengeOpen, setIsChallengeOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<WeekDay | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
-  
-  const totalWeeklyHours = calculateWeeklyScreenTime(dashboardData.week);
-  const uploadUrl = typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '';
+  const [uploadUrl, setUploadUrl] = useState<string>('');
+  const [redemptionUrl, setRedemptionUrl] = useState<string>('');
 
-  // Listen for child uploads
+  // Generate URLs with tokens
   useEffect(() => {
-    const handleChildUpload = () => {
-      // Get uploads from localStorage
-      const uploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-      if (uploads.length === 0) return;
-
-      // Get the latest upload
-      const latestUpload = uploads[uploads.length - 1];
-      
-      setDashboardData(prev => {
-        // Check if we already processed this upload (by uploadedAt timestamp)
-        const existingDay = prev.week.find(day => 
-          day.date === latestUpload.date && day.uploadedAt === latestUpload.uploadedAt
-        );
-        
-        if (existingDay && existingDay.requiresApproval) {
-          // Already processed, skip
-          return prev;
-        }
-
-        // Find matching day in week
-        const updatedWeek = prev.week.map(day => {
-          if (day.date === latestUpload.date) {
-            const goalMet = latestUpload.screenTime <= prev.challenge.dailyScreenTimeGoal;
-            const dailyBudget = prev.challenge.dailyBudget;
-            const hourlyRate = prev.challenge.dailyScreenTimeGoal > 0 
-              ? dailyBudget / prev.challenge.dailyScreenTimeGoal 
-              : 0;
-            const coinsEarned = goalMet 
-              ? latestUpload.screenTime * hourlyRate
-              : Math.max(0, (prev.challenge.dailyScreenTimeGoal - (latestUpload.screenTime - prev.challenge.dailyScreenTimeGoal)) * hourlyRate);
-
-            // Create push notification
-            const notification = createPushNotification(
-              goalMet ? 'upload_success' : 'upload_exceeded',
-              prev.child.name,
-              latestUpload.date,
-              latestUpload.dayName,
-              undefined,
-              prev.child.gender as 'boy' | 'girl' || 'boy'
-            );
-            saveNotification(notification);
-
-            return {
-              ...day,
-              status: 'awaiting_approval' as const,
-              screenTimeUsed: latestUpload.screenTime,
-              coinsEarned,
-              requiresApproval: true,
-              uploadedAt: latestUpload.uploadedAt,
-              screenshotUrl: latestUpload.screenshot
-            };
+    const generateUrls = async () => {
+      try {
+        const userId = await getCurrentUserIdAsync();
+        if (userId) {
+          const challenge = await getActiveChallenge(userId);
+          if (challenge) {
+            const upload = generateUploadUrl(userId, challenge.childId);
+            const redemption = generateRedemptionUrl(userId, challenge.childId);
+            setUploadUrl(upload);
+            setRedemptionUrl(redemption);
+          } else {
+            // Fallback
+            const upload = generateUploadUrl(userId);
+            const redemption = generateRedemptionUrl(userId);
+            setUploadUrl(upload);
+            setRedemptionUrl(redemption);
           }
-          return day;
-        });
-
-        return {
-          ...prev,
-          week: updatedWeek
-        };
-      });
-
-      // Clear processed uploads
-      localStorage.removeItem('childUploads');
-    };
-
-    // Check on mount
-    handleChildUpload();
-    
-    // Listen for new uploads
-    window.addEventListener('childUploaded', handleChildUpload);
-    
-    // Also listen for storage changes (for cross-tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'childUploads' && e.newValue) {
-        handleChildUpload();
+        } else {
+          // Fallback for demo
+          setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
+          setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
+        }
+      } catch (error) {
+        console.error('Error generating URLs:', error);
+        // Fallback
+        setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
+        setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
       }
     };
-    window.addEventListener('storage', handleStorageChange);
 
-    return () => {
-      window.removeEventListener('childUploaded', handleChildUpload);
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    if (isLoggedIn()) {
+      generateUrls();
+    }
+    // Remove dashboardData dependency - URLs don't depend on dashboard data
   }, []);
+
+  // Note: Child uploads are now handled via Firestore real-time updates
+  // No localStorage listeners needed - data comes from Firestore
 
   const handleDayClick = (day: WeekDay) => {
     // Don't open modal for redemption day
@@ -388,84 +326,178 @@ export default function DashboardPage() {
   };
 
   const handleApprove = async (dayDate: string) => {
-    const approvedDay = dashboardData.week.find(day => day.date === dayDate);
-    const isFriday = approvedDay?.dayName === 'ו׳' || approvedDay?.dayName === 'שישי';
-    
-    const updatedWeek = dashboardData.week.map(day => {
-      if (day.date === dayDate) {
-        return {
-          ...day,
-          status: (day.screenTimeUsed <= day.screenTimeGoal ? 'success' : 'warning') as 'success' | 'warning',
-          requiresApproval: false,
-          parentAction: 'approved' as const
-        };
+    try {
+      const userId = await getCurrentUserIdAsync();
+      if (!userId) {
+        throw new Error('User ID not found');
       }
-      return day;
-    });
 
-    // Save to localStorage first
-    if (typeof window !== 'undefined') {
-      const updatedData = {
-        ...dashboardData,
-        week: updatedWeek
-      };
-      localStorage.setItem('dashboardTestData', JSON.stringify(updatedData));
-      
-      // If Friday was approved, notify child redemption page
-      if (isFriday && approvedDay) {
-        localStorage.setItem('fridayApproved', 'true');
-        localStorage.setItem('fridayEarnings', approvedDay.coinsEarned.toString());
-        // Trigger event for child redemption page
-        window.dispatchEvent(new Event('fridayApproved'));
+      // Get active challenge
+      const challenge = await getActiveChallenge(userId);
+      if (!challenge) {
+        throw new Error('No active challenge found');
+      }
+
+      // Find the upload for this date
+      const upload = await getUploadByDate(challenge.id, dayDate);
+      if (!upload) {
+        throw new Error('Upload not found for this date');
+      }
+
+      // Approve in Firestore
+      await approveUpload(upload.id);
+
+      // Reload dashboard data to get updated state from Firestore
+      const updatedData = await getDashboardData(userId);
+      if (updatedData) {
+        setDashboardData(updatedData);
+        
+        // If Friday was approved, notify child redemption page (for cross-tab communication)
+        const approvedDay = updatedData.week.find(day => day.date === dayDate);
+        const isFriday = approvedDay?.dayName === 'ו׳' || approvedDay?.dayName === 'שישי';
+        if (isFriday && approvedDay && typeof window !== 'undefined') {
+          localStorage.setItem('fridayApproved', 'true');
+          localStorage.setItem('fridayEarnings', approvedDay.coinsEarned.toString());
+          window.dispatchEvent(new Event('fridayApproved'));
+        }
+      } else {
+        throw new Error('Failed to reload dashboard data after approval');
+      }
+    } catch (error) {
+      console.error('Error approving upload:', error);
+      setError('שגיאה באישור ההעלאה. אנא רענן את הדף.');
+      // Reload data to get current state
+      try {
+        const userId = await getCurrentUserIdAsync();
+        if (userId) {
+          const refreshedData = await getDashboardData(userId);
+          if (refreshedData) {
+            setDashboardData(refreshedData);
+          }
+        }
+      } catch (refreshError) {
+        console.error('Error refreshing dashboard:', refreshError);
       }
     }
-    
-    // Update state
-    setDashboardData(prev => ({
-      ...prev,
-      week: updatedWeek
-    }));
-
-    // Recalculate totals
-    const newTotal = calculateWeeklyScreenTime(updatedWeek);
-    // TODO: Update weekly totals
   };
 
   const handleReject = async (dayDate: string) => {
-    const updatedWeek = dashboardData.week.map(day => {
-      if (day.date === dayDate) {
-        return {
-          ...day,
-          status: 'rejected' as const,
-          requiresApproval: false,
-          parentAction: 'rejected' as const
-        };
-      }
-      return day;
-    });
-
-    setDashboardData(prev => ({
-      ...prev,
-      week: updatedWeek
-    }));
-
-    // Create rejection message for parent to send
-    const childGender = dashboardData.child.gender as 'boy' | 'girl' || 'boy';
-    const childPronouns = {
-      boy: { you: 'תוכל', uploaded: 'העלית', it: 'אותו', your: 'שלך' },
-      girl: { you: 'תוכלי', uploaded: 'העלית', it: 'אותו', your: 'שלך' }
-    };
-    const childP = childPronouns[childGender] || childPronouns.boy;
-    const rejectionMessage = `היי ${dashboardData.child.name}, משהו בצילום המסך ש${childP.uploaded} עבור ${selectedDay?.date} לא היה ברור / לא תקין. ${childP.you} בבקשה להעלות ${childP.it} שוב בקישור הקבוע ${childP.your}? ${uploadUrl}`;
-    
-    // Copy to clipboard
     try {
-      await navigator.clipboard.writeText(rejectionMessage);
-    } catch (err) {
-      console.error('Failed to copy:', err);
+      const userId = await getCurrentUserIdAsync();
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      // Get active challenge
+      const challenge = await getActiveChallenge(userId);
+      if (!challenge) {
+        throw new Error('No active challenge found');
+      }
+
+      // Find the upload for this date
+      const upload = await getUploadByDate(challenge.id, dayDate);
+      if (!upload) {
+        throw new Error('Upload not found for this date');
+      }
+
+      // Reject in Firestore
+      await rejectUpload(upload.id);
+
+      // Reload dashboard data to get updated state from Firestore
+      const updatedData = await getDashboardData(userId);
+      if (updatedData) {
+        setDashboardData(updatedData);
+      } else {
+        throw new Error('Failed to reload dashboard data after rejection');
+      }
+    } catch (error) {
+      console.error('Error rejecting upload:', error);
+      setError('שגיאה בדחיית ההעלאה. אנא רענן את הדף.');
+      // Reload data to get current state
+      try {
+        const userId = await getCurrentUserIdAsync();
+        if (userId) {
+          const refreshedData = await getDashboardData(userId);
+          if (refreshedData) {
+            setDashboardData(refreshedData);
+          }
+        }
+      } catch (refreshError) {
+        console.error('Error refreshing dashboard:', refreshError);
+      }
+    }
+
+    // Create rejection message for parent to send (only if we have data)
+    if (dashboardData && selectedDay) {
+      const childGender = dashboardData.child.gender as 'boy' | 'girl' || 'boy';
+      const childPronouns = {
+        boy: { you: 'תוכל', uploaded: 'העלית', it: 'אותו', your: 'שלך' },
+        girl: { you: 'תוכלי', uploaded: 'העלית', it: 'אותו', your: 'שלך' }
+      };
+      const childP = childPronouns[childGender] || childPronouns.boy;
+      const rejectionMessage = `היי ${dashboardData.child.name}, משהו בצילום המסך ש${childP.uploaded} עבור ${selectedDay.date} לא היה ברור / לא תקין. ${childP.you} בבקשה להעלות ${childP.it} שוב בקישור הקבוע ${childP.your}? ${uploadUrl}`;
+      
+      // Copy to clipboard
+      try {
+        await navigator.clipboard.writeText(rejectionMessage);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
     }
   };
 
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="text-center">
+          <div className="font-varela text-lg text-[#262135] mb-4">טוען נתונים...</div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#262135] mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state - NO FALLBACK DATA
+  if (error) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4">
+              שגיאה בטעינת הנתונים
+            </h2>
+            <p className="font-varela text-base text-[#282743] mb-6">{error}</p>
+            <button
+              onClick={() => {
+                setError(null);
+                window.location.reload();
+              }}
+              className="w-full py-3 px-6 rounded-[18px] bg-[#273143] text-white font-varela font-semibold hover:bg-opacity-90 transition-all"
+            >
+              רענן דף
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading if no data yet
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="text-center">
+          <div className="font-varela text-lg text-[#262135] mb-4">טוען נתונים...</div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#262135] mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate values only when dashboardData is available
+  const totalWeeklyHours = calculateWeeklyScreenTime(dashboardData.week);
 
   return (
     <div className="min-h-screen bg-transparent pb-24">
@@ -475,7 +507,7 @@ export default function DashboardPage() {
           {/* 1. היי, [שם הורה] עם פיגי בצד השמאלי */}
           <div className="mb-3 relative flex items-center justify-between">
             <h1 className="font-varela font-semibold text-2xl text-[#262135]">
-              היי, מאיר
+              היי, {dashboardData.parent.name}
             </h1>
             <div className="flex-shrink-0">
               <Image
@@ -484,13 +516,20 @@ export default function DashboardPage() {
                 width={100}
                 height={100}
                 className="object-contain"
+                priority
               />
             </div>
           </div>
 
           {/* תיבת עדכונים */}
           <div style={{ marginBottom: '9.6px' }}>
-            <NotificationsPanel />
+            <NotificationsPanel 
+              challengeNotStarted={dashboardData.challengeNotStarted}
+              challengeStartDate={dashboardData.challengeStartDate}
+              childName={dashboardData.child.name}
+              childGender={dashboardData.child.gender}
+              parentName={dashboardData.parent.name}
+            />
           </div>
 
           {/* 2. סטטוס שבועי */}
@@ -562,63 +601,15 @@ export default function DashboardPage() {
             {isChallengeOpen && (() => {
               const challenge = dashboardData.challenge;
               const hourlyRate = challenge.dailyScreenTimeGoal > 0 ? challenge.dailyBudget / challenge.dailyScreenTimeGoal : 0;
-              const weeklyHours = challenge.dailyScreenTimeGoal * 7;
-              const bonusAmount = challenge.selectedBudget * 0.1;
-              const budgetPercentage = (challenge.weeklyBudget / challenge.selectedBudget) * 100;
-              const bonusPercentage = (bonusAmount / challenge.selectedBudget) * 100;
+              const weeklyHours = challenge.dailyScreenTimeGoal * 6; // 6 days (Sunday-Friday)
               
               return (
                 <div className="px-4 pb-4 space-y-4">
-                    {/* Budget Pie Chart Visual */}
+                    {/* Budget Summary */}
                     <div className="bg-[#BBE9FD] bg-opacity-30 rounded-[18px] p-4 mb-4">
-                      <h4 className="font-varela font-semibold text-base text-[#273143] mb-3 text-center">חלוקת התקציב</h4>
-                      <div className="flex items-center justify-center mb-4">
-                        <div className="relative w-32 h-32">
-                          {/* Pie Chart */}
-                          <svg className="transform -rotate-90" viewBox="0 0 100 100">
-                            {/* Background circle */}
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="#E4E4E4" strokeWidth="8" />
-                            {/* Weekly budget (90%) */}
-                            <circle
-                              cx="50"
-                              cy="50"
-                              r="45"
-                              fill="none"
-                              stroke="#E6F19A"
-                              strokeWidth="8"
-                              strokeDasharray={`${2 * Math.PI * 45 * budgetPercentage / 100} ${2 * Math.PI * 45}`}
-                              strokeLinecap="round"
-                            />
-                            {/* Bonus (10%) */}
-                            <circle
-                              cx="50"
-                              cy="50"
-                              r="45"
-                              fill="none"
-                              stroke="#BBE9FD"
-                              strokeWidth="8"
-                              strokeDasharray={`${2 * Math.PI * 45 * bonusPercentage / 100} ${2 * Math.PI * 45}`}
-                              strokeDashoffset={`-${2 * Math.PI * 45 * budgetPercentage / 100}`}
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          {/* Center text */}
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <div className="font-varela font-bold text-xl text-[#273143]">₪{formatNumber(challenge.selectedBudget, 0)}</div>
-                            <div className="font-varela text-xs text-[#273143] opacity-80">סה"כ</div>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Legend */}
-                      <div className="flex justify-center gap-4 text-xs">
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[#E6F19A]"></div>
-                          <span className="font-varela text-[#273143]">₪{formatNumber(challenge.weeklyBudget)} (90%)</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[#BBE9FD]"></div>
-                          <span className="font-varela text-[#273143]">₪{formatNumber(bonusAmount)} (10%)</span>
-                        </div>
+                      <h4 className="font-varela font-semibold text-base text-[#273143] mb-3 text-center">תקציב שבועי</h4>
+                      <div className="flex items-center justify-center">
+                        <div className="font-varela font-bold text-3xl text-[#273143]">₪{formatNumber(challenge.weeklyBudget, 0)}</div>
                       </div>
                     </div>
 
@@ -667,7 +658,7 @@ export default function DashboardPage() {
         {/* 1. היי, [שם הורה] עם פיגי בצד השמאלי */}
         <div className="mb-3 relative flex items-center justify-between">
           <h1 className="font-varela font-semibold text-2xl text-[#262135]">
-            היי, מאיר
+            היי, {dashboardData.parent.name}
           </h1>
           <div className="flex-shrink-0">
             <Image
@@ -676,6 +667,7 @@ export default function DashboardPage() {
               width={100}
               height={100}
               className="object-contain"
+              priority
             />
           </div>
         </div>
@@ -686,7 +678,13 @@ export default function DashboardPage() {
           <div className="col-span-5">
             {/* תיבת עדכונים */}
             <div style={{ marginBottom: '9.6px' }}>
-              <NotificationsPanel />
+              <NotificationsPanel 
+                challengeNotStarted={dashboardData.challengeNotStarted}
+                challengeStartDate={dashboardData.challengeStartDate}
+                childName={dashboardData.child.name}
+                childGender={dashboardData.child.gender}
+                parentName={dashboardData.parent.name}
+              />
             </div>
 
             {/* 2. סטטוס שבועי */}
@@ -760,63 +758,15 @@ export default function DashboardPage() {
               {isChallengeOpen && (() => {
                 const challenge = dashboardData.challenge;
                 const hourlyRate = challenge.dailyScreenTimeGoal > 0 ? challenge.dailyBudget / challenge.dailyScreenTimeGoal : 0;
-                const weeklyHours = challenge.dailyScreenTimeGoal * 7;
-                const bonusAmount = challenge.selectedBudget * 0.1;
-                const budgetPercentage = (challenge.weeklyBudget / challenge.selectedBudget) * 100;
-                const bonusPercentage = (bonusAmount / challenge.selectedBudget) * 100;
+                const weeklyHours = challenge.dailyScreenTimeGoal * 6; // 6 days (Sunday-Friday)
                 
                 return (
                   <div className="px-4 pb-4 space-y-4">
-                    {/* Budget Pie Chart Visual */}
+                    {/* Budget Summary */}
                     <div className="bg-[#BBE9FD] bg-opacity-30 rounded-[18px] p-4 mb-4">
-                      <h4 className="font-varela font-semibold text-base text-[#273143] mb-3 text-center">חלוקת התקציב</h4>
-                      <div className="flex items-center justify-center mb-4">
-                        <div className="relative w-32 h-32">
-                          {/* Pie Chart */}
-                          <svg className="transform -rotate-90" viewBox="0 0 100 100">
-                            {/* Background circle */}
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="#E4E4E4" strokeWidth="8" />
-                            {/* Weekly budget (90%) */}
-                            <circle
-                              cx="50"
-                              cy="50"
-                              r="45"
-                              fill="none"
-                              stroke="#E6F19A"
-                              strokeWidth="8"
-                              strokeDasharray={`${2 * Math.PI * 45 * budgetPercentage / 100} ${2 * Math.PI * 45}`}
-                              strokeLinecap="round"
-                            />
-                            {/* Bonus (10%) */}
-                            <circle
-                              cx="50"
-                              cy="50"
-                              r="45"
-                              fill="none"
-                              stroke="#BBE9FD"
-                              strokeWidth="8"
-                              strokeDasharray={`${2 * Math.PI * 45 * bonusPercentage / 100} ${2 * Math.PI * 45}`}
-                              strokeDashoffset={`-${2 * Math.PI * 45 * budgetPercentage / 100}`}
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          {/* Center text */}
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <div className="font-varela font-bold text-xl text-[#273143]">₪{formatNumber(challenge.selectedBudget, 0)}</div>
-                            <div className="font-varela text-xs text-[#273143] opacity-80">סה"כ</div>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Legend */}
-                      <div className="flex justify-center gap-4 text-xs">
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[#E6F19A]"></div>
-                          <span className="font-varela text-[#273143]">₪{formatNumber(challenge.weeklyBudget)} (90%)</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 rounded-full bg-[#BBE9FD]"></div>
-                          <span className="font-varela text-[#273143]">₪{formatNumber(bonusAmount)} (10%)</span>
-                        </div>
+                      <h4 className="font-varela font-semibold text-base text-[#273143] mb-3 text-center">תקציב שבועי</h4>
+                      <div className="flex items-center justify-center">
+                        <div className="font-varela font-bold text-3xl text-[#273143]">₪{formatNumber(challenge.weeklyBudget, 0)}</div>
                       </div>
                     </div>
 

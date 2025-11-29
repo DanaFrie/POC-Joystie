@@ -101,10 +101,10 @@ export default function OnboardingSetupPage() {
       return null;
     }
 
-    // תקציב שבועי = תקציב נבחר (ללא בונוס)
+    // תקציב שבועי = התקציב הנבחר
     // האתגר נמשך 6 ימים (ראשון-שישי), יום שבת הוא יום פדיון
-    const weeklyBudget = selectedBudget;
-    const dailyBudget = weeklyBudget / 6; // חלוקה ל-6 ימים במקום 7
+    const weeklyBudget = selectedBudget; // התקציב השבועי שווה לתקציב הנבחר
+    const dailyBudget = selectedBudget / 6; // חלוקה ל-6 ימים
     const hourlyRate = targetHours > 0 ? dailyBudget / targetHours : 0;
     const weeklyHours = targetHours * 6; // 6 ימים במקום 7
 
@@ -221,8 +221,8 @@ export default function OnboardingSetupPage() {
         const selectedBudget = formData.weeklyBudget === 'custom' 
           ? parseFloat(formData.customBudget) 
           : parseFloat(formData.weeklyBudget) || 0;
-        const weeklyBudget = selectedBudget * 0.9; // 90% of selected budget
-        const dailyBudget = weeklyBudget / 7;
+        const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
+        const dailyBudget = selectedBudget / 6; // Divide selected budget by 6 days (Sunday-Friday)
 
         // Create child profile
         const childId = await createChild({
@@ -246,16 +246,14 @@ export default function OnboardingSetupPage() {
           ? sessionStorage.getItem('motivationReason') as 'balance' | 'education' | 'communication' | null
           : null;
 
-        // Create challenge
+        // Create challenge (weeklyBudget is calculated from selectedBudget, not saved to DB)
         const challengeId = await createChallenge({
           parentId: userId,
           childId: childId,
           motivationReason: motivationReason || undefined,
           selectedBudget: selectedBudget,
-          weeklyBudget: weeklyBudget,
           dailyBudget: dailyBudget,
           dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || 3,
-          penaltyRate: 0.1, // 10% penalty
           weekNumber: 1,
           totalWeeks: 4, // Default to 4 weeks
           startDate: startDate.toISOString(),
