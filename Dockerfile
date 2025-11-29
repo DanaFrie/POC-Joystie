@@ -1,37 +1,52 @@
-# Use Python 3.11 slim image for smaller size
-FROM python:3.11-slim
+# Next.js Dockerfile for Firebase App Hosting / Cloud Run
+FROM node:20-alpine AS base
 
-# Set working directory
+# Install dependencies only when needed
+FROM base AS deps
 WORKDIR /app
 
-# Install system dependencies required for OpenCV
-# Updated for Debian Trixie (libgl1-mesa-glx replaced with libgl1)
-RUN apt-get update && apt-get install -y \
-    libgl1 \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+# Copy package files
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-# Copy Python service files
-COPY services/graph-telemetry/ /app/services/graph-telemetry/
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r services/graph-telemetry/requirements.txt
+# Build Next.js app
+RUN npm run build
 
-# Copy Cloud Run service code
-COPY cloud-run/ /app/cloud-run/
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
 
-# Install Flask and CORS (needed for the service)
-RUN pip install --no-cache-dir Flask==3.0.0 flask-cors==4.0.0
+ENV NODE_ENV=production
+# Disable telemetry during runtime
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Set Python path
-ENV PYTHONPATH=/app
+# Create a non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-# Expose port (Cloud Run will set PORT env var)
+# Copy necessary files
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Set correct permissions
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+# Expose port (Cloud Run sets PORT env var)
 EXPOSE 8080
 
-# Run the service directly (not as module)
-CMD ["python", "/app/cloud-run/main.py"]
+# Cloud Run sets PORT env var, Next.js will use it automatically
+# HOSTNAME=0.0.0.0 ensures it listens on all interfaces
+ENV HOSTNAME="0.0.0.0"
+
+# Start Next.js server (standalone mode)
+CMD ["node", "server.js"]
+
