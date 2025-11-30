@@ -13,23 +13,62 @@ function getFirebaseConfig() {
   const getEnv = (key: string, fallback?: string): string => {
     // Try multiple sources for environment variables
     let value: string | undefined;
+    let source = 'none';
     
     if (typeof window === 'undefined') {
       // Server-side: use process.env directly
       value = process.env[key];
+      source = 'process.env (server)';
     } else {
       // Client-side: try multiple sources
       // 1. process.env (Next.js embeds NEXT_PUBLIC_* vars at build time)
       // 2. window.__NEXT_DATA__.env (Next.js runtime injection)
       // 3. window.__NEXT_DATA__.runtimeConfig (if available)
-      value = process.env[key] 
-        || (window as any).__NEXT_DATA__?.env?.[key]
-        || (window as any).__NEXT_DATA__?.runtimeConfig?.[key]
-        || (window as any).__ENV__?.[key]; // Some deployment platforms inject here
+      if (process.env[key]) {
+        value = process.env[key];
+        source = 'process.env (client)';
+      } else if ((window as any).__NEXT_DATA__?.env?.[key]) {
+        value = (window as any).__NEXT_DATA__?.env?.[key];
+        source = 'window.__NEXT_DATA__.env';
+      } else if ((window as any).__NEXT_DATA__?.runtimeConfig?.[key]) {
+        value = (window as any).__NEXT_DATA__?.runtimeConfig?.[key];
+        source = 'window.__NEXT_DATA__.runtimeConfig';
+      } else if ((window as any).__ENV__?.[key]) {
+        value = (window as any).__ENV__?.[key];
+        source = 'window.__ENV__';
+      }
     }
     
     if (!value && fallback) {
       value = fallback;
+      source = 'fallback';
+    }
+    
+    // Debug: log raw value before trimming (always log in development, or if value exists but might be empty after trim)
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (value && typeof window !== 'undefined') {
+      const debugKey = `__FIREBASE_DEBUG_${key}__`;
+      if (!(window as any)[debugKey]) {
+        (window as any)[debugKey] = true;
+        const rawValue = String(value);
+        const trimmed = rawValue.trim();
+        const isEmptyAfterTrim = trimmed.length === 0;
+        
+        console.log(`[Firebase Config] Raw value for ${key} (from ${source}):`, {
+          exists: !!value,
+          type: typeof value,
+          rawLength: rawValue.length,
+          trimmedLength: trimmed.length,
+          isEmptyAfterTrim,
+          first50Chars: JSON.stringify(rawValue.substring(0, 50)),
+          first50CharCodes: Array.from(rawValue.substring(0, Math.min(50, rawValue.length))).map(c => c.charCodeAt(0)),
+          hasNewlines: rawValue.includes('\n') || rawValue.includes('\r'),
+          hasOnlyWhitespace: /^\s*$/.test(rawValue),
+          rawValuePreview: rawValue.length < 100 ? rawValue : `[${rawValue.length} chars, first 50: ${rawValue.substring(0, 50)}]`,
+          trimmedPreview: trimmed.length < 100 ? trimmed : `[${trimmed.length} chars]`,
+        });
+      }
     }
     
     if (!value) {
