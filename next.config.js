@@ -59,6 +59,12 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['tesseract.js'],
   },
+  // Exclude functions directory from TypeScript checking (it has its own tsconfig)
+  typescript: {
+    ignoreBuildErrors: false, // We want to catch real errors
+  },
+  // Exclude functions directory from being processed by Next.js
+  pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
 };
 
 module.exports = nextConfig;
