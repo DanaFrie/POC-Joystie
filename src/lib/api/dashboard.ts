@@ -110,7 +110,7 @@ function generateWeek(
       : dayName === challenge.redemptionDay;
     
     // Find matching upload
-    const upload = uploads.find(u => u.date === dateStr);
+    const upload = uploads.find(u => u.date === dateStr) ?? null;
     
     // Calculate coins
     const hourlyRate = challenge.dailyScreenTimeGoal > 0 
@@ -139,7 +139,7 @@ function generateWeek(
       uploadedAt: upload?.uploadedAt,
       parentAction: upload?.parentAction || null,
       screenshotUrl: upload?.screenshotUrl,
-      apps: upload?.apps || []
+      apps: (upload?.apps || []).filter((app): app is { name: string; timeUsed: number; icon: string } => app.icon !== undefined).map(app => ({ name: app.name, timeUsed: app.timeUsed, icon: app.icon! }))
     });
   }
   
@@ -204,7 +204,7 @@ function buildToday(
   
   // Determine screenshot status
   let screenshotStatus: Today['screenshotStatus'] = 'pending';
-  if (todayDay.status === 'uploaded' || todayDay.status === 'success' || todayDay.status === 'warning') {
+  if (todayDay.status === 'success' || todayDay.status === 'warning') {
     screenshotStatus = 'uploaded';
   } else if (todayDay.status === 'awaiting_approval') {
     screenshotStatus = 'uploaded';
