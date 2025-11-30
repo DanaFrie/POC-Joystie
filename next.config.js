@@ -65,7 +65,15 @@ const nextConfig = {
   },
   // Exclude functions directory from being processed by Next.js
   pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
+  // Enable standalone output for Firebase App Hosting / Cloud Run
+  output: 'standalone',
 };
 
 module.exports = nextConfig;
+
+// Set HOSTNAME for Firebase App Hosting to listen on all interfaces
+// This ensures the Next.js server listens on 0.0.0.0 instead of 127.0.0.1
+if (process.env.NODE_ENV === 'production') {
+  process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0';
+}
 
