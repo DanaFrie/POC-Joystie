@@ -76,17 +76,18 @@ function getNextSunday() {
 }
 
 // Helper to calculate coins earned
+// Matches the logic in src/app/child/upload/page.tsx (lines 706-712)
 function calculateCoins(screenTimeUsed, screenTimeGoal, dailyBudget) {
   const success = screenTimeUsed <= screenTimeGoal;
-  const hourlyRate = screenTimeGoal > 0 ? dailyBudget / screenTimeGoal : 0;
+  const coinsMaxPossible = dailyBudget;
   
   let coinsEarned;
   if (success) {
-    coinsEarned = screenTimeUsed * hourlyRate;
+    // If goal met: full daily budget
+    coinsEarned = coinsMaxPossible;
   } else {
-    // Penalty for exceeding goal
-    const excess = screenTimeUsed - screenTimeGoal;
-    coinsEarned = Math.max(0, dailyBudget - (excess * hourlyRate));
+    // If not met: proportional reduction
+    coinsEarned = Math.max(0, coinsMaxPossible * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
   }
   
   return {
