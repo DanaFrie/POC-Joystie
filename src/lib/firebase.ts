@@ -9,26 +9,37 @@ import type { Functions } from 'firebase/functions';
 // Next.js automatically loads NEXT_PUBLIC_* variables at build time
 // But we need to access them at runtime, so we use a function to get them
 function getFirebaseConfig() {
+  // Helper to safely get and trim env var
+  const getEnv = (key: string, fallback?: string): string => {
+    const value = process.env[key] || fallback || '';
+    return typeof value === 'string' ? value.trim() : '';
+  };
+
   if (typeof window === 'undefined') {
     // Server-side: use process.env directly
     return {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      apiKey: getEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
+      authDomain: getEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+      projectId: getEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
+      storageBucket: getEnv('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET') || '',
+      messagingSenderId: getEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+      appId: getEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
     };
   } else {
     // Client-side: Next.js injects these into window.__NEXT_DATA__ or we can access them directly
     // In Next.js, NEXT_PUBLIC_* vars are embedded at build time
+    const getClientEnv = (key: string): string => {
+      const value = process.env[key] || (window as any).__NEXT_DATA__?.env?.[key] || '';
+      return typeof value === 'string' ? value.trim() : '';
+    };
+    
     return {
-      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_FIREBASE_API_KEY,
-      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
-      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || (window as any).__NEXT_DATA__?.env?.NEXT_PUBLIC_FIREBASE_APP_ID,
+      apiKey: getClientEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
+      authDomain: getClientEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+      projectId: getClientEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
+      storageBucket: getClientEnv('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET') || '',
+      messagingSenderId: getClientEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+      appId: getClientEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
     };
   }
 }

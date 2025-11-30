@@ -31,7 +31,7 @@ export default function Navigation() {
         setChallengeExists(false);
       }
     };
-
+    
     checkChallenge();
   }, [pathname]); // Re-check when pathname changes
 

@@ -59,9 +59,16 @@ export default function OnboardingSetupPage() {
         [name]: value
       };
       
-      // If age is being changed manually, mark it as not from button
+      // If age is being changed manually, clear button selection
       if (name === 'age') {
-        setAgeSelectedFromButton(false);
+        // If user types something, clear the button selection
+        if (value !== '' && ageSelectedFromButton) {
+          setAgeSelectedFromButton(false);
+        }
+        // If user clears the input, also clear button selection
+        if (value === '') {
+          setAgeSelectedFromButton(false);
+        }
       }
       
       // Show budget explanation if budget is selected and target hours are set
@@ -165,11 +172,31 @@ export default function OnboardingSetupPage() {
   };
   const parentP = parentPronouns[parentData.parentGender as 'female' | 'male'] || parentPronouns.female;
 
-  // Load kids ages from signup data
+  // Load kids ages from user data (Firestore or localStorage)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const loadKidsAges = async () => {
+      if (typeof window === 'undefined') return;
+      
       try {
-        // Try to get from parentData first (after signup submission)
+        // First, try to get from Firestore (user profile)
+        try {
+          const userId = await getCurrentUserId();
+          if (userId) {
+            const userData = await getUser(userId);
+            if (userData && userData.kidsAges && Array.isArray(userData.kidsAges)) {
+              const validAges = userData.kidsAges.filter((age: string) => age && age.trim() !== '');
+              if (validAges.length > 0) {
+                setAvailableAges(validAges);
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          // If Firestore fails, continue to localStorage fallback
+          console.log('Could not load ages from Firestore, trying localStorage...');
+        }
+        
+        // Fallback: Try to get from parentData (after signup submission)
         const parentDataStr = localStorage.getItem('parentData');
         if (parentDataStr) {
           const parsed = JSON.parse(parentDataStr);
@@ -182,7 +209,7 @@ export default function OnboardingSetupPage() {
           }
         }
         
-        // Try to get from signupFormData (during signup process)
+        // Fallback: Try to get from signupFormData (during signup process)
         const signupDataStr = localStorage.getItem('signupFormData');
         if (signupDataStr) {
           const parsed = JSON.parse(signupDataStr);
@@ -196,8 +223,11 @@ export default function OnboardingSetupPage() {
         }
       } catch (e) {
         // Ignore errors
+        console.error('Error loading kids ages:', e);
       }
-    }
+    };
+    
+    loadKidsAges();
   }, []);
 
   const handleNext = async () => {
@@ -421,7 +451,11 @@ export default function OnboardingSetupPage() {
                             : 'border-gray-200 bg-white hover:border-[#273143] hover:border-opacity-50'
                         }`}
                       >
-                        <span className="font-varela font-semibold text-base text-[#282743]">
+                        <span className={`font-varela font-semibold text-base ${
+                          formData.age === age.trim() && ageSelectedFromButton
+                            ? 'text-[#273143]'
+                            : 'text-[#282743]'
+                        }`}>
                           {age.trim()}
                         </span>
                       </button>
@@ -434,10 +468,16 @@ export default function OnboardingSetupPage() {
                       <input
                         type="number"
                         name="age"
-                        value={ageSelectedFromButton ? '' : formData.age}
-                        onChange={handleChange}
+                        value={formData.age}
+                        onChange={(e) => {
+                          // Clear button selection when user starts typing
+                          if (ageSelectedFromButton) {
+                            setAgeSelectedFromButton(false);
+                          }
+                          handleChange(e);
+                        }}
                         onFocus={() => {
-                          // When focusing on input, clear button selection
+                          // When focusing on input, clear button selection if it was selected
                           if (ageSelectedFromButton) {
                             setAgeSelectedFromButton(false);
                             setFormData(prev => ({ ...prev, age: '' }));
@@ -448,7 +488,7 @@ export default function OnboardingSetupPage() {
                         max="18"
                         className={`p-3 sm:p-4 rounded-[18px] border-2 text-center focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
                           formData.age && !ageSelectedFromButton && formData.age.trim() !== ''
-                            ? 'border-gray-300 bg-gray-100'
+                            ? 'border-[#273143] bg-[#273143] bg-opacity-5'
                             : 'border-gray-200 bg-white'
                         }`}
                       />

@@ -163,20 +163,20 @@ function ChildUploadContent() {
         let approvedInfo: { date: string; dayName: string; isApproved?: boolean } | null = null;
         
         // Check if there's an existing upload in childUploads
-        try {
-          const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-          const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
-          
-          if (existingUpload) {
-            foundApproved = true;
-            approvedInfo = {
-              date: selectedDay.dateStr,
-              dayName: selectedDay.dayName,
-              isApproved: false
-            };
-          }
-        } catch (e) {
-          // Ignore parse errors
+          try {
+            const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
+            const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
+            
+            if (existingUpload) {
+              foundApproved = true;
+              approvedInfo = {
+                date: selectedDay.dateStr,
+                dayName: selectedDay.dayName,
+                isApproved: false
+              };
+            }
+          } catch (e) {
+            // Ignore parse errors
         }
         
         if (foundApproved && approvedInfo) {
