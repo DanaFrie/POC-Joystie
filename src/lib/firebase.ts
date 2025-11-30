@@ -70,8 +70,16 @@ async function initializeFirebase(): Promise<void> {
       const missing = required.filter(key => !config[key as keyof typeof config] || String(config[key as keyof typeof config]).trim() === '');
       
       if (missing.length > 0) {
+        // Convert camelCase to UPPER_SNAKE_CASE for environment variable names
+        const toEnvVarName = (key: string): string => {
+          return key
+            .replace(/([A-Z])/g, '_$1') // Add underscore before capital letters
+            .toUpperCase() // Convert to uppercase
+            .replace(/^_/, ''); // Remove leading underscore if any
+        };
+        
         throw new Error(
-          `Missing Firebase environment variables: ${missing.map(key => `NEXT_PUBLIC_FIREBASE_${key.toUpperCase()}`).join(', ')}\n` +
+          `Missing Firebase environment variables: ${missing.map(key => `NEXT_PUBLIC_FIREBASE_${toEnvVarName(key)}`).join(', ')}\n` +
           'Please check your .env.local file and ensure all required values are set.'
         );
       }
