@@ -9,100 +9,35 @@ import type { Functions } from 'firebase/functions';
 // Next.js automatically loads NEXT_PUBLIC_* variables at build time
 // But we need to access them at runtime, so we use a function to get them
 function getFirebaseConfig() {
-  // Helper to safely get and trim env var
+  // Helper to safely get env var (NO TRIM - return as-is)
   const getEnv = (key: string, fallback?: string): string => {
     // Try multiple sources for environment variables
     let value: string | undefined;
-    let source = 'none';
     
-  if (typeof window === 'undefined') {
-    // Server-side: use process.env directly
+    if (typeof window === 'undefined') {
+      // Server-side: use process.env directly
       value = process.env[key];
-      source = 'process.env (server)';
     } else {
       // Client-side: try multiple sources
       // 1. process.env (Next.js embeds NEXT_PUBLIC_* vars at build time)
       // 2. window.__NEXT_DATA__.env (Next.js runtime injection)
       // 3. window.__NEXT_DATA__.runtimeConfig (if available)
-      if (process.env[key]) {
-        value = process.env[key];
-        source = 'process.env (client)';
-      } else if ((window as any).__NEXT_DATA__?.env?.[key]) {
-        value = (window as any).__NEXT_DATA__?.env?.[key];
-        source = 'window.__NEXT_DATA__.env';
-      } else if ((window as any).__NEXT_DATA__?.runtimeConfig?.[key]) {
-        value = (window as any).__NEXT_DATA__?.runtimeConfig?.[key];
-        source = 'window.__NEXT_DATA__.runtimeConfig';
-      } else if ((window as any).__ENV__?.[key]) {
-        value = (window as any).__ENV__?.[key];
-        source = 'window.__ENV__';
-      }
+      value = process.env[key] 
+        || (window as any).__NEXT_DATA__?.env?.[key]
+        || (window as any).__NEXT_DATA__?.runtimeConfig?.[key]
+        || (window as any).__ENV__?.[key];
     }
     
     if (!value && fallback) {
       value = fallback;
-      source = 'fallback';
-    }
-    
-    // Debug: log raw value before trimming (always log if value exists, especially if it might be empty after trim)
-    if (value && typeof window !== 'undefined') {
-      const rawValue = String(value);
-      const trimmed = rawValue.trim();
-      const isEmptyAfterTrim = trimmed.length === 0;
-      
-      // Always log if value exists but becomes empty after trim, or in development
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const shouldLog = isDevelopment || isEmptyAfterTrim;
-      
-      if (shouldLog) {
-        const debugKey = `__FIREBASE_DEBUG_${key}__`;
-        // Log only once per page load to avoid spam
-        if (!(window as any)[debugKey]) {
-          (window as any)[debugKey] = true;
-          
-          console.log(`[Firebase Config] Raw value for ${key} (from ${source}):`, {
-            exists: !!value,
-            type: typeof value,
-            rawLength: rawValue.length,
-            trimmedLength: trimmed.length,
-            isEmptyAfterTrim,
-            first50Chars: JSON.stringify(rawValue.substring(0, Math.min(50, rawValue.length))),
-            first50CharCodes: Array.from(rawValue.substring(0, Math.min(50, rawValue.length))).map(c => c.charCodeAt(0)),
-            hasNewlines: rawValue.includes('\n') || rawValue.includes('\r'),
-            hasOnlyWhitespace: /^\s*$/.test(rawValue),
-            rawValuePreview: rawValue.length < 100 ? rawValue : `[${rawValue.length} chars, first 50: ${rawValue.substring(0, 50)}]`,
-            trimmedPreview: trimmed.length < 100 ? trimmed : `[${trimmed.length} chars]`,
-            // Show actual char codes for first few chars to identify invisible characters
-            charCodes: Array.from(rawValue.substring(0, Math.min(20, rawValue.length))).map((c, i) => ({
-              index: i,
-              char: c,
-              code: c.charCodeAt(0),
-              isWhitespace: /\s/.test(c),
-            })),
-          });
-        }
-      }
-    }
-    
-    // Debug: log if value doesn't exist (only in development or if we're debugging)
-    if (!value && typeof window !== 'undefined') {
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const debugKey = `__FIREBASE_DEBUG_MISSING_${key}__`;
-      if (isDevelopment && !(window as any)[debugKey]) {
-        (window as any)[debugKey] = true;
-        console.warn(`[Firebase Config] Missing value for ${key} (checked ${source})`);
-      }
     }
     
     if (!value) {
       return '';
     }
     
-    // Ensure it's a string and trim whitespace/newlines
-    const strValue = String(value).trim();
-    
-    // Remove any trailing newlines or carriage returns
-    return strValue.replace(/\r?\n$/, '').trim();
+    // Return as string, NO TRIM - keep original value
+    return String(value);
   };
 
   const config = {
@@ -203,9 +138,9 @@ async function initializeFirebase(): Promise<void> {
       // Get config at runtime (Next.js embeds NEXT_PUBLIC_* vars at build time)
       const config = getFirebaseConfig();
 
-      // Validate config
+      // Validate config (NO TRIM - check as-is)
       const required = ['apiKey', 'authDomain', 'projectId', 'messagingSenderId', 'appId'];
-      const missing = required.filter(key => !config[key as keyof typeof config] || String(config[key as keyof typeof config]).trim() === '');
+      const missing = required.filter(key => !config[key as keyof typeof config] || String(config[key as keyof typeof config]) === '');
       
       if (missing.length > 0) {
         // Convert camelCase to UPPER_SNAKE_CASE for environment variable names
