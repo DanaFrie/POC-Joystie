@@ -95,6 +95,14 @@ async function initializeFirebase(): Promise<void> {
       authInstance = getAuth(app);
       dbInstance = getFirestore(app);
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
+      
+      // Log config for debugging (without sensitive data)
+      console.log('[Firebase] Initialized with config:', {
+        projectId: config.projectId,
+        authDomain: config.authDomain,
+        hasApiKey: !!config.apiKey,
+        hasAppId: !!config.appId,
+      });
 
       // Initialize Storage (optional)
       try {
