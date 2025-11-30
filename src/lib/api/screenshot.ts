@@ -89,7 +89,7 @@ export async function processScreenshot(
     });
 
     // Check if the function call was successful
-    if (!result.data.success && result.data.error) {
+    if (result.data.error) {
       throw new Error(result.data.error);
     }
 
