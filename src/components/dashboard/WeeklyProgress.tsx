@@ -178,13 +178,28 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
         )}
         
         {/* Chart layout - separate container for axes, bars, and labels */}
-        <div className="px-4 pb-6">
+        <div className="px-4 pb-35">
           {/* Chart with Y-axis */}
           <div className="flex gap-2 w-full">
             {/* Bar chart area with reference line */}
             <div className="flex-1 relative">
               {/* Chart container - this is where bars are rendered, aligned with Y-axis */}
               <div className="relative" style={{ height: '200px' }}>
+                {/* Horizontal grid lines - aligned with Y-axis labels */}
+                {yAxisLabels.slice().reverse().map((label, index) => {
+                  const positionFromBottom = (label / maxHours) * 200;
+                  return (
+                    <div
+                      key={`grid-${index}`}
+                      className="absolute left-0 right-0 border-t border-gray-200 opacity-40 z-0 pointer-events-none"
+                      style={{
+                        bottom: `${positionFromBottom}px`,
+                        height: '0'
+                      }}
+                    />
+                  );
+                })}
+
                 {/* Reference line for goal - shared across all bars */}
                 {avgGoal > 0 && (
                   <div 

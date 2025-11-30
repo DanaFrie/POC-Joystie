@@ -6,7 +6,6 @@ import Image from 'next/image';
 import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
 import DayInfoModal from '@/components/dashboard/DayInfoModal';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
-import ReminderButton from '@/components/dashboard/ReminderButton';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import { createPushNotification, saveNotification, checkGoalMet } from '@/utils/notifications';
 import type { PushNotification } from '@/types/notifications';
@@ -529,6 +528,8 @@ export default function DashboardPage() {
               childName={dashboardData.child.name}
               childGender={dashboardData.child.gender}
               parentName={dashboardData.parent.name}
+              missingDays={dashboardData.week.filter(day => day.status === 'missing')}
+              uploadUrl={uploadUrl}
             />
           </div>
 
@@ -544,29 +545,6 @@ export default function DashboardPage() {
               onDayClick={handleDayClick}
         />
       </div>
-      
-          {/* Show reminder button for missing days */}
-          {dashboardData.week.some(day => day.status === 'missing') && (
-            <div className="mb-6 bg-[#FFFCF8] rounded-[18px] shadow-card p-4">
-              <h3 className="font-varela font-semibold text-base text-[#282743] mb-3">
-                ימים חסרים
-              </h3>
-              {dashboardData.week
-                .filter(day => day.status === 'missing')
-                .map((day, index) => (
-                  <div key={index} className="mb-3 last:mb-0">
-                    <p className="font-varela text-sm text-[#282743] mb-2">
-                      {day.dayName} {day.date}
-                    </p>
-                    <ReminderButton
-                      day={day}
-                      childName={dashboardData.child.name}
-                      uploadUrl={uploadUrl}
-                    />
-                  </div>
-                ))}
-            </div>
-          )}
 
           {/* Day Info Modal */}
           {showApprovalModal && selectedDay && (
@@ -684,6 +662,8 @@ export default function DashboardPage() {
                 childName={dashboardData.child.name}
                 childGender={dashboardData.child.gender}
                 parentName={dashboardData.parent.name}
+                missingDays={dashboardData.week.filter(day => day.status === 'missing')}
+                uploadUrl={uploadUrl}
               />
             </div>
 
@@ -698,29 +678,6 @@ export default function DashboardPage() {
                 onDayClick={handleDayClick}
               />
             </div>
-
-            {/* Show reminder button for missing days */}
-            {dashboardData.week.some(day => day.status === 'missing') && (
-              <div className="mt-6 bg-[#FFFCF8] rounded-[18px] shadow-card p-4">
-                <h3 className="font-varela font-semibold text-base text-[#282743] mb-3">
-                  ימים חסרים
-                </h3>
-                {dashboardData.week
-                  .filter(day => day.status === 'missing')
-                  .map((day, index) => (
-                    <div key={index} className="mb-3 last:mb-0">
-                      <p className="font-varela text-sm text-[#282743] mb-2">
-                        {day.dayName} {day.date}
-                      </p>
-                      <ReminderButton
-                        day={day}
-                        childName={dashboardData.child.name}
-                        uploadUrl={uploadUrl}
-                      />
-                    </div>
-                  ))}
-              </div>
-            )}
 
             {/* Day Info Modal */}
             {showApprovalModal && selectedDay && (
