@@ -17,69 +17,6 @@ import { getActiveChallenge } from '@/lib/api/challenges';
 import { approveUpload, rejectUpload, getUploadByDate } from '@/lib/api/uploads';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange, isAuthenticated } from '@/utils/auth';
 
-// Helper function to generate current week data - deterministic (no random)
-function generateCurrentWeek(): WeekDay[] {
-  const today = new Date();
-  const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  
-  // Find last Sunday (start of week)
-  const lastSunday = new Date(today);
-  lastSunday.setDate(today.getDate() - currentDay);
-  
-  const dayNames = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
-  const week: WeekDay[] = [];
-  
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(lastSunday);
-    day.setDate(lastSunday.getDate() + i);
-    
-    const dateStr = `${String(day.getDate()).padStart(2, '0')}/${String(day.getMonth() + 1).padStart(2, '0')}`;
-    const dayName = dayNames[i];
-    
-    // Determine status based on day - deterministic (based on day index)
-    let status: WeekDay['status'] = 'future';
-    if (i < currentDay) {
-      // Past days - alternate between success and warning for demo (deterministic)
-      status = i % 2 === 0 ? 'success' : 'warning';
-    } else if (i === currentDay) {
-      // Today - pending
-      status = 'pending';
-    } else {
-      // Future days
-      status = 'future';
-    }
-    
-    // Saturday is redemption day (index 6)
-    const isRedemptionDay = i === 6; // Saturday (ש׳) - יום הפדיון
-    
-    // Mock data for past days - deterministic values
-    const screenTimeGoal = 3;
-    const screenTimeUsed = i < currentDay 
-      ? status === 'success' 
-        ? 2.5 + (i * 0.1) // 2.5, 2.6, 2.7, etc.
-        : 3.0 + (i * 0.1) // 3.0, 3.1, 3.2, etc.
-      : 0;
-    
-    const dailyBudget = 12.9;
-    const hourlyRate = screenTimeGoal > 0 ? dailyBudget / screenTimeGoal : 0;
-    const coinsEarned = i < currentDay && screenTimeUsed > 0
-      ? screenTimeUsed * hourlyRate
-      : 0;
-    
-    week.push({
-      dayName,
-      date: dateStr,
-      status,
-      coinsEarned,
-      screenTimeUsed,
-      screenTimeGoal,
-      isRedemptionDay
-    });
-  }
-  
-  return week;
-}
-
 // Empty initial state - will be populated from Firestore only
 const emptyDashboardState: DashboardState = {
   parent: {
@@ -231,7 +168,6 @@ export default function DashboardPage() {
         
         console.log('[Dashboard] Got user ID:', userId);
         
-        // Try to load from Firestore - NO MOCK DATA FALLBACK
         const data = await getDashboardData(userId);
         
         if (data) {
@@ -258,8 +194,6 @@ export default function DashboardPage() {
         
         setError(err.message || 'שגיאה בטעינת נתוני הדשבורד. אנא רענן את הדף.');
         hasLoadedRef.current = false; // Allow retry on error
-        // NO FALLBACK - show error instead
-        // Don't set mock data - let user see the error
       } finally {
         setIsLoading(false);
       }
@@ -293,7 +227,6 @@ export default function DashboardPage() {
             setRedemptionUrl(redemption);
           }
         } else {
-          // Fallback for demo
           setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
           setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
         }
@@ -501,10 +434,10 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-transparent pb-24">
       {/* Mobile: Scrollable with side padding to show gradient */}
-      <div className="lg:hidden overflow-x-hidden px-2 py-8 overflow-y-visible w-full" style={{ border: 'none', outline: 'none' }}>
+      <div className="lg:hidden overflow-x-hidden px-2 py-4 overflow-y-visible w-full" style={{ border: 'none', outline: 'none' }}>
         <div className="w-full max-w-md mx-auto px-4 pb-0" style={{ border: 'none', outline: 'none' }}>
           {/* 1. היי, [שם הורה] עם פיגי בצד השמאלי */}
-          <div className="mb-3 relative flex items-center justify-between">
+          <div className="mb-2 relative flex items-center justify-between">
             <h1 className="font-varela font-semibold text-2xl text-[#262135]">
               היי, {dashboardData.parent.name}
             </h1>
@@ -632,9 +565,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Desktop: Layout */}
-      <div className="hidden lg:block lg:py-8">
+      <div className="hidden lg:block lg:py-4">
         {/* 1. היי, [שם הורה] עם פיגי בצד השמאלי */}
-        <div className="mb-3 relative flex items-center justify-between">
+        <div className="mb-2 relative flex items-center justify-between">
           <h1 className="font-varela font-semibold text-2xl text-[#262135]">
             היי, {dashboardData.parent.name}
           </h1>

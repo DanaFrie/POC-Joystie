@@ -178,7 +178,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
         )}
         
         {/* Chart layout - separate container for axes, bars, and labels */}
-        <div className="px-4 pb-35">
+        <div className="px-4 pb-28">
           {/* Chart with Y-axis */}
           <div className="flex gap-2 w-full">
             {/* Bar chart area with reference line */}

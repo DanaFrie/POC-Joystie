@@ -76,9 +76,9 @@ function ChildRedemptionContent() {
 
   // Get child and parent data - use state to avoid hydration mismatch
   const [childData, setChildData] = useState({
-    childName: 'יובל',
+    childName: '',
     childGender: 'boy' as 'boy' | 'girl',
-    parentName: 'דנה',
+    parentName: '',
     parentGender: 'female' as 'female' | 'male'
   });
 
@@ -97,10 +97,10 @@ function ChildRedemptionContent() {
 
         if (child && parent) {
           setChildData({
-            childName: child.name || 'יובל',
+            childName: child.name || '',
             childGender: child.gender || 'boy',
-            parentName: parent.firstName || 'דנה',
-            parentGender: parent.gender || 'female'
+            parentName: parent.firstName || '',
+            parentGender: (parent.gender === 'male' || parent.gender === 'female') ? parent.gender : 'female'
           });
         }
       } catch (e) {
@@ -255,7 +255,7 @@ function ChildRedemptionContent() {
   // Get parent name (אמא/אבא) from childData
   const getParentName = () => {
     const parentGender = childData.parentGender;
-    if (parentGender === 'female' || parentGender === 'אישה') {
+    if (parentGender === 'female') {
       return 'אמא';
     }
     return 'אבא';

@@ -21,22 +21,9 @@ export default function OnboardingPage() {
     updateLastActivity();
   }, [router]);
 
+  // Challenge existence will be determined from API when needed
   useEffect(() => {
-    const checkChallenge = () => {
-      if (typeof window === 'undefined') return;
-      const challengeMode = localStorage.getItem('challengeTestMode');
-      setChallengeExists(challengeMode === 'A');
-    };
-    
-    checkChallenge();
-    
-    window.addEventListener('storage', checkChallenge);
-    window.addEventListener('challengeTestModeChanged', checkChallenge);
-    
-    return () => {
-      window.removeEventListener('storage', checkChallenge);
-      window.removeEventListener('challengeTestModeChanged', checkChallenge);
-    };
+    setChallengeExists(false);
   }, []);
 
   const reasons = [

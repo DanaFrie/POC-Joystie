@@ -22,26 +22,12 @@ function OnboardingCompleteContent() {
   const getParentData = () => {
     try {
       if (typeof window !== 'undefined') {
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            return {
-              parentName: parsed.parent?.name || 'דנה',
-              parentGender: parsed.parent?.gender || 'female',
-              deviceType: parsed.challenge?.deviceType || 'ios'
-            };
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-        
         const challengeData = localStorage.getItem('challengeData');
         if (challengeData) {
           try {
             const parsed = JSON.parse(challengeData);
             return {
-              parentName: parsed.parentName || 'דנה',
+              parentName: parsed.parentName || '',
               parentGender: 'female', // Default, will be determined from name
               deviceType: parsed.deviceType || 'ios'
             };
@@ -55,7 +41,7 @@ function OnboardingCompleteContent() {
           try {
             const parsed = JSON.parse(signupData);
             return {
-              parentName: parsed.firstName || 'דנה',
+              parentName: parsed.firstName || '',
               parentGender: parsed.gender === 'female' ? 'female' : 'male',
               deviceType: 'ios' // Default
             };
@@ -68,7 +54,7 @@ function OnboardingCompleteContent() {
       // Ignore errors
     }
     return {
-      parentName: 'דנה',
+      parentName: '',
       parentGender: 'female',
       deviceType: 'ios'
     };
@@ -134,8 +120,6 @@ function OnboardingCompleteContent() {
   // Set challenge exists when onboarding is complete
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('challengeTestMode', 'A');
-      window.dispatchEvent(new Event('challengeTestModeChanged'));
     }
   }, []);
   

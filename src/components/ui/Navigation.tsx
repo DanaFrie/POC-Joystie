@@ -5,6 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearSession } from '@/utils/session';
+import { getActiveChallenge } from '@/lib/api/challenges';
+import { getCurrentUserId } from '@/utils/auth';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -13,38 +15,36 @@ export default function Navigation() {
   const [challengeExists, setChallengeExists] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Check for active challenge
   useEffect(() => {
-    const checkChallenge = () => {
-      if (typeof window === 'undefined') return;
-      // Check if challenge exists in localStorage
-      const challengeMode = localStorage.getItem('challengeTestMode');
-      setChallengeExists(challengeMode === 'A');
+    const checkChallenge = async () => {
+      try {
+        const userId = await getCurrentUserId();
+        if (userId) {
+          const challenge = await getActiveChallenge(userId);
+          setChallengeExists(!!challenge);
+        } else {
+          setChallengeExists(false);
+        }
+      } catch (error) {
+        console.error('Error checking challenge:', error);
+        setChallengeExists(false);
+      }
     };
-    
+
     checkChallenge();
-    
-    // Listen for storage changes
-    window.addEventListener('storage', checkChallenge);
-    window.addEventListener('challengeTestModeChanged', checkChallenge);
-    
-    return () => {
-      window.removeEventListener('storage', checkChallenge);
-      window.removeEventListener('challengeTestModeChanged', checkChallenge);
-    };
-  }, []);
+  }, [pathname]); // Re-check when pathname changes
 
   // Order based on challenge existence
-  // If challenge exists: לוח בקרה, עזרה, הגדרת אתגר, התנתק
-  // If no challenge: הגדרת אתגר, לוח בקרה, עזרה, התנתק
+  // If challenge exists: לוח בקרה, עזרה, התנתק (no הגדרת אתגר)
+  // If no challenge: הגדרת אתגר, עזרה, התנתק (no לוח בקרה)
   const orderedLinks = challengeExists
     ? [
         { href: '/dashboard', label: 'לוח בקרה', requiresChallenge: true },
-        { href: '/help', label: 'עזרה', requiresChallenge: false },
-        { href: '/onboarding', label: 'הגדרת אתגר', requiresChallenge: false }
+        { href: '/help', label: 'עזרה', requiresChallenge: false }
       ]
     : [
         { href: '/onboarding', label: 'הגדרת אתגר', requiresChallenge: false },
-        { href: '/dashboard', label: 'לוח בקרה', requiresChallenge: true },
         { href: '/help', label: 'עזרה', requiresChallenge: false }
       ];
 

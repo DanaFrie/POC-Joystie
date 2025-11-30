@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
@@ -56,6 +56,7 @@ function ChildUploadContent() {
   const [challengeStartDate, setChallengeStartDate] = useState<string>('');
   const [parentName, setParentName] = useState<string>('אמא');
   const [childGender, setChildGender] = useState<'boy' | 'girl'>('boy');
+  const hasInitializedDay = useRef(false);
 
   const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
@@ -134,12 +135,14 @@ function ChildUploadContent() {
     return days;
   }, []);
 
-  // Set default selected day to yesterday
+  // Set default selected day to yesterday (only once)
   useEffect(() => {
-    if (selectableDays.length > 0 && !selectedDay) {
+    if (!hasInitializedDay.current && selectableDays.length > 0) {
+      hasInitializedDay.current = true;
       setSelectedDay(selectableDays[0]);
     }
-  }, [selectableDays, selectedDay]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectableDays.length]); // Only run when selectableDays becomes available
 
   // Check if selected day is Friday and show warning
   useEffect(() => {
@@ -159,49 +162,21 @@ function ChildUploadContent() {
         let foundApproved = false;
         let approvedInfo: { date: string; dayName: string; isApproved?: boolean } | null = null;
         
-        // Check dashboard test data for approved days
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            const week = parsed.week || [];
-            
-            // Find if there's an approved day matching the selected day
-            const approvedDay = week.find((day: any) => 
-              day.date === selectedDay.dateStr && 
-              day.parentAction === 'approved'
-            );
-            
-            if (approvedDay) {
-              foundApproved = true;
-              approvedInfo = {
-                date: approvedDay.date,
-                dayName: approvedDay.dayName || selectedDay.dayName,
-                isApproved: true
-              };
-            }
-          } catch (e) {
-            // Ignore parse errors
+        // Check if there's an existing upload in childUploads
+        try {
+          const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
+          const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
+          
+          if (existingUpload) {
+            foundApproved = true;
+            approvedInfo = {
+              date: selectedDay.dateStr,
+              dayName: selectedDay.dayName,
+              isApproved: false
+            };
           }
-        }
-        
-        // Also check if there's an existing upload in childUploads
-        if (!foundApproved) {
-          try {
-            const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-            const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
-            
-            if (existingUpload) {
-              foundApproved = true;
-              approvedInfo = {
-                date: selectedDay.dateStr,
-                dayName: selectedDay.dayName,
-                isApproved: false
-              };
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
+        } catch (e) {
+          // Ignore parse errors
         }
         
         if (foundApproved && approvedInfo) {
@@ -219,22 +194,52 @@ function ChildUploadContent() {
     }
   }, [selectedDay]);
 
-  // Get challenge data from localStorage (mock - in real app this would come from API)
+  // Load parent and child data when challenge not started
+  useEffect(() => {
+    const loadData = async () => {
+      if (!challengeNotStarted || !parentId) return;
+      
+      try {
+        const challenge = await getActiveChallenge(parentId);
+        if (!challenge) return;
+
+        const childIdToUse = childId || challenge.childId;
+        if (childIdToUse) {
+          const child = await getChild(childIdToUse);
+          if (child) {
+            setChildGender(child.gender || 'boy');
+          }
+        }
+
+        const parent = await getUser(parentId);
+        if (parent) {
+          const name = parent.firstName || '';
+          // Determine if parent is mom or dad
+          if (name.endsWith('ה') || name.endsWith('ית')) {
+            setParentName('אמא');
+          } else {
+            setParentName('אבא');
+          }
+        }
+      } catch (e) {
+        console.error('Error loading data:', e);
+      }
+    };
+
+    loadData();
+  }, [challengeNotStarted, parentId, childId]);
+
+  // Get challenge data from localStorage
   const getChallengeData = () => {
-    // Try to get from localStorage or use defaults
     const challengeData = {
       dailyScreenTimeGoal: 3, // hours
       dailyBudget: 12.9, // שקלים
       parentName: 'אמא' // default
     };
 
-    // Try to get parent name from localStorage or mock data
     try {
-      // In a real app, this would come from API/backend
-      // For now, we'll try to get from localStorage or use mock data
       let parentNameFromStorage = '';
       
-      // Try to get from localStorage first
       if (typeof window !== 'undefined') {
         const storedChallenge = localStorage.getItem('challengeData');
         if (storedChallenge) {
@@ -247,13 +252,6 @@ function ChildUploadContent() {
         }
       }
       
-      // If not found, use mock data (from dashboard)
-      if (!parentNameFromStorage) {
-        parentNameFromStorage = 'דנה'; // Default from dashboard mock data
-      }
-      
-      // Simple heuristic: if name ends with 'ה' or 'ית', it's likely female
-      // In a real app, this would be stored explicitly
       if (parentNameFromStorage && typeof parentNameFromStorage === 'string') {
         const name = parentNameFromStorage.trim();
         if (name.endsWith('ה') || name.endsWith('ית')) {
@@ -666,28 +664,8 @@ function ChildUploadContent() {
     try {
       if (typeof window !== 'undefined') {
         console.log('[Upload] Checking for existing uploads...');
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            const week = parsed.week || [];
-            
-            const approvedDay = week.find((day: any) => 
-              day.date === selectedDay.dateStr && 
-              day.parentAction === 'approved'
-            );
-            
-            if (approvedDay) {
-              console.warn('[Upload] Found approved upload for this day, blocking submission');
-              alert(`שימו לב: נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDay.dayName || selectedDay.dayName}, ${approvedDay.date}.\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
-              return;
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
         
-        // Also check if there's an existing upload in childUploads
+        // Check if there's an existing upload in childUploads
         const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
         const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
         
@@ -832,15 +810,15 @@ function ChildUploadContent() {
       const userId = await getCurrentUserId();
       const uploadChallengeId = challengeId || localStorage.getItem('currentChallengeId') || 'demo-challenge';
       const uploadParentId = parentId || localStorage.getItem('currentParentId') || userId;
-      const uploadChildId = childId || userId;
+      const uploadChildId = childId || userId || 'demo-child';
       
-      if (uploadChallengeId && uploadParentId) {
+      if (uploadChallengeId && uploadParentId && uploadChildId) {
         
         // Upload screenshot to Cloud Storage
         let screenshotUrl = screenshotPreview;
         let screenshotStoragePath = '';
         try {
-          if (screenshot) {
+          if (screenshot && userId) {
             const storageResult = await uploadScreenshot(
               screenshot,
               userId,
@@ -868,7 +846,7 @@ function ChildUploadContent() {
           coinsEarned: coinsEarnedRounded,
           coinsMaxPossible: coinsMaxPossible,
           success: success,
-          screenshotUrl: screenshotUrl,
+          screenshotUrl: screenshotUrl || undefined,
           screenshotStoragePath: screenshotStoragePath,
           requiresApproval: true,
           uploadedAt: new Date().toISOString(),
@@ -921,18 +899,7 @@ function ChildUploadContent() {
 
   // Get child gender for pronouns
   const getChildGender = () => {
-    try {
-      if (typeof window !== 'undefined') {
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          const parsed = JSON.parse(dashboardData);
-          return parsed.child?.gender || 'boy';
-        }
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-    return 'boy';
+    return 'boy'; // Default, will be loaded from API
   };
 
   // If Friday was uploaded, redirect immediately to redemption (don't show result screen)
@@ -1052,48 +1019,6 @@ function ChildUploadContent() {
       </div>
     );
   }
-
-  // Load parent and child data when challenge not started
-  useEffect(() => {
-    const loadData = async () => {
-      if (!challengeNotStarted || !parentId) return;
-      
-      try {
-        const challenge = await getActiveChallenge(parentId);
-        if (!challenge) return;
-
-        const childIdToUse = childId || challenge.childId;
-        if (childIdToUse) {
-          const child = await getChild(childIdToUse);
-          if (child) {
-            setChildGender(child.gender || 'boy');
-          }
-        }
-
-        const parent = await getUser(parentId);
-        if (parent) {
-          const name = parent.firstName || 'דנה';
-          // Determine if parent is mom or dad
-          if (name.endsWith('ה') || name.endsWith('ית')) {
-            setParentName('אמא');
-          } else {
-            setParentName('אבא');
-          }
-        }
-      } catch (e) {
-        console.error('Error loading data:', e);
-      }
-    };
-
-    loadData();
-  }, [challengeNotStarted, parentId, childId]);
-
-  // Fix scroll position to 0 when challenge not started
-  useEffect(() => {
-    if (challengeNotStarted) {
-      window.scrollTo(0, 0);
-    }
-  }, [challengeNotStarted]);
 
   // Show message if challenge hasn't started yet
   if (challengeNotStarted) {

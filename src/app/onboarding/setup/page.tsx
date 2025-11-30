@@ -215,7 +215,7 @@ export default function OnboardingSetupPage() {
 
         // Get user data to get parent name
         const user = await getUser(userId);
-        const parentName = user?.firstName || 'דנה';
+        const parentName = user?.firstName || '';
 
         // Calculate budgets
         const selectedBudget = formData.weeklyBudget === 'custom' 

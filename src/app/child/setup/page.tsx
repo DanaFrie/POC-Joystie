@@ -39,7 +39,7 @@ function ChildSetupContent() {
           try {
             const parsed = JSON.parse(storedChallenge);
             return {
-              parentName: parsed.parentName || 'דנה',
+              parentName: parsed.parentName || '',
               weeklyBudget: parsed.weeklyBudget || 90,
               dailyBudget: parsed.dailyBudget || 12.9,
               dailyScreenTimeGoal: parsed.dailyScreenTimeGoal || 3,
@@ -50,22 +50,6 @@ function ChildSetupContent() {
           }
         }
         
-        // Try to get from dashboard test data
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            return {
-              parentName: parsed.parent?.name || 'דנה',
-              weeklyBudget: parsed.challenge?.weeklyBudget || 90,
-              dailyBudget: parsed.challenge?.dailyBudget || 12.9,
-              dailyScreenTimeGoal: parsed.challenge?.dailyScreenTimeGoal || 3,
-              deviceType: parsed.challenge?.deviceType || 'ios'
-            };
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
       }
     } catch (e) {
       // Ignore errors
@@ -73,7 +57,7 @@ function ChildSetupContent() {
     
     // Default values
     return {
-      parentName: 'דנה',
+      parentName: '',
       weeklyBudget: 90,
       dailyBudget: 12.9,
       dailyScreenTimeGoal: 3,
