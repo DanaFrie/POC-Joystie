@@ -11,37 +11,102 @@ import type { Functions } from 'firebase/functions';
 function getFirebaseConfig() {
   // Helper to safely get and trim env var
   const getEnv = (key: string, fallback?: string): string => {
-    const value = process.env[key] || fallback || '';
-    return typeof value === 'string' ? value.trim() : '';
+    // Try multiple sources for environment variables
+    let value: string | undefined;
+    
+    if (typeof window === 'undefined') {
+      // Server-side: use process.env directly
+      value = process.env[key];
+    } else {
+      // Client-side: try multiple sources
+      // 1. process.env (Next.js embeds NEXT_PUBLIC_* vars at build time)
+      // 2. window.__NEXT_DATA__.env (Next.js runtime injection)
+      // 3. window.__NEXT_DATA__.runtimeConfig (if available)
+      value = process.env[key] 
+        || (window as any).__NEXT_DATA__?.env?.[key]
+        || (window as any).__NEXT_DATA__?.runtimeConfig?.[key]
+        || (window as any).__ENV__?.[key]; // Some deployment platforms inject here
+    }
+    
+    if (!value && fallback) {
+      value = fallback;
+    }
+    
+    if (!value) {
+      return '';
+    }
+    
+    // Ensure it's a string and trim whitespace/newlines
+    const strValue = String(value).trim();
+    
+    // Remove any trailing newlines or carriage returns
+    return strValue.replace(/\r?\n$/, '').trim();
   };
 
-  if (typeof window === 'undefined') {
-    // Server-side: use process.env directly
-    return {
-      apiKey: getEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
-      authDomain: getEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
-      projectId: getEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
-      storageBucket: getEnv('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET') || '',
-      messagingSenderId: getEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
-      appId: getEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
-    };
-  } else {
-    // Client-side: Next.js injects these into window.__NEXT_DATA__ or we can access them directly
-    // In Next.js, NEXT_PUBLIC_* vars are embedded at build time
-    const getClientEnv = (key: string): string => {
-      const value = process.env[key] || (window as any).__NEXT_DATA__?.env?.[key] || '';
-      return typeof value === 'string' ? value.trim() : '';
-    };
+  const config = {
+    apiKey: getEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
+    authDomain: getEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
+    projectId: getEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
+    storageBucket: getEnv('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET') || '',
+    messagingSenderId: getEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
+    appId: getEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
+  };
+  
+  // Debug logging (only in development or if config is missing)
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const hasMissingConfig = !config.apiKey || !config.authDomain || !config.projectId;
+  
+  if (isDevelopment || hasMissingConfig) {
+    const isServer = typeof window === 'undefined';
+    const logKey = isServer ? '__FIREBASE_SERVER_CONFIG_LOGGED__' : '__FIREBASE_CLIENT_CONFIG_LOGGED__';
+    const globalObj = isServer ? (global as any) : (window as any);
     
-    return {
-      apiKey: getClientEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
-      authDomain: getClientEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
-      projectId: getClientEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
-      storageBucket: getClientEnv('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET') || '',
-      messagingSenderId: getClientEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
-      appId: getClientEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
-    };
+    if (!globalObj[logKey]) {
+      globalObj[logKey] = true;
+      
+      const debugInfo: any = {
+        hasApiKey: !!config.apiKey,
+        hasAuthDomain: !!config.authDomain,
+        hasProjectId: !!config.projectId,
+        hasMessagingSenderId: !!config.messagingSenderId,
+        hasAppId: !!config.appId,
+        environment: isServer ? 'server' : 'client',
+      };
+      
+      if (isServer) {
+        debugInfo.rawProcessEnv = {
+          hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+          hasAuthDomain: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          hasProjectId: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+          apiKeyLength: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.length || 0,
+        };
+      } else {
+        const windowData = (window as any).__NEXT_DATA__;
+        debugInfo.sources = {
+          processEnv: {
+            hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+            hasAuthDomain: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          },
+          windowNextDataEnv: {
+            hasApiKey: !!windowData?.env?.NEXT_PUBLIC_FIREBASE_API_KEY,
+            hasAuthDomain: !!windowData?.env?.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          },
+          windowNextDataRuntimeConfig: {
+            hasApiKey: !!windowData?.runtimeConfig?.NEXT_PUBLIC_FIREBASE_API_KEY,
+            hasAuthDomain: !!windowData?.runtimeConfig?.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+          },
+        };
+      }
+      
+      if (hasMissingConfig) {
+        console.error('[Firebase Config] Missing environment variables:', debugInfo);
+      } else if (isDevelopment) {
+        console.log('[Firebase Config] Environment variables loaded:', debugInfo);
+      }
+    }
   }
+  
+  return config;
 }
 
 const firebaseConfig = getFirebaseConfig();
