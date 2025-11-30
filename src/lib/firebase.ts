@@ -15,8 +15,8 @@ function getFirebaseConfig() {
     let value: string | undefined;
     let source = 'none';
     
-    if (typeof window === 'undefined') {
-      // Server-side: use process.env directly
+  if (typeof window === 'undefined') {
+    // Server-side: use process.env directly
       value = process.env[key];
       source = 'process.env (server)';
     } else {
@@ -44,30 +44,53 @@ function getFirebaseConfig() {
       source = 'fallback';
     }
     
-    // Debug: log raw value before trimming (always log in development, or if value exists but might be empty after trim)
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    
+    // Debug: log raw value before trimming (always log if value exists, especially if it might be empty after trim)
     if (value && typeof window !== 'undefined') {
-      const debugKey = `__FIREBASE_DEBUG_${key}__`;
-      if (!(window as any)[debugKey]) {
+      const rawValue = String(value);
+      const trimmed = rawValue.trim();
+      const isEmptyAfterTrim = trimmed.length === 0;
+      
+      // Always log if value exists but becomes empty after trim, or in development
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const shouldLog = isDevelopment || isEmptyAfterTrim;
+      
+      if (shouldLog) {
+        const debugKey = `__FIREBASE_DEBUG_${key}__`;
+        // Log only once per page load to avoid spam
+        if (!(window as any)[debugKey]) {
+          (window as any)[debugKey] = true;
+          
+          console.log(`[Firebase Config] Raw value for ${key} (from ${source}):`, {
+            exists: !!value,
+            type: typeof value,
+            rawLength: rawValue.length,
+            trimmedLength: trimmed.length,
+            isEmptyAfterTrim,
+            first50Chars: JSON.stringify(rawValue.substring(0, Math.min(50, rawValue.length))),
+            first50CharCodes: Array.from(rawValue.substring(0, Math.min(50, rawValue.length))).map(c => c.charCodeAt(0)),
+            hasNewlines: rawValue.includes('\n') || rawValue.includes('\r'),
+            hasOnlyWhitespace: /^\s*$/.test(rawValue),
+            rawValuePreview: rawValue.length < 100 ? rawValue : `[${rawValue.length} chars, first 50: ${rawValue.substring(0, 50)}]`,
+            trimmedPreview: trimmed.length < 100 ? trimmed : `[${trimmed.length} chars]`,
+            // Show actual char codes for first few chars to identify invisible characters
+            charCodes: Array.from(rawValue.substring(0, Math.min(20, rawValue.length))).map((c, i) => ({
+              index: i,
+              char: c,
+              code: c.charCodeAt(0),
+              isWhitespace: /\s/.test(c),
+            })),
+          });
+        }
+      }
+    }
+    
+    // Debug: log if value doesn't exist (only in development or if we're debugging)
+    if (!value && typeof window !== 'undefined') {
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const debugKey = `__FIREBASE_DEBUG_MISSING_${key}__`;
+      if (isDevelopment && !(window as any)[debugKey]) {
         (window as any)[debugKey] = true;
-        const rawValue = String(value);
-        const trimmed = rawValue.trim();
-        const isEmptyAfterTrim = trimmed.length === 0;
-        
-        console.log(`[Firebase Config] Raw value for ${key} (from ${source}):`, {
-          exists: !!value,
-          type: typeof value,
-          rawLength: rawValue.length,
-          trimmedLength: trimmed.length,
-          isEmptyAfterTrim,
-          first50Chars: JSON.stringify(rawValue.substring(0, 50)),
-          first50CharCodes: Array.from(rawValue.substring(0, Math.min(50, rawValue.length))).map(c => c.charCodeAt(0)),
-          hasNewlines: rawValue.includes('\n') || rawValue.includes('\r'),
-          hasOnlyWhitespace: /^\s*$/.test(rawValue),
-          rawValuePreview: rawValue.length < 100 ? rawValue : `[${rawValue.length} chars, first 50: ${rawValue.substring(0, 50)}]`,
-          trimmedPreview: trimmed.length < 100 ? trimmed : `[${trimmed.length} chars]`,
-        });
+        console.warn(`[Firebase Config] Missing value for ${key} (checked ${source})`);
       }
     }
     
@@ -118,8 +141,8 @@ function getFirebaseConfig() {
           hasAuthDomain: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
           hasProjectId: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
           apiKeyLength: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.length || 0,
-        };
-      } else {
+    };
+  } else {
         const windowData = (window as any).__NEXT_DATA__;
         debugInfo.sources = {
           processEnv: {
