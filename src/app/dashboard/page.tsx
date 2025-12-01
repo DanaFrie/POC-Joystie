@@ -6,6 +6,7 @@ import Image from 'next/image';
 import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
 import DayInfoModal from '@/components/dashboard/DayInfoModal';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
+import DaysSummaryModal from '@/components/dashboard/DaysSummaryModal';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import { createPushNotification, saveNotification, checkGoalMet } from '@/utils/notifications';
 import type { PushNotification } from '@/types/notifications';
@@ -204,6 +205,8 @@ export default function DashboardPage() {
   const [isChallengeOpen, setIsChallengeOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<WeekDay | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryDays, setSummaryDays] = useState<WeekDay[]>([]);
   const [uploadUrl, setUploadUrl] = useState<string>('');
   const [redemptionUrl, setRedemptionUrl] = useState<string>('');
 
@@ -252,9 +255,14 @@ export default function DashboardPage() {
     if (day.isRedemptionDay) {
       return;
     }
-    // All other days are clickable
+    // All other days are clickable - open single day modal
     setSelectedDay(day);
     setShowApprovalModal(true);
+  };
+
+  const handleOpenSummary = (days: WeekDay[]) => {
+    setSummaryDays(days);
+    setShowSummaryModal(true);
   };
 
   const handleApprove = async (dayDate: string) => {
@@ -271,7 +279,7 @@ export default function DashboardPage() {
       }
 
       // Find the upload for this date
-      const upload = await getUploadByDate(challenge.id, dayDate);
+      const upload = await getUploadByDate(challenge.id, dayDate, userId);
       if (!upload) {
         throw new Error('Upload not found for this date');
       }
@@ -327,7 +335,7 @@ export default function DashboardPage() {
       }
 
       // Find the upload for this date
-      const upload = await getUploadByDate(challenge.id, dayDate);
+      const upload = await getUploadByDate(challenge.id, dayDate, userId);
       if (!upload) {
         throw new Error('Upload not found for this date');
       }
@@ -463,6 +471,8 @@ export default function DashboardPage() {
               parentName={dashboardData.parent.name}
               missingDays={dashboardData.week.filter(day => day.status === 'missing')}
               uploadUrl={uploadUrl}
+              week={dashboardData.week}
+              onOpenSummary={handleOpenSummary}
             />
           </div>
 
@@ -479,7 +489,7 @@ export default function DashboardPage() {
         />
       </div>
 
-          {/* Day Info Modal */}
+          {/* Day Info Modal - Single day */}
           {showApprovalModal && selectedDay && (
             <DayInfoModal
               day={selectedDay}
@@ -494,6 +504,40 @@ export default function DashboardPage() {
               }}
             />
           )}
+
+            {/* Days Summary Modal - Multiple days */}
+            {showSummaryModal && summaryDays.length > 0 && (
+              <DaysSummaryModal
+                days={summaryDays}
+                childName={dashboardData.child.name}
+                childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
+                uploadUrl={uploadUrl}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDaysUpdated={(updatedDays) => {
+                  setSummaryDays(updatedDays);
+                  // Reload dashboard data to get updated state
+                  const reloadData = async () => {
+                    try {
+                      const userId = await getCurrentUserIdAsync();
+                      if (userId) {
+                        const refreshedData = await getDashboardData(userId);
+                        if (refreshedData) {
+                          setDashboardData(refreshedData);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error refreshing dashboard:', error);
+                    }
+                  };
+                  reloadData();
+                }}
+                onClose={() => {
+                  setShowSummaryModal(false);
+                  setSummaryDays([]);
+                }}
+              />
+            )}
 
           {/* 6. תיבה עם פירוט נתוני האתגר - Collapsible */}
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card overflow-hidden mb-0" style={{ boxShadow: 'none' }}>
@@ -597,6 +641,8 @@ export default function DashboardPage() {
                 parentName={dashboardData.parent.name}
                 missingDays={dashboardData.week.filter(day => day.status === 'missing')}
                 uploadUrl={uploadUrl}
+                week={dashboardData.week}
+                onOpenSummary={handleOpenSummary}
               />
             </div>
 
@@ -612,17 +658,52 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Day Info Modal */}
+            {/* Day Info Modal - Single day */}
             {showApprovalModal && selectedDay && (
               <DayInfoModal
                 day={selectedDay}
                 childName={dashboardData.child.name}
+                childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onClose={() => {
                   setShowApprovalModal(false);
                   setSelectedDay(null);
+                }}
+              />
+            )}
+
+            {/* Days Summary Modal - Multiple days */}
+            {showSummaryModal && summaryDays.length > 0 && (
+              <DaysSummaryModal
+                days={summaryDays}
+                childName={dashboardData.child.name}
+                childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
+                uploadUrl={uploadUrl}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onDaysUpdated={(updatedDays) => {
+                  setSummaryDays(updatedDays);
+                  // Reload dashboard data to get updated state
+                  const reloadData = async () => {
+                    try {
+                      const userId = await getCurrentUserIdAsync();
+                      if (userId) {
+                        const refreshedData = await getDashboardData(userId);
+                        if (refreshedData) {
+                          setDashboardData(refreshedData);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error refreshing dashboard:', error);
+                    }
+                  };
+                  reloadData();
+                }}
+                onClose={() => {
+                  setShowSummaryModal(false);
+                  setSummaryDays([]);
                 }}
               />
             )}

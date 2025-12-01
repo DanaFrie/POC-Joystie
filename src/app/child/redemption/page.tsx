@@ -193,7 +193,8 @@ function ChildRedemptionContent() {
           const fridayDateStr = `${String(fridayDate.getDate()).padStart(2, '0')}/${String(fridayDate.getMonth() + 1).padStart(2, '0')}`;
           
           const { getUploadByDate } = await import('@/lib/api/uploads');
-          const fridayUpload = await getUploadByDate(challenge.id, fridayDateStr);
+          // Pass userId as parentId for security rules
+          const fridayUpload = await getUploadByDate(challenge.id, fridayDateStr, userId);
           
           if (fridayUpload && fridayUpload.parentAction === 'approved') {
             // Cancel auto-approve if parent already approved

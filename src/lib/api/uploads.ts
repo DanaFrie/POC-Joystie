@@ -107,20 +107,37 @@ export async function getUploadsByChallenge(
 
 /**
  * Get upload for a specific date
+ * Note: parentId is required for Firestore security rules validation
  */
 export async function getUploadByDate(
   challengeId: string,
-  date: string
+  date: string,
+  parentId?: string
 ): Promise<FirestoreDailyUpload | null> {
   try {
     const { collection, query, where, getDocs } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
     const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    const q = query(
-      uploadsRef,
-      where('challengeId', '==', challengeId),
-      where('date', '==', date)
-    );
+    
+    // Build query - must include parentId for security rules
+    let q;
+    if (parentId) {
+      // Query with both challengeId and parentId (required for security rules)
+      q = query(
+        uploadsRef,
+        where('challengeId', '==', challengeId),
+        where('parentId', '==', parentId),
+        where('date', '==', date)
+      );
+    } else {
+      // Fallback: query by challengeId and date only (may fail if security rules require parentId)
+      q = query(
+        uploadsRef,
+        where('challengeId', '==', challengeId),
+        where('date', '==', date)
+      );
+    }
+    
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {

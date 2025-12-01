@@ -87,16 +87,8 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
       };
     }
 
-    // Check if challenge is active
-    if (!challenge.isActive) {
-      return {
-        isValid: false,
-        error: 'האתגר לא פעיל. בדוק עם ההורה שלך.',
-        parentId,
-        childId,
-        challengeId: challenge.id
-      };
-    }
+    // Check if challenge is active - but allow access if there are days that need upload/approval
+    // We'll check this after checking the date range
 
     // Check if we're within the challenge week
     const today = new Date();
@@ -118,10 +110,50 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
       };
     }
     
-    if (today > endDate) {
+    // Helper function to check if there are days that need upload/approval
+    const checkDaysNeedingAction = async (): Promise<boolean> => {
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        if (dashboardData && dashboardData.week) {
+          // Check if there are days that need upload or approval
+          const daysNeedingAction = dashboardData.week.filter(day => {
+            if (day.isRedemptionDay) return false;
+            // Days that need upload
+            if (day.status === 'missing' || day.status === 'pending') return true;
+            // Days that need approval
+            if (day.status === 'awaiting_approval' || day.status === 'rejected') return true;
+            if (day.requiresApproval && !day.parentAction) return true;
+            return false;
+          });
+          return daysNeedingAction.length > 0;
+        }
+      } catch (error) {
+        console.error('Error checking days status:', error);
+      }
+      return false;
+    };
+
+    // If challenge ended or is not active, check if there are days that still need upload/approval
+    if (today > endDate || !challenge.isActive) {
+      const hasDaysNeedingAction = await checkDaysNeedingAction();
+      
+      if (hasDaysNeedingAction) {
+        // Allow access if there are days that need action
+        return {
+          isValid: true,
+          parentId,
+          childId: challenge.childId,
+          challengeId: challenge.id
+        };
+      }
+      
+      // No days need action, challenge is truly finished
       return {
         isValid: false,
-        error: 'האתגר הסתיים. בדוק עם ההורה שלך.',
+        error: today > endDate 
+          ? 'האתגר הסתיים. בדוק עם ההורה שלך.'
+          : 'האתגר לא פעיל. בדוק עם ההורה שלך.',
         parentId,
         childId,
         challengeId: challenge.id

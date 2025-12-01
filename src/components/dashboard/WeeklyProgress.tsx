@@ -14,32 +14,32 @@ interface WeeklyProgressProps {
 }
 
 const statusConfig = {
-  success: { icon: '✅', borderColor: '#000000', bg: 'bg-[#FFFCF8]' }, // אושר ועמד ביעד
-  warning: { icon: '❌', borderColor: '#ffc107', bg: 'bg-[#FFFCF8]' }, // אושר ולא עמד ביעד
-  pending: { icon: '⚠️', borderColor: '#007AFF', bg: 'bg-[#FFFCF8]' }, // ממתין להעלאה
-  missing: { icon: '⚠️', borderColor: '#dc3545', bg: 'bg-[#FFFCF8]' }, // נדרשת תמונה להעלאה
-  future: { icon: '➖', borderColor: '#ddd', bg: 'bg-[#F6F6F6] opacity-50' },
-  redemption: { icon: null, borderColor: '#8bc34a', bg: 'bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD]' },
-  awaiting_approval: { icon: '⏳', borderColor: '#007AFF', bg: 'bg-[#BBE9FD] bg-opacity-30' }, // מחכה לאישור הורה
-  rejected: { icon: '🔄', borderColor: '#dc3545', bg: 'bg-[#FFE5E5] bg-opacity-30' }
+  success: { icon: '✅', borderColor: '#273143', bg: 'bg-[#FFFCF8]' }, // אושר ועמד ביעד
+  warning: { icon: '❌', borderColor: '#273143', bg: 'bg-[#FFFCF8]' }, // אושר ולא עמד ביעד
+  pending: { icon: '⚠️', borderColor: '#BBE9FD', bg: 'bg-[#FFFCF8]' }, // ממתין להעלאה
+  missing: { icon: '⚠️', borderColor: '#273143', bg: 'bg-[#FFFCF8]' }, // נדרשת תמונה להעלאה
+  future: { icon: '➖', borderColor: '#273143', bg: 'bg-[#FFFCF8] opacity-50' },
+  redemption: { icon: null, borderColor: '#E6F19A', bg: 'bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD]' },
+  awaiting_approval: { icon: '⏳', borderColor: '#BBE9FD', bg: 'bg-[#BBE9FD] bg-opacity-30' }, // מחכה לאישור הורה
+  rejected: { icon: '🔄', borderColor: '#273143', bg: 'bg-[#273143] bg-opacity-10' }
 };
 
 function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; onClick?: () => void }) {
   const config = statusConfig[day.status] || statusConfig.pending;
-  const isClickable = onClick !== undefined && !day.isRedemptionDay && (day.status === 'awaiting_approval' || day.requiresApproval);
+  const isClickable = onClick !== undefined && !day.isRedemptionDay && (day.status === 'awaiting_approval' || day.requiresApproval || day.status === 'missing' || day.status === 'pending' || day.status === 'success' || day.status === 'warning');
   
   // Calculate bar height as percentage of max hours
   const barHeightPercent = maxHours > 0 ? (day.screenTimeUsed / maxHours) * 100 : 0;
   
-  // Determine bar color based on status
+  // Determine bar color based on status - using app color palette
   const getBarColor = () => {
     if (day.isRedemptionDay) return 'bg-gradient-to-t from-[#E6F19A] to-[#BBE9FD]';
-    if (day.status === 'success') return 'bg-green-500';
-    if (day.status === 'warning') return 'bg-yellow-500';
-    if (day.status === 'awaiting_approval' || day.requiresApproval) return 'bg-blue-400';
-    if (day.status === 'rejected') return 'bg-red-400';
-    if (day.status === 'pending' || day.status === 'missing') return 'bg-gray-400';
-    return 'bg-gray-300';
+    if (day.status === 'success') return 'bg-[#E6F19A]'; // Light yellow-green for success
+    if (day.status === 'warning') return 'bg-[#E6F19A] opacity-70'; // Lighter version for warning
+    if (day.status === 'awaiting_approval' || day.requiresApproval) return 'bg-[#BBE9FD]'; // Light blue from palette
+    if (day.status === 'rejected') return 'bg-[#273143] opacity-50'; // Dark blue-gray from palette
+    if (day.status === 'pending' || day.status === 'missing') return 'bg-[#273143] opacity-30'; // Very light dark blue-gray
+    return 'bg-[#273143] opacity-20';
   };
 
   return (
@@ -60,11 +60,10 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
             title={`${formatNumber(day.screenTimeUsed)} שעות`}
           />
         ) : day.isRedemptionDay ? (
-          <div className="w-3/4 h-full rounded-t-lg bg-gradient-to-t from-[#E6F19A] to-[#BBE9FD] flex items-center justify-center" style={{ height: '200px' }}>
-            <span className="text-2xl">🎉</span>
+          <div className="w-3/4 h-full rounded-t-lg bg-gradient-to-t from-[#E6F19A] to-[#BBE9FD]" style={{ height: '200px' }}>
           </div>
         ) : (
-          <div className="w-3/4 h-1 rounded-t-lg bg-gray-200" />
+          <div className="w-3/4 h-1 rounded-t-lg bg-[#273143] opacity-20" />
         )}
       </div>
 
@@ -128,12 +127,19 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
     return sum;
   }, 0);
 
-  // Calculate goal line percent - use the first day with a goal > 0, or average of days with goals
-  const daysWithGoals = week.filter(day => (day.screenTimeGoal || 0) > 0);
+  // Calculate goal line percent - use average of days with goals, excluding Saturday (redemption day)
+  const daysWithGoals = week.filter(day => (day.screenTimeGoal || 0) > 0 && !day.isRedemptionDay);
   const avgGoal = daysWithGoals.length > 0 
     ? daysWithGoals.reduce((sum, day) => sum + (day.screenTimeGoal || 0), 0) / daysWithGoals.length
     : week[0]?.screenTimeGoal || 3; // fallback to 3 hours if no goals found
   const goalLinePercent = maxHours > 0 ? (avgGoal / maxHours) * 100 : 0;
+
+  // Calculate average line percent - use average of actual screen time used, excluding Saturday (redemption day) and days with no data
+  const daysWithUsage = week.filter(day => (day.screenTimeUsed || 0) > 0 && !day.isRedemptionDay);
+  const avgUsage = daysWithUsage.length > 0 
+    ? daysWithUsage.reduce((sum, day) => sum + (day.screenTimeUsed || 0), 0) / daysWithUsage.length
+    : 0;
+  const avgLinePercent = maxHours > 0 && avgUsage > 0 ? (avgUsage / maxHours) * 100 : 0;
 
   // Generate Y-axis labels (hours)
   const generateYAxisLabels = () => {
@@ -191,7 +197,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
                   return (
                     <div
                       key={`grid-${index}`}
-                      className="absolute left-0 right-0 border-t border-gray-200 opacity-40 z-0 pointer-events-none"
+                      className="absolute left-0 right-0 border-t border-[#273143] opacity-20 z-0 pointer-events-none"
                       style={{
                         bottom: `${positionFromBottom}px`,
                         height: '0'
@@ -200,15 +206,27 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
                   );
                 })}
 
-                {/* Reference line for goal - shared across all bars */}
+                {/* Reference line for goal - shared across all bars - solid and dark */}
                 {avgGoal > 0 && (
                   <div 
-                    className="absolute left-0 right-0 border-t-2 border-dashed border-[#273143] opacity-60 z-10 pointer-events-none"
+                    className="absolute left-0 right-0 border-t-2 border-[#654321] opacity-90 z-10 pointer-events-none"
                     style={{ 
                       bottom: `${(goalLinePercent / 100) * 200}px`,
                       height: '0'
                     }}
                     title={`יעד יומי: ${formatNumber(avgGoal)} שעות`}
+                  />
+                )}
+
+                {/* Reference line for average usage - shared across all bars - dashed and dark brown */}
+                {avgUsage > 0 && (
+                  <div 
+                    className="absolute left-0 right-0 border-t-2 border-dashed border-[#654321] opacity-90 z-10 pointer-events-none"
+                    style={{ 
+                      bottom: `${(avgLinePercent / 100) * 200}px`,
+                      height: '0'
+                    }}
+                    title={`ממוצע יומי: ${formatNumber(avgUsage)} שעות`}
                   />
                 )}
 
@@ -253,7 +271,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
 
         {/* Separator line - between chart layout and summary layout */}
         {childName && (
-          <div className="border-t border-gray-200"></div>
+          <div className="border-t border-[#273143] opacity-20"></div>
         )}
 
         {/* Weekly summary layout - separate container */}

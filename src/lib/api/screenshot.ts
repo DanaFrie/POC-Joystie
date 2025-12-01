@@ -76,12 +76,20 @@ export async function processScreenshot(
       targetDay: string;
     }, ProcessScreenshotResponse>(functions, 'processScreenshot');
 
-    // Call the Firebase Function
+    // Call the Firebase Function with timeout
     console.log('[Client] Calling Firebase Function: processScreenshot');
-    const result = await processScreenshotFn({
+    
+    // Add timeout to prevent hanging (60 seconds max)
+    const timeoutPromise = new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error('Screenshot processing timeout after 60 seconds')), 60000)
+    );
+    
+    const functionPromise = processScreenshotFn({
       imageData,
       targetDay,
     });
+    
+    const result = await Promise.race([functionPromise, timeoutPromise]);
 
     const elapsed = Date.now() - startTime;
     console.log(`[Client] Firebase Function response received (${elapsed}ms)`, {

@@ -180,28 +180,21 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-transparent pb-24">
       <div className="max-w-md mx-auto px-4 py-8 relative">
-        {/* Piggy Bank and Logo - פינה ימנית עליונה */}
-        <div className="absolute right-0 top-0 z-10 flex items-center gap-4">
-          <Image
-            src="/piggy-bank.png"
-            alt="Piggy Bank"
-            width={120}
-            height={120}
-            className="object-contain"
-            priority
-          />
+        {/* Logo - מרכז עליון */}
+        <div className="flex justify-center items-center mb-8 pt-4">
           <Image
             src="/logo-joystie.png"
             alt="Joystie Logo"
-            width={120}
-            height={40}
-            className="h-10 w-auto"
+            width={200}
+            height={67}
+            className="h-12 w-auto sm:h-16 md:h-20"
             style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
+            priority
           />
         </div>
 
         {/* Welcome message */}
-        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-24">
+        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
           <h1 className="font-varela font-semibold text-2xl text-[#262135] text-center">
             התחברות
           </h1>

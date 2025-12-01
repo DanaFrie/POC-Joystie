@@ -345,11 +345,12 @@ export async function getWeekData(challengeId: string, parentId?: string): Promi
  */
 export async function getTodayData(
   challengeId: string,
-  date: string
+  date: string,
+  parentId?: string
 ): Promise<FirestoreDailyUpload | null> {
   try {
     const { getUploadByDate } = await import('./uploads');
-    return await getUploadByDate(challengeId, date);
+    return await getUploadByDate(challengeId, date, parentId);
   } catch (error) {
     console.error('Error getting today data:', error);
     throw new Error('שגיאה בטעינת נתוני היום.');

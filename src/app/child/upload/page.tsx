@@ -47,6 +47,7 @@ function ChildUploadContent() {
   const [showApprovedWarning, setShowApprovedWarning] = useState(false);
   const [approvedDayInfo, setApprovedDayInfo] = useState<{ date: string; dayName: string; isApproved?: boolean } | null>(null);
   const [showFridayWarning, setShowFridayWarning] = useState(false);
+  const [lastDayToUpload, setLastDayToUpload] = useState<string | null>(null);
   const [urlValid, setUrlValid] = useState<boolean | null>(null);
   const [urlError, setUrlError] = useState<string>('');
   const [parentId, setParentId] = useState<string>('');
@@ -56,6 +57,7 @@ function ChildUploadContent() {
   const [challengeStartDate, setChallengeStartDate] = useState<string>('');
   const [parentName, setParentName] = useState<string>('אמא');
   const [childGender, setChildGender] = useState<'boy' | 'girl'>('boy');
+  const [weekDays, setWeekDays] = useState<any[]>([]);
   const hasInitializedDay = useRef(false);
 
   const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -100,42 +102,104 @@ function ChildUploadContent() {
     validateUrl();
   }, [token]);
 
-  // Generate list of selectable days (only past days - at least one day back)
-  const selectableDays = useMemo(() => {
-  const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const days: SelectableDay[] = [];
-    
-    // Start from yesterday (at least one day back)
-    for (let i = 1; i <= 7; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+  // Load week days from challenge
+  useEffect(() => {
+    const loadWeekDays = async () => {
+      if (!parentId) return;
       
-      const dateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const dayName = dayNames[date.getDay()];
-      
-      let displayText = '';
-      if (i === 1) {
-        displayText = 'אתמול';
-      } else if (i === 2) {
-        displayText = 'שלשום';
-      } else {
-        displayText = `${dayName}, ${dateStr}`;
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Filter days that:
+          // 1. Belong to the challenge (not redemption day)
+          // 2. Have passed (not future)
+          // 3. Haven't been uploaded yet (missing or pending status)
+          const availableDays = dashboardData.week
+            .filter(day => {
+              if (day.isRedemptionDay) return false;
+              
+              // Parse date string to Date object
+              const [dayNum, monthNum] = day.date.split('/').map(Number);
+              const currentYear = new Date().getFullYear();
+              const dayDate = new Date(currentYear, monthNum - 1, dayNum);
+              dayDate.setHours(0, 0, 0, 0);
+              
+              // Check if day has passed
+              if (dayDate > today) return false;
+              
+              // Check if day hasn't been uploaded yet OR was rejected (allows re-upload)
+              return day.status === 'missing' || day.status === 'pending' || day.status === 'rejected';
+            })
+            .map(day => {
+              // Parse date string to Date object (already parsed in filter, but need it here too)
+              const [dayNum, monthNum] = day.date.split('/').map(Number);
+              const currentYear = new Date().getFullYear();
+              const date = new Date(currentYear, monthNum - 1, dayNum);
+              
+              // Find full day name
+              const dayIndex = dayNames.findIndex(name => {
+                const dayAbbr = day.dayName;
+                const dayMap: { [key: string]: string } = {
+                  'א׳': 'ראשון',
+                  'ב׳': 'שני',
+                  'ג׳': 'שלישי',
+                  'ד׳': 'רביעי',
+                  'ה׳': 'חמישי',
+                  'ו׳': 'שישי',
+                  'ש׳': 'שבת'
+                };
+                return dayMap[dayAbbr] === name;
+              });
+              const fullDayName = dayIndex >= 0 ? dayNames[dayIndex] : day.dayName;
+              
+              // Determine display text
+              const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+              let displayText = '';
+              if (daysDiff === 1) {
+                displayText = 'אתמול';
+              } else if (daysDiff === 2) {
+                displayText = 'שלשום';
+              } else {
+                displayText = `${fullDayName}, ${day.date}`;
+              }
+              
+              return {
+                date,
+                dateStr: day.date,
+                dayName: fullDayName,
+                displayText
+              };
+            })
+            .sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort by date descending (most recent first)
+          
+          setWeekDays(availableDays);
+        }
+      } catch (error) {
+        console.error('Error loading week days:', error);
+        // Fallback to empty array
+        setWeekDays([]);
       }
-      
-      days.push({
-        date,
-        dateStr,
-        dayName,
-        displayText
-      });
+    };
+    
+    loadWeekDays();
+  }, [parentId]);
+
+  // Generate list of selectable days from challenge week
+  const selectableDays = useMemo(() => {
+    if (weekDays.length > 0) {
+      return weekDays;
     }
     
-    return days;
-  }, []);
+    // Fallback: if no week days loaded yet, return empty array
+    return [];
+  }, [weekDays]);
 
-  // Set default selected day to yesterday (only once)
+  // Set default selected day to first available day (only once)
   useEffect(() => {
     if (!hasInitializedDay.current && selectableDays.length > 0) {
       hasInitializedDay.current = true;
@@ -144,60 +208,108 @@ function ChildUploadContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectableDays.length]); // Only run when selectableDays becomes available
 
-  // Check if selected day is Friday and show warning
+  // Find the last day that needs upload/approval in the week
   useEffect(() => {
-    if (selectedDay && selectedDay.dayName === 'שישי') {
+    const findLastDayToUpload = async () => {
+      if (!parentId || !challengeId) return;
+      
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          // Find days that need upload or approval (excluding redemption day)
+          const daysNeedingAction = dashboardData.week
+            .filter(day => {
+              if (day.isRedemptionDay) return false;
+              // Days that need upload
+              if (day.status === 'missing' || day.status === 'pending') return true;
+              // Days that need approval
+              if (day.status === 'awaiting_approval' || day.status === 'rejected') return true;
+              if (day.requiresApproval && !day.parentAction) return true;
+              return false;
+            })
+            .sort((a, b) => {
+              // Sort by date (earliest first)
+              const dateA = a.date.split('/').reverse().join('-');
+              const dateB = b.date.split('/').reverse().join('-');
+              return dateA.localeCompare(dateB);
+            });
+          
+          // The last day is the one that appears last in the sorted list
+          if (daysNeedingAction.length > 0) {
+            const lastDay = daysNeedingAction[daysNeedingAction.length - 1];
+            setLastDayToUpload(lastDay.date);
+          } else {
+            setLastDayToUpload(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error finding last day to upload:', error);
+        setLastDayToUpload(null);
+      }
+    };
+    
+    findLastDayToUpload();
+  }, [parentId, challengeId]);
+
+  // Check if selected day is the last day to upload and show warning
+  useEffect(() => {
+    if (selectedDay && lastDayToUpload && selectedDay.dateStr === lastDayToUpload) {
       setShowFridayWarning(true);
     } else {
       setShowFridayWarning(false);
     }
-  }, [selectedDay]);
+  }, [selectedDay, lastDayToUpload]);
 
-  // Check if there's an approved upload for the selected day
+  // Check if the selected day was rejected by parent (allows re-upload)
   useEffect(() => {
-    if (!selectedDay) return;
-    
-    try {
-      if (typeof window !== 'undefined') {
-        let foundApproved = false;
-        let approvedInfo: { date: string; dayName: string; isApproved?: boolean } | null = null;
+    const checkDayStatus = async () => {
+      if (!selectedDay || !parentId || !challengeId) {
+        setShowApprovedWarning(false);
+        setApprovedDayInfo(null);
+        return;
+      }
+      
+      try {
+        // Get dashboard data to check day status
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
         
-        // Check if there's an existing upload in childUploads
-          try {
-            const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-            const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
-            
-            if (existingUpload) {
-              foundApproved = true;
-              approvedInfo = {
-                date: selectedDay.dateStr,
-                dayName: selectedDay.dayName,
-                isApproved: false
-              };
-            }
-          } catch (e) {
-            // Ignore parse errors
-        }
-        
-        if (foundApproved && approvedInfo) {
-          setApprovedDayInfo(approvedInfo);
-          setShowApprovedWarning(true);
+        if (dashboardData && dashboardData.week) {
+          // Find the day in the week array
+          const dayData = dashboardData.week.find(day => day.date === selectedDay.dateStr);
+          
+          // Only show warning if the day was rejected by parent (allows re-upload)
+          if (dayData && dayData.status === 'rejected') {
+            setApprovedDayInfo({
+              date: selectedDay.dateStr,
+              dayName: selectedDay.dayName,
+              isApproved: false
+            });
+            setShowApprovedWarning(true);
+          } else {
+            setShowApprovedWarning(false);
+            setApprovedDayInfo(null);
+          }
         } else {
           setShowApprovedWarning(false);
           setApprovedDayInfo(null);
         }
+      } catch (e) {
+        console.error('Error checking day status:', e);
+        setShowApprovedWarning(false);
+        setApprovedDayInfo(null);
       }
-    } catch (e) {
-      // Ignore errors
-      setShowApprovedWarning(false);
-      setApprovedDayInfo(null);
-    }
-  }, [selectedDay]);
+    };
+    
+    checkDayStatus();
+  }, [selectedDay, parentId, challengeId]);
 
-  // Load parent and child data when challenge not started
+  // Load parent and child data
   useEffect(() => {
     const loadData = async () => {
-      if (!challengeNotStarted || !parentId) return;
+      if (!parentId) return;
       
       try {
         const challenge = await getActiveChallenge(parentId);
@@ -227,7 +339,7 @@ function ChildUploadContent() {
     };
 
     loadData();
-  }, [challengeNotStarted, parentId, childId]);
+  }, [parentId, childId]);
 
   // Get challenge data from localStorage
   const getChallengeData = () => {
@@ -651,7 +763,8 @@ function ChildUploadContent() {
     // Prevent submission if challenge hasn't started
     if (challengeNotStarted) {
       console.warn('[Upload] Challenge has not started yet');
-      alert('האתגר עדיין לא התחיל. בדוק עם ההורה שלך.');
+      const childP = getChildPronouns();
+      alert(`האתגר עדיין לא התחיל. ${childP.youCan} לבדוק עם ${parentName} שלך.`);
       return;
     }
 
@@ -660,25 +773,34 @@ function ChildUploadContent() {
       return;
     }
 
-    // Check if there's an approved upload for this day
+    // Check if this day was already approved (should not allow re-upload)
     try {
-      if (typeof window !== 'undefined') {
-        console.log('[Upload] Checking for existing uploads...');
+      if (parentId && challengeId) {
+        console.log('[Upload] Checking day status from Firestore...');
         
-        // Check if there's an existing upload in childUploads
-        const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-        const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
+        // Get dashboard data to check day status
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
         
-        if (existingUpload) {
-          console.warn('[Upload] Found existing upload for this day, blocking submission');
-          alert(`שימו לב: כבר הועלתה תמונה עבור ${selectedDay.displayText} (${selectedDay.dateStr}).\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
-          return;
+        if (dashboardData && dashboardData.week) {
+          const dayData = dashboardData.week.find(day => day.date === selectedDay.dateStr);
+          
+          // Block if day is already approved (success or warning status means it was approved)
+          if (dayData && (dayData.status === 'success' || dayData.status === 'warning')) {
+            console.warn('[Upload] Day already approved, blocking submission');
+            const childP = getChildPronouns();
+            alert(`יום זה כבר אושר על ידי ${parentName}. ${childP.you} ${childP.youCanPlural} להעלות רק ימים שטרם אושרו או שנדחו.`);
+            setIsSubmitting(false);
+            return;
+          }
+          
+          // Allow if day is missing, pending, rejected, or awaiting approval
+          console.log('[Upload] Day status allows upload, proceeding');
         }
-        console.log('[Upload] No existing uploads found, proceeding');
       }
     } catch (e) {
-      console.warn('[Upload] Error checking existing uploads:', e);
-      // Ignore errors and continue
+      console.warn('[Upload] Error checking day status:', e);
+      // Ignore errors and continue - better to allow upload than block incorrectly
     }
 
     setIsSubmitting(true);
@@ -724,7 +846,8 @@ function ChildUploadContent() {
       setOcrProgress('');
       setExtractedText('');
       // Show error to user - don't save anything
-      alert(`שגיאה בעיבוד התמונה: ${extractionError.message || 'לא הצלחנו לעבד את התמונה. אנא נסה שוב.'}`);
+      const childP = getChildPronouns();
+      alert(`שגיאה בעיבוד התמונה: ${extractionError.message || `לא הצלחנו לעבד את התמונה. אנא ${childP.youTryAgain}.`}`);
       return; // Exit early - don't save anything
     }
 
@@ -801,7 +924,8 @@ function ChildUploadContent() {
     } catch (localStorageError) {
       console.error('[Upload] Failed to save to localStorage:', localStorageError);
       setIsSubmitting(false);
-      alert('שגיאה בשמירת הנתונים. אנא נסה שוב.');
+      const childP = getChildPronouns();
+      alert(`שגיאה בשמירת הנתונים. אנא ${childP.youTryAgain}.`);
       return; // Exit early
     }
 
@@ -814,27 +938,8 @@ function ChildUploadContent() {
       
       if (uploadChallengeId && uploadParentId && uploadChildId) {
         
-        // Upload screenshot to Cloud Storage
-        let screenshotUrl = screenshotPreview;
-        let screenshotStoragePath = '';
-        try {
-          if (screenshot && userId) {
-            const storageResult = await uploadScreenshot(
-              screenshot,
-              userId,
-              challengeId,
-              selectedDay.dateStr
-            );
-            screenshotUrl = storageResult.url;
-            screenshotStoragePath = storageResult.path;
-            console.log('[Upload] Screenshot uploaded to Cloud Storage:', storageResult);
-          }
-        } catch (storageError) {
-          console.warn('[Upload] Failed to upload to Cloud Storage, using preview:', storageError);
-          // Continue with preview URL - not critical
-        }
-
-        // Save to Firestore
+        // Save to Firestore first (with preview URL)
+        // Upload to Storage will happen in background after Firestore save
         const firestoreUpload = {
           challengeId: uploadChallengeId,
           parentId: uploadParentId,
@@ -846,14 +951,62 @@ function ChildUploadContent() {
           coinsEarned: coinsEarnedRounded,
           coinsMaxPossible: coinsMaxPossible,
           success: success,
-          screenshotUrl: screenshotUrl || undefined,
-          screenshotStoragePath: screenshotStoragePath,
+          screenshotUrl: screenshotPreview || undefined, // Use preview URL initially
+          screenshotStoragePath: '', // Will be updated if Storage upload succeeds
           requiresApproval: true,
           uploadedAt: new Date().toISOString(),
         };
 
         const uploadId = await createUpload(firestoreUpload);
         console.log('[Upload] Upload saved to Firestore:', uploadId);
+        
+        // Store uploadId for potential later update with Storage URL
+        (result as any).uploadId = uploadId;
+
+        // Upload screenshot to Cloud Storage (with timeout and error handling)
+        // Try to upload, but don't block the flow if it fails
+        if (screenshot && userId) {
+          console.log('[Upload] Starting screenshot upload to Cloud Storage...');
+          setOcrProgress('מעלה תמונה ל-Storage...');
+          
+          try {
+            // Add timeout to prevent hanging on CORS errors
+            const uploadPromise = uploadScreenshot(
+              screenshot,
+              userId,
+              challengeId,
+              selectedDay.dateStr
+            );
+            const timeoutPromise = new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
+            );
+            
+            const storageResult = await Promise.race([uploadPromise, timeoutPromise]);
+            console.log('[Upload] ✅ Screenshot uploaded to Cloud Storage:', storageResult);
+            
+            // Update Firestore with the new URL if upload succeeded
+            try {
+              const { updateUpload } = await import('@/lib/api/uploads');
+              await updateUpload(uploadId, {
+                screenshotUrl: storageResult.url,
+                screenshotStoragePath: storageResult.path
+              });
+              console.log('[Upload] ✅ Updated Firestore with Storage URL');
+              setOcrProgress('תמונה הועלתה בהצלחה');
+            } catch (updateError) {
+              console.warn('[Upload] ⚠️ Failed to update Firestore with Storage URL:', updateError);
+              // Not critical - the upload succeeded, URL is available
+            }
+          } catch (storageError: any) {
+            console.warn('[Upload] ⚠️ Failed to upload to Cloud Storage, using preview URL:', storageError);
+            // Continue with preview URL - not critical for the upload to succeed
+            // The preview URL will be stored in Firestore and can be used
+            // Log the error for debugging but don't block the flow
+            if (storageError.message?.includes('CORS')) {
+              console.warn('[Upload] CORS error detected - check Firebase Storage CORS settings');
+            }
+          }
+        }
       } else {
         console.log('[Upload] User not authenticated, skipping Firestore save');
       }
@@ -880,12 +1033,13 @@ function ChildUploadContent() {
       weeklyTotal
     });
 
+    // Always set submitting to false and submitted to true, even if Storage upload failed
     setIsSubmitting(false);
     setSubmitted(true);
 
-    // If Friday was uploaded, redirect immediately to redemption page (don't show result screen)
-    if (selectedDay.dayName === 'שישי') {
-      // Redirect immediately to redemption page with Friday earnings and token
+    // If this is the last day to upload, redirect immediately to redemption page (don't show result screen)
+    if (selectedDay && lastDayToUpload && selectedDay.dateStr === lastDayToUpload) {
+      // Redirect immediately to redemption page with earnings and token
       const redemptionUrl = parentId 
         ? generateRedemptionUrl(parentId, childId || undefined)
         : `/child/redemption?fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
@@ -897,13 +1051,44 @@ function ChildUploadContent() {
   };
 
 
-  // Get child gender for pronouns
-  const getChildGender = () => {
-    return 'boy'; // Default, will be loaded from API
+  // Helper functions for gender-based pronouns
+  const getChildPronouns = () => {
+    const isBoy = childGender === 'boy';
+    return {
+      you: isBoy ? 'אתה' : 'את',
+      youPast: isBoy ? 'היית' : 'היית',
+      youFuture: isBoy ? 'תוכל' : 'תוכלי',
+      youWill: isBoy ? 'תרוויח' : 'תרוויחי',
+      youStart: isBoy ? 'תתחיל' : 'תתחילי',
+      youUpload: isBoy ? 'אתה מעלה' : 'את מעלה',
+      youEarn: isBoy ? 'אתה מרוויח' : 'את מרוויחה',
+      youGo: isBoy ? 'תעבור' : 'תעברי',
+      youNeed: isBoy ? 'תצטרך' : 'תצטרכי',
+      youWant: isBoy ? 'רוצה' : 'רוצה',
+      youCan: isBoy ? 'יכול' : 'יכולה',
+      youCanPlural: isBoy ? 'יכולים' : 'יכולות',
+      youUploaded: isBoy ? 'העלית' : 'העלית',
+      youAccumulated: isBoy ? 'צברת' : 'צברת',
+      youStood: isBoy ? 'עמדת' : 'עמדת',
+      youTry: isBoy ? 'נסה' : 'נסי',
+      youTryAgain: isBoy ? 'נסה שוב' : 'נסי שוב',
+      youSucceeded: isBoy ? 'הצלחת' : 'הצלחת',
+      youWillMeet: isBoy ? 'תפגשו' : 'תפגשו',
+      youWillWin: isBoy ? 'תוכל לזכות' : 'תוכלי לזכות',
+      youAccumulatedWhat: isBoy ? 'צברת' : 'צברת'
+    };
   };
 
-  // If Friday was uploaded, redirect immediately to redemption (don't show result screen)
-  if (submitted && uploadResult && selectedDay && selectedDay.dayName === 'שישי') {
+  const getParentPronouns = () => {
+    const isMom = parentName === 'אמא' || parentName.endsWith('ה') || parentName.endsWith('ית');
+    return {
+      needs: isMom ? 'צריכה' : 'צריך',
+      pronoun: isMom ? 'שלה' : 'שלו'
+    };
+  };
+
+  // If last day was uploaded, redirect immediately to redemption (don't show result screen)
+  if (submitted && uploadResult && selectedDay && lastDayToUpload && selectedDay.dateStr === lastDayToUpload) {
     // Already redirected in handleSubmit, but in case it didn't work, redirect here too
     return null; // Component will unmount and redirect
   }
@@ -911,13 +1096,11 @@ function ChildUploadContent() {
   // Show result in the same form instead of separate screen
   if (submitted && uploadResult && selectedDay) {
     const weeklyTotal = (uploadResult as any).weeklyTotal || uploadResult.coinsEarned;
-    const childGender = getChildGender();
+    const childP = getChildPronouns();
+    const parentP = getParentPronouns();
     const isYesterday = selectedDay.displayText === 'אתמול';
     const isDayBeforeYesterday = selectedDay.displayText === 'שלשום';
     const parentName = uploadResult.parentName;
-    
-    // Determine message based on day and gender
-    const accumulatedVerb = childGender === 'boy' ? 'צברת' : 'צברת';
     
     // Format time with hours and minutes
     const screenTimeMinutes = (uploadResult as any).screenTimeMinutes || (uploadResult.screenTimeUsed * 60);
@@ -934,15 +1117,15 @@ function ChildUploadContent() {
 
     let dayMessage = '';
     if (isYesterday || isDayBeforeYesterday) {
-      dayMessage = `${selectedDay.displayText} היית ${timeText} בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+      dayMessage = `${selectedDay.displayText} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${childP.youAccumulated} ${formatNumber(weeklyTotal)} שקלים השבוע`;
     } else {
-      dayMessage = `ביום ${selectedDay.dayName} היית ${timeText} בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+      dayMessage = `ביום ${selectedDay.dayName} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${childP.youAccumulated} ${formatNumber(weeklyTotal)} שקלים השבוע`;
     }
 
     // Success message based on goal and gender
     const successMessage = uploadResult.success 
-      ? `כל הכבוד! ${childGender === 'boy' ? 'עמדת' : 'עמדת'} ביעד!`
-      : childGender === 'boy' ? 'נסה מחר לעבוד יותר טוב!' : 'נסי מחר לעבוד יותר טוב!';
+      ? `כל הכבוד! ${childP.youStood} ביעד!`
+      : `${childP.youTry} מחר לעבוד יותר טוב!`;
 
     return (
       <div className="min-h-screen bg-transparent pb-24">
@@ -974,9 +1157,17 @@ function ChildUploadContent() {
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4">
                 <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                  בכל מקרה {parentName} {parentName.endsWith('ה') || parentName.endsWith('ית') ? 'צריכה' : 'צריך'} לאשר לך את הסטטוס ש{childGender === 'boy' ? 'העלית' : 'העלית'}!
-                  <br />
-                  בסוף השבוע תפגשו כאן ו{childGender === 'boy' ? 'תוכל' : 'תוכלי'} לזכות במה ש{childGender === 'boy' ? 'צברת' : 'צברת'}
+                  {(() => {
+                    const childHim = childGender === 'boy' ? 'לו' : 'לה';
+                    const childHis = childGender === 'boy' ? 'שלו' : 'שלה';
+                    return (
+                      <>
+                        בכל מקרה {parentName} {parentP.needs} לאשר {childHim} את הסטטוס ש{childP.youUploaded}!
+                        <br />
+                        בסוף השבוע {childP.youWillMeet} כאן ו{childP.youWillWin} במה ש{childP.youAccumulatedWhat} {childHis}
+                      </>
+                    );
+                  })()}
                 </p>
               </div>
             </div>
@@ -1026,6 +1217,7 @@ function ChildUploadContent() {
     const formattedDate = startDate 
       ? `${String(startDate.getDate()).padStart(2, '0')}/${String(startDate.getMonth() + 1).padStart(2, '0')}`
       : '';
+    const childP = getChildPronouns();
     
     return (
       <div className="min-h-screen bg-transparent pb-24">
@@ -1049,7 +1241,7 @@ function ChildUploadContent() {
                 יום ראשון הקרוב {formattedDate ? formattedDate : ''} זה קורה
               </p>
               <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                כדי ש{childGender === 'boy' ? 'אתה' : 'את'} תרוויח{childGender === 'boy' ? '' : 'י'}! תתחיל{childGender === 'boy' ? '' : 'י'} לחשוב עם {parentName} איך הכי כדאי לנצל את הזמן במסך ומחוצה לו.
+                כדי ש{childP.you} {childP.youWill}! {childP.youStart} לחשוב עם {parentName} איך הכי כדאי לנצל את הזמן במסך ומחוצה לו.
               </p>
             </div>
           </div>
@@ -1083,32 +1275,46 @@ function ChildUploadContent() {
             {/* Day Selection */}
             <div>
               <label className="block font-varela font-semibold text-base text-[#282743] mb-2">
-                איזה יום אתה מעלה?
+                {(() => {
+                  const childP = getChildPronouns();
+                  return `איזה יום ${childP.youUpload}?`;
+                })()}
               </label>
-              <select
-                value={selectedDay ? selectableDays.findIndex(d => d.dateStr === selectedDay.dateStr) : -1}
-                onChange={(e) => {
-                  const index = parseInt(e.target.value);
-                  if (index >= 0 && index < selectableDays.length) {
-                    setSelectedDay(selectableDays[index]);
-                  }
-                }}
-                className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-white font-varela text-base text-[#282743] focus:outline-none focus:border-[#273143]"
-                required
-              >
-                {selectableDays.map((day, index) => (
-                  <option key={index} value={index}>
-                    {day.displayText}
-                  </option>
-                ))}
-              </select>
+              {selectableDays.length > 0 ? (
+                <select
+                  value={selectedDay ? selectableDays.findIndex(d => d.dateStr === selectedDay.dateStr) : -1}
+                  onChange={(e) => {
+                    const index = parseInt(e.target.value);
+                    if (index >= 0 && index < selectableDays.length) {
+                      setSelectedDay(selectableDays[index]);
+                    }
+                  }}
+                  className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-white font-varela text-base text-[#282743] focus:outline-none focus:border-[#273143]"
+                  required
+                >
+                  {selectableDays.map((day, index) => (
+                    <option key={index} value={index}>
+                      {day.displayText}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-gray-50 font-varela text-base text-[#948DA9] text-center">
+                  אין ימים זמינים להעלאה
+                </div>
+              )}
             </div>
 
-            {/* Friday Warning - need parent nearby */}
-            {showFridayWarning && (() => {
+            {/* Last Day Warning - need parent nearby */}
+            {showFridayWarning && selectedDay && (() => {
               const challengeData = getChallengeData();
               const parentName = challengeData.parentName || 'אמא';
-              const parentPronoun = parentName === 'אמא' ? 'שלה' : 'שלו';
+              const childP = getChildPronouns();
+              const parentP = getParentPronouns();
+              
+              // Gender-specific pronouns for child
+              const childHim = childGender === 'boy' ? 'לו' : 'לה';
+              const childHis = childGender === 'boy' ? 'שלו' : 'שלה';
               
               return (
                 <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] border-2 border-[#E6F19A] rounded-[12px] p-4 shadow-sm">
@@ -1116,25 +1322,25 @@ function ChildUploadContent() {
                     🎉 התראה חגיגית!
                   </p>
                   <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-3">
-                    אתה מעלה סטטוס של יום שישי - זה אומר שאוטוטו אתה מרוויח את הזכיה שלך!
+                    {childP.youUpload} סטטוס של {selectedDay.dayName} {selectedDay.dateStr} - זה היום האחרון שנשאר להעלות בשבוע! זה אומר שאוטוטו {childP.youEarn} את הזכיה {childHis}!
                   </p>
                   <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                    ודא ש{parentName} לידך כי אחרי ההעלאה תעבור למסך הפדיון שבו תצטרך את האישור {parentPronoun}.
+                    ודא ש{parentName} ליד{childHim} כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור {parentP.pronoun}.
                   </p>
                 </div>
               );
             })()}
 
-            {/* Approved Warning */}
+            {/* Rejected Warning - allows re-upload */}
             {showApprovedWarning && approvedDayInfo && (
               <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4">
                 <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-2">
-                  <strong>שימו לב:</strong> {approvedDayInfo.isApproved 
-                    ? `נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}.`
-                    : `כבר הועלתה תמונה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}.`}
-                </p>
-                <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                  אם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.
+                  <strong>שימו לב:</strong> {(() => {
+                    const childP = getChildPronouns();
+                    const parentP = getParentPronouns();
+                    const rejectedVerb = parentName === 'אמא' ? 'דחתה' : 'דחה';
+                    return `${parentName} ${rejectedVerb} את ההעלאה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}. ${childP.you} ${childP.youCanPlural} להעלות שוב.`;
+                  })()}
                 </p>
               </div>
             )}

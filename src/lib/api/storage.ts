@@ -22,18 +22,44 @@ export async function uploadScreenshot(
     const storagePath = `screenshots/${userId}/${challengeId}/${date}/${fileName}`;
     const storageRef = ref(storage, storagePath);
 
-    // Upload file
-    await uploadBytes(storageRef, file);
+    console.log('[Storage] Starting upload to path:', storagePath);
+    
+    // Upload file with better error handling
+    try {
+      await uploadBytes(storageRef, file);
+      console.log('[Storage] File uploaded successfully');
+    } catch (uploadError: any) {
+      console.error('[Storage] Upload error:', uploadError);
+      // Check if it's a CORS or permission error
+      if (uploadError.code === 'storage/unauthorized' || uploadError.code === 'storage/canceled') {
+        throw new Error('אין הרשאה להעלות תמונה. בדוק את ההרשאות.');
+      }
+      if (uploadError.message?.includes('CORS') || uploadError.message?.includes('cors')) {
+        throw new Error('שגיאת CORS בהעלאת התמונה. זה יכול להיות בעיית הגדרות Storage.');
+      }
+      throw uploadError;
+    }
 
     // Get download URL
-    const url = await getDownloadURL(storageRef);
-
-    return {
-      url,
-      path: storagePath,
-    };
-  } catch (error) {
-    console.error('Error uploading screenshot:', error);
+    try {
+      const url = await getDownloadURL(storageRef);
+      console.log('[Storage] Got download URL');
+      return {
+        url,
+        path: storagePath,
+      };
+    } catch (urlError: any) {
+      console.error('[Storage] Error getting download URL:', urlError);
+      // If upload succeeded but getting URL failed, still return the path
+      // The URL can be generated later
+      throw new Error('התמונה הועלתה אבל לא הצלחנו לקבל קישור. זה לא קריטי.');
+    }
+  } catch (error: any) {
+    console.error('[Storage] Error uploading screenshot:', error);
+    // Re-throw with more context
+    if (error.message) {
+      throw error;
+    }
     throw new Error('שגיאה בהעלאת התמונה. נסה שוב.');
   }
 }
