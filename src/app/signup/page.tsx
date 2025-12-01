@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { signUp } from '@/utils/auth';
 import { createUser, isUsernameAvailable } from '@/lib/api/users';
 import { getErrorMessage } from '@/utils/errors';
+import { createSession } from '@/utils/session';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -312,6 +313,9 @@ export default function SignupPage() {
         termsAccepted: formData.termsAccepted,
         signupDate: new Date().toISOString(),
       });
+
+      // Create session with Firebase Auth UID
+      createSession(user.uid);
 
       // Clear saved form data after successful submission
       if (typeof window !== 'undefined') {

@@ -87,6 +87,13 @@ export async function getActiveChallenge(parentId: string): Promise<FirestoreCha
   try {
     const { collection, query, where, getDocs } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
+    
+    // Ensure db is valid
+    if (!db) {
+      console.error('[Challenges] Firestore instance is null or undefined');
+      throw new Error('Firestore not initialized');
+    }
+    
     const challengesRef = collection(db, CHALLENGES_COLLECTION);
     
     // First, check all challenges for this user (for debugging)

@@ -66,3 +66,9 @@ env:
     availability:
       - RUNTIME
 
+  # Firebase Function URL (for screenshot processing)
+  - variable: FIREBASE_FUNCTION_URL
+    secret: FIREBASE_FUNCTION_URL_INTGR_SECRET
+    availability:
+      - RUNTIME
+

@@ -26,9 +26,12 @@ function OnboardingCompleteContent() {
         if (challengeData) {
           try {
             const parsed = JSON.parse(challengeData);
+            const parentName = parsed.parentName || '';
+            // Determine gender from name
+            const parentGender = (parentName.endsWith('ה') || parentName.endsWith('ית')) ? 'female' : 'male';
             return {
-              parentName: parsed.parentName || '',
-              parentGender: 'female', // Default, will be determined from name
+              parentName: parentName,
+              parentGender: parentGender,
               deviceType: parsed.deviceType || 'ios'
             };
           } catch (e) {
@@ -233,7 +236,7 @@ function OnboardingCompleteContent() {
                 העתק קישור עם טקסט
               </h3>
               <div className="bg-[#FFFCF8] rounded-[12px] p-4 mb-3 border-2 border-gray-200">
-                <p className="font-varela text-sm text-[#273143] leading-relaxed whitespace-pre-wrap">
+                <p className="font-varela text-sm text-[#273143] leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
                   {shareText}
                 </p>
               </div>

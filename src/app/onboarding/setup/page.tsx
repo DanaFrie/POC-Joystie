@@ -167,8 +167,8 @@ export default function OnboardingSetupPage() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { you: 'את' },
-    male: { you: 'אתה' }
+    female: { you: 'את', defined: 'הגדרת' },
+    male: { you: 'אתה', defined: 'הגדרת' }
   };
   const parentP = parentPronouns[parentData.parentGender as 'female' | 'male'] || parentPronouns.female;
 
@@ -436,7 +436,8 @@ export default function OnboardingSetupPage() {
               {/* Show available ages as buttons if they exist */}
               {availableAges.length > 0 ? (
                 <div className="mb-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {/* Age suggestion buttons - smaller, in one row */}
+                  <div className="flex flex-wrap gap-2 mb-3 justify-center">
                     {availableAges.map((age, index) => (
                       <button
                         key={index}
@@ -445,13 +446,13 @@ export default function OnboardingSetupPage() {
                           setFormData(prev => ({ ...prev, age: age.trim() }));
                           setAgeSelectedFromButton(true);
                         }}
-                        className={`p-3 sm:p-4 rounded-[18px] border-2 transition-all text-center ${
+                        className={`px-3 py-1.5 rounded-[12px] border-2 transition-all text-center ${
                           formData.age === age.trim() && ageSelectedFromButton
                             ? 'border-[#273143] bg-[#273143] bg-opacity-10'
                             : 'border-gray-200 bg-white hover:border-[#273143] hover:border-opacity-50'
                         }`}
                       >
-                        <span className={`font-varela font-semibold text-base ${
+                        <span className={`font-varela font-semibold text-sm ${
                           formData.age === age.trim() && ageSelectedFromButton
                             ? 'text-[#273143]'
                             : 'text-[#282743]'
@@ -460,40 +461,35 @@ export default function OnboardingSetupPage() {
                         </span>
                       </button>
                     ))}
-                    {/* Custom age input in the same grid */}
-                    <div className="flex flex-col justify-end">
-                      <label className="font-varela text-xs text-[#948DA9] mb-1.5 text-center">
-                        {parentData.parentGender === 'male' ? 'כנס' : 'הכניסי'} גיל אחר:
-                      </label>
-                      <input
-                        type="number"
-                        name="age"
-                        value={formData.age}
-                        onChange={(e) => {
-                          // Clear button selection when user starts typing
-                          if (ageSelectedFromButton) {
-                            setAgeSelectedFromButton(false);
-                          }
-                          handleChange(e);
-                        }}
-                        onFocus={() => {
-                          // When focusing on input, clear button selection if it was selected
-                          if (ageSelectedFromButton) {
-                            setAgeSelectedFromButton(false);
-                            setFormData(prev => ({ ...prev, age: '' }));
-                          }
-                        }}
-                        placeholder="גיל"
-                        min="1"
-                        max="18"
-                        className={`p-3 sm:p-4 rounded-[18px] border-2 text-center focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
-                          formData.age && !ageSelectedFromButton && formData.age.trim() !== ''
-                            ? 'border-[#273143] bg-[#273143] bg-opacity-5'
-                            : 'border-gray-200 bg-white'
-                        }`}
-                      />
-                    </div>
                   </div>
+                  {/* Custom age input - separate from buttons */}
+                  <input
+                    type="number"
+                    name="age"
+                    value={formData.age}
+                    onChange={(e) => {
+                      // Clear button selection when user starts typing
+                      if (ageSelectedFromButton) {
+                        setAgeSelectedFromButton(false);
+                      }
+                      handleChange(e);
+                    }}
+                    onFocus={() => {
+                      // When focusing on input, clear button selection if it was selected
+                      if (ageSelectedFromButton) {
+                        setAgeSelectedFromButton(false);
+                        setFormData(prev => ({ ...prev, age: '' }));
+                      }
+                    }}
+                    placeholder="גיל"
+                    min="1"
+                    max="18"
+                    className={`w-full p-4 rounded-[18px] border-2 focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
+                      formData.age && !ageSelectedFromButton && formData.age.trim() !== ''
+                        ? 'border-[#273143] bg-[#273143] bg-opacity-5'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  />
                 </div>
               ) : (
                 <input
@@ -624,7 +620,7 @@ export default function OnboardingSetupPage() {
                           אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-1.5 שעות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
                         </p>
                         <p className="mt-2 pt-2 border-t border-[#E6F19A]">
-                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} הגדרת.
+                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} {parentP.defined}.
                         </p>
                       </div>
                       <button

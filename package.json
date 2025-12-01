@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "dev:intgr": "next dev",
+    "dev:sync": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-secrets-to-env.ps1 && npm run dev",
+    "sync-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-secrets-to-env.ps1",
+    "delete-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/delete-apphosting-secrets.ps1",
     "build": "next build",
     "build:prod": "next build",
     "start": "next start",

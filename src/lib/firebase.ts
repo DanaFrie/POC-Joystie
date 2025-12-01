@@ -9,34 +9,93 @@ import type { Functions } from 'firebase/functions';
 // Next.js automatically loads NEXT_PUBLIC_* variables at build time
 // But we need to access them at runtime, so we use a function to get them
 function getFirebaseConfig() {
-  // Helper to safely get env var (NO TRIM - return as-is)
+  // Helper to safely get env var
+  // IMPORTANT: Use static references to process.env.NEXT_PUBLIC_* 
+  // Next.js only replaces static references at build time, not dynamic property access
   const getEnv = (key: string, fallback?: string): string => {
-    // Try multiple sources for environment variables
     let value: string | undefined;
+    let source = 'none';
     
     if (typeof window === 'undefined') {
-      // Server-side: use process.env directly
-      value = process.env[key];
+      // Server-side: use process.env directly with static references
+      // Map key to actual static reference
+      switch (key) {
+        case 'NEXT_PUBLIC_FIREBASE_API_KEY':
+          value = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN':
+          value = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_PROJECT_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET':
+          value = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_APP_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+          break;
+        default:
+          value = undefined;
+      }
+      source = 'process.env (server)';
     } else {
-      // Client-side: try multiple sources
-      // 1. process.env (Next.js embeds NEXT_PUBLIC_* vars at build time)
-      // 2. window.__NEXT_DATA__.env (Next.js runtime injection)
-      // 3. window.__NEXT_DATA__.runtimeConfig (if available)
-      value = process.env[key] 
-        || (window as any).__NEXT_DATA__?.env?.[key]
-        || (window as any).__NEXT_DATA__?.runtimeConfig?.[key]
-        || (window as any).__ENV__?.[key];
+      // Client-side: use static references so Next.js can embed them at build time
+      // Next.js replaces static process.env.NEXT_PUBLIC_* references with actual values
+      switch (key) {
+        case 'NEXT_PUBLIC_FIREBASE_API_KEY':
+          value = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN':
+          value = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_PROJECT_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET':
+          value = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_APP_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+          break;
+        default:
+          value = undefined;
+      }
+      
+      if (value) {
+        source = 'process.env (client - static)';
+      } else {
+        // Fallback to window.__NEXT_DATA__ if static reference didn't work
+        const windowData = (window as any).__NEXT_DATA__;
+        if (windowData?.env?.[key]) {
+          value = windowData.env[key];
+          source = 'window.__NEXT_DATA__.env';
+        } else if (windowData?.runtimeConfig?.[key]) {
+          value = windowData.runtimeConfig[key];
+          source = 'window.__NEXT_DATA__.runtimeConfig';
+        } else if ((window as any).__ENV__?.[key]) {
+          value = (window as any).__ENV__[key];
+          source = 'window.__ENV__';
+        }
+      }
     }
     
     if (!value && fallback) {
       value = fallback;
+      source = 'fallback';
     }
     
     if (!value) {
       return '';
     }
     
-    // Return as string, NO TRIM - keep original value
+    // Return as string
     return String(value);
   };
 
