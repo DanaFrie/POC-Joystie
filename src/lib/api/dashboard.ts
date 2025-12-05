@@ -4,8 +4,24 @@ import { getUploadsByChallenge, getPendingApprovals } from './uploads';
 import { getNotifications } from './notifications';
 import { getUser } from './users';
 import { getChild } from './children';
-import type { DashboardState, WeekDay, Today } from '@/types/dashboard';
+import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
 import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
+
+/**
+ * Helper: Transform FirestoreChallenge to Challenge type (adds weeklyBudget)
+ */
+function transformChallenge(firestoreChallenge: FirestoreChallenge): Challenge {
+  return {
+    selectedBudget: firestoreChallenge.selectedBudget,
+    weeklyBudget: firestoreChallenge.selectedBudget, // weeklyBudget equals selectedBudget
+    dailyBudget: firestoreChallenge.dailyBudget,
+    dailyScreenTimeGoal: firestoreChallenge.dailyScreenTimeGoal,
+    weekNumber: firestoreChallenge.weekNumber,
+    totalWeeks: firestoreChallenge.totalWeeks,
+    startDate: firestoreChallenge.startDate,
+    isActive: firestoreChallenge.isActive
+  };
+}
 
 /**
  * Helper: Get Hebrew day name from date
@@ -71,9 +87,14 @@ function getUploadStatus(
     return 'rejected';
   }
   
-  // If approved or doesn't require approval, show success/warning based on goal achievement
-  // After approval: requiresApproval is false AND parentAction is 'approved'
-  if (upload.parentAction === 'approved' || (!upload.requiresApproval && upload.parentAction !== 'rejected')) {
+  // If approved, show success/warning based on goal achievement
+  if (upload.parentAction === 'approved') {
+    return upload.success ? 'success' : 'warning';
+  }
+  
+  // If doesn't require approval (and not rejected, which we already checked above)
+  // parentAction can be null/undefined/approved, all are OK if requiresApproval is false
+  if (!upload.requiresApproval) {
     return upload.success ? 'success' : 'warning';
   }
   
@@ -333,18 +354,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     const todayObj = buildToday(week, challenge);
     
     // Map FirestoreChallenge to Challenge
-    // Calculate weeklyBudget from selectedBudget (equal to selectedBudget)
-    const weeklyBudget = challenge.selectedBudget;
-    const challengeData = {
-      selectedBudget: challenge.selectedBudget,
-      weeklyBudget: weeklyBudget,
-      dailyBudget: challenge.dailyBudget,
-      dailyScreenTimeGoal: challenge.dailyScreenTimeGoal,
-      weekNumber: challenge.weekNumber,
-      totalWeeks: challenge.totalWeeks,
-      startDate: challenge.startDate,
-      isActive: challenge.isActive
-    };
+    const challengeData = transformChallenge(challenge);
     
     // Build dashboard state
     const dashboardState: DashboardState = {

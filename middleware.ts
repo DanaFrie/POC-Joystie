@@ -25,7 +25,7 @@ function rateLimit(ip: string, limit: number, windowMs: number): boolean {
 // Clean up old entries periodically
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, record] of rateLimitMap.entries()) {
+  for (const [ip, record] of Array.from(rateLimitMap.entries())) {
     if (now > record.resetTime) {
       rateLimitMap.delete(ip);
     }

@@ -10,6 +10,7 @@ interface DaysSummaryModalProps {
   childName: string;
   childGender?: 'boy' | 'girl';
   uploadUrl: string;
+  dailyBudget: number;
   onApprove?: (dayDate: string) => Promise<void>;
   onReject?: (dayDate: string) => Promise<void>;
   onClose: () => void;

@@ -15,6 +15,24 @@ import { formatNumber } from '@/utils/formatting';
 import { getDashboardData } from '@/lib/api/dashboard';
 import { generateUploadUrl, generateRedemptionUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
+import type { FirestoreChallenge } from '@/types/firestore';
+
+/**
+ * Helper: Transform FirestoreChallenge to Challenge type with ID
+ */
+function transformChallengeWithId(firestoreChallenge: FirestoreChallenge): DashboardState['challenge'] & { id: string } {
+  return {
+    selectedBudget: firestoreChallenge.selectedBudget,
+    weeklyBudget: firestoreChallenge.selectedBudget, // weeklyBudget equals selectedBudget
+    dailyBudget: firestoreChallenge.dailyBudget,
+    dailyScreenTimeGoal: firestoreChallenge.dailyScreenTimeGoal,
+    weekNumber: firestoreChallenge.weekNumber,
+    totalWeeks: firestoreChallenge.totalWeeks,
+    startDate: firestoreChallenge.startDate,
+    isActive: firestoreChallenge.isActive,
+    id: firestoreChallenge.id
+  };
+}
 import { approveUpload, rejectUpload, getUploadByDate } from '@/lib/api/uploads';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange, isAuthenticated } from '@/utils/auth';
 import { clientConfig } from '@/config/client.config';
@@ -274,20 +292,25 @@ export default function DashboardPage() {
       }
 
       // Use cached challenge if available (from dashboardData)
-      let challenge = dashboardData?.challenge ? {
+      type ChallengeWithId = DashboardState['challenge'] & { id?: string };
+      let challenge: ChallengeWithId | null = dashboardData?.challenge ? {
         id: '', // Will be set from getActiveChallenge
         ...dashboardData.challenge
       } : null;
       
       // Only fetch if we don't have challenge data or need the ID
       if (!challenge || !challenge.id) {
-        challenge = await getActiveChallenge(userId);
-        if (!challenge) {
+        const firestoreChallenge = await getActiveChallenge(userId);
+        if (!firestoreChallenge) {
           throw new Error('No active challenge found');
         }
+        challenge = transformChallengeWithId(firestoreChallenge);
       }
 
       // Find the upload for this date
+      if (!challenge.id) {
+        throw new Error('Challenge ID is required');
+      }
       console.log(`[Dashboard] Looking for upload:`, { challengeId: challenge.id, dayDate, userId });
       const upload = await getUploadByDate(challenge.id, dayDate, userId);
       if (!upload) {
@@ -373,23 +396,29 @@ export default function DashboardPage() {
       }
 
       // Use cached challenge if available (from dashboardData)
-      let challenge = dashboardData?.challenge ? {
+      type ChallengeWithId = DashboardState['challenge'] & { id?: string };
+      let challenge: ChallengeWithId | null = dashboardData?.challenge ? {
         id: '', // Will be set from getActiveChallenge if needed
         ...dashboardData.challenge
       } : null;
       
       // Only fetch if we don't have challenge data or need the ID
       if (!challenge) {
-        challenge = await getActiveChallenge(userId);
-        if (!challenge) {
+        const firestoreChallenge = await getActiveChallenge(userId);
+        if (!firestoreChallenge) {
           throw new Error('No active challenge found');
         }
+        challenge = transformChallengeWithId(firestoreChallenge);
       } else {
         // Get challenge ID from cache or fetch
         const cachedChallenge = await getActiveChallenge(userId, true);
         if (cachedChallenge) {
           challenge = { ...challenge, id: cachedChallenge.id };
         }
+      }
+      
+      if (!challenge.id) {
+        throw new Error('Challenge ID is required');
       }
 
       // Find the upload for this date
@@ -732,6 +761,7 @@ export default function DashboardPage() {
                 childName={dashboardData.child.name}
                 childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
+                dailyBudget={dashboardData.challenge.dailyBudget}
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onClose={() => {
