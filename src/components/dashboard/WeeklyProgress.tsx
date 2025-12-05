@@ -98,8 +98,8 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
 export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, onDayClick }: WeeklyProgressProps) {
   // Gender pronouns for child
   const childPronouns = {
-    boy: { was: 'היה', earned: 'זכה' },
-    girl: { was: 'היתה', earned: 'זכתה' }
+    boy: { was: 'היה', earned: 'הרוויח' },
+    girl: { was: 'היתה', earned: 'הרוויחה' }
   };
   const childP = childPronouns[childGender] || childPronouns.boy;
 

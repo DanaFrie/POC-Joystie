@@ -28,7 +28,15 @@ export async function validateSetupUrl(token: string): Promise<UrlValidationResu
     };
   }
 
-  const { parentId, childId } = decoded;
+  // Check token expiration
+  if (decoded.isExpired) {
+    return {
+      isValid: false,
+      error: 'הקישור פג תוקף. בקש קישור חדש מההורה שלך.'
+    };
+  }
+
+  const { parentId, childId, challengeId } = decoded;
 
   // Check if child exists and setup is complete
   if (childId) {
@@ -41,7 +49,8 @@ export async function validateSetupUrl(token: string): Promise<UrlValidationResu
             isValid: false,
             error: 'ההגדרה הושלמה כבר. השתמש בכתובת העלאה במקום.',
             parentId,
-            childId
+            childId,
+            challengeId: challengeId || undefined
           };
         }
       }
@@ -54,7 +63,8 @@ export async function validateSetupUrl(token: string): Promise<UrlValidationResu
   return {
     isValid: true,
     parentId,
-    childId
+    childId: childId || undefined,
+    challengeId: challengeId || undefined
   };
 }
 
@@ -72,7 +82,15 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
     };
   }
 
-  const { parentId, childId } = decoded;
+  // Check token expiration
+  if (decoded.isExpired) {
+    return {
+      isValid: false,
+      error: 'הקישור פג תוקף. בקש קישור חדש מההורה שלך.'
+    };
+  }
+
+  const { parentId, childId, challengeId } = decoded;
 
   try {
     // Check if there's an active challenge
@@ -171,6 +189,17 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
       };
     }
 
+    // Verify challengeId in token matches active challenge (if provided)
+    if (challengeId && challenge.id !== challengeId) {
+      return {
+        isValid: false,
+        error: 'כתובת לא תקינה עבור אתגר זה',
+        parentId,
+        childId: challenge.childId,
+        challengeId: challenge.id
+      };
+    }
+
     return {
       isValid: true,
       parentId,
@@ -202,7 +231,15 @@ export async function validateRedemptionUrl(token: string): Promise<UrlValidatio
     };
   }
 
-  const { parentId, childId } = decoded;
+  // Check token expiration
+  if (decoded.isExpired) {
+    return {
+      isValid: false,
+      error: 'הקישור פג תוקף. בקש קישור חדש מההורה שלך.'
+    };
+  }
+
+  const { parentId, childId, challengeId } = decoded;
 
   try {
     // Check if there's an active challenge
@@ -255,6 +292,17 @@ export async function validateRedemptionUrl(token: string): Promise<UrlValidatio
         error: 'כתובת לא תקינה עבור ילד זה',
         parentId,
         childId,
+        challengeId: challenge.id
+      };
+    }
+
+    // Verify challengeId in token matches active challenge (if provided)
+    if (challengeId && challenge.id !== challengeId) {
+      return {
+        isValid: false,
+        error: 'כתובת לא תקינה עבור אתגר זה',
+        parentId,
+        childId: challenge.childId,
         challengeId: challenge.id
       };
     }

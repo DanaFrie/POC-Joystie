@@ -18,7 +18,7 @@ function ChildRedemptionContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
   const childId = searchParams.get('childId') || '';
-  const fridayEarningsParam = searchParams.get('fridayEarnings');
+  const lastEarningsParam = searchParams.get('lastEarnings'); // Renamed from fridayEarnings
   const weeklyTotalParam = searchParams.get('weeklyTotal');
   const [urlValid, setUrlValid] = useState<boolean | null>(null);
   const [urlError, setUrlError] = useState<string>('');
@@ -26,12 +26,12 @@ function ChildRedemptionContent() {
   const [validatedChildId, setValidatedChildId] = useState<string>('');
   const [challengeId, setChallengeId] = useState<string>('');
   
-  // Initialize approval states based on whether we came from Friday upload
+  // Initialize approval states based on whether we came from last upload
   const [awaitingParentApproval, setAwaitingParentApproval] = useState(() => {
-    // If we have fridayEarnings in URL, start with awaiting approval
-    return fridayEarningsParam ? true : false;
+    // If we have lastEarnings in URL, start with awaiting approval
+    return lastEarningsParam ? true : false;
   });
-  const [fridayApproved, setFridayApproved] = useState(false);
+  const [lastApproved, setLastApproved] = useState(false); // Renamed from fridayApproved
   const [redemptionCompleted, setRedemptionCompleted] = useState(false);
 
   // Validate URL token on mount
@@ -114,13 +114,14 @@ function ChildRedemptionContent() {
   const childName = childData.childName;
   const childGender = childData.childGender;
   
-  // Get earnings from query params or calculate from localStorage
-  const fridayEarnings = fridayEarningsParam ? parseFloat(fridayEarningsParam) : 0;
+  // Get earnings from query params or calculate from Firestore
+  const lastEarnings = lastEarningsParam ? parseFloat(lastEarningsParam) : 0; // Renamed from fridayEarnings
   const weeklyTotalFromParams = weeklyTotalParam ? parseFloat(weeklyTotalParam) : 0;
   
   // Calculate total earnings from Firebase if not from params
   const [totalEarnings, setTotalEarnings] = useState(weeklyTotalFromParams || 89.5);
   
+  // Load total earnings - recalculate when approval status changes
   useEffect(() => {
     const loadTotalEarnings = async () => {
       if (weeklyTotalFromParams > 0) {
@@ -128,14 +129,15 @@ function ChildRedemptionContent() {
         return;
       }
       
+      // Don't calculate if we don't have parentId yet
+      if (!parentId) return;
+      
       try {
-        const userId = await getCurrentUserId();
-        if (!userId) return;
-
-        const challenge = await getActiveChallenge(userId);
+        const challenge = await getActiveChallenge(parentId);
         if (!challenge) return;
 
-        const uploads = await getUploadsByChallenge(challenge.id, userId);
+        const uploads = await getUploadsByChallenge(challenge.id, parentId);
+        // Only count approved uploads
         const approvedUploads = uploads.filter(u => u.parentAction === 'approved');
         const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
         
@@ -148,28 +150,51 @@ function ChildRedemptionContent() {
     };
 
     loadTotalEarnings();
-  }, [weeklyTotalFromParams]);
+  }, [weeklyTotalFromParams, parentId, lastApproved]); // Recalculate when lastApproved changes
   
-  // Calculate redemption date - always Saturday (Friday + 1 day)
-  const getRedemptionDate = () => {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 5 = Friday, 6 = Saturday
-    const daysUntilSaturday = dayOfWeek === 6 ? 0 : (6 - dayOfWeek);
-    const redemptionDate = new Date(today);
-    redemptionDate.setDate(today.getDate() + daysUntilSaturday);
-    return redemptionDate.toLocaleDateString('he-IL');
-  };
-  const redemptionDate = getRedemptionDate();
+  // Calculate redemption date from challenge startDate (Saturday of challenge week)
+  const [redemptionDate, setRedemptionDate] = useState<string>('');
+  
+  useEffect(() => {
+    const calculateRedemptionDate = async () => {
+      if (!challengeId || !parentId) return;
+      
+      try {
+        const challenge = await getActiveChallenge(parentId);
+        if (!challenge) return;
+        
+        // Calculate Saturday of the challenge week
+        const startDate = new Date(challenge.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        
+        // Find the start of the challenge week (Sunday)
+        const challengeStartDay = startDate.getDay(); // 0 = Sunday
+        const challengeSunday = new Date(startDate);
+        challengeSunday.setDate(startDate.getDate() - challengeStartDay);
+        
+        // Saturday is day 6 (Sunday = 0, Monday = 1, ..., Saturday = 6)
+        const challengeSaturday = new Date(challengeSunday);
+        challengeSaturday.setDate(challengeSunday.getDate() + 6);
+        
+        setRedemptionDate(challengeSaturday.toLocaleDateString('he-IL'));
+      } catch (error) {
+        console.error('Error calculating redemption date:', error);
+        setRedemptionDate('');
+      }
+    };
+    
+    calculateRedemptionDate();
+  }, [challengeId, parentId]);
   
   // Use ref to store timer so it persists across re-renders
   const autoApproveTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Check if we came from Friday upload - if so, show awaiting approval
+  // Check if we came from last upload - if so, show awaiting approval
   useEffect(() => {
-    if (fridayEarnings > 0) {
-      // Reset approval state when coming from Friday upload
+    if (lastEarnings > 0 && challengeId && parentId) {
+      // Reset approval state when coming from last upload
       setAwaitingParentApproval(true);
-      setFridayApproved(false);
+      setLastApproved(false);
       
       // Clear any existing timer
       if (autoApproveTimerRef.current) {
@@ -177,74 +202,85 @@ function ChildRedemptionContent() {
         autoApproveTimerRef.current = null;
       }
       
-      // Check Firebase for Friday approval status
-      const checkFridayApproval = async () => {
+      // Check Firebase for last pending approval status (lean query)
+      const checkLastApproval = async () => {
+        // Early exit if already approved
+        if (lastApproved) {
+          return true;
+        }
+        
         try {
-          const userId = await getCurrentUserId();
-          if (!userId) return;
-
-          const challenge = await getActiveChallenge(userId);
-          if (!challenge) return;
-
-          // Get Friday upload (assuming Friday is the last day before Saturday)
-          const today = new Date();
-          const fridayDate = new Date(today);
-          fridayDate.setDate(today.getDate() - (today.getDay() === 6 ? 1 : today.getDay() === 0 ? 2 : today.getDay() + 1));
-          const fridayDateStr = `${String(fridayDate.getDate()).padStart(2, '0')}/${String(fridayDate.getMonth() + 1).padStart(2, '0')}`;
+          // Lean query: only fetch pending approvals for this challenge (limit 1)
+          const { getPendingApprovalsByChallenge } = await import('@/lib/api/uploads');
+          const pendingUploads = await getPendingApprovalsByChallenge(challengeId, parentId);
           
-          const { getUploadByDate } = await import('@/lib/api/uploads');
-          // Pass userId as parentId for security rules
-          const fridayUpload = await getUploadByDate(challenge.id, fridayDateStr, userId);
-          
-          if (fridayUpload && fridayUpload.parentAction === 'approved') {
-            // Cancel auto-approve if parent already approved
+          // If no pending approvals, the last one was approved
+          if (pendingUploads.length === 0) {
+            // Stop polling and update state
             if (autoApproveTimerRef.current) {
               clearTimeout(autoApproveTimerRef.current);
               autoApproveTimerRef.current = null;
             }
             setAwaitingParentApproval(false);
-            setFridayApproved(true);
+            setLastApproved(true);
             return true;
           }
+          
+          // Still pending
           return false;
         } catch (e) {
-          console.error('Error checking Friday approval:', e);
+          console.error('Error checking last approval:', e);
           return false;
         }
       };
       
       // Check initial state
-      checkFridayApproval();
+      checkLastApproval();
       
       // Listen for approval event from dashboard
-      const handleFridayApproved = (event: CustomEvent) => {
+      const handleLastApproved = (event: CustomEvent) => {
         // Cancel auto-approve if parent already approved
         if (autoApproveTimerRef.current) {
           clearTimeout(autoApproveTimerRef.current);
           autoApproveTimerRef.current = null;
         }
         setAwaitingParentApproval(false);
-        setFridayApproved(true);
+        setLastApproved(true);
       };
       
       // Listen for approval event
-      window.addEventListener('fridayApproved', handleFridayApproved as EventListener);
+      window.addEventListener('lastApproved', handleLastApproved as EventListener);
       
-      // Check Firebase periodically for approval status
-      const checkInterval = setInterval(() => {
-        checkFridayApproval();
-      }, 2000); // Check every 2 seconds
+      // Check Firebase periodically for approval status (stops when approved)
+      let checkInterval: NodeJS.Timeout | null = null;
+      const startPolling = () => {
+        if (checkInterval) return; // Already polling
+        
+        checkInterval = setInterval(async () => {
+          const approved = await checkLastApproval();
+          if (approved && checkInterval) {
+            // Stop polling once approved
+            clearInterval(checkInterval);
+            checkInterval = null;
+          }
+        }, 6000); // Check every 6 seconds
+      };
+      
+      startPolling();
       
       return () => {
         if (autoApproveTimerRef.current) {
           clearTimeout(autoApproveTimerRef.current);
           autoApproveTimerRef.current = null;
         }
-        window.removeEventListener('fridayApproved', handleFridayApproved as EventListener);
+        window.removeEventListener('lastApproved', handleLastApproved as EventListener);
+        if (checkInterval) {
         clearInterval(checkInterval);
+          checkInterval = null;
+        }
       };
     }
-  }, [fridayEarnings]);
+  }, [lastEarnings, challengeId, parentId]);
 
   // Gender pronouns for child
   const childPronouns = {
@@ -266,16 +302,16 @@ function ChildRedemptionContent() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { they: 'היא', them: 'אותה', their: 'שלה', offers: 'מציעה', decide: 'תחליט' },
-    male: { they: 'הוא', them: 'אותו', their: 'שלו', offers: 'מציע', decide: 'יחליט' }
+    female: { they: 'היא', them: 'אותה', their: 'שלה', with: 'איתה', offers: 'מציעה', decide: 'תחליט', approved: 'אישרה' },
+    male: { they: 'הוא', them: 'אותו', their: 'שלו', with: 'איתו', offers: 'מציע', decide: 'יחליט', approved: 'אישר' }
   };
   const parentP = parentPronouns[childData.parentGender as 'female' | 'male'] || parentPronouns.female;
 
   const redemptionOptions = [
     { id: 'cash', label: 'מזומן 💵', description: `${childP.get} את הכסף במטבעות או שטרות ישר אלייך` },
     { id: 'gift', label: 'מתנה 🎁', description: `בחר מתנה מתוך מה ש${parentName} ${parentP.offers} לך` },
-    { id: 'activity', label: 'פעילות 🎮', description: `הצע ל${parentName} חוויה ש${childP.he === 'היא' ? 'היית' : 'היית'} רוצה איתם` },
-    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון ו${childP.earn} חצי שקל על כל שבוע ${childP.he === 'היא' ? 'שהוא' : 'שהוא'} שם` }
+    { id: 'activity', label: 'פעילות 🎮', description: `הצע ל${parentName} חוויה ש${childP.he === 'היא' ? 'היית' : 'היית'} רוצה ${parentP.with}` },
+    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון ו${childP.earn} חצי שקל על כל שבוע שהוא שם` }
   ];
 
   const handleRedemption = async () => {
@@ -283,9 +319,14 @@ function ChildRedemptionContent() {
 
     setIsProcessing(true);
     try {
-      // Deactivate challenge to mark redemption as complete
+      // Store redemption data in challenge document and deactivate challenge
       if (challengeId) {
-        await deactivateChallenge(challengeId);
+        const { deactivateChallenge } = await import('@/lib/api/challenges');
+        await deactivateChallenge(challengeId, {
+          redemptionAmount: totalEarnings,
+          redemptionChoice: selectedOption as 'cash' | 'gift' | 'activity' | 'save',
+          redeemedAt: new Date().toISOString()
+        });
         setRedemptionCompleted(true);
       }
       
@@ -373,51 +414,51 @@ function ChildRedemptionContent() {
         </div>
 
         {/* Awaiting Parent Approval Screen */}
-        {awaitingParentApproval && !fridayApproved && (
+        {awaitingParentApproval && !lastApproved && (
           <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[18px] shadow-card p-6 mb-6 text-center mt-20">
             <div className="text-6xl mb-4">⏳</div>
             <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
               ממתין לאישור של {parentName}...
             </h1>
             <p className="font-varela text-base text-[#282743] mb-4 leading-relaxed">
-              {childName}, העלית את יום שישי וצברת <strong className="text-[#273143]">₪{fridayEarnings.toFixed(1)}</strong>!
+              {childName}, העלית את ההעלאה האחרונה ו{childP.earned} <strong className="text-[#273143]">₪{lastEarnings.toFixed(1)}</strong>!
               <br />
-              עכשיו צריך את האישור של {parentName} כדי לראות את כל מה שצברת השבוע.
+              עכשיו צריך את האישור של {parentName} כדי לראות את כל מה ש{childP.earned} השבוע.
             </p>
             <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mt-4">
-              <p className="font-varela text-sm text-[#948DA9] mb-1">סכום יום שישי:</p>
+              <p className="font-varela text-sm text-[#948DA9] mb-1">סכום ההעלאה האחרונה:</p>
               <p className="font-varela font-bold text-2xl text-[#262135]">
-                ₪{fridayEarnings.toFixed(1)}
+                ₪{lastEarnings.toFixed(1)}
               </p>
             </div>
             <p className="font-varela text-sm text-[#282743] mt-4">
-              {parentName} צריך לאשר את ההעלאה בדשבורד שלו כדי שתוכל לראות את כל הסכום.
+              {parentName} צריך לאשר את ההעלאה בדשבורד {parentP.their} כדי שתוכל לראות את כל הסכום.
             </p>
           </div>
         )}
 
         {/* Parent Approval Celebration Screen - show briefly after approval */}
-        {fridayApproved && (
+        {lastApproved && (
           <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[18px] shadow-card p-6 mb-6 text-center mt-20 animate-bounce">
             <div className="text-6xl mb-4">🎉</div>
             <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
-              {parentName} אישר!
+              {parentName} {parentP.approved}!
             </h1>
             <p className="font-varela text-base text-[#282743] mb-4 leading-relaxed">
-              כל הכבוד {childName}! {parentName} אישר את ההעלאה של יום שישי.
+              כל הכבוד {childName}! {parentName} {parentP.approved} את ההעלאה האחרונה.
             </p>
           </div>
         )}
 
         {/* Celebration header - show when not awaiting approval or after approval */}
-        {(!awaitingParentApproval || fridayApproved) && (
+        {(!awaitingParentApproval || lastApproved) && (
           <>
-            {/* Friday earnings box - show above summary when Friday was approved */}
-            {fridayApproved && fridayEarnings > 0 && (
+            {/* Last earnings box - show above summary when last upload was approved */}
+            {lastApproved && lastEarnings > 0 && (
               <div className="bg-[#E6F19A] bg-opacity-50 rounded-[12px] p-4 mb-4 border-2 border-[#E6F19A] shadow-sm">
-                <p className="font-varela text-sm text-[#948DA9] mb-1 text-center">סכום יום שישי:</p>
+                <p className="font-varela text-sm text-[#948DA9] mb-1 text-center">סכום ההעלאה האחרונה:</p>
                 <p className="font-varela font-bold text-2xl text-[#273143] text-center">
-                  ₪{fridayEarnings.toFixed(1)}
+                  ₪{lastEarnings.toFixed(1)}
                 </p>
               </div>
             )}
@@ -439,7 +480,7 @@ function ChildRedemptionContent() {
         )}
 
         {/* Redemption options - only show when not awaiting approval or after approval */}
-        {(!awaitingParentApproval || fridayApproved) && (
+        {(!awaitingParentApproval || lastApproved) && (
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
           <h2 className="font-varela font-semibold text-lg text-[#262135] mb-4 text-center">
             איך {childP.wants} לקחת את הכסף?
@@ -475,7 +516,7 @@ function ChildRedemptionContent() {
         )}
 
         {/* Redemption button - only show when not awaiting approval or after approval */}
-        {(!awaitingParentApproval || fridayApproved) && (
+        {(!awaitingParentApproval || lastApproved) && (
           <button
             onClick={handleRedemption}
             disabled={!selectedOption || isProcessing}
@@ -492,7 +533,7 @@ function ChildRedemptionContent() {
         {/* Info */}
         <div className="mt-6 bg-[#FFFCF8] rounded-[18px] shadow-card p-4 text-center">
           <p className="font-varela text-xs text-[#948DA9]">
-            תאריך הפדיון: {redemptionDate}
+            תאריך הפדיון: {redemptionDate || 'טוען...'}
           </p>
         </div>
       </div>

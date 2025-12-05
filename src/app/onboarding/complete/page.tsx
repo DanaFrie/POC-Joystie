@@ -95,9 +95,10 @@ function OnboardingCompleteContent() {
         try {
           const challenge = await getActiveChallenge(userId);
           const childIdToUse = childId || challenge?.childId;
-          console.log('Challenge found:', challenge?.id, 'Child ID:', childIdToUse);
+          const challengeIdToUse = challenge?.id;
+          console.log('Challenge found:', challengeIdToUse, 'Child ID:', childIdToUse);
           
-          const url = generateSetupUrl(userId, childIdToUse);
+          const url = generateSetupUrl(userId, childIdToUse, challengeIdToUse);
           console.log('Generated URL successfully');
           setShareLink(url);
         } catch (challengeError) {
@@ -207,10 +208,10 @@ function OnboardingCompleteContent() {
             <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
               הסבר קצר כיצד לעשות זאת:
             </p>
-            <div className="relative w-full aspect-video bg-gray-100 rounded-[12px] overflow-hidden mb-3">
+            <div className="relative w-full bg-gray-100 rounded-[12px] overflow-hidden mb-3" style={{ minHeight: '300px' }}>
               <video
                 controls
-                className="w-full h-full object-contain"
+                className="w-full h-auto object-contain"
                 poster="/video-poster-parent-android.jpg"
               >
                 <source src="/screenshot-tutorial-parent-android.mp4" type="video/mp4" />

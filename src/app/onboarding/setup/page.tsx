@@ -8,6 +8,7 @@ import { getCurrentUserId } from '@/utils/auth';
 import { createChild } from '@/lib/api/children';
 import { createChallenge } from '@/lib/api/challenges';
 import { getUser } from '@/lib/api/users';
+import { clientConfig } from '@/config/client.config';
 
 export default function OnboardingSetupPage() {
   const [step, setStep] = useState(1);
@@ -109,11 +110,11 @@ export default function OnboardingSetupPage() {
     }
 
     // תקציב שבועי = התקציב הנבחר
-    // האתגר נמשך 6 ימים (ראשון-שישי), יום שבת הוא יום פדיון
+    // האתגר נמשך מספר ימים מוגדר, יום שבת הוא יום פדיון
     const weeklyBudget = selectedBudget; // התקציב השבועי שווה לתקציב הנבחר
-    const dailyBudget = selectedBudget / 6; // חלוקה ל-6 ימים
+    const dailyBudget = selectedBudget / clientConfig.challenge.budgetDivision;
     const hourlyRate = targetHours > 0 ? dailyBudget / targetHours : 0;
-    const weeklyHours = targetHours * 6; // 6 ימים במקום 7
+    const weeklyHours = targetHours * clientConfig.challenge.challengeDays;
 
     return {
       selectedBudget,
@@ -252,7 +253,7 @@ export default function OnboardingSetupPage() {
           ? parseFloat(formData.customBudget) 
           : parseFloat(formData.weeklyBudget) || 0;
         const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
-        const dailyBudget = selectedBudget / 6; // Divide selected budget by 6 days (Sunday-Friday)
+        const dailyBudget = selectedBudget / clientConfig.challenge.budgetDivision;
 
         // Create child profile
         const childId = await createChild({
@@ -283,12 +284,12 @@ export default function OnboardingSetupPage() {
           motivationReason: motivationReason || undefined,
           selectedBudget: selectedBudget,
           dailyBudget: dailyBudget,
-          dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || 3,
+          dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || clientConfig.challenge.defaultDailyScreenTimeGoal,
           weekNumber: 1,
-          totalWeeks: 4, // Default to 4 weeks
+          totalWeeks: clientConfig.challenge.totalWeeks,
           startDate: startDate.toISOString(),
-          challengeDays: 6, // 6 days (Sunday-Friday)
-          redemptionDay: 'saturday',
+          challengeDays: clientConfig.challenge.challengeDays,
+          redemptionDay: clientConfig.challenge.redemptionDay,
           isActive: true,
         });
 
@@ -307,9 +308,9 @@ export default function OnboardingSetupPage() {
             deviceType: formData.deviceType || 'ios',
             weeklyBudget: weeklyBudget,
             dailyBudget: dailyBudget,
-            dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || 3,
-            challengeDays: 6,
-            redemptionDay: 'saturday',
+            dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || clientConfig.challenge.defaultDailyScreenTimeGoal,
+            challengeDays: clientConfig.challenge.challengeDays,
+            redemptionDay: clientConfig.challenge.redemptionDay,
             challengeId: challengeId,
             childId: childId,
           };
@@ -373,12 +374,12 @@ export default function OnboardingSetupPage() {
         {/* Progress indicator */}
         <div className="mb-6 mt-20">
           <div className="flex justify-between mb-2">
-            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 6</span>
+            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך {clientConfig.challenge.challengeDays}</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-[#273143] h-2 rounded-full transition-all"
-              style={{ width: `${(step / 6) * 100}%` }}
+              style={{ width: `${(step / clientConfig.challenge.challengeDays) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -614,7 +615,7 @@ export default function OnboardingSetupPage() {
                           אם {formData.gender === 'boy' ? 'הוא יגדיל' : 'היא תגדיל'} את זמן המסך, התקציב יקטן בהתאם.
                         </p>
                         <p className="mt-2">
-                          במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / 6, 2)}</strong>.
+                          במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / clientConfig.challenge.budgetDivision, 2)}</strong>.
                         </p>
                         <p className="mt-2">
                           אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-1.5 שעות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.

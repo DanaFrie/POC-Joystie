@@ -26,6 +26,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: join(__dirname, '..', '.env.local') });
 
+// App configuration (matches src/config/client.config.ts)
+// Note: Only client config values are used in simulation scripts
+const CLIENT_CONFIG = {
+  challenge: {
+    totalWeeks: 4,
+    challengeDays: 6,
+    redemptionDay: 'saturday',
+    budgetDivision: 6,
+    defaultDailyScreenTimeGoal: 3,
+    defaultSelectedBudget: 100,
+  },
+};
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -182,10 +195,10 @@ async function main() {
     // Step 3: Create challenge starting on Sunday
     console.log('\n🎯 שלב 3: יצירת אתגר...');
     const startDate = getNextSunday();
-    const selectedBudget = 100;
+    const selectedBudget = CLIENT_CONFIG.challenge.defaultSelectedBudget;
     const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
-    const dailyBudget = selectedBudget / 6; // Divide selected budget by 6 days (Sunday-Friday)
-    const dailyScreenTimeGoal = 3; // hours
+    const dailyBudget = selectedBudget / CLIENT_CONFIG.challenge.budgetDivision;
+    const dailyScreenTimeGoal = CLIENT_CONFIG.challenge.defaultDailyScreenTimeGoal;
 
     const challengeData = {
       parentId: userId,
@@ -195,10 +208,10 @@ async function main() {
       dailyBudget: dailyBudget,
       dailyScreenTimeGoal: dailyScreenTimeGoal,
       weekNumber: 1,
-      totalWeeks: 4,
+      totalWeeks: CLIENT_CONFIG.challenge.totalWeeks,
       startDate: startDate.toISOString(),
-      challengeDays: 6, // Sunday-Friday
-      redemptionDay: 'saturday',
+      challengeDays: CLIENT_CONFIG.challenge.challengeDays,
+      redemptionDay: CLIENT_CONFIG.challenge.redemptionDay,
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -1,4 +1,5 @@
 // Session management utilities
+import { clientConfig } from '@/config/client.config';
 
 export interface SessionData {
   userId: string;
@@ -7,15 +8,13 @@ export interface SessionData {
 }
 
 const SESSION_KEY = 'session';
-const SESSION_DURATION_DAYS = 8; // 8 days
-const INACTIVITY_TIMEOUT_MINUTES = 48 * 60; // 48 hours = 2880 minutes
 
 /**
  * Create a new session
  */
 export function createSession(userId: string): SessionData {
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + clientConfig.session.durationDays * 24 * 60 * 60 * 1000);
   
   const sessionData: SessionData = {
     userId,
@@ -67,7 +66,7 @@ export function isSessionValid(): boolean {
   const lastActivityStr = localStorage.getItem('lastActivity');
   if (lastActivityStr) {
     const lastActivity = new Date(lastActivityStr);
-    const inactivityTimeout = new Date(lastActivity.getTime() + INACTIVITY_TIMEOUT_MINUTES * 60 * 1000);
+    const inactivityTimeout = new Date(lastActivity.getTime() + clientConfig.session.inactivityTimeoutMinutes * 60 * 1000);
     
     if (now > inactivityTimeout) {
       clearSession();
@@ -108,7 +107,7 @@ export function extendSession(): void {
   if (!session) return;
   
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + clientConfig.session.durationDays * 24 * 60 * 60 * 1000);
   
   const updatedSession: SessionData = {
     ...session,

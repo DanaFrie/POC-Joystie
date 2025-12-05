@@ -61,7 +61,9 @@ function getUploadStatus(
   if (isFuture) return 'future';
   if (!upload) return 'missing';
   
-  if (upload.requiresApproval && !upload.parentAction) {
+  // Check if approval is required and not yet approved/rejected
+  // Note: After approval, requiresApproval is set to false, so this check handles pending approvals
+  if (upload.requiresApproval && (!upload.parentAction || upload.parentAction === null)) {
     return 'awaiting_approval';
   }
   
@@ -69,7 +71,9 @@ function getUploadStatus(
     return 'rejected';
   }
   
-  if (upload.parentAction === 'approved' || !upload.requiresApproval) {
+  // If approved or doesn't require approval, show success/warning based on goal achievement
+  // After approval: requiresApproval is false AND parentAction is 'approved'
+  if (upload.parentAction === 'approved' || (!upload.requiresApproval && upload.parentAction !== 'rejected')) {
     return upload.success ? 'success' : 'warning';
   }
   
@@ -110,7 +114,33 @@ function generateWeek(
       : dayName === challenge.redemptionDay;
     
     // Find matching upload
-    const upload = uploads.find(u => u.date === dateStr) ?? null;
+    const matchingUploads = uploads.filter(u => u.date === dateStr);
+    const upload = matchingUploads.length > 0 ? matchingUploads[0] : null;
+    
+    // Log if multiple uploads found for same date (data integrity issue)
+    if (matchingUploads.length > 1) {
+      console.warn(`[Dashboard] Multiple uploads found for date ${dateStr}:`, matchingUploads.map(u => ({
+        id: u.id,
+        date: u.date,
+        requiresApproval: u.requiresApproval,
+        parentAction: u.parentAction,
+        uploadedAt: u.uploadedAt
+      })));
+    }
+    
+    // Log upload matching for debugging
+    if (upload) {
+      console.log(`[Dashboard] Matched upload for ${dateStr}:`, {
+        id: upload.id,
+        date: upload.date,
+        requiresApproval: upload.requiresApproval,
+        parentAction: upload.parentAction,
+        success: upload.success,
+        uploadedAt: upload.uploadedAt
+      });
+    } else {
+      console.log(`[Dashboard] No upload found for ${dateStr}`);
+    }
     
     // Calculate coins
     const hourlyRate = challenge.dailyScreenTimeGoal > 0 
@@ -239,7 +269,16 @@ function buildToday(
 /**
  * Get complete dashboard data for a user
  */
-export async function getDashboardData(parentId: string): Promise<DashboardState | null> {
+export async function getDashboardData(parentId: string, useCache: boolean = true): Promise<DashboardState | null> {
+  // Check cache first
+  if (useCache) {
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    const cached = dataCache.get<DashboardState>(cacheKeys.dashboard(parentId));
+    if (cached) {
+      console.log(`[Dashboard] Using cached dashboard data for ${parentId}`);
+      return cached;
+    }
+  }
   try {
     console.log('[Dashboard] Loading data for user:', parentId);
     
@@ -268,6 +307,14 @@ export async function getDashboardData(parentId: string): Promise<DashboardState
     
     // Get uploads for current week (include parentId for security rules)
     const uploads = await getUploadsByChallenge(challenge.id, parentId);
+    console.log(`[Dashboard] Fetched ${uploads.length} uploads for challenge ${challenge.id}:`, uploads.map(u => ({
+      id: u.id,
+      date: u.date,
+      requiresApproval: u.requiresApproval,
+      parentAction: u.parentAction,
+      success: u.success,
+      uploadedAt: u.uploadedAt
+    })));
     
     // Check if challenge hasn't started yet
     const startDate = new Date(challenge.startDate);
@@ -320,6 +367,12 @@ export async function getDashboardData(parentId: string): Promise<DashboardState
       challengeNotStarted: challengeNotStarted,
       challengeStartDate: challenge.startDate
     };
+    
+    // Cache the result
+    if (useCache) {
+      const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+      dataCache.set(cacheKeys.dashboard(parentId), dashboardState, cacheTTL.dashboard);
+    }
     
     return dashboardState;
   } catch (error) {

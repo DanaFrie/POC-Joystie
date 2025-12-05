@@ -17,6 +17,7 @@ import { generateUploadUrl, generateRedemptionUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { approveUpload, rejectUpload, getUploadByDate } from '@/lib/api/uploads';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange, isAuthenticated } from '@/utils/auth';
+import { clientConfig } from '@/config/client.config';
 
 // Empty initial state - will be populated from Firestore only
 const emptyDashboardState: DashboardState = {
@@ -218,8 +219,8 @@ export default function DashboardPage() {
         if (userId) {
           const challenge = await getActiveChallenge(userId);
           if (challenge) {
-            const upload = generateUploadUrl(userId, challenge.childId);
-            const redemption = generateRedemptionUrl(userId, challenge.childId);
+            const upload = generateUploadUrl(userId, challenge.childId, challenge.id);
+            const redemption = generateRedemptionUrl(userId, challenge.childId, challenge.id);
             setUploadUrl(upload);
             setRedemptionUrl(redemption);
           } else {
@@ -272,33 +273,76 @@ export default function DashboardPage() {
         throw new Error('User ID not found');
       }
 
-      // Get active challenge
-      const challenge = await getActiveChallenge(userId);
-      if (!challenge) {
-        throw new Error('No active challenge found');
+      // Use cached challenge if available (from dashboardData)
+      let challenge = dashboardData?.challenge ? {
+        id: '', // Will be set from getActiveChallenge
+        ...dashboardData.challenge
+      } : null;
+      
+      // Only fetch if we don't have challenge data or need the ID
+      if (!challenge || !challenge.id) {
+        challenge = await getActiveChallenge(userId);
+        if (!challenge) {
+          throw new Error('No active challenge found');
+        }
       }
 
       // Find the upload for this date
+      console.log(`[Dashboard] Looking for upload:`, { challengeId: challenge.id, dayDate, userId });
       const upload = await getUploadByDate(challenge.id, dayDate, userId);
       if (!upload) {
         throw new Error('Upload not found for this date');
       }
+      console.log(`[Dashboard] Found upload before approval:`, {
+        id: upload.id,
+        date: upload.date,
+        challengeId: upload.challengeId,
+        requiresApproval: upload.requiresApproval,
+        parentAction: upload.parentAction,
+        success: upload.success,
+        uploadedAt: upload.uploadedAt,
+        updatedAt: upload.updatedAt
+      });
 
       // Approve in Firestore
       await approveUpload(upload.id);
 
-      // Reload dashboard data to get updated state from Firestore
-      const updatedData = await getDashboardData(userId);
+      // Invalidate uploads and dashboard cache since we just approved one
+      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+      if (challenge.id) {
+        dataCache.invalidate(cacheKeys.uploads(challenge.id, userId));
+      }
+      dataCache.invalidate(cacheKeys.dashboard(userId));
+
+      // Small delay to ensure Firestore consistency (eventual consistency)
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Reload dashboard data to get updated state from Firestore (skip cache)
+      const updatedData = await getDashboardData(userId, false);
       if (updatedData) {
+        // Verify the approved day status was updated correctly
+        const approvedDay = updatedData.week.find(day => day.date === dayDate);
+        console.log('[Dashboard] Approved day status after reload:', {
+          date: dayDate,
+          status: approvedDay?.status,
+          requiresApproval: approvedDay?.requiresApproval,
+          parentAction: approvedDay?.parentAction
+        });
+        
         setDashboardData(updatedData);
         
-        // If Friday was approved, notify child redemption page (for cross-tab communication)
-        const approvedDay = updatedData.week.find(day => day.date === dayDate);
-        const isFriday = approvedDay?.dayName === 'ו׳' || approvedDay?.dayName === 'שישי';
-        if (isFriday && approvedDay && typeof window !== 'undefined') {
-          localStorage.setItem('fridayApproved', 'true');
-          localStorage.setItem('fridayEarnings', approvedDay.coinsEarned.toString());
-          window.dispatchEvent(new Event('fridayApproved'));
+        // If last pending approval was approved, notify child redemption page (for cross-tab communication)
+        if (approvedDay && typeof window !== 'undefined') {
+          // Check if this was the last pending approval
+          const pendingDays = updatedData.week.filter(day => 
+            day.status === 'awaiting_approval' || 
+            (day.requiresApproval && !day.parentAction)
+          );
+          
+          // If no more pending approvals, this was the last one
+          if (pendingDays.length === 0) {
+            window.dispatchEvent(new Event('lastApproved'));
+          }
         }
       } else {
         throw new Error('Failed to reload dashboard data after approval');
@@ -328,10 +372,24 @@ export default function DashboardPage() {
         throw new Error('User ID not found');
       }
 
-      // Get active challenge
-      const challenge = await getActiveChallenge(userId);
+      // Use cached challenge if available (from dashboardData)
+      let challenge = dashboardData?.challenge ? {
+        id: '', // Will be set from getActiveChallenge if needed
+        ...dashboardData.challenge
+      } : null;
+      
+      // Only fetch if we don't have challenge data or need the ID
       if (!challenge) {
-        throw new Error('No active challenge found');
+        challenge = await getActiveChallenge(userId);
+        if (!challenge) {
+          throw new Error('No active challenge found');
+        }
+      } else {
+        // Get challenge ID from cache or fetch
+        const cachedChallenge = await getActiveChallenge(userId, true);
+        if (cachedChallenge) {
+          challenge = { ...challenge, id: cachedChallenge.id };
+        }
       }
 
       // Find the upload for this date
@@ -343,8 +401,15 @@ export default function DashboardPage() {
       // Reject in Firestore
       await rejectUpload(upload.id);
 
-      // Reload dashboard data to get updated state from Firestore
-      const updatedData = await getDashboardData(userId);
+      // Invalidate cache
+      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+      if (challenge.id) {
+        dataCache.invalidate(cacheKeys.uploads(challenge.id, userId));
+      }
+      dataCache.invalidate(cacheKeys.dashboard(userId));
+
+      // Reload dashboard data (skip cache)
+      const updatedData = await getDashboardData(userId, false);
       if (updatedData) {
         setDashboardData(updatedData);
       } else {
@@ -496,6 +561,7 @@ export default function DashboardPage() {
               childName={dashboardData.child.name}
               childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
               uploadUrl={uploadUrl}
+              dailyBudget={dashboardData.challenge.dailyBudget}
               onApprove={handleApprove}
               onReject={handleReject}
               onClose={() => {
@@ -512,6 +578,7 @@ export default function DashboardPage() {
                 childName={dashboardData.child.name}
                 childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
+                dailyBudget={dashboardData.challenge.dailyBudget}
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onDaysUpdated={(updatedDays) => {
@@ -556,7 +623,7 @@ export default function DashboardPage() {
             {isChallengeOpen && (() => {
               const challenge = dashboardData.challenge;
               const hourlyRate = challenge.dailyScreenTimeGoal > 0 ? challenge.dailyBudget / challenge.dailyScreenTimeGoal : 0;
-              const weeklyHours = challenge.dailyScreenTimeGoal * 6; // 6 days (Sunday-Friday)
+              const weeklyHours = challenge.dailyScreenTimeGoal * clientConfig.challenge.challengeDays;
               
               return (
                 <div className="px-4 pb-4 space-y-4">
@@ -575,7 +642,7 @@ export default function DashboardPage() {
                         <span className="font-varela font-semibold text-base text-[#273143]">₪{formatNumber(challenge.dailyBudget)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
-                        <span className="font-varela font-normal text-sm text-[#273143]">כסף לשעה</span>
+                        <span className="font-varela font-normal text-sm text-[#273143]">עלות שעת חריגה</span>
                         <span className="font-varela font-semibold text-base text-[#273143]">₪{formatNumber(hourlyRate)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
@@ -681,6 +748,7 @@ export default function DashboardPage() {
                 childName={dashboardData.child.name}
                 childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
+                dailyBudget={dashboardData.challenge.dailyBudget}
                 onApprove={handleApprove}
                 onReject={handleReject}
                 onDaysUpdated={(updatedDays) => {
@@ -729,7 +797,7 @@ export default function DashboardPage() {
               {isChallengeOpen && (() => {
                 const challenge = dashboardData.challenge;
                 const hourlyRate = challenge.dailyScreenTimeGoal > 0 ? challenge.dailyBudget / challenge.dailyScreenTimeGoal : 0;
-                const weeklyHours = challenge.dailyScreenTimeGoal * 6; // 6 days (Sunday-Friday)
+                const weeklyHours = challenge.dailyScreenTimeGoal * clientConfig.challenge.challengeDays;
                 
                 return (
                   <div className="px-4 pb-4 space-y-4">
@@ -748,7 +816,7 @@ export default function DashboardPage() {
                         <span className="font-varela font-semibold text-base text-[#273143]">₪{formatNumber(challenge.dailyBudget)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
-                        <span className="font-varela font-normal text-sm text-[#273143]">כסף לשעה</span>
+                        <span className="font-varela font-normal text-sm text-[#273143]">עלות שעת חריגה</span>
                         <span className="font-varela font-semibold text-base text-[#273143]">₪{formatNumber(hourlyRate)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">

@@ -30,15 +30,12 @@ export const processScreenshot = functions.https.onCall(
     region: 'us-central1', // Change to your preferred region
     timeoutSeconds: 540, // 9 minutes max
     memory: '512MiB', // Reduced since we're just calling Cloud Run
+    invoker: 'public', // Allow unauthenticated invocations (security via URL token validation)
   },
   async (request): Promise<ProcessScreenshotResponse> => {
-    // Verify authentication
-    if (!request.auth) {
-      throw new functions.https.HttpsError(
-        'unauthenticated',
-        'The function must be called while authenticated.'
-      );
-    }
+    // Note: Authentication is optional - child upload pages use URL token validation
+    // Security is handled by URL token validation in the app code
+    // If authentication is present, we can use it for additional validation, but it's not required
 
     const { imageData, targetDay } = request.data as ProcessScreenshotRequest;
 

@@ -25,6 +25,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: join(__dirname, '..', '.env.local') });
 
+// App configuration (matches src/config/client.config.ts)
+// Note: Only client config values are used in simulation scripts
+const CLIENT_CONFIG = {
+  token: {
+    expirationDays: 14,
+  },
+  challenge: {
+    totalWeeks: 4,
+    challengeDays: 6,
+    redemptionDay: 'saturday',
+    budgetDivision: 6,
+    defaultDailyScreenTimeGoal: 1.5,
+    defaultSelectedBudget: 20,
+  },
+};
+
 // Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -49,18 +65,24 @@ function getHebrewDayName(dayIndex) {
 }
 
 // Helper to encode parent token (matches src/utils/url-encoding.ts)
+// Uses compact pipe-delimited format: parentId|childId|challengeId|expiresAt
 // Note: In browser, this uses btoa/atob, but in Node.js we use Buffer
-function encodeParentToken(parentId, childId) {
-  const payload = {
-    parentId,
-    childId: childId || null,
-    timestamp: Date.now()
-  };
+function encodeParentToken(parentId, childId, challengeId) {
+  const expiresAt = Date.now() + (CLIENT_CONFIG.token.expirationDays * 24 * 60 * 60 * 1000);
   
-  const json = JSON.stringify(payload);
+  // Compact format: parentId|childId|challengeId|expiresAt
+  // Empty values use empty string (not null) to keep it compact
+  const parts = [
+    parentId,
+    childId || '',
+    challengeId || '',
+    expiresAt.toString()
+  ];
+  
+  const compact = parts.join('|');
   // Use base64url encoding (URL-safe)
   // Buffer.from().toString('base64') is equivalent to btoa() in browser
-  const encoded = Buffer.from(json, 'utf8').toString('base64')
+  const encoded = Buffer.from(compact, 'utf8').toString('base64')
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
@@ -69,14 +91,16 @@ function encodeParentToken(parentId, childId) {
 }
 
 // Helper to generate setup URL
-function generateSetupUrl(parentId, childId, baseUrl = 'http://localhost:3000') {
-  const token = encodeParentToken(parentId, childId);
+// Note: challengeId is NOT included in setup URL to keep it shorter (not needed for setup)
+function generateSetupUrl(parentId, childId, challengeId, baseUrl = 'http://localhost:3000') {
+  // Setup URL doesn't need challengeId - it's only needed for upload/redemption
+  const token = encodeParentToken(parentId, childId, undefined);
   return `${baseUrl}/child/setup?token=${token}`;
 }
 
 // Helper to generate upload URL
-function generateUploadUrl(parentId, childId, baseUrl = 'http://localhost:3000') {
-  const token = encodeParentToken(parentId, childId);
+function generateUploadUrl(parentId, childId, challengeId, baseUrl = 'http://localhost:3000') {
+  const token = encodeParentToken(parentId, childId, challengeId);
   return `${baseUrl}/child/upload?token=${token}`;
 }
 
@@ -258,9 +282,9 @@ async function main() {
     // Step 3: Create challenge starting last week's Sunday
     console.log('\n🎯 Step 3: Creating challenge...');
     const startDate = getLastWeekSunday();
-    const selectedBudget = 100;
-    const dailyBudget = selectedBudget / 6; // Divide selected budget by 6 days (Sunday-Friday)
-    const dailyScreenTimeGoal = 3; // hours
+    const selectedBudget = CLIENT_CONFIG.challenge.defaultSelectedBudget;
+    const dailyBudget = selectedBudget / CLIENT_CONFIG.challenge.budgetDivision;
+    const dailyScreenTimeGoal = CLIENT_CONFIG.challenge.defaultDailyScreenTimeGoal;
 
     const challengeData = {
       parentId: userId,
@@ -270,10 +294,10 @@ async function main() {
       dailyBudget: dailyBudget,
       dailyScreenTimeGoal: dailyScreenTimeGoal,
       weekNumber: 1,
-      totalWeeks: 4,
+      totalWeeks: CLIENT_CONFIG.challenge.totalWeeks,
       startDate: startDate.toISOString(),
-      challengeDays: 6, // Sunday-Friday
-      redemptionDay: 'saturday',
+      challengeDays: CLIENT_CONFIG.challenge.challengeDays,
+      redemptionDay: CLIENT_CONFIG.challenge.redemptionDay,
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -413,8 +437,8 @@ async function main() {
 
     // Generate URLs for child
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-    const setupUrl = generateSetupUrl(userId, childId, baseUrl);
-    const uploadUrl = generateUploadUrl(userId, childId, baseUrl);
+    const setupUrl = generateSetupUrl(userId, childId, challengeId, baseUrl);
+    const uploadUrl = generateUploadUrl(userId, childId, challengeId, baseUrl);
 
     console.log('\n✅ Simulation completed successfully!');
     console.log(`\n📋 User Information:`);

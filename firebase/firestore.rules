@@ -26,24 +26,83 @@ service cloud.firestore {
     }
     
     // Children collection - users can read/write children linked to them
+    // Allow unauthenticated reads for child setup/upload pages (security via URL token)
+    // Allow unauthenticated updates for setup fields (nickname, moneyGoals) - security via URL token
     match /children/{childId} {
-      allow read, write: if isAuthenticated() && 
+      // Allow read for all (security handled by URL token validation in app code)
+      allow read: if true;
+      
+      // Allow unauthenticated create for child setup (document doesn't exist yet)
+      // Security: Token validation in app code ensures only valid parent-child pairs can create
+      // Only allow creating with required fields + setup fields (nickname, moneyGoals)
+      allow create: if !isAuthenticated() &&
+        resource == null &&
+        // Must have required fields
+        request.resource.data.keys().hasAll(['parentId', 'id', 'createdAt', 'updatedAt']) &&
+        // Must have basic fields (can be empty strings for setup)
+        request.resource.data.keys().hasAll(['name', 'age', 'gender', 'deviceType']);
+      
+      // Allow unauthenticated update for setup fields only (nickname, moneyGoals, updatedAt)
+      // Security: Token validation in app code ensures only valid parent-child pairs can update
+      // Restriction: Only allow if child doesn't already have nickname/moneyGoals (prevent overwriting completed setup)
+      allow update: if !isAuthenticated() &&
+        resource != null &&
+        // Ensure parentId doesn't change (critical security check)
+        request.resource.data.parentId == resource.data.parentId &&
+        // Prevent overwriting if setup is already complete
+        // Setup is incomplete if: nickname missing OR moneyGoals missing OR moneyGoals is empty array
+        (!resource.data.keys().hasAny(['nickname']) || 
+         !resource.data.keys().hasAny(['moneyGoals']) || 
+         (resource.data.keys().hasAny(['moneyGoals']) && 
+          resource.data.moneyGoals is list && 
+          resource.data.moneyGoals.size() == 0));
+      
+      // Allow authenticated writes (create, update, delete) for owners
+      allow create, delete: if isAuthenticated() && 
         (resource == null || resource.data.parentId == request.auth.uid);
+      
+      // Allow authenticated updates for owners (can update any field, including setup fields)
+      allow update: if isAuthenticated() && 
+        resource != null && resource.data.parentId == request.auth.uid;
     }
     
     // Challenges collection - users can read/write challenges for their children
+    // Allow unauthenticated reads for child setup/upload pages (security via URL token)
     match /challenges/{challengeId} {
-      allow read, write: if isAuthenticated() && 
+      // Allow read for all (security handled by URL token validation in app code)
+      allow read: if true;
+      // Allow write only if authenticated and owns the challenge
+      allow write: if isAuthenticated() && 
         (resource == null || resource.data.parentId == request.auth.uid);
     }
     
     // Daily uploads collection - users can read/write uploads for their challenges
+    // Allow unauthenticated reads/writes for child upload pages (security via URL token)
     match /daily_uploads/{uploadId} {
-      // Allow read if authenticated and the upload belongs to the user
-      // For list queries, Firestore validates based on the query filters
-      allow read: if isAuthenticated() && 
-        (resource == null || resource.data.parentId == request.auth.uid);
-      // Allow write if authenticated and the upload belongs to the user (or is being created)
+      // Allow read for all (security handled by URL token validation in app code)
+      allow read: if true;
+      
+      // Allow unauthenticated create for telemetry/upload data
+      // Security: Token validation in app code ensures only valid parent-child-challenge pairs can create
+      // Validation: Must have required fields (parentId, childId, challengeId, date)
+      allow create: if !isAuthenticated() &&
+        resource == null &&
+        request.resource.data.keys().hasAll(['parentId', 'childId', 'challengeId', 'date', 'createdAt', 'updatedAt']);
+      
+      // Allow unauthenticated update for screenshotStoragePath only (after Cloud Storage upload)
+      // Security: Token validation in app code ensures only valid parent-child-challenge pairs can update
+      // Restriction: Only allow updating screenshotStoragePath and updatedAt fields
+      allow update: if !isAuthenticated() &&
+        resource != null &&
+        // Ensure critical fields remain unchanged
+        request.resource.data.parentId == resource.data.parentId &&
+        request.resource.data.childId == resource.data.childId &&
+        request.resource.data.challengeId == resource.data.challengeId &&
+        request.resource.data.date == resource.data.date &&
+        request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt;
+      
+      // Allow authenticated writes (create, update, delete) for owners
       allow create: if isAuthenticated() && 
         request.resource.data.parentId == request.auth.uid;
       allow update, delete: if isAuthenticated() && 

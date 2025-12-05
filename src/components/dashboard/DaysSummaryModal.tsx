@@ -21,6 +21,7 @@ export default function DaysSummaryModal({
   childName,
   childGender = 'boy',
   uploadUrl,
+  dailyBudget,
   onApprove, 
   onReject, 
   onClose,
@@ -125,7 +126,7 @@ export default function DaysSummaryModal({
             const processing = isProcessing(day.date);
 
             // Calculate coins lost for exceeded goal
-            const dailyBudget = 12.9;
+            // Use dailyBudget from challenge data (passed as prop, not hardcoded)
             const hourlyRate = dailyBudget / day.screenTimeGoal;
             const coinsMaxPossible = dailyBudget;
             const coinsLost = Math.max(0, coinsMaxPossible - day.coinsEarned);

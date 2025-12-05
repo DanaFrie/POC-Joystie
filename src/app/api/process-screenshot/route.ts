@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { serverConfig } from '@/config/server.config';
 
 const execAsync = promisify(exec);
 
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
           // Use shell option for Windows py launcher support
           const execOptions: any = {
             maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-            timeout: 60000, // 60 second timeout
+            timeout: serverConfig.api.screenshotProcessingTimeout,
           };
           
           // On Windows, use shell to properly handle 'py -3.11' launcher

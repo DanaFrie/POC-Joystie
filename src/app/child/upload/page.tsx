@@ -10,9 +10,12 @@ import { uploadScreenshot } from '@/lib/api/storage';
 import { getCurrentUserId } from '@/utils/auth';
 import { validateUploadUrl } from '@/utils/url-validation';
 import { generateRedemptionUrl } from '@/utils/url-encoding';
+import { decodeParentToken } from '@/utils/url-encoding';
+import { getChallenge } from '@/lib/api/challenges';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { getUser } from '@/lib/api/users';
 import { getChild } from '@/lib/api/children';
+import { clientConfig } from '@/config/client.config';
 
 interface UploadResult {
   screenTimeUsed: number;
@@ -41,13 +44,12 @@ function ChildUploadContent() {
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [selectedDay, setSelectedDay] = useState<SelectableDay | null>(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'ios' | 'android'>('ios');
+  const [deviceType, setDeviceType] = useState<'ios' | 'android'>('ios');
   const [ocrProgress, setOcrProgress] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const [showApprovedWarning, setShowApprovedWarning] = useState(false);
   const [approvedDayInfo, setApprovedDayInfo] = useState<{ date: string; dayName: string; isApproved?: boolean } | null>(null);
   const [showFridayWarning, setShowFridayWarning] = useState(false);
-  const [lastDayToUpload, setLastDayToUpload] = useState<string | null>(null);
   const [urlValid, setUrlValid] = useState<boolean | null>(null);
   const [urlError, setUrlError] = useState<string>('');
   const [parentId, setParentId] = useState<string>('');
@@ -55,9 +57,19 @@ function ChildUploadContent() {
   const [challengeId, setChallengeId] = useState<string>('');
   const [challengeNotStarted, setChallengeNotStarted] = useState<boolean>(false);
   const [challengeStartDate, setChallengeStartDate] = useState<string>('');
+  const [challengeInactive, setChallengeInactive] = useState<boolean>(false);
   const [parentName, setParentName] = useState<string>('אמא');
   const [childGender, setChildGender] = useState<'boy' | 'girl'>('boy');
   const [weekDays, setWeekDays] = useState<any[]>([]);
+  const [challengeData, setChallengeData] = useState<{
+    dailyScreenTimeGoal: number;
+    dailyBudget: number;
+    parentName: string;
+  }>({
+    dailyScreenTimeGoal: clientConfig.challenge.defaultDailyScreenTimeGoal,
+    dailyBudget: clientConfig.challenge.defaultSelectedBudget / clientConfig.challenge.budgetDivision,
+    parentName: 'אמא'
+  });
   const hasInitializedDay = useRef(false);
 
   const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
@@ -74,6 +86,23 @@ function ChildUploadContent() {
       try {
         const validation = await validateUploadUrl(token);
         if (validation.isValid && validation.parentId) {
+          // FIRST CHECK: Verify challenge is active
+          let challenge = null;
+          if (validation.challengeId) {
+            challenge = await getChallenge(validation.challengeId);
+          } else {
+            // Try to get active challenge
+            challenge = await getActiveChallenge(validation.parentId);
+          }
+          
+          // If challenge exists but is not active, show error
+          if (challenge && !challenge.isActive) {
+            setUrlValid(false);
+            setChallengeInactive(true);
+            setUrlError('האתגר הושלם כבר. הפדיון בוצע והאתגר לא פעיל יותר.');
+            return;
+          }
+          
           setUrlValid(true);
           setParentId(validation.parentId);
           if (validation.childId) {
@@ -175,7 +204,7 @@ function ChildUploadContent() {
                 displayText
               };
             })
-            .sort((a, b) => b.date.getTime() - a.date.getTime()); // Sort by date descending (most recent first)
+            .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort by date ascending (oldest first)
           
           setWeekDays(availableDays);
         }
@@ -208,59 +237,77 @@ function ChildUploadContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectableDays.length]); // Only run when selectableDays becomes available
 
-  // Find the last day that needs upload/approval in the week
+  // Find if selected day is the last day to upload (only one day left AND it's the last challenge day)
+  const [isLastDayToUpload, setIsLastDayToUpload] = useState<boolean>(false);
+  
   useEffect(() => {
-    const findLastDayToUpload = async () => {
-      if (!parentId || !challengeId) return;
+    const checkIfLastDay = async () => {
+      if (!selectedDay || !parentId || !challengeId) {
+        setIsLastDayToUpload(false);
+        return;
+      }
       
       try {
         const { getDashboardData } = await import('@/lib/api/dashboard');
         const dashboardData = await getDashboardData(parentId);
         
         if (dashboardData && dashboardData.week) {
-          // Find days that need upload or approval (excluding redemption day)
-          const daysNeedingAction = dashboardData.week
+          // Find days that need UPLOAD only (not approval - approval goes to redemption separately)
+          const daysNeedingUpload = dashboardData.week
             .filter(day => {
               if (day.isRedemptionDay) return false;
-              // Days that need upload
+              // Only days that need upload (missing or pending)
               if (day.status === 'missing' || day.status === 'pending') return true;
-              // Days that need approval
-              if (day.status === 'awaiting_approval' || day.status === 'rejected') return true;
-              if (day.requiresApproval && !day.parentAction) return true;
               return false;
-            })
-            .sort((a, b) => {
-              // Sort by date (earliest first)
-              const dateA = a.date.split('/').reverse().join('-');
-              const dateB = b.date.split('/').reverse().join('-');
-              return dateA.localeCompare(dateB);
             });
           
-          // The last day is the one that appears last in the sorted list
-          if (daysNeedingAction.length > 0) {
-            const lastDay = daysNeedingAction[daysNeedingAction.length - 1];
-            setLastDayToUpload(lastDay.date);
-          } else {
-            setLastDayToUpload(null);
+          // Check if there's exactly ONE day left that needs upload
+          if (daysNeedingUpload.length !== 1) {
+            setIsLastDayToUpload(false);
+            return;
           }
+          
+          // Check if the selected day is that one day
+          const onlyDayLeft = daysNeedingUpload[0];
+          if (onlyDayLeft.date !== selectedDay.dateStr) {
+            setIsLastDayToUpload(false);
+            return;
+          }
+          
+          // Check if this day is the last day that needs upload (not calendar last day)
+          // Sort days needing upload by date to find the last one
+          const parseDate = (dateStr: string): Date => {
+            const [day, month] = dateStr.split('/').map(Number);
+            const currentYear = new Date().getFullYear();
+            return new Date(currentYear, month - 1, day);
+          };
+          
+          const sortedDaysNeedingUpload = [...daysNeedingUpload].sort((a, b) => {
+            const dateA = parseDate(a.date);
+            const dateB = parseDate(b.date);
+            return dateA.getTime() - dateB.getTime();
+          });
+          
+          const lastDayNeedingUpload = sortedDaysNeedingUpload[sortedDaysNeedingUpload.length - 1];
+          
+          // Only show warning if selected day is the last day that needs upload AND it's the only day left
+          setIsLastDayToUpload(lastDayNeedingUpload.date === selectedDay.dateStr);
+        } else {
+          setIsLastDayToUpload(false);
         }
       } catch (error) {
-        console.error('Error finding last day to upload:', error);
-        setLastDayToUpload(null);
+        console.error('Error checking if last day:', error);
+        setIsLastDayToUpload(false);
       }
     };
     
-    findLastDayToUpload();
-  }, [parentId, challengeId]);
+    checkIfLastDay();
+  }, [selectedDay, parentId, challengeId]);
 
-  // Check if selected day is the last day to upload and show warning
+  // Update warning state based on isLastDayToUpload
   useEffect(() => {
-    if (selectedDay && lastDayToUpload && selectedDay.dateStr === lastDayToUpload) {
-      setShowFridayWarning(true);
-    } else {
-      setShowFridayWarning(false);
-    }
-  }, [selectedDay, lastDayToUpload]);
+    setShowFridayWarning(isLastDayToUpload);
+  }, [isLastDayToUpload]);
 
   // Check if the selected day was rejected by parent (allows re-upload)
   useEffect(() => {
@@ -320,6 +367,7 @@ function ChildUploadContent() {
           const child = await getChild(childIdToUse);
           if (child) {
             setChildGender(child.gender || 'boy');
+            setDeviceType(child.deviceType || 'ios');
           }
         }
 
@@ -341,43 +389,130 @@ function ChildUploadContent() {
     loadData();
   }, [parentId, childId]);
 
-  // Get challenge data from localStorage
-  const getChallengeData = () => {
-    const challengeData = {
-      dailyScreenTimeGoal: 3, // hours
-      dailyBudget: 12.9, // שקלים
-      parentName: 'אמא' // default
-    };
-
-    try {
-      let parentNameFromStorage = '';
+  // Load challenge and parent data from Firestore based on token
+  useEffect(() => {
+    const loadChallengeData = async () => {
+      if (!token) return;
       
-      if (typeof window !== 'undefined') {
-        const storedChallenge = localStorage.getItem('challengeData');
-        if (storedChallenge) {
+      try {
+        console.log('[child/upload] Decoding token to get challenge data...');
+        const decoded = decodeParentToken(token);
+        
+        if (!decoded || decoded.isExpired) {
+          console.warn('[child/upload] Invalid or expired token');
+          return;
+        }
+        
+        const { parentId: decodedParentId, challengeId: decodedChallengeId, childId: decodedChildId } = decoded;
+        console.log('[child/upload] Decoded token:', { decodedParentId, decodedChallengeId, decodedChildId });
+        
+        let challenge = null;
+        
+        // Try to fetch challenge data - first from challengeId in token, then from active challenge
+        if (decodedChallengeId) {
           try {
-            const parsed = JSON.parse(storedChallenge);
-            parentNameFromStorage = parsed.parentName || '';
-          } catch (e) {
-            // Ignore parse errors
+            challenge = await getChallenge(decodedChallengeId);
+            if (challenge) {
+              console.log('[child/upload] Loaded challenge from token challengeId:', challenge);
+            }
+          } catch (challengeError) {
+            console.error('[child/upload] Error loading challenge by ID:', challengeError);
           }
         }
-      }
-      
-      if (parentNameFromStorage && typeof parentNameFromStorage === 'string') {
-        const name = parentNameFromStorage.trim();
-        if (name.endsWith('ה') || name.endsWith('ית')) {
-          challengeData.parentName = 'אמא';
-        } else {
-          challengeData.parentName = 'אבא';
+        
+        // If no challenge from token, try to get active challenge for parent
+        if (!challenge) {
+          try {
+            challenge = await getActiveChallenge(decodedParentId);
+            if (challenge) {
+              console.log('[child/upload] Loaded active challenge from parentId:', challenge);
+            }
+          } catch (activeChallengeError) {
+            console.error('[child/upload] Error loading active challenge:', activeChallengeError);
+          }
         }
-      }
-      
-      return challengeData;
-    } catch (e) {
-      return challengeData;
+        
+        // If we have challenge data, use it
+        if (challenge) {
+          // Calculate budgets
+          const dailyBudget = challenge.dailyBudget;
+          const dailyScreenTimeGoal = challenge.dailyScreenTimeGoal;
+          
+          // Get parent data for parent name
+          let parentNameValue = 'אמא';
+          try {
+            const parent = await getUser(decodedParentId);
+            if (parent) {
+              const firstName = parent.firstName || '';
+              // Determine if parent is mom or dad
+              if (firstName.endsWith('ה') || firstName.endsWith('ית')) {
+                parentNameValue = 'אמא';
+        } else {
+                parentNameValue = 'אבא';
+              }
+              console.log('[child/upload] Loaded parent from Firestore:', firstName);
+            }
+          } catch (parentError) {
+            console.error('[child/upload] Error loading parent:', parentError);
+          }
+          
+          // Get child data for deviceType
+          const childIdToUse = decodedChildId || challenge.childId;
+          if (childIdToUse) {
+            try {
+              const child = await getChild(childIdToUse);
+              if (child) {
+                setDeviceType(child.deviceType || 'ios');
+                console.log('[child/upload] Loaded child from Firestore, deviceType:', child.deviceType);
+              }
+            } catch (childError) {
+              console.error('[child/upload] Error loading child:', childError);
+            }
+          }
+          
+          setChallengeData({
+            dailyScreenTimeGoal,
+            dailyBudget,
+            parentName: parentNameValue
+          });
+          
+          setParentName(parentNameValue);
+          
+          console.log('[child/upload] Set challenge data from Firestore:', {
+            dailyScreenTimeGoal,
+            dailyBudget,
+            parentName: parentNameValue
+          });
+        } else {
+          // Fallback: if no challenge found, try to get parent data only
+          console.log('[child/upload] Challenge not available, using parent data only');
+          try {
+            const parent = await getUser(decodedParentId);
+            if (parent) {
+              const firstName = parent.firstName || '';
+              let parentNameValue = 'אמא';
+              if (firstName.endsWith('ה') || firstName.endsWith('ית')) {
+                parentNameValue = 'אמא';
+              } else {
+                parentNameValue = 'אבא';
+              }
+              setParentName(parentNameValue);
+              setChallengeData(prev => ({
+                ...prev,
+                parentName: parentNameValue
+              }));
+            }
+          } catch (parentError) {
+            console.error('[child/upload] Error loading parent as fallback:', parentError);
+          }
+        }
+      } catch (error) {
+        console.error('[child/upload] Error loading challenge data:', error);
     }
   };
+    
+    loadChallengeData();
+  }, [token]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -806,7 +941,7 @@ function ChildUploadContent() {
     setIsSubmitting(true);
     setOcrProgress('');
 
-    const challengeData = getChallengeData();
+    // challengeData is now from state (loaded from Firestore)
     console.log('[Upload] Challenge data:', {
       dailyScreenTimeGoal: challengeData.dailyScreenTimeGoal,
       dailyBudget: challengeData.dailyBudget,
@@ -888,17 +1023,39 @@ function ChildUploadContent() {
     // Store minutes in result for display
     (result as any).screenTimeMinutes = screenTimeMinutes;
 
-    // Calculate weekly total BEFORE saving new upload
-    const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-    const weeklyTotalBefore = existingUploads.reduce((sum: number, upload: any) => {
+    // Calculate weekly total from Firestore uploads (not localStorage)
+    let weeklyTotalBefore = 0;
+    let weeklyTotal = coinsEarnedRounded; // At minimum, the new upload
+    
+    if (challengeId && parentId) {
+      try {
+        const { getUploadsByChallenge } = await import('@/lib/api/uploads');
+        // Use cache for uploads (they're used for calculation only)
+        const existingUploads = await getUploadsByChallenge(challengeId, parentId, undefined, true);
+        
+        // Sum coins from existing approved uploads (exclude the current day if it exists)
+        weeklyTotalBefore = existingUploads
+          .filter(upload => upload.date !== selectedDay.dateStr) // Exclude current day
+          .filter(upload => upload.parentAction === 'approved' || !upload.requiresApproval) // Only approved or auto-approved
+          .reduce((sum: number, upload: any) => {
       return sum + (upload.coinsEarned || 0);
     }, 0);
-    const weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
-    console.log('[Upload] Weekly totals:', {
+        
+        weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
+        console.log('[Upload] Weekly totals (from Firestore):', {
       before: weeklyTotalBefore,
       new: coinsEarnedRounded,
-      total: weeklyTotal
-    });
+          total: weeklyTotal,
+          existingUploadsCount: existingUploads.length
+        });
+      } catch (error) {
+        console.warn('[Upload] Error fetching weekly totals from Firestore, using new upload only:', error);
+        // Fallback: just use the new upload amount
+        weeklyTotal = coinsEarnedRounded;
+      }
+    } else {
+      console.warn('[Upload] Missing challengeId or parentId, cannot calculate weekly total from Firestore');
+    }
 
     // Prepare upload data with minutes
     const uploadData = {
@@ -916,25 +1073,19 @@ function ChildUploadContent() {
 
     console.log('[Upload] Saving upload data:', uploadData);
 
-    // Save to localStorage (for demo/testing) - only if extraction succeeded
-    try {
-      existingUploads.push(uploadData);
-      localStorage.setItem('childUploads', JSON.stringify(existingUploads));
-      console.log('[Upload] Upload saved to localStorage');
-    } catch (localStorageError) {
-      console.error('[Upload] Failed to save to localStorage:', localStorageError);
+    // Save to Firestore (no localStorage)
+    if (!challengeId || !parentId || !childId) {
+      console.error('[Upload] Missing required IDs:', { challengeId, parentId, childId });
       setIsSubmitting(false);
       const childP = getChildPronouns();
-      alert(`שגיאה בשמירת הנתונים. אנא ${childP.youTryAgain}.`);
-      return; // Exit early
+      alert(`שגיאה בשמירת הנתונים. חסרים פרטים נדרשים.`);
+      return;
     }
 
-    // Try to save to Firestore if we have challengeId
     try {
-      const userId = await getCurrentUserId();
-      const uploadChallengeId = challengeId || localStorage.getItem('currentChallengeId') || 'demo-challenge';
-      const uploadParentId = parentId || localStorage.getItem('currentParentId') || userId;
-      const uploadChildId = childId || userId || 'demo-child';
+      const uploadChallengeId = challengeId;
+      const uploadParentId = parentId;
+      const uploadChildId = childId;
       
       if (uploadChallengeId && uploadParentId && uploadChildId) {
         
@@ -960,21 +1111,29 @@ function ChildUploadContent() {
         const uploadId = await createUpload(firestoreUpload);
         console.log('[Upload] Upload saved to Firestore:', uploadId);
         
+        // Invalidate uploads cache since we just created a new upload
+        const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+        dataCache.invalidate(cacheKeys.uploads(uploadChallengeId, uploadParentId));
+        
         // Store uploadId for potential later update with Storage URL
         (result as any).uploadId = uploadId;
 
+        // NOTE: Do not upload screenshot to Cloud Storage
+        // The screenshot is stored in Firestore with the preview URL (screenshotPreview)
+        // Cloud Storage upload is disabled to avoid CORS and permission issues
+        // The preview URL from FileReader is sufficient for displaying the screenshot
+        /*
         // Upload screenshot to Cloud Storage (with timeout and error handling)
         // Try to upload, but don't block the flow if it fails
-        if (screenshot && userId) {
+        if (screenshot && uploadParentId) {
           console.log('[Upload] Starting screenshot upload to Cloud Storage...');
-          setOcrProgress('מעלה תמונה ל-Storage...');
           
           try {
             // Add timeout to prevent hanging on CORS errors
             const uploadPromise = uploadScreenshot(
               screenshot,
-              userId,
-              challengeId,
+              uploadParentId,
+              uploadChallengeId,
               selectedDay.dateStr
             );
             const timeoutPromise = new Promise<never>((_, reject) => 
@@ -998,23 +1157,35 @@ function ChildUploadContent() {
               // Not critical - the upload succeeded, URL is available
             }
           } catch (storageError: any) {
-            console.warn('[Upload] ⚠️ Failed to upload to Cloud Storage, using preview URL:', storageError);
+            // Skip Cloud Storage upload for Firebase Storage permission errors
+            const isStoragePermissionError = 
+              storageError.code === 'storage/unauthorized' ||
+              storageError.message?.includes('permission') ||
+              storageError.message?.includes('unauthorized') ||
+              storageError.message?.includes('אין הרשאה');
+            
+            if (isStoragePermissionError) {
+              console.warn('[Upload] ⚠️ Skipping Cloud Storage upload due to permission error (using preview URL):', storageError);
             // Continue with preview URL - not critical for the upload to succeed
             // The preview URL will be stored in Firestore and can be used
-            // Log the error for debugging but don't block the flow
+            } else {
+              console.warn('[Upload] ⚠️ Failed to upload to Cloud Storage, using preview URL:', storageError);
             if (storageError.message?.includes('CORS')) {
               console.warn('[Upload] CORS error detected - check Firebase Storage CORS settings');
+              }
             }
           }
         }
+        */
       } else {
         console.log('[Upload] User not authenticated, skipping Firestore save');
       }
     } catch (firestoreError) {
       console.error('[Upload] Failed to save to Firestore:', firestoreError);
-      // Firestore save failed, but localStorage already succeeded
-      // Don't fail the whole operation - user can see the result
-      // In production, you might want to rollback localStorage here
+      setIsSubmitting(false);
+      const childP = getChildPronouns();
+      alert(`שגיאה בשמירת הנתונים. אנא ${childP.youTryAgain}.`);
+      return;
     }
 
     // Store weekly total in result for display
@@ -1023,10 +1194,6 @@ function ChildUploadContent() {
 
     // Trigger event for parent dashboard to update
     window.dispatchEvent(new Event('childUploaded'));
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'childUploads',
-      newValue: JSON.stringify(existingUploads)
-    }));
 
     console.log('[Upload] Upload complete!', {
       result,
@@ -1037,17 +1204,48 @@ function ChildUploadContent() {
     setIsSubmitting(false);
     setSubmitted(true);
 
-    // If this is the last day to upload, redirect immediately to redemption page (don't show result screen)
-    if (selectedDay && lastDayToUpload && selectedDay.dateStr === lastDayToUpload) {
-      // Redirect immediately to redemption page with earnings and token
-      const redemptionUrl = parentId 
-        ? generateRedemptionUrl(parentId, childId || undefined)
-        : `/child/redemption?fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
+    // Check if this was the last day to upload (only one day left AND it's the last challenge day)
+    // We check this condition directly here to ensure accuracy after upload
+    const checkAndRedirect = async () => {
+      if (!selectedDay || !parentId || !challengeId) return;
       
-      setTimeout(() => {
-        router.push(`${redemptionUrl}${redemptionUrl.includes('?') ? '&' : '?'}fridayEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
-      }, 500); // Short delay to ensure state is saved
-    }
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          // Find days that still need UPLOAD only (excluding redemption day and the day we just uploaded)
+          // Note: Days needing approval should already redirect separately
+          const daysNeedingUpload = dashboardData.week
+            .filter(day => {
+              if (day.isRedemptionDay) return false;
+              if (day.date === selectedDay.dateStr) return false; // Exclude the day we just uploaded
+              // Only days that need upload (missing or pending)
+              if (day.status === 'missing' || day.status === 'pending') return true;
+              return false;
+            });
+          
+          // If there are still days that need upload, don't redirect
+          if (daysNeedingUpload.length > 0) {
+            return;
+          }
+          
+          // If no days left need upload, we just uploaded the last one - redirect
+          // (We don't need to check if it was chronologically last - if it was the only one left, it was the last)
+          const redemptionUrl = parentId 
+            ? generateRedemptionUrl(parentId, childId || undefined, challengeId || undefined)
+            : `/child/redemption?lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
+          
+          setTimeout(() => {
+            router.push(`${redemptionUrl}${redemptionUrl.includes('?') ? '&' : '?'}lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
+          }, 500); // Short delay to ensure state is saved
+        }
+      } catch (error) {
+        console.error('Error checking redirect condition:', error);
+      }
+    };
+    
+    checkAndRedirect();
   };
 
 
@@ -1088,7 +1286,7 @@ function ChildUploadContent() {
   };
 
   // If last day was uploaded, redirect immediately to redemption (don't show result screen)
-  if (submitted && uploadResult && selectedDay && lastDayToUpload && selectedDay.dateStr === lastDayToUpload) {
+  if (submitted && uploadResult && selectedDay && isLastDayToUpload) {
     // Already redirected in handleSubmit, but in case it didn't work, redirect here too
     return null; // Component will unmount and redirect
   }
@@ -1158,13 +1356,11 @@ function ChildUploadContent() {
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4">
                 <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
                   {(() => {
-                    const childHim = childGender === 'boy' ? 'לו' : 'לה';
-                    const childHis = childGender === 'boy' ? 'שלו' : 'שלה';
                     return (
                       <>
-                        בכל מקרה {parentName} {parentP.needs} לאשר {childHim} את הסטטוס ש{childP.youUploaded}!
+                        בכל מקרה {parentName} {parentP.needs} לאשר לך את הסטטוס ש{childP.youUploaded}!
                         <br />
-                        בסוף השבוע {childP.youWillMeet} כאן ו{childP.youWillWin} במה ש{childP.youAccumulatedWhat} {childHis}
+                        בסוף השבוע {childP.youWillMeet} כאן ו{childP.youWillWin} במה ש{childP.youAccumulatedWhat}
                       </>
                     );
                   })()}
@@ -1205,6 +1401,39 @@ function ChildUploadContent() {
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
             <p className="font-varela text-base text-[#282743]">בודק כתובת...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if challenge is inactive (redemption completed)
+  if (challengeInactive) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24">
+        <div className="max-w-md mx-auto px-4 py-8 relative">
+          {/* Piggy Bank - פינה ימנית עליונה */}
+          <div className="absolute right-0 top-0 z-10">
+            <Image
+              src="/piggy-bank.png"
+              alt="Piggy Bank"
+              width={120}
+              height={120}
+              className="object-contain"
+            />
+          </div>
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
+              האתגר הושלם
+            </h1>
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4 mb-4">
+              <p className="font-varela text-base text-[#262135] text-center leading-relaxed mb-2">
+                האתגר הושלם והפדיון בוצע.
+              </p>
+              <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                {parentName} צריך ליצור אתגר חדש כדי שתוכל להמשיך להעלות סטטוסים.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -1307,7 +1536,7 @@ function ChildUploadContent() {
 
             {/* Last Day Warning - need parent nearby */}
             {showFridayWarning && selectedDay && (() => {
-              const challengeData = getChallengeData();
+              // challengeData is now from state (loaded from Firestore)
               const parentName = challengeData.parentName || 'אמא';
               const childP = getChildPronouns();
               const parentP = getParentPronouns();
@@ -1325,7 +1554,7 @@ function ChildUploadContent() {
                     {childP.youUpload} סטטוס של {selectedDay.dayName} {selectedDay.dateStr} - זה היום האחרון שנשאר להעלות בשבוע! זה אומר שאוטוטו {childP.youEarn} את הזכיה {childHis}!
                   </p>
                   <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                    ודא ש{parentName} ליד{childHim} כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור {parentP.pronoun}.
+                    ודא ש{parentName} לידך כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור {parentP.pronoun}.
                   </p>
                 </div>
               );
@@ -1427,40 +1656,14 @@ function ChildUploadContent() {
                 ×
               </button>
             </div>
-            
-            {/* Platform Selection */}
-            <div className="mb-4">
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setSelectedPlatform('ios')}
-                  className={`flex-1 py-2 px-4 rounded-[12px] font-varela font-semibold transition-all ${
-                    selectedPlatform === 'ios'
-                      ? 'bg-[#273143] text-white'
-                      : 'bg-gray-200 text-[#282743]'
-                  }`}
-                >
-                  iPhone
-                </button>
-                <button
-                  onClick={() => setSelectedPlatform('android')}
-                  className={`flex-1 py-2 px-4 rounded-[12px] font-varela font-semibold transition-all ${
-                    selectedPlatform === 'android'
-                      ? 'bg-[#273143] text-white'
-                      : 'bg-gray-200 text-[#282743]'
-                  }`}
-                >
-                  Android
-                </button>
-              </div>
-            </div>
 
             {/* Video Container */}
             <div className="mb-4">
-              <div className="relative w-full aspect-video bg-gray-100 rounded-[12px] overflow-hidden">
-                {selectedPlatform === 'ios' ? (
+              <div className="relative w-full bg-gray-100 rounded-[12px] overflow-hidden" style={{ minHeight: '300px' }}>
+                {deviceType === 'ios' ? (
                   <video
                     controls
-                    className="w-full h-full object-contain"
+                    className="w-full h-auto object-contain"
                     poster="/video-poster-ios.jpg"
                   >
                     <source src="/screenshot-tutorial-ios.mp4" type="video/mp4" />
@@ -1476,7 +1679,7 @@ function ChildUploadContent() {
                 ) : (
                   <video
                     controls
-                    className="w-full h-full object-contain"
+                    className="w-full h-auto object-contain"
                     poster="/video-poster-android.jpg"
                   >
                     <source src="/screenshot-tutorial-android.mp4" type="video/mp4" />

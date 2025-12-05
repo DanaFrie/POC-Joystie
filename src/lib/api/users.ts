@@ -34,7 +34,17 @@ export async function createUser(
 /**
  * Get user data by ID
  */
-export async function getUser(userId: string): Promise<FirestoreUser | null> {
+export async function getUser(userId: string, useCache: boolean = true): Promise<FirestoreUser | null> {
+  // Check cache first
+  if (useCache) {
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    const cached = dataCache.get<FirestoreUser>(cacheKeys.user(userId));
+    if (cached) {
+      console.log(`[Users] Using cached user ${userId}`);
+      return cached;
+    }
+  }
+
   try {
     const { doc, getDoc } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
@@ -45,7 +55,15 @@ export async function getUser(userId: string): Promise<FirestoreUser | null> {
       return null;
     }
     
-    return userSnap.data() as FirestoreUser;
+    const user = userSnap.data() as FirestoreUser;
+    
+    // Cache the result
+    if (useCache) {
+      const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+      dataCache.set(cacheKeys.user(userId), user, cacheTTL.user);
+    }
+    
+    return user;
   } catch (error) {
     console.error('Error getting user:', error);
     throw new Error('שגיאה בטעינת נתוני המשתמש.');
