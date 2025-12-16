@@ -5,13 +5,39 @@
 
 set -e
 
-# Get branch from parameter or detect from git
+# Get branch from parameter or detect from git/environment
 BRANCH="${1:-}"
 
 if [ -z "$BRANCH" ]; then
+    # Try environment variable first (App Hosting might set this)
+    if [ -n "$BRANCH_NAME" ]; then
+        BRANCH="$BRANCH_NAME"
+    elif [ -n "$GITHUB_REF_NAME" ]; then
+        BRANCH="$GITHUB_REF_NAME"
+    elif [ -n "$CI_BRANCH" ]; then
+        BRANCH="$CI_BRANCH"
+    fi
+    
     # Try to detect branch from git
-    if command -v git &> /dev/null; then
+    if [ -z "$BRANCH" ] && command -v git &> /dev/null; then
         BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+    fi
+    
+    # If still no branch, try to read from .git/HEAD as last resort
+    if [ -z "$BRANCH" ] && [ -f ".git/HEAD" ]; then
+        HEAD_REF=$(cat .git/HEAD 2>/dev/null || echo "")
+        if [[ "$HEAD_REF" == *"refs/heads/main"* ]] || [[ "$HEAD_REF" == *"refs/heads/master"* ]]; then
+            BRANCH="main"
+        elif [[ "$HEAD_REF" == *"refs/heads/"* ]]; then
+            # Extract branch name from ref
+            BRANCH=$(echo "$HEAD_REF" | sed 's|.*refs/heads/||')
+        fi
+    fi
+    
+    # If still no branch and apphosting.prod.yaml exists, assume main branch
+    if [ -z "$BRANCH" ] && [ -f "apphosting.prod.yaml" ]; then
+        echo "Info: apphosting.prod.yaml found, assuming main branch" >&2
+        BRANCH="main"
     fi
     
     if [ -z "$BRANCH" ]; then

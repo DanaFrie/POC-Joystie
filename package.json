@@ -7,7 +7,7 @@
     "dev:sync": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-secrets-to-env.ps1 && npm run dev",
     "sync-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-secrets-to-env.ps1",
     "delete-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/delete-apphosting-secrets.ps1",
-    "build": "next build",
+    "build": "bash ./scripts/sync-branch-config.sh && next build",
     "start": "next start",
     "lint": "next lint",
     "firebase:use:intgr": "firebase use intgr",
