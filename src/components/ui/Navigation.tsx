@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearSession } from '@/utils/session';
 import { getActiveChallenge } from '@/lib/api/challenges';
-import { getCurrentUserId } from '@/utils/auth';
+import { getCurrentUserId, signOutUser } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('Navigation');
@@ -63,7 +63,16 @@ export default function Navigation() {
     return pathname.startsWith(path);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      // Sign out from Firebase Auth
+      await signOutUser();
+      logger.log('Signed out from Firebase Auth');
+    } catch (error) {
+      logger.error('Error signing out from Firebase Auth:', error);
+    }
+    
+    // Clear session data
     clearSession();
     router.push('/');
     setIsMobileMenuOpen(false);

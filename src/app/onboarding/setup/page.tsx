@@ -432,6 +432,7 @@ export default function OnboardingSetupPage() {
             width={120}
             height={120}
             className="object-contain"
+            style={{ width: 'auto', height: 'auto' }}
           />
         </div>
 

@@ -196,7 +196,9 @@ function ChildUploadContent() {
               // Determine display text - calculate days difference correctly
               const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
               let displayText = '';
-              if (daysDiff === 1) {
+              if (daysDiff === 0) {
+                displayText = 'היום';
+              } else if (daysDiff === 1) {
                 displayText = 'אתמול';
               } else if (daysDiff === 2) {
                 displayText = 'שלשום';
@@ -765,7 +767,7 @@ function ChildUploadContent() {
     });
 
     try {
-      setOcrProgress('מעבד תמונה...');
+      setOcrProgress('בעוד כמה שניות נגלה ...');
       logger.log('Step 1: Sending image to processing service');
 
       // Call the API to process the screenshot
@@ -915,8 +917,11 @@ function ChildUploadContent() {
       const hasNoTime = screenTimeUsed === 0 && screenTimeMinutes === 0;
       
       if (hasError || (hasNoTime && !extractionResult.extractedText.includes('זמן מסך מזוהה'))) {
-        logger.error('Extraction failed:', { hasError, hasNoTime, ocrText });
-        throw new Error(ocrText);
+        logger.warn('Extraction failed, returning 0 values:', { hasError, hasNoTime, ocrText });
+        // Return 0 values instead of throwing error
+        screenTimeUsed = 0;
+        screenTimeMinutes = 0;
+        // Keep the error text for display
       }
       
       setExtractedText(ocrText);
@@ -927,13 +932,12 @@ function ChildUploadContent() {
       });
     } catch (extractionError: any) {
       logger.error('Screen time extraction failed:', extractionError);
-      setIsSubmitting(false);
-      setOcrProgress('');
-      setExtractedText('');
-      // Show error to user - don't save anything
-      const childP = getChildPronouns();
-      alert(`שגיאה בעיבוד התמונה: ${extractionError.message || `לא הצלחנו לעבד את התמונה. אנא ${childP.youTryAgain}.`}`);
-      return; // Exit early - don't save anything
+      // If we get here, it means there was an exception - return 0 values
+      screenTimeUsed = 0;
+      screenTimeMinutes = 0;
+      ocrText = `שגיאה בעיבוד התמונה: ${extractionError.message || 'שגיאה לא ידועה'}`;
+      setExtractedText(ocrText);
+      // Continue with submission with 0 values
     }
 
     const screenTimeGoal = challengeData.dailyScreenTimeGoal;
@@ -1240,6 +1244,7 @@ function ChildUploadContent() {
               width={120}
               height={120}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
             />
           </div>
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mt-20">
@@ -1290,7 +1295,7 @@ function ChildUploadContent() {
               {/* Refresh button to upload another day */}
               <div className="mt-6">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setSubmitted(false);
                     setUploadResult(null);
                     setScreenshot(null);
@@ -1299,6 +1304,85 @@ function ChildUploadContent() {
                     setUploadStep(1);
                     setExtractedText('');
                     setOcrProgress('');
+                    
+                    // Reload week days to refresh the list
+                    if (parentId) {
+                      try {
+                        const { getDashboardData } = await import('@/lib/api/dashboard');
+                        const dashboardData = await getDashboardData(parentId, false); // Don't use cache
+                        
+                        if (dashboardData && dashboardData.week) {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          
+                          const availableDays = dashboardData.week
+                            .filter(day => {
+                              if (day.isRedemptionDay) return false;
+                              
+                              // Parse date string to Date object
+                              const [dayNum, monthNum] = day.date.split('/').map(Number);
+                              const currentYear = new Date().getFullYear();
+                              const dayDate = new Date(currentYear, monthNum - 1, dayNum);
+                              dayDate.setHours(0, 0, 0, 0);
+                              
+                              // Check if day has ended (must be before today, not today or future)
+                              if (dayDate >= today) return false;
+                              
+                              // Check if day hasn't been uploaded yet
+                              return day.status === 'missing';
+                            })
+                            .map(day => {
+                              // Parse date string to Date object
+                              const [dayNum, monthNum] = day.date.split('/').map(Number);
+                              const currentYear = new Date().getFullYear();
+                              const date = new Date(currentYear, monthNum - 1, dayNum);
+                              date.setHours(0, 0, 0, 0);
+                              
+                              // Find full day name (convert abbreviation to full name)
+                              const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+                              const dayIndex = dayNames.findIndex(name => {
+                                const dayAbbr = day.dayName;
+                                const dayMap: { [key: string]: string } = {
+                                  'א׳': 'ראשון',
+                                  'ב׳': 'שני',
+                                  'ג׳': 'שלישי',
+                                  'ד׳': 'רביעי',
+                                  'ה׳': 'חמישי',
+                                  'ו׳': 'שישי',
+                                  'ש׳': 'שבת'
+                                };
+                                return dayMap[dayAbbr] === name;
+                              });
+                              const fullDayName = dayIndex >= 0 ? dayNames[dayIndex] : day.dayName;
+                              
+                              const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+                              
+                              let displayText = '';
+                              if (daysDiff === 0) {
+                                displayText = 'היום';
+                              } else if (daysDiff === 1) {
+                                displayText = 'אתמול';
+                              } else if (daysDiff === 2) {
+                                displayText = 'שלשום';
+                              } else {
+                                displayText = `${fullDayName}, ${day.date}`;
+                              }
+                              
+                              return {
+                                date,
+                                dateStr: day.date,
+                                dayName: fullDayName,
+                                displayText
+                              };
+                            })
+                            .sort((a, b) => a.date.getTime() - b.date.getTime());
+                          
+                          setWeekDays(availableDays);
+                        }
+                      } catch (error) {
+                        logger.error('Error reloading week days:', error);
+                      }
+                    }
                   }}
                   className="w-full py-4 px-6 rounded-[18px] text-lg font-varela font-semibold bg-[#E6F19A] text-[#262135] hover:bg-opacity-80 transition-all"
                 >
@@ -1356,6 +1440,7 @@ function ChildUploadContent() {
               width={120}
               height={120}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
             />
           </div>
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
@@ -1401,6 +1486,7 @@ function ChildUploadContent() {
               width={120}
               height={120}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
             />
           </div>
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">

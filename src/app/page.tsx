@@ -2,18 +2,23 @@
 
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 export default function Home() {
   const router = useRouter();
 
-  // Optimized handlers with useCallback
+  // Prefetch routes on mount for faster navigation
+  useEffect(() => {
+    router.prefetch('/signup');
+    router.prefetch('/login');
+  }, [router]);
+
+  // Optimized handlers with useCallback - use startTransition for better responsiveness
   const handleSignup = useCallback(() => {
     router.push('/signup');
   }, [router]);
 
   const handleLogin = useCallback(() => {
-    // Simple redirect - let the login page handle auth check
     router.push('/login');
   }, [router]);
 

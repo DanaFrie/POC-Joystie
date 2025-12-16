@@ -50,8 +50,8 @@ export async function checkMissingReport(
   // Find yesterday's day in the week
   const yesterdayDay = week.find(day => day.date === yesterdayDate);
 
-  // Check if yesterday has no upload (status is pending or missing)
-  if (yesterdayDay && (yesterdayDay.status === 'pending' || yesterdayDay.status === 'missing')) {
+  // Check if yesterday has no upload (status is missing)
+  if (yesterdayDay && yesterdayDay.status === 'missing') {
     const notification = createPushNotification(
       'missing_report',
       childName,

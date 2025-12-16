@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { signUp } from '@/utils/auth';
-import { createUser, isUsernameAvailable } from '@/lib/api/users';
+import { createUser } from '@/lib/api/users';
 import { getErrorMessage } from '@/utils/errors';
 import { createSession } from '@/utils/session';
 import { createContextLogger } from '@/utils/logger';
@@ -238,17 +238,6 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      // Check if username is available
-      const usernameAvailable = await isUsernameAvailable(formData.username.toLowerCase());
-      if (!usernameAvailable) {
-        setErrors(prev => ({
-          ...prev,
-          username: 'שם משתמש זה כבר תפוס. אנא בחר שם אחר.'
-        }));
-        setIsSubmitting(false);
-        return;
-      }
-
       // Create Firebase Auth user with email and password
       const user = await signUp(
         formData.email.trim(),
@@ -337,7 +326,7 @@ export default function SignupPage() {
                 name="username"
                 value={formData.username}
                 readOnly
-                placeholder="לחץ על 'להגריל' כדי ליצור שם משתמש"
+                placeholder="לחץ על 'להגריל' כדי ליצור כינוי"
                 className={`flex-1 min-w-0 p-3 sm:p-4 border-2 rounded-[18px] bg-gray-50 cursor-not-allowed font-varela text-sm sm:text-base text-[#282743] ${
                   errors.username ? 'border-red-500' : 'border-gray-200'
                 }`}

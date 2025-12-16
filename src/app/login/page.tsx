@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState<string>('');
   const router = useRouter();
 
-  // Check if already logged in - wait for Firebase Auth to be ready
+  // Check if already logged in - optimized for faster page load
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
       // Check localStorage session first (quick check)
@@ -31,10 +31,7 @@ export default function LoginPage() {
         return; // Not logged in, stay on login page
       }
       
-      // Wait a bit for Firebase Auth to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check Firebase Auth
+      // Check Firebase Auth immediately without delay
       try {
         const { isAuthenticated } = await import('@/utils/auth');
         const authenticated = await isAuthenticated();
@@ -118,6 +115,11 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
+    
     if (!validateForm()) {
       return;
     }
@@ -163,8 +165,8 @@ export default function LoginPage() {
       // Check if user has an active challenge and redirect accordingly
       const challenge = await getActiveChallenge(firebaseUser.uid);
       
-      setIsSubmitting(false);
-      
+      // Keep isSubmitting true during redirect to prevent multiple clicks
+      // It will be reset when component unmounts or on error
       if (challenge) {
         // User has active challenge, go to dashboard
         router.push('/dashboard');

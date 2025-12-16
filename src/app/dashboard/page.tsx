@@ -180,7 +180,8 @@ export default function DashboardPage() {
           }
         } else {
           // No active challenge - redirect to onboarding
-          logger.warn('⚠️ No active challenge found, redirecting to onboarding');
+          // This is expected when coming from onboarding setup, so log as info instead of warn
+          logger.log('No active challenge found, redirecting to onboarding (this is expected after challenge setup)');
           setError('לא נמצא אתגר פעיל. אנא צור אתגר חדש.');
           setTimeout(() => {
             router.push('/onboarding');
@@ -334,8 +335,7 @@ export default function DashboardPage() {
           screenTimeUsed: manualScreenTimeHours,
           screenTimeMinutes: manualScreenTimeMinutes,
           coinsEarned: coinsEarnedRounded,
-          success: goalMet,
-          approvalType: 'manual' // Mark as manual approval
+          success: goalMet
         };
       }
 
@@ -468,6 +468,7 @@ export default function DashboardPage() {
                 width={100}
                 height={100}
                 className="object-contain"
+                style={{ width: 'auto', height: 'auto' }}
                 priority
               />
             </div>
@@ -513,6 +514,7 @@ export default function DashboardPage() {
               childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
               uploadUrl={uploadUrl}
               dailyBudget={dashboardData.challenge.dailyBudget}
+              dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
               onApprove={handleApprove}
               onClose={() => {
                 setShowApprovalModal(false);
@@ -639,6 +641,7 @@ export default function DashboardPage() {
               width={100}
               height={100}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
               priority
             />
           </div>
@@ -687,6 +690,7 @@ export default function DashboardPage() {
                 childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
                 dailyBudget={dashboardData.challenge.dailyBudget}
+                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
                 onApprove={handleApprove}
                 onClose={() => {
                   setShowApprovalModal(false);

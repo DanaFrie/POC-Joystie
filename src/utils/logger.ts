@@ -1,7 +1,7 @@
 /**
  * Centralized logging service
  * Disables all client-side logs in production (main branch)
- * Logs are enabled only in development and integration environments
+ * Logs are enabled only integration environment
  */
 
 type LogLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
@@ -16,6 +16,8 @@ interface Logger {
 
 // Check if we're in production (main branch / prod environment)
 const isProduction = (): boolean => {
+  // IMPORTANT: Next.js only replaces static references to process.env.NEXT_PUBLIC_* at build time
+  // We MUST use direct static reference: process.env.NEXT_PUBLIC_ENV (not dynamic access)
   // Check NEXT_PUBLIC_ENV first (set in apphosting.yaml)
   // intgr = logs enabled, prod = logs disabled
   if (process.env.NEXT_PUBLIC_ENV === 'prod') {
@@ -31,6 +33,7 @@ const isProduction = (): boolean => {
     return process.env.NODE_ENV === 'production';
   }
   // Client-side: check project ID or NODE_ENV
+  // Use static reference for NEXT_PUBLIC_FIREBASE_PROJECT_ID
   return (
     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID === 'joystie-poc-prod' ||
     process.env.NODE_ENV === 'production'
@@ -39,7 +42,8 @@ const isProduction = (): boolean => {
 
 // Create logger that respects production mode
 const createLogger = (context: string): Logger => {
-  const shouldLog = !isProduction();
+  const isProd = isProduction();
+  const shouldLog = !isProd;
   
   const log = (level: LogLevel, ...args: any[]) => {
     // Always log errors, even in production
@@ -58,7 +62,7 @@ const createLogger = (context: string): Logger => {
   };
 };
 
-// Default logger
+// Default logger - initialize immediately
 export const logger = createLogger('');
 
 // Create logger with context

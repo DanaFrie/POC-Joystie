@@ -20,13 +20,12 @@ const statusConfig = {
   missing: { icon: '⚠️', borderColor: '#273143', bg: 'bg-[#FFFCF8]' }, // נדרשת תמונה להעלאה
   future: { icon: '➖', borderColor: '#273143', bg: 'bg-[#FFFCF8] opacity-50' },
   redemption: { icon: null, borderColor: '#E6F19A', bg: 'bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD]' },
-  awaiting_approval: { icon: '⏳', borderColor: '#BBE9FD', bg: 'bg-[#BBE9FD] bg-opacity-30' }, // מחכה לאישור הורה
-  rejected: { icon: '🔄', borderColor: '#273143', bg: 'bg-[#273143] bg-opacity-10' }
+  awaiting_approval: { icon: '⏳', borderColor: '#BBE9FD', bg: 'bg-[#BBE9FD] bg-opacity-30' } // מחכה לאישור הורה
 };
 
 function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; onClick?: () => void }) {
   const config = statusConfig[day.status] || statusConfig.pending;
-  const isClickable = onClick !== undefined && !day.isRedemptionDay && (day.status === 'awaiting_approval' || day.requiresApproval || day.status === 'missing' || day.status === 'pending' || day.status === 'success' || day.status === 'warning');
+  const isClickable = onClick !== undefined && !day.isRedemptionDay && (day.status === 'awaiting_approval' || day.requiresApproval || day.status === 'missing' || day.status === 'success' || day.status === 'warning');
   
   // Calculate bar height as percentage of max hours
   const barHeightPercent = maxHours > 0 ? (day.screenTimeUsed / maxHours) * 100 : 0;
@@ -37,8 +36,7 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
     if (day.status === 'success') return 'bg-[#E6F19A]'; // Light yellow-green for success
     if (day.status === 'warning') return 'bg-[#E6F19A] opacity-70'; // Lighter version for warning
     if (day.status === 'awaiting_approval' || day.requiresApproval) return 'bg-[#BBE9FD]'; // Light blue from palette
-    if (day.status === 'rejected') return 'bg-[#273143] opacity-50'; // Dark blue-gray from palette
-    if (day.status === 'pending' || day.status === 'missing') return 'bg-[#273143] opacity-30'; // Very light dark blue-gray
+    if (day.status === 'missing') return 'bg-[#273143] opacity-30'; // Very light dark blue-gray
     return 'bg-[#273143] opacity-20';
   };
 
@@ -60,7 +58,7 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
             title={`${formatNumber(day.screenTimeUsed)} שעות`}
           />
         ) : day.isRedemptionDay ? (
-          <div className="w-3/4 h-full rounded-t-lg bg-gradient-to-t from-[#E6F19A] to-[#BBE9FD]" style={{ height: '200px' }}>
+          <div className="w-3/4 h-0 rounded-t-lg" style={{ height: '0' }}>
           </div>
         ) : (
           <div className="w-3/4 h-1 rounded-t-lg bg-[#273143] opacity-20" />
@@ -87,9 +85,9 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
         {day.isRedemptionDay ? '🎉' : config.icon}
       </div>
 
-      {/* Money earned - don't show money for redemption day (Saturday) */}
+      {/* Money earned - show 0 for redemption day, show 0 if earned 0 */}
       <div className="font-varela font-semibold text-[9px] text-[#282743] text-center whitespace-nowrap">
-        {day.isRedemptionDay ? 'פדיון!' : day.coinsEarned > 0 ? `₪${formatNumber(day.coinsEarned)}` : ''}
+        {day.isRedemptionDay ? 'פדיון!' : `₪${formatNumber(day.coinsEarned)}`}
       </div>
     </div>
   );
@@ -166,7 +164,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
           )}
           <div className="px-4 pb-6 text-center">
             <p className="font-varela text-sm text-[#948DA9] py-8">
-              הגרף יופיע כשהאתגר יתחיל.
+              הגרף יופיע כשהאתגר יתחיל
             </p>
           </div>
         </div>
@@ -230,7 +228,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
                   />
                 )}
 
-                {/* Bar chart - bars area only */}
+                {/* Bar chart - bars area only - include redemption day but with no Y value */}
                 <div className="grid grid-cols-7 gap-2 w-full h-full relative" style={{ height: '200px' }}>
                   {week.map((day, index) => {
                     return (
@@ -278,7 +276,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
         {childName && (
           <div className="px-4 pt-4 pb-4">
             <p className="font-varela font-normal text-[15px] leading-[24px] text-[#282743] text-right">
-              {childName} {childP.was} השבוע {formatNumber(approvedHours)} שעות במסך ו{childP.earned} ב{formatNumber(approvedCoins)} ש"ח מתוך תקציב שבועי של {weeklyBudget ? formatNumber(weeklyBudget) : formatNumber(totals.coinsMaxPossible)} ש"ח
+              {childName} {childP.was} השבוע {formatNumber(approvedHours)} שעות במסך ו{childP.earned} {formatNumber(approvedCoins)} ש"ח מתוך תקציב שבועי של {weeklyBudget ? formatNumber(weeklyBudget) : formatNumber(totals.coinsMaxPossible)} ש"ח
             </p>
           </div>
         )}

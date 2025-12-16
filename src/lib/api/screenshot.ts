@@ -124,16 +124,20 @@ export async function processScreenshot(
   } catch (error: any) {
     logger.error('Firebase Function call failed:', error);
     
-    // Handle Firebase Function errors
-    if (error.code) {
-      // Firebase Function error
-      throw new Error(
-        error.message || 
-        `Firebase Function error: ${error.code}`
-      );
-    }
+    // Instead of throwing, return a response with error and 0 values
+    const errorResponse: ProcessScreenshotResponse = {
+      day: targetDay,
+      minutes: 0,
+      time: 0,
+      found: false,
+      metadata: {
+        scale_min_per_px: 0,
+        max_val_y: 0,
+      },
+      error: error.message || error.code || 'Failed to process screenshot'
+    };
     
-    throw error;
+    return errorResponse;
   }
 }
 

@@ -9,7 +9,6 @@ import { generateUploadUrl } from '@/utils/url-encoding';
 import { decodeParentToken } from '@/utils/url-encoding';
 import { updateChild } from '@/lib/api/children';
 import { getChild } from '@/lib/api/children';
-import { getOccupiedNicknames } from '@/lib/api/children';
 import { getChallenge } from '@/lib/api/challenges';
 import { getUser } from '@/lib/api/users';
 import { clientConfig } from '@/config/client.config';
@@ -197,40 +196,11 @@ function ChildSetupContent() {
     'גיבורה@הכי@טובה', 'כוכבת#הכי$מגניבה', 'לוחמת&הכי@גיבורה', 'מלכת$הכי#טובה', 'נסיכת&הכי@מגניבה'
   ];
 
-  const generateRandomNickname = async () => {
-    try {
-      // Get occupied nicknames
-      const occupiedNicknames = await getOccupiedNicknames();
-      
-      // Filter out occupied nicknames
-      const availableNicknames = nicknamePool.filter(
-        nickname => !occupiedNicknames.includes(nickname)
-      );
-      
-      // If all nicknames are occupied, use the full pool (allow duplicates)
-      const poolToUse = availableNicknames.length > 0 ? availableNicknames : nicknamePool;
-      
-      // Select random nickname from available pool
-      const randomIndex = Math.floor(Math.random() * poolToUse.length);
-      const randomNickname = poolToUse[randomIndex];
-      setSelectedNickname(randomNickname);
-    } catch (error) {
-      logger.error('Error generating nickname:', error);
-      // Fallback: try to get occupied nicknames again, or use available pool
-      try {
-        const occupiedNicknames = await getOccupiedNicknames();
-        const availableNicknames = nicknamePool.filter(
-          nickname => !occupiedNicknames.includes(nickname)
-        );
-        const poolToUse = availableNicknames.length > 0 ? availableNicknames : nicknamePool;
-        const randomNickname = poolToUse[Math.floor(Math.random() * poolToUse.length)];
-        setSelectedNickname(randomNickname);
-      } catch (retryError) {
-        // Last resort: use full pool
-        const randomNickname = nicknamePool[Math.floor(Math.random() * nicknamePool.length)];
-        setSelectedNickname(randomNickname);
-      }
-    }
+  const generateRandomNickname = () => {
+    // Select random nickname from pool (no uniqueness check)
+    const randomIndex = Math.floor(Math.random() * nicknamePool.length);
+    const randomNickname = nicknamePool[randomIndex];
+    setSelectedNickname(randomNickname);
   };
 
   // Gift options for kids (translated to Hebrew)
@@ -483,6 +453,7 @@ function ChildSetupContent() {
               width={120}
               height={120}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
             />
           </div>
 

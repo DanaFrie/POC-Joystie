@@ -310,8 +310,8 @@ function ChildRedemptionContent() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { they: 'היא', them: 'אותה', their: 'שלה', with: 'איתה', offers: 'מציעה', decide: 'תחליט', approved: 'אישרה' },
-    male: { they: 'הוא', them: 'אותו', their: 'שלו', with: 'איתו', offers: 'מציע', decide: 'יחליט', approved: 'אישר' }
+    female: { they: 'היא', them: 'אותה', their: 'שלה', with: 'איתה', offers: 'מציעה', decide: 'תחליט', approved: 'אישרה', needs: 'צריכה' },
+    male: { they: 'הוא', them: 'אותו', their: 'שלו', with: 'איתו', offers: 'מציע', decide: 'יחליט', approved: 'אישר', needs: 'צריך' }
   };
   const parentP = parentPronouns[childData.parentGender as 'female' | 'male'] || parentPronouns.female;
 
@@ -427,6 +427,7 @@ function ChildRedemptionContent() {
             width={120}
             height={120}
             className="object-contain"
+            style={{ width: 'auto', height: 'auto' }}
           />
         </div>
 
@@ -449,7 +450,7 @@ function ChildRedemptionContent() {
               </p>
             </div>
             <p className="font-varela text-sm text-[#282743] mt-4">
-              {parentName} צריך לאשר את ההעלאה בדשבורד {parentP.their} כדי שתוכל לראות את כל הסכום.
+              {parentName} {parentP.needs} לאשר את ההעלאה בלוח הבקרה {parentP.their} כדי שתוכל לראות את כל הסכום.
             </p>
           </div>
         )}

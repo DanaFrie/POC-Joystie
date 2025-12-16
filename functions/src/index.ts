@@ -49,15 +49,14 @@ export const processScreenshot = functions.https.onCall(
     try {
       // Get Cloud Run service URL from environment variable
       // For Gen 2, use environment variables or secrets
-      const cloudRunUrl = process.env.CLOUD_RUN_SERVICE_URL || 
-        'https://process-screenshot-506217601121.us-central1.run.app';
+      const cloudRunUrl = process.env.FIREBASE_FUNCTION_URL;
       
       if (!cloudRunUrl) {
         throw new Error(
           'Cloud Run service URL not configured. ' +
-          'Set CLOUD_RUN_SERVICE_URL environment variable. ' +
+          'Set FIREBASE_FUNCTION_URL environment variable. ' +
           'You can set it when deploying: ' +
-          'firebase functions:secrets:set CLOUD_RUN_SERVICE_URL'
+          'firebase functions:secrets:set FIREBASE_FUNCTION_URL'
         );
       }
       
@@ -91,10 +90,18 @@ export const processScreenshot = functions.https.onCall(
 
     } catch (error: any) {
       console.error('[Function] Error calling Cloud Run service:', error);
-      throw new functions.https.HttpsError(
-        'internal',
-        `Failed to process screenshot: ${error.message}`
-      );
+      // Instead of throwing HttpsError, return a response with error and 0 values
+      return {
+        success: false,
+        day: targetDay,
+        minutes: 0,
+        found: false,
+        metadata: {
+          scale_min_per_px: 0,
+          max_val_y: 0,
+        },
+        error: error.message || 'Failed to process screenshot'
+      };
     }
   }
 );

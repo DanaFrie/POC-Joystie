@@ -273,22 +273,34 @@ export async function POST(request: NextRequest) {
       // Clean up temp file on error
       await unlink(tempFilePath).catch(() => {});
 
-      return NextResponse.json(
-        { 
-          error: 'Failed to process image',
-          details: execError.message || 'Unknown error',
-          stderr: execError.stderr
+      // Return 0 values instead of error status
+      return NextResponse.json({
+        day: targetDay || '',
+        minutes: 0,
+        time: 0,
+        found: false,
+        metadata: {
+          scale_min_per_px: 0,
+          max_val_y: 0,
         },
-        { status: 500 }
-      );
+        error: execError.message || 'Failed to process image'
+      });
     }
 
   } catch (error: any) {
     logger.error('Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
-    );
+    // Return 0 values instead of error status
+    return NextResponse.json({
+      day: '',
+      minutes: 0,
+      time: 0,
+      found: false,
+      metadata: {
+        scale_min_per_px: 0,
+        max_val_y: 0,
+      },
+      error: error.message || 'Internal server error'
+    });
   }
 }
 
