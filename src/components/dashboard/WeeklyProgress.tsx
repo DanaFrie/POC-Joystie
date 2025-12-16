@@ -166,7 +166,7 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
           )}
           <div className="px-4 pb-6 text-center">
             <p className="font-varela text-sm text-[#948DA9] py-8">
-              האתגר עדיין לא התחיל. הגרף יופיע כשהאתגר יתחיל.
+              הגרף יופיע כשהאתגר יתחיל.
             </p>
           </div>
         </div>

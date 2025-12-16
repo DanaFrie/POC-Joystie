@@ -7,6 +7,9 @@ import { signUp } from '@/utils/auth';
 import { createUser, isUsernameAvailable } from '@/lib/api/users';
 import { getErrorMessage } from '@/utils/errors';
 import { createSession } from '@/utils/session';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Signup');
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -23,8 +26,6 @@ export default function SignupPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
-  const [isRequestingNotification, setIsRequestingNotification] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const router = useRouter();
 
@@ -83,7 +84,7 @@ export default function SignupPage() {
             termsAccepted: parsed.termsAccepted || false
           }));
         } catch (e) {
-          console.error('Error loading form data:', e);
+          logger.error('Error loading form data:', e);
           // Initialize with one empty age input if error
           setFormData(prev => ({ 
             ...prev, 
@@ -119,13 +120,6 @@ export default function SignupPage() {
       localStorage.setItem('signupFormData', JSON.stringify(dataToSave));
     }
   }, [formData.username, formData.email, formData.gender, formData.firstName, formData.lastName, formData.kidsAges, formData.termsAccepted, isInitialLoad]);
-
-  // Check notification permission on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -234,42 +228,6 @@ export default function SignupPage() {
     });
   };
 
-  const handleRequestNotification = async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
-      alert('הדפדפן שלך לא תומך בהתראות');
-      return;
-    }
-
-    setIsRequestingNotification(true);
-
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-
-      if (permission === 'granted') {
-        // Save notification preference
-        localStorage.setItem('notificationsEnabled', 'true');
-        
-        // Show a test notification
-        new Notification('Joystie', {
-          body: 'תודה! תקבלו התראות על עדכונים חשובים',
-          icon: '/logo-joystie.png',
-          lang: 'he'
-        });
-      } else if (permission === 'denied') {
-        localStorage.setItem('notificationsEnabled', 'false');
-        alert('התראות נדחו. תוכלו להפעיל אותן מאוחר יותר בהגדרות הדפדפן.');
-      } else {
-        localStorage.setItem('notificationsEnabled', 'false');
-      }
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      alert('אירעה שגיאה בבקשת הרשאות התראות');
-    } finally {
-      setIsRequestingNotification(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -302,6 +260,7 @@ export default function SignupPage() {
       const validAges = formData.kidsAges.filter(age => age.trim() !== '');
 
       // Create user document in Firestore
+      // notificationsEnabled is set to true by default - email notifications will be sent via Firebase Functions
       await createUser(user.uid, {
         username: formData.username.toLowerCase(),
         email: formData.email.trim().toLowerCase(),
@@ -309,7 +268,7 @@ export default function SignupPage() {
         lastName: formData.lastName.trim(),
         gender: formData.gender as 'male' | 'female',
         kidsAges: validAges,
-        notificationsEnabled: notificationPermission === 'granted',
+        notificationsEnabled: true, // Email notifications enabled by default
         termsAccepted: formData.termsAccepted,
         signupDate: new Date().toISOString(),
       });
@@ -325,7 +284,7 @@ export default function SignupPage() {
       // Redirect to onboarding
       router.push('/onboarding');
     } catch (error) {
-      console.error('Signup error:', error);
+      logger.error('Signup error:', error);
       const errorMessage = getErrorMessage(error);
       
       // Set appropriate error based on error message
@@ -592,44 +551,6 @@ export default function SignupPage() {
             {errors.termsAccepted && (
               <p className="mt-2 text-sm text-red-500 font-varela">{errors.termsAccepted}</p>
             )}
-          </div>
-
-          {/* Enable Notifications */}
-          <div className="mb-6">
-            <div className="bg-[#E6F19A] bg-opacity-30 rounded-[18px] border-2 border-[#E6F19A] p-4">
-              <h3 className="font-varela font-semibold text-base text-[#262135] mb-2">
-                🔔 הפעלת התראות
-              </h3>
-              <p className="font-varela text-sm text-[#282743] mb-4">
-                קבלו התראות על עדכונים חשובים: העלאת סטטוס יומי, אישורים נדרשים, ותזכורות.
-              </p>
-              {notificationPermission === 'granted' ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <span className="text-lg">✓</span>
-                  <span className="font-varela font-semibold text-sm">התראות מופעלות</span>
-                </div>
-              ) : notificationPermission === 'denied' ? (
-                <div className="flex items-center gap-2 text-orange-600">
-                  <span className="text-lg">⚠</span>
-                  <span className="font-varela text-sm">
-                    התראות נדחו. תוכלו להפעיל אותן בהגדרות הדפדפן.
-                  </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleRequestNotification}
-                  disabled={isRequestingNotification}
-                  className={`w-full py-3 px-4 rounded-[12px] font-varela font-semibold text-sm transition-all ${
-                    isRequestingNotification
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#273143] text-white hover:bg-opacity-90'
-                  }`}
-                >
-                  {isRequestingNotification ? 'מבקש הרשאה...' : 'הפעל התראות'}
-                </button>
-              )}
-            </div>
           </div>
 
           {/* General Error Message */}

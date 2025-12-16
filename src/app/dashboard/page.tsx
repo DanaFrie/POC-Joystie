@@ -8,14 +8,16 @@ import DayInfoModal from '@/components/dashboard/DayInfoModal';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import DaysSummaryModal from '@/components/dashboard/DaysSummaryModal';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
-import { createPushNotification, saveNotification, checkGoalMet } from '@/utils/notifications';
-import type { PushNotification } from '@/types/notifications';
+import { checkGoalMet } from '@/utils/notifications';
 import { isLoggedIn, updateLastActivity, getCurrentUserId } from '@/utils/session';
 import { formatNumber } from '@/utils/formatting';
 import { getDashboardData } from '@/lib/api/dashboard';
-import { generateUploadUrl, generateRedemptionUrl } from '@/utils/url-encoding';
+import { generateUploadUrl, generateRedemptionUrl, generateSetupUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
-import type { FirestoreChallenge } from '@/types/firestore';
+import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Dashboard');
 
 /**
  * Helper: Transform FirestoreChallenge to Challenge type with ID
@@ -33,7 +35,7 @@ function transformChallengeWithId(firestoreChallenge: FirestoreChallenge): Dashb
     id: firestoreChallenge.id
   };
 }
-import { approveUpload, rejectUpload, getUploadByDate } from '@/lib/api/uploads';
+import { batchApproveUpload, getUploadByDate } from '@/lib/api/uploads';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange, isAuthenticated } from '@/utils/auth';
 import { clientConfig } from '@/config/client.config';
 
@@ -93,17 +95,17 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   
-  // Check Firebase Auth state on mount
+  // Check Firebase Auth state on mount - simplified
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
     
     const checkAuth = async () => {
       try {
-        // Wait for Firebase Auth to be ready
+        // Single auth check - onAuthStateChange handles everything
         unsubscribe = await onAuthStateChange(async (user) => {
           if (!user) {
-            // Not authenticated with Firebase Auth - redirect to login
-            console.warn('[Dashboard] User not authenticated with Firebase Auth, redirecting to login');
+            // Not authenticated - redirect to login
+            logger.warn('User not authenticated, redirecting to login');
             router.push('/login');
             return;
           }
@@ -112,8 +114,8 @@ export default function DashboardPage() {
           updateLastActivity();
         });
       } catch (error) {
-        console.error('[Dashboard] Error checking auth state:', error);
-        // Fallback: check localStorage session
+        logger.error('Error checking auth state:', error);
+        // Fallback: check localStorage session only
         if (!isLoggedIn()) {
           router.push('/login');
         }
@@ -132,13 +134,7 @@ export default function DashboardPage() {
     window.addEventListener('keydown', handleActivity);
     window.addEventListener('scroll', handleActivity);
     
-    // Check session validity periodically
-    const sessionCheckInterval = setInterval(async () => {
-      const authenticated = await isAuthenticated();
-      if (!authenticated && !isLoggedIn()) {
-        router.push('/login');
-      }
-    }, 60000); // Check every minute
+    // Removed periodic session check - onAuthStateChange handles this automatically
     
     return () => {
       if (unsubscribe) {
@@ -147,7 +143,6 @@ export default function DashboardPage() {
       window.removeEventListener('mousedown', handleActivity);
       window.removeEventListener('keydown', handleActivity);
       window.removeEventListener('scroll', handleActivity);
-      clearInterval(sessionCheckInterval);
     };
   }, [router]);
   
@@ -158,44 +153,34 @@ export default function DashboardPage() {
     
     const loadDashboardData = async () => {
       try {
-        // Wait for Firebase Auth to be ready
-        const authenticated = await isAuthenticated();
-        if (!authenticated) {
-          console.warn('[Dashboard] User not authenticated, waiting for auth state...');
-          // Wait a bit for auth state to settle
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const retryAuth = await isAuthenticated();
-          if (!retryAuth) {
-            router.push('/login');
-            return;
-          }
-        }
-        
         setIsLoading(true);
         setError(null);
         hasLoadedRef.current = true;
         
-        let userId = await getCurrentUserIdAsync();
+        // Single check - onAuthStateChange already verified auth
+        const userId = await getCurrentUserIdAsync();
         if (!userId) {
-          // Try one more time after a short delay (Firebase Auth might still be initializing)
-          console.warn('[Dashboard] User ID not found, retrying after delay...');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          userId = await getCurrentUserIdAsync();
-          if (!userId) {
-            throw new Error('User ID not found. Please log in again.');
-          }
+          logger.warn('User ID not found, redirecting to login');
+          router.push('/login');
+          return;
         }
         
-        console.log('[Dashboard] Got user ID:', userId);
+        logger.log('Got user ID:', userId);
         
         const data = await getDashboardData(userId);
         
         if (data) {
-          console.log('[Dashboard] ✅ Loaded data from Firestore:', data);
+          logger.log('✅ Loaded data from Firestore:', data);
           setDashboardData(data);
+          
+          // Clean up temporary challengeData from localStorage after successful load
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('challengeData');
+            logger.log('Cleaned up challengeData from localStorage');
+          }
         } else {
           // No active challenge - redirect to onboarding
-          console.warn('[Dashboard] ⚠️ No active challenge found, redirecting to onboarding');
+          logger.warn('⚠️ No active challenge found, redirecting to onboarding');
           setError('לא נמצא אתגר פעיל. אנא צור אתגר חדש.');
           setTimeout(() => {
             router.push('/onboarding');
@@ -203,11 +188,11 @@ export default function DashboardPage() {
           return;
         }
       } catch (err: any) {
-        console.error('[Dashboard] ❌ Error loading dashboard data:', err);
+        logger.error('❌ Error loading dashboard data:', err);
         
         // If it's an auth error, redirect to login
         if (err.message?.includes('User ID not found') || err.message?.includes('not authenticated')) {
-          console.warn('[Dashboard] Authentication error, redirecting to login');
+          logger.warn('Authentication error, redirecting to login');
           router.push('/login');
           return;
         }
@@ -226,6 +211,7 @@ export default function DashboardPage() {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [summaryDays, setSummaryDays] = useState<WeekDay[]>([]);
+  const [setupUrl, setSetupUrl] = useState<string>('');
   const [uploadUrl, setUploadUrl] = useState<string>('');
   const [redemptionUrl, setRedemptionUrl] = useState<string>('');
 
@@ -237,24 +223,30 @@ export default function DashboardPage() {
         if (userId) {
           const challenge = await getActiveChallenge(userId);
           if (challenge) {
+            const setup = generateSetupUrl(userId, challenge.childId, challenge.id);
             const upload = generateUploadUrl(userId, challenge.childId, challenge.id);
             const redemption = generateRedemptionUrl(userId, challenge.childId, challenge.id);
+            setSetupUrl(setup);
             setUploadUrl(upload);
             setRedemptionUrl(redemption);
           } else {
             // Fallback
+            const setup = generateSetupUrl(userId);
             const upload = generateUploadUrl(userId);
             const redemption = generateRedemptionUrl(userId);
+            setSetupUrl(setup);
             setUploadUrl(upload);
             setRedemptionUrl(redemption);
           }
         } else {
+          setSetupUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/setup` : '');
           setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
           setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
         }
       } catch (error) {
-        console.error('Error generating URLs:', error);
+        logger.error('Error generating URLs:', error);
         // Fallback
+        setSetupUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/setup` : '');
         setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
         setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
       }
@@ -284,7 +276,7 @@ export default function DashboardPage() {
     setShowSummaryModal(true);
   };
 
-  const handleApprove = async (dayDate: string) => {
+  const handleApprove = async (dayDate: string, manualScreenTimeMinutes?: number) => {
     try {
       const userId = await getCurrentUserIdAsync();
       if (!userId) {
@@ -311,12 +303,12 @@ export default function DashboardPage() {
       if (!challenge.id) {
         throw new Error('Challenge ID is required');
       }
-      console.log(`[Dashboard] Looking for upload:`, { challengeId: challenge.id, dayDate, userId });
+      logger.log(`Looking for upload:`, { challengeId: challenge.id, dayDate, userId });
       const upload = await getUploadByDate(challenge.id, dayDate, userId);
       if (!upload) {
         throw new Error('Upload not found for this date');
       }
-      console.log(`[Dashboard] Found upload before approval:`, {
+      logger.log(`Found upload before approval:`, {
         id: upload.id,
         date: upload.date,
         challengeId: upload.challengeId,
@@ -327,8 +319,28 @@ export default function DashboardPage() {
         updatedAt: upload.updatedAt
       });
 
-      // Approve in Firestore
-      await approveUpload(upload.id);
+      // Prepare manual updates if provided
+      let manualUpdates: Partial<Omit<FirestoreDailyUpload, 'id' | 'createdAt'>> | undefined;
+      if (manualScreenTimeMinutes !== undefined) {
+        const manualScreenTimeHours = manualScreenTimeMinutes / 60;
+        const goalMet = manualScreenTimeHours <= challenge.dailyScreenTimeGoal;
+        const coinsMaxPossible = challenge.dailyBudget;
+        const coinsEarned = goalMet 
+          ? coinsMaxPossible 
+          : Math.max(0, coinsMaxPossible * (1 - (manualScreenTimeHours - challenge.dailyScreenTimeGoal) / challenge.dailyScreenTimeGoal));
+        const coinsEarnedRounded = Math.round(coinsEarned * 10) / 10;
+
+        manualUpdates = {
+          screenTimeUsed: manualScreenTimeHours,
+          screenTimeMinutes: manualScreenTimeMinutes,
+          coinsEarned: coinsEarnedRounded,
+          success: goalMet,
+          approvalType: 'manual' // Mark as manual approval
+        };
+      }
+
+      // Batch approve upload (combines update + approve in single write for better performance)
+      await batchApproveUpload(upload.id, manualUpdates, manualScreenTimeMinutes !== undefined);
 
       // Invalidate uploads and dashboard cache since we just approved one
       const { dataCache, cacheKeys } = await import('@/utils/data-cache');
@@ -337,15 +349,12 @@ export default function DashboardPage() {
       }
       dataCache.invalidate(cacheKeys.dashboard(userId));
 
-      // Small delay to ensure Firestore consistency (eventual consistency)
-      await new Promise(resolve => setTimeout(resolve, 200));
-
       // Reload dashboard data to get updated state from Firestore (skip cache)
       const updatedData = await getDashboardData(userId, false);
       if (updatedData) {
         // Verify the approved day status was updated correctly
         const approvedDay = updatedData.week.find(day => day.date === dayDate);
-        console.log('[Dashboard] Approved day status after reload:', {
+        logger.log('Approved day status after reload:', {
           date: dayDate,
           status: approvedDay?.status,
           requiresApproval: approvedDay?.requiresApproval,
@@ -371,7 +380,7 @@ export default function DashboardPage() {
         throw new Error('Failed to reload dashboard data after approval');
       }
     } catch (error) {
-      console.error('Error approving upload:', error);
+      logger.error('Error approving upload:', error);
       setError('שגיאה באישור ההעלאה. אנא רענן את הדף.');
       // Reload data to get current state
       try {
@@ -383,102 +392,11 @@ export default function DashboardPage() {
           }
         }
       } catch (refreshError) {
-        console.error('Error refreshing dashboard:', refreshError);
+        logger.error('Error refreshing dashboard:', refreshError);
       }
     }
   };
 
-  const handleReject = async (dayDate: string) => {
-    try {
-      const userId = await getCurrentUserIdAsync();
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
-
-      // Use cached challenge if available (from dashboardData)
-      type ChallengeWithId = DashboardState['challenge'] & { id?: string };
-      let challenge: ChallengeWithId | null = dashboardData?.challenge ? {
-        id: '', // Will be set from getActiveChallenge if needed
-        ...dashboardData.challenge
-      } : null;
-      
-      // Only fetch if we don't have challenge data or need the ID
-      if (!challenge) {
-        const firestoreChallenge = await getActiveChallenge(userId);
-        if (!firestoreChallenge) {
-          throw new Error('No active challenge found');
-        }
-        challenge = transformChallengeWithId(firestoreChallenge);
-      } else {
-        // Get challenge ID from cache or fetch
-        const cachedChallenge = await getActiveChallenge(userId, true);
-        if (cachedChallenge) {
-          challenge = { ...challenge, id: cachedChallenge.id };
-        }
-      }
-      
-      if (!challenge.id) {
-        throw new Error('Challenge ID is required');
-      }
-
-      // Find the upload for this date
-      const upload = await getUploadByDate(challenge.id, dayDate, userId);
-      if (!upload) {
-        throw new Error('Upload not found for this date');
-      }
-
-      // Reject in Firestore
-      await rejectUpload(upload.id);
-
-      // Invalidate cache
-      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
-      if (challenge.id) {
-        dataCache.invalidate(cacheKeys.uploads(challenge.id, userId));
-      }
-      dataCache.invalidate(cacheKeys.dashboard(userId));
-
-      // Reload dashboard data (skip cache)
-      const updatedData = await getDashboardData(userId, false);
-      if (updatedData) {
-        setDashboardData(updatedData);
-      } else {
-        throw new Error('Failed to reload dashboard data after rejection');
-      }
-    } catch (error) {
-      console.error('Error rejecting upload:', error);
-      setError('שגיאה בדחיית ההעלאה. אנא רענן את הדף.');
-      // Reload data to get current state
-      try {
-        const userId = await getCurrentUserIdAsync();
-        if (userId) {
-          const refreshedData = await getDashboardData(userId);
-          if (refreshedData) {
-            setDashboardData(refreshedData);
-          }
-        }
-      } catch (refreshError) {
-        console.error('Error refreshing dashboard:', refreshError);
-      }
-    }
-
-    // Create rejection message for parent to send (only if we have data)
-    if (dashboardData && selectedDay) {
-      const childGender = dashboardData.child.gender as 'boy' | 'girl' || 'boy';
-      const childPronouns = {
-        boy: { you: 'תוכל', uploaded: 'העלית', it: 'אותו', your: 'שלך' },
-        girl: { you: 'תוכלי', uploaded: 'העלית', it: 'אותו', your: 'שלך' }
-      };
-      const childP = childPronouns[childGender] || childPronouns.boy;
-      const rejectionMessage = `היי ${dashboardData.child.name}, משהו בצילום המסך ש${childP.uploaded} עבור ${selectedDay.date} לא היה ברור / לא תקין. ${childP.you} בבקשה להעלות ${childP.it} שוב בקישור הקבוע ${childP.your}? ${uploadUrl}`;
-      
-      // Copy to clipboard
-      try {
-        await navigator.clipboard.writeText(rejectionMessage);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
-    }
-  };
 
 
   // Show loading state
@@ -557,16 +475,20 @@ export default function DashboardPage() {
 
           {/* תיבת עדכונים */}
           <div style={{ marginBottom: '9.6px' }}>
-            <NotificationsPanel 
+              <NotificationsPanel 
               challengeNotStarted={dashboardData.challengeNotStarted}
               challengeStartDate={dashboardData.challengeStartDate}
               childName={dashboardData.child.name}
               childGender={dashboardData.child.gender}
               parentName={dashboardData.parent.name}
+              parentGender={dashboardData.parent.gender}
               missingDays={dashboardData.week.filter(day => day.status === 'missing')}
+              setupUrl={setupUrl}
               uploadUrl={uploadUrl}
+              redemptionUrl={redemptionUrl}
               week={dashboardData.week}
               onOpenSummary={handleOpenSummary}
+              childSetupCompleted={!!(dashboardData.child.nickname && dashboardData.child.moneyGoals && dashboardData.child.moneyGoals.length > 0)}
             />
           </div>
 
@@ -592,7 +514,6 @@ export default function DashboardPage() {
               uploadUrl={uploadUrl}
               dailyBudget={dashboardData.challenge.dailyBudget}
               onApprove={handleApprove}
-              onReject={handleReject}
               onClose={() => {
                 setShowApprovalModal(false);
                 setSelectedDay(null);
@@ -608,8 +529,8 @@ export default function DashboardPage() {
                 childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
                 dailyBudget={dashboardData.challenge.dailyBudget}
+                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
                 onApprove={handleApprove}
-                onReject={handleReject}
                 onDaysUpdated={(updatedDays) => {
                   setSummaryDays(updatedDays);
                   // Reload dashboard data to get updated state
@@ -623,7 +544,7 @@ export default function DashboardPage() {
                         }
                       }
                     } catch (error) {
-                      console.error('Error refreshing dashboard:', error);
+                      logger.error('Error refreshing dashboard:', error);
                     }
                   };
                   reloadData();
@@ -676,7 +597,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">יעד זמן מסך יומי</span>
-                        <span className="font-varela font-semibold text-base text-[#273143]">{challenge.dailyScreenTimeGoal} {challenge.dailyScreenTimeGoal === 1 ? 'שעה' : 'שעות'}</span>
+                        <span className="font-varela font-semibold text-base text-[#273143]">{formatNumber(challenge.dailyScreenTimeGoal * 60)} {challenge.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">סה"כ שעות שבועיות</span>
@@ -735,10 +656,14 @@ export default function DashboardPage() {
                 childName={dashboardData.child.name}
                 childGender={dashboardData.child.gender}
                 parentName={dashboardData.parent.name}
+                parentGender={dashboardData.parent.gender}
                 missingDays={dashboardData.week.filter(day => day.status === 'missing')}
+                setupUrl={setupUrl}
                 uploadUrl={uploadUrl}
+                redemptionUrl={redemptionUrl}
                 week={dashboardData.week}
                 onOpenSummary={handleOpenSummary}
+                childSetupCompleted={!!(dashboardData.child.nickname && dashboardData.child.moneyGoals && dashboardData.child.moneyGoals.length > 0)}
               />
             </div>
 
@@ -763,7 +688,6 @@ export default function DashboardPage() {
                 uploadUrl={uploadUrl}
                 dailyBudget={dashboardData.challenge.dailyBudget}
                 onApprove={handleApprove}
-                onReject={handleReject}
                 onClose={() => {
                   setShowApprovalModal(false);
                   setSelectedDay(null);
@@ -779,8 +703,8 @@ export default function DashboardPage() {
                 childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
                 uploadUrl={uploadUrl}
                 dailyBudget={dashboardData.challenge.dailyBudget}
+                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
                 onApprove={handleApprove}
-                onReject={handleReject}
                 onDaysUpdated={(updatedDays) => {
                   setSummaryDays(updatedDays);
                   // Reload dashboard data to get updated state
@@ -794,7 +718,7 @@ export default function DashboardPage() {
                         }
                       }
                     } catch (error) {
-                      console.error('Error refreshing dashboard:', error);
+                      logger.error('Error refreshing dashboard:', error);
                     }
                   };
                   reloadData();
@@ -810,21 +734,15 @@ export default function DashboardPage() {
           {/* Right column - Summary and Challenge Details */}
           <div className="col-span-7 space-y-6">
 
-            {/* 6. תיבה עם פירוט נתוני האתגר - Collapsible */}
+            {/* 6. תיבה עם פירוט נתוני האתגר - Always open on desktop */}
             <div className="bg-[#FFFCF8] rounded-[18px] shadow-card overflow-hidden">
-              <button
-                onClick={() => setIsChallengeOpen(!isChallengeOpen)}
-                className="w-full p-4 flex justify-between items-center hover:bg-gray-50 transition-colors"
-              >
+              <div className="w-full p-4">
                 <h3 className="font-varela font-semibold text-base text-[#282743]">
                   פרטי האתגר
                 </h3>
-                <span className="font-varela text-[#282743]">
-                  {isChallengeOpen ? '▲' : '▼'}
-                </span>
-              </button>
+              </div>
               
-              {isChallengeOpen && (() => {
+              {(() => {
                 const challenge = dashboardData.challenge;
                 const hourlyRate = challenge.dailyScreenTimeGoal > 0 ? challenge.dailyBudget / challenge.dailyScreenTimeGoal : 0;
                 const weeklyHours = challenge.dailyScreenTimeGoal * clientConfig.challenge.challengeDays;
@@ -851,7 +769,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">יעד זמן מסך יומי</span>
-                        <span className="font-varela font-semibold text-base text-[#273143]">{challenge.dailyScreenTimeGoal} {challenge.dailyScreenTimeGoal === 1 ? 'שעה' : 'שעות'}</span>
+                        <span className="font-varela font-semibold text-base text-[#273143]">{formatNumber(challenge.dailyScreenTimeGoal * 60)} {challenge.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">סה"כ שעות שבועיות</span>

@@ -7,6 +7,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { clearSession } from '@/utils/session';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { getCurrentUserId } from '@/utils/auth';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Navigation');
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -27,7 +30,7 @@ export default function Navigation() {
           setChallengeExists(false);
         }
       } catch (error) {
-        console.error('Error checking challenge:', error);
+        logger.error('Error checking challenge:', error);
         setChallengeExists(false);
       }
     };
@@ -62,7 +65,7 @@ export default function Navigation() {
 
   const handleLogout = () => {
     clearSession();
-    router.push('/login');
+    router.push('/');
     setIsMobileMenuOpen(false);
   };
 

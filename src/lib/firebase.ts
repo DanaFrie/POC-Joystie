@@ -2,8 +2,8 @@
 import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import type { FirebaseStorage } from 'firebase/storage';
 import type { Functions } from 'firebase/functions';
+import { createContextLogger } from '@/utils/logger';
 
 // Firebase configuration
 // Next.js automatically loads NEXT_PUBLIC_* variables at build time
@@ -29,9 +29,6 @@ function getFirebaseConfig() {
         case 'NEXT_PUBLIC_FIREBASE_PROJECT_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
           break;
-        case 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET':
-          value = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-          break;
         case 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
           break;
@@ -54,9 +51,6 @@ function getFirebaseConfig() {
           break;
         case 'NEXT_PUBLIC_FIREBASE_PROJECT_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-          break;
-        case 'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET':
-          value = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
           break;
         case 'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
@@ -103,16 +97,15 @@ function getFirebaseConfig() {
     apiKey: getEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
     authDomain: getEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
     projectId: getEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID'),
-    storageBucket: getEnv('NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET') || '',
     messagingSenderId: getEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
     appId: getEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
   };
   
-  // Debug logging (only in development or if config is missing)
-  const isDevelopment = process.env.NODE_ENV === 'development';
+  // Debug logging (enabled in intgr, disabled in prod)
+  const logger = createContextLogger('Firebase Config');
   const hasMissingConfig = !config.apiKey || !config.authDomain || !config.projectId;
   
-  if (isDevelopment || hasMissingConfig) {
+  if (hasMissingConfig) {
     const isServer = typeof window === 'undefined';
     const logKey = isServer ? '__FIREBASE_SERVER_CONFIG_LOGGED__' : '__FIREBASE_CLIENT_CONFIG_LOGGED__';
     const globalObj = isServer ? (global as any) : (window as any);
@@ -155,9 +148,9 @@ function getFirebaseConfig() {
       }
       
       if (hasMissingConfig) {
-        console.error('[Firebase Config] Missing environment variables:', debugInfo);
-      } else if (isDevelopment) {
-        console.log('[Firebase Config] Environment variables loaded:', debugInfo);
+        logger.error('Missing environment variables:', debugInfo);
+      } else {
+        logger.log('Environment variables loaded:', debugInfo);
       }
     }
   }
@@ -171,14 +164,13 @@ const firebaseConfig = getFirebaseConfig();
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
-let storageInstance: FirebaseStorage | null = null;
 let functionsInstance: Functions | null = null;
 let initPromise: Promise<void> | null = null;
 
 // Initialize Firebase (lazy, client-side only)
 async function initializeFirebase(): Promise<void> {
   if (typeof window === 'undefined') {
-    throw new Error('Firebase can only be initialized on the client side');
+    return; // Silently return on server side
   }
 
   if (initPromise) {
@@ -191,7 +183,6 @@ async function initializeFirebase(): Promise<void> {
       const { initializeApp, getApps } = await import('firebase/app');
       const { getAuth } = await import('firebase/auth');
       const { getFirestore } = await import('firebase/firestore');
-      const { getStorage } = await import('firebase/storage');
       const { getFunctions } = await import('firebase/functions');
 
       // Get config at runtime (Next.js embeds NEXT_PUBLIC_* vars at build time)
@@ -229,25 +220,17 @@ async function initializeFirebase(): Promise<void> {
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
       
       // Log config for debugging (without sensitive data)
-      console.log('[Firebase] Initialized with config:', {
+      const firebaseLogger = createContextLogger('Firebase');
+      firebaseLogger.log('Initialized with config:', {
         projectId: config.projectId,
         authDomain: config.authDomain,
         hasApiKey: !!config.apiKey,
         hasAppId: !!config.appId,
       });
 
-      // Initialize Storage (optional)
-      try {
-        if (config.storageBucket) {
-          storageInstance = getStorage(app);
-        } else {
-          console.warn('Firebase Storage bucket not configured. Storage features will be unavailable.');
-        }
-      } catch (storageError) {
-        console.warn('Firebase Storage initialization failed. You can set it up later:', storageError);
-      }
     } catch (error) {
-      console.error('Firebase initialization error:', error);
+      const firebaseLogger = createContextLogger('Firebase');
+      firebaseLogger.error('Initialization error:', error);
       throw error;
     }
   })();
@@ -286,12 +269,6 @@ export async function getFirestoreInstance(): Promise<Firestore> {
   return dbInstance;
 }
 
-export async function getStorageInstance(): Promise<FirebaseStorage | null> {
-  if (!storageInstance && firebaseConfig.storageBucket) {
-    await initializeFirebase();
-  }
-  return storageInstance;
-}
 
 export async function getFunctionsInstance(): Promise<Functions> {
   if (!functionsInstance) {
@@ -319,12 +296,6 @@ export function getFirestoreSync(): Firestore {
   return dbInstance;
 }
 
-export function getStorageSync(): FirebaseStorage | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return storageInstance;
-}
 
 export function getFunctionsSync(): Functions {
   if (typeof window === 'undefined' || !functionsInstance) {
@@ -343,6 +314,11 @@ export const auth = typeof window !== 'undefined'
   ? new Proxy({} as Auth, {
       get(target, prop) {
         if (!authInstance) {
+          // Don't throw error during Fast Refresh - just return undefined
+          if (process.env.NODE_ENV === 'development' && prop === 'then') {
+            return undefined;
+          }
+          // In production, still throw but with better error handling
           throw new Error('Firebase Auth not initialized. Ensure you are on the client side and Firebase is loaded. Use getAuthInstance() instead.');
         }
         return (authInstance as any)[prop];
@@ -361,16 +337,6 @@ export const db = typeof window !== 'undefined'
     })
   : ({} as Firestore);
 
-export const storage = typeof window !== 'undefined'
-  ? new Proxy({} as FirebaseStorage, {
-      get(target, prop) {
-        if (!storageInstance) {
-          return undefined;
-        }
-        return (storageInstance as any)[prop];
-      }
-    })
-  : (null as any as FirebaseStorage);
 
 export const functions = typeof window !== 'undefined'
   ? new Proxy({} as Functions, {

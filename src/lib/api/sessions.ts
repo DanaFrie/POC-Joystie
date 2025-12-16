@@ -1,6 +1,9 @@
 // Session Management API
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreSession } from '@/types/firestore';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Sessions');
 
 const SESSIONS_COLLECTION = 'sessions';
 
@@ -29,7 +32,7 @@ export async function createSession(
     await setDoc(sessionRef, session);
     return sessionRef.id;
   } catch (error) {
-    console.error('Error creating session:', error);
+    logger.error('Error creating session:', error);
     throw new Error('שגיאה ביצירת סשן. נסה שוב.');
   }
 }
@@ -50,7 +53,7 @@ export async function getSession(sessionId: string): Promise<FirestoreSession | 
     
     return sessionSnap.data() as FirestoreSession;
   } catch (error) {
-    console.error('Error getting session:', error);
+    logger.error('Error getting session:', error);
     throw new Error('שגיאה בטעינת הסשן.');
   }
 }
@@ -72,7 +75,7 @@ export async function getUserSessions(userId: string): Promise<FirestoreSession[
     
     return querySnapshot.docs.map(doc => doc.data() as FirestoreSession);
   } catch (error) {
-    console.error('Error getting user sessions:', error);
+    logger.error('Error getting user sessions:', error);
     throw new Error('שגיאה בטעינת הסשנים.');
   }
 }
@@ -95,7 +98,7 @@ export async function getActiveSession(userId: string): Promise<FirestoreSession
     
     return null;
   } catch (error) {
-    console.error('Error getting active session:', error);
+    logger.error('Error getting active session:', error);
     return null;
   }
 }
@@ -116,7 +119,7 @@ export async function updateSession(
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error updating session:', error);
+    logger.error('Error updating session:', error);
     throw new Error('שגיאה בעדכון הסשן.');
   }
 }
@@ -130,7 +133,7 @@ export async function updateSessionActivity(sessionId: string): Promise<void> {
       lastActivity: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error updating session activity:', error);
+    logger.error('Error updating session activity:', error);
     // Don't throw - this is a non-critical operation
   }
 }
@@ -145,7 +148,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
     const sessionRef = doc(db, SESSIONS_COLLECTION, sessionId);
     await deleteDoc(sessionRef);
   } catch (error) {
-    console.error('Error deleting session:', error);
+    logger.error('Error deleting session:', error);
     throw new Error('שגיאה במחיקת הסשן.');
   }
 }
@@ -159,7 +162,7 @@ export async function deleteAllUserSessions(userId: string): Promise<void> {
     const deletePromises = sessions.map(session => deleteSession(session.id));
     await Promise.all(deletePromises);
   } catch (error) {
-    console.error('Error deleting all user sessions:', error);
+    logger.error('Error deleting all user sessions:', error);
     throw new Error('שגיאה במחיקת כל הסשנים.');
   }
 }
@@ -188,7 +191,7 @@ export async function cleanupExpiredSessions(): Promise<number> {
     
     return expiredSessions.length;
   } catch (error) {
-    console.error('Error cleaning up expired sessions:', error);
+    logger.error('Error cleaning up expired sessions:', error);
     return 0;
   }
 }

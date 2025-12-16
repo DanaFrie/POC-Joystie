@@ -5,6 +5,9 @@ import { writeFile, unlink } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { serverConfig } from '@/config/server.config';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('API');
 
 const execAsync = promisify(exec);
 
@@ -29,7 +32,7 @@ interface ProcessScreenshotRequest {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('[API] Process screenshot request received');
+  logger.log('Process screenshot request received');
   
   const formData = await request.formData();
   
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
     const targetDay = formData.get('targetDay') as string;
 
     if (!imageFile) {
-      console.error('[API] No image file provided');
+      logger.error('No image file provided');
       return NextResponse.json(
         { error: 'No image file provided' },
         { status: 400 }
@@ -58,14 +61,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!targetDay) {
-      console.error('[API] No target day provided');
+      logger.error('No target day provided');
       return NextResponse.json(
         { error: 'No target day provided' },
         { status: 400 }
       );
     }
 
-    console.log('[API] Processing:', {
+    logger.log('Processing:', {
       fileName: imageFile.name,
       fileSize: imageFile.size,
       targetDay
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
     const tempFileName = `screenshot_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
     const tempFilePath = join(tmpdir(), tempFileName);
 
-    console.log('[API] Saving temporary file:', tempFilePath);
+    logger.log('Saving temporary file:', tempFilePath);
     await writeFile(tempFilePath, new Uint8Array(buffer));
 
     try {
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
       const scriptPath = join(process.cwd(), 'services', 'graph-telemetry', 'graph_telemetry_service.py');
       const apiKey = process.env.GOOGLE_API_KEY || '';
 
-      console.log('[API] Executing Python script:', {
+      logger.log('Executing Python script:', {
         scriptPath,
         hasApiKey: !!apiKey,
         targetDay,
@@ -116,7 +119,7 @@ export async function POST(request: NextRequest) {
         return true;
       });
       
-      console.log('[API] Python commands to try:', pythonCommands);
+      logger.log('Python commands to try:', pythonCommands);
       
       // Try each Python command until one works
       let stdout = '';
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
         
         pythonCmd = cmd;
         const command = `${cmd} "${scriptPath}" "${tempFilePath}" "${targetDay}" ${apiKeyArg}`.trim();
-        console.log('[API] Trying Python command:', command);
+        logger.log('Trying Python command:', command);
         
         try {
           // Use shell option for Windows py launcher support
@@ -166,8 +169,8 @@ export async function POST(request: NextRequest) {
           }
           
           if (jsonFound) {
-            console.log('[API] Python command succeeded:', cmd);
-            console.log('[API] Python output (first 200 chars):', stdout.substring(0, 200));
+            logger.log('Python command succeeded:', cmd);
+            logger.log('Python output (first 200 chars):', stdout.substring(0, 200));
             break; // Success, exit loop
           } else {
             // No JSON found, might be an error
@@ -186,16 +189,16 @@ export async function POST(request: NextRequest) {
             // Found JSON despite error - use it!
             stdout = jsonMatch[0];
             stderr = combinedOutput.replace(jsonMatch[0], '').trim();
-            console.log('[API] Python command succeeded (despite encoding error):', cmd);
-            console.log('[API] Extracted JSON from error output');
+            logger.log('Python command succeeded (despite encoding error):', cmd);
+            logger.log('Extracted JSON from error output');
             break; // Success!
           }
           
           lastError = error;
           const errorMsg = error.message || String(error);
-          console.warn(`[API] Python command failed (${cmd}):`, errorMsg);
+          logger.warn(`Python command failed (${cmd}):`, errorMsg);
           if (combinedOutput) {
-            console.warn(`[API] Error output:`, combinedOutput.substring(0, 500)); // Log first 500 chars
+            logger.warn(`Error output:`, combinedOutput.substring(0, 500)); // Log first 500 chars
           }
           // Continue to next command
           continue;
@@ -217,16 +220,16 @@ export async function POST(request: NextRequest) {
       const logLines = stderrLines.filter(line => !line.trim().startsWith('{') && !line.includes('"day"'));
       
       if (logLines.length > 0) {
-        console.log('[Python]', logLines.join('\n'));
+        logger.log('[Python]', logLines.join('\n'));
       }
       
       // If JSON is in stderr (due to encoding issues), use it
       if (jsonLines.length > 0 && !stdout.trim().startsWith('{')) {
         stdout = jsonLines.join('\n');
-        console.log('[API] Found JSON in stderr (encoding issue), using it');
+        logger.log('Found JSON in stderr (encoding issue), using it');
       }
 
-      console.log('[API] Python script output:', stdout.substring(0, 500));
+      logger.log('Python script output:', stdout.substring(0, 500));
 
       // Parse JSON response - try to extract JSON from output
       let result;
@@ -242,16 +245,16 @@ export async function POST(request: NextRequest) {
         }
         
         result = JSON.parse(jsonStr);
-        console.log('[API] Parsed result:', result);
+        logger.log('Parsed result:', result);
       } catch (parseError: any) {
-        console.error('[API] Failed to parse JSON. Output:', stdout.substring(0, 500));
-        console.error('[API] Parse error:', parseError.message);
+        logger.error('Failed to parse JSON. Output:', stdout.substring(0, 500));
+        logger.error('Parse error:', parseError.message);
         throw new Error(`Failed to parse Python script output: ${parseError.message}`);
       }
 
       // Clean up temp file
       await unlink(tempFilePath).catch(err => {
-        console.warn('[API] Failed to delete temp file:', err);
+        logger.warn('Failed to delete temp file:', err);
       });
 
       // Convert minutes to hours for consistency with frontend
@@ -261,11 +264,11 @@ export async function POST(request: NextRequest) {
         minutes: result.minutes || 0,
       };
 
-      console.log('[API] Returning result:', resultWithHours);
+      logger.log('Returning result:', resultWithHours);
       return NextResponse.json(resultWithHours);
 
     } catch (execError: any) {
-      console.error('[API] Python script error:', execError);
+      logger.error('Python script error:', execError);
       
       // Clean up temp file on error
       await unlink(tempFilePath).catch(() => {});
@@ -281,7 +284,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error: any) {
-    console.error('[API] Unexpected error:', error);
+    logger.error('Unexpected error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

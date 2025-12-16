@@ -1,6 +1,13 @@
 // Notification Management API
+// NOTE: These functions are for Firebase Functions/server-side use only
+// Push notifications are sent via email from Firebase Functions, not from browser/client-side
+// Client-side code should NOT use these functions - notifications are handled server-side
+
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreNotification } from '@/types/firestore';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Notifications');
 
 const NOTIFICATIONS_COLLECTION = 'notifications';
 
@@ -27,7 +34,7 @@ export async function createNotification(
     await setDoc(notificationRef, notification);
     return notificationRef.id;
   } catch (error) {
-    console.error('Error creating notification:', error);
+    logger.error('Error creating notification:', error);
     throw new Error('שגיאה ביצירת התראה.');
   }
 }
@@ -48,7 +55,7 @@ export async function getNotification(notificationId: string): Promise<Firestore
     
     return notificationSnap.data() as FirestoreNotification;
   } catch (error) {
-    console.error('Error getting notification:', error);
+    logger.error('Error getting notification:', error);
     throw new Error('שגיאה בטעינת ההתראה.');
   }
 }
@@ -77,7 +84,7 @@ export async function getNotifications(
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data() as FirestoreNotification);
   } catch (error) {
-    console.error('Error getting notifications:', error);
+    logger.error('Error getting notifications:', error);
     throw new Error('שגיאה בטעינת ההתראות.');
   }
 }
@@ -99,7 +106,7 @@ export async function getUnreadCount(parentId: string): Promise<number> {
     
     return querySnapshot.size;
   } catch (error) {
-    console.error('Error getting unread count:', error);
+    logger.error('Error getting unread count:', error);
     return 0;
   }
 }
@@ -117,7 +124,7 @@ export async function markNotificationAsRead(notificationId: string): Promise<vo
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    logger.error('Error marking notification as read:', error);
     throw new Error('שגיאה בסימון ההתראה כנקראה.');
   }
 }
@@ -147,7 +154,7 @@ export async function markAllAsRead(parentId: string): Promise<void> {
     
     await Promise.all(updatePromises);
   } catch (error) {
-    console.error('Error marking all as read:', error);
+    logger.error('Error marking all as read:', error);
     throw new Error('שגיאה בסימון כל ההתראות כנקראות.');
   }
 }
@@ -162,7 +169,7 @@ export async function deleteNotification(notificationId: string): Promise<void> 
     const notificationRef = doc(db, NOTIFICATIONS_COLLECTION, notificationId);
     await deleteDoc(notificationRef);
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    logger.error('Error deleting notification:', error);
     throw new Error('שגיאה במחיקת ההתראה.');
   }
 }
@@ -181,7 +188,7 @@ export async function deleteAllNotifications(parentId: string): Promise<void> {
     const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
     await Promise.all(deletePromises);
   } catch (error) {
-    console.error('Error deleting all notifications:', error);
+    logger.error('Error deleting all notifications:', error);
     throw new Error('שגיאה במחיקת כל ההתראות.');
   }
 }

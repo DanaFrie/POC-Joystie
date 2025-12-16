@@ -1,6 +1,9 @@
 // URL encoding/decoding utility for child pages with parent identifier
 // Uses compact delimiter-based encoding to minimize token size
 import { clientConfig } from '@/config/client.config';
+import { createContextLogger } from './logger';
+
+const logger = createContextLogger('URL Encoding');
 
 /**
  * Encode parent ID, child ID, and optional challenge ID into compact URL-safe token
@@ -87,7 +90,7 @@ export function decodeParentToken(token: string): {
       isExpired
     };
   } catch (error) {
-    console.error('Error decoding parent token:', error);
+    logger.error('Error decoding parent token:', error);
     return null;
   }
 }

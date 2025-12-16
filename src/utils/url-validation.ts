@@ -3,6 +3,9 @@ import { decodeParentToken } from './url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { getChild } from '@/lib/api/children';
 import { getUploadsByChallenge } from '@/lib/api/uploads';
+import { createContextLogger } from './logger';
+
+const logger = createContextLogger('URL Validation');
 
 export type UrlValidationResult = {
   isValid: boolean;
@@ -12,6 +15,7 @@ export type UrlValidationResult = {
   challengeId?: string;
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
+  challengeIsActive?: boolean; // Add flag to indicate if challenge is active
 };
 
 /**
@@ -55,7 +59,7 @@ export async function validateSetupUrl(token: string): Promise<UrlValidationResu
         }
       }
     } catch (error) {
-      console.error('Error checking child setup status:', error);
+      logger.error('Error checking child setup status:', error);
       // Continue validation even if check fails
     }
   }
@@ -118,14 +122,15 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
     
     // If challenge hasn't started yet, allow access but indicate it's not started
     if (today < startDate) {
-      return {
-        isValid: true, // Allow access to show message
-        parentId,
-        childId: challenge.childId,
-        challengeId: challenge.id,
-        challengeNotStarted: true,
-        challengeStartDate: challenge.startDate
-      };
+        return {
+          isValid: true, // Allow access to show message
+          parentId,
+          childId: challenge.childId,
+          challengeId: challenge.id,
+          challengeNotStarted: true,
+          challengeStartDate: challenge.startDate,
+          challengeIsActive: challenge.isActive
+        };
     }
     
     // Helper function to check if there are days that need upload/approval
@@ -134,26 +139,95 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
         const { getDashboardData } = await import('@/lib/api/dashboard');
         const dashboardData = await getDashboardData(parentId);
         if (dashboardData && dashboardData.week) {
+          // Get all non-redemption days (should be 6 days)
+          const nonRedemptionDays = dashboardData.week.filter(day => !day.isRedemptionDay);
+          
+          // Check if all days are approved (success/warning with approved action)
+          const allApproved = nonRedemptionDays.every(day => 
+            (day.status === 'success' || day.status === 'warning') &&
+            (day.parentAction === 'approved' || !day.requiresApproval)
+          );
+          
+          // If all days are approved, no action needed
+          if (allApproved && nonRedemptionDays.length === challenge.challengeDays) {
+            return false;
+          }
+          
           // Check if there are days that need upload or approval
-          const daysNeedingAction = dashboardData.week.filter(day => {
-            if (day.isRedemptionDay) return false;
+          const daysNeedingAction = nonRedemptionDays.filter(day => {
             // Days that need upload
-            if (day.status === 'missing' || day.status === 'pending') return true;
+            if (day.status === 'missing') return true;
             // Days that need approval
-            if (day.status === 'awaiting_approval' || day.status === 'rejected') return true;
+            if (day.status === 'awaiting_approval') return true;
             if (day.requiresApproval && !day.parentAction) return true;
             return false;
           });
           return daysNeedingAction.length > 0;
         }
       } catch (error) {
-        console.error('Error checking days status:', error);
+        logger.error('Error checking days status:', error);
       }
       return false;
     };
 
     // If challenge ended or is not active, check if there are days that still need upload/approval
     if (today > endDate || !challenge.isActive) {
+      // First check if challenge is simply not active (faster check)
+      if (!challenge.isActive) {
+        // Challenge is not active - check quickly if there are pending uploads/approvals
+        // Use a lightweight check instead of full dashboard load
+        try {
+          const uploads = await getUploadsByChallenge(challenge.id, parentId, undefined, true); // Use cache
+          const hasPendingUploads = uploads.some(upload => 
+            upload.requiresApproval && !upload.parentAction
+          );
+          
+          if (!hasPendingUploads) {
+            // No pending uploads, challenge is truly finished
+            return {
+              isValid: false,
+              error: 'האתגר הושלם כבר. הפדיון בוצע והאתגר לא פעיל יותר.',
+              parentId,
+              childId,
+              challengeId: challenge.id,
+              challengeIsActive: false
+            };
+          }
+          
+          // Has pending uploads, allow access
+          return {
+            isValid: true,
+            parentId,
+            childId: challenge.childId,
+            challengeId: challenge.id,
+            challengeIsActive: false
+          };
+        } catch (error) {
+          // Fallback to full check if lightweight check fails
+          const hasDaysNeedingAction = await checkDaysNeedingAction();
+          
+          if (hasDaysNeedingAction) {
+            return {
+              isValid: true,
+              parentId,
+              childId: challenge.childId,
+              challengeId: challenge.id,
+              challengeIsActive: false
+            };
+          }
+          
+          return {
+            isValid: false,
+            error: 'האתגר לא פעיל. בדוק עם ההורה שלך.',
+            parentId,
+            childId,
+            challengeId: challenge.id,
+            challengeIsActive: false
+          };
+        }
+      }
+      
+      // Challenge ended (past end date) - check if there are days that need action
       const hasDaysNeedingAction = await checkDaysNeedingAction();
       
       if (hasDaysNeedingAction) {
@@ -162,7 +236,8 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
           isValid: true,
           parentId,
           childId: challenge.childId,
-          challengeId: challenge.id
+          challengeId: challenge.id,
+          challengeIsActive: challenge.isActive
         };
       }
       
@@ -174,7 +249,8 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
           : 'האתגר לא פעיל. בדוק עם ההורה שלך.',
         parentId,
         childId,
-        challengeId: challenge.id
+        challengeId: challenge.id,
+        challengeIsActive: false
       };
     }
 
@@ -200,14 +276,29 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
       };
     }
 
+    // Check if all 6 challenge days are approved - if so, upload URL is no longer valid
+    const hasDaysNeedingAction = await checkDaysNeedingAction();
+    if (!hasDaysNeedingAction) {
+      // All days are approved, no more uploads needed
+      return {
+        isValid: false,
+        error: 'כל הימים של האתגר אושרו. אין עוד העלאות נדרשות.',
+        parentId,
+        childId: challenge.childId,
+        challengeId: challenge.id,
+        challengeIsActive: challenge.isActive
+      };
+    }
+
     return {
       isValid: true,
       parentId,
       childId: challenge.childId,
-      challengeId: challenge.id
+      challengeId: challenge.id,
+      challengeIsActive: challenge.isActive
     };
   } catch (error) {
-    console.error('Error validating upload URL:', error);
+    logger.error('Error validating upload URL:', error);
     return {
       isValid: false,
       error: 'שגיאה בבדיקת הכתובת. נסה שוב.',
@@ -265,11 +356,11 @@ export async function validateRedemptionUrl(token: string): Promise<UrlValidatio
       };
     }
 
-    // Check if we're at redemption day (Saturday) or after
+    // Check if we're at redemption day (day 7) or after
     const today = new Date();
     const startDate = new Date(challenge.startDate);
     const redemptionDate = new Date(startDate);
-    redemptionDate.setDate(startDate.getDate() + challenge.challengeDays); // Saturday (day 6)
+    redemptionDate.setDate(startDate.getDate() + challenge.challengeDays); // Day 7 (6 challenge days + 1 redemption day)
     
     if (today < redemptionDate) {
       return {
@@ -314,7 +405,7 @@ export async function validateRedemptionUrl(token: string): Promise<UrlValidatio
       challengeId: challenge.id
     };
   } catch (error) {
-    console.error('Error validating redemption URL:', error);
+    logger.error('Error validating redemption URL:', error);
     return {
       isValid: false,
       error: 'שגיאה בבדיקת הכתובת. נסה שוב.',
@@ -335,7 +426,7 @@ export async function isRedemptionCompleted(parentId: string): Promise<boolean> 
     // In a full implementation, you might check a redemption collection
     return challenge ? !challenge.isActive : false;
   } catch (error) {
-    console.error('Error checking redemption status:', error);
+    logger.error('Error checking redemption status:', error);
     return false;
   }
 }

@@ -2,6 +2,9 @@
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreDailyUpload } from '@/types/firestore';
 import { withRetry } from '@/utils/firestore-retry';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Uploads');
 
 const UPLOADS_COLLECTION = 'daily_uploads';
 
@@ -29,7 +32,7 @@ export async function createUpload(
       await setDoc(uploadRef, upload);
       return uploadRef.id;
     } catch (error: any) {
-      console.error('Error creating upload:', error);
+      logger.error('Error creating upload:', error);
       // Re-throw with user-friendly message
       if (error.code === 'permission-denied') {
         throw new Error('אין הרשאה ליצור העלאה. אנא בדוק את ההרשאות.');
@@ -55,7 +58,7 @@ export async function getUpload(uploadId: string): Promise<FirestoreDailyUpload 
     
     return uploadSnap.data() as FirestoreDailyUpload;
   } catch (error) {
-    console.error('Error getting upload:', error);
+    logger.error('Error getting upload:', error);
     throw new Error('שגיאה בטעינת ההעלאה.');
   }
 }
@@ -75,7 +78,7 @@ export async function getUploadsByChallenge(
     const { dataCache, cacheKeys } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreDailyUpload[]>(cacheKeys.uploads(challengeId, parentId));
     if (cached) {
-      console.log(`[Uploads] Using cached uploads for challenge ${challengeId}`);
+      logger.log(`Using cached uploads for challenge ${challengeId}`);
       return cached;
     }
   }
@@ -112,7 +115,7 @@ export async function getUploadsByChallenge(
     const querySnapshot = await getDocs(q);
     const uploads = querySnapshot.docs.map(doc => {
       const data = doc.data() as FirestoreDailyUpload;
-      console.log(`[Uploads] Fetched upload from getUploadsByChallenge:`, {
+      logger.log(`Fetched upload from getUploadsByChallenge:`, {
         id: data.id,
         date: data.date,
         challengeId: data.challengeId,
@@ -125,10 +128,10 @@ export async function getUploadsByChallenge(
       });
       return data;
     });
-    console.log(`[Uploads] Total uploads fetched: ${uploads.length}`);
+    logger.log(`Total uploads fetched: ${uploads.length}`);
     return uploads;
   } catch (error) {
-    console.error('Error getting uploads by challenge:', error);
+    logger.error('Error getting uploads by challenge:', error);
     throw new Error('שגיאה בטעינת ההעלאות.');
   }
 }
@@ -169,12 +172,12 @@ export async function getUploadByDate(
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      console.log(`[Uploads] No upload found for date ${date} in challenge ${challengeId}`);
+      logger.log(`No upload found for date ${date} in challenge ${challengeId}`);
       return null;
     }
     
     const upload = querySnapshot.docs[0].data() as FirestoreDailyUpload;
-    console.log(`[Uploads] Found upload by date:`, {
+    logger.log(`Found upload by date:`, {
       id: upload.id,
       date: upload.date,
       challengeId: upload.challengeId,
@@ -188,7 +191,7 @@ export async function getUploadByDate(
     
     // Log if multiple uploads found (shouldn't happen, but indicates data issue)
     if (querySnapshot.docs.length > 1) {
-      console.warn(`[Uploads] ⚠️ Multiple uploads found for date ${date} in challenge ${challengeId}:`, 
+      logger.warn(`⚠️ Multiple uploads found for date ${date} in challenge ${challengeId}:`, 
         querySnapshot.docs.map(doc => {
           const data = doc.data() as FirestoreDailyUpload;
           return {
@@ -205,7 +208,7 @@ export async function getUploadByDate(
     
     return upload;
   } catch (error) {
-    console.error('Error getting upload by date:', error);
+    logger.error('Error getting upload by date:', error);
     throw new Error('שגיאה בטעינת ההעלאה לתאריך זה.');
   }
 }
@@ -229,7 +232,7 @@ export async function getPendingApprovals(parentId: string): Promise<FirestoreDa
     
     return querySnapshot.docs.map(doc => doc.data() as FirestoreDailyUpload);
   } catch (error) {
-    console.error('Error getting pending approvals:', error);
+    logger.error('Error getting pending approvals:', error);
     throw new Error('שגיאה בטעינת ההעלאות הממתינות לאישור.');
   }
 }
@@ -263,57 +266,60 @@ export async function getPendingApprovalsByChallenge(
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => doc.data() as FirestoreDailyUpload);
   } catch (error) {
-    console.error('Error getting pending approvals by challenge:', error);
+    logger.error('Error getting pending approvals by challenge:', error);
     throw new Error('שגיאה בטעינת ההעלאות הממתינות לאישור.');
   }
 }
 
 /**
- * Approve an upload
+ * Batch approve an upload with optional manual data updates
+ * This combines updateUpload + approveUpload into a single batch write for better performance
  */
-export async function approveUpload(uploadId: string): Promise<void> {
+export async function batchApproveUpload(
+  uploadId: string,
+  manualUpdates?: Partial<Omit<FirestoreDailyUpload, 'id' | 'createdAt'>>,
+  isManual: boolean = false
+): Promise<void> {
   return withRetry(async () => {
     try {
-      const { doc, updateDoc, getDoc } = await import('firebase/firestore');
+      const { doc, writeBatch } = await import('firebase/firestore');
       const db = await getFirestoreInstance();
       const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-      
-      // Get current state before update
-      const beforeDoc = await getDoc(uploadRef);
-      const beforeData = beforeDoc.exists() ? beforeDoc.data() as FirestoreDailyUpload : null;
-      console.log(`[approveUpload] Before update:`, {
-        uploadId,
-        exists: beforeDoc.exists(),
-        requiresApproval: beforeData?.requiresApproval,
-        parentAction: beforeData?.parentAction,
-        date: beforeData?.date,
-        challengeId: beforeData?.challengeId,
-        updatedAt: beforeData?.updatedAt
-      });
+      const batch = writeBatch(db);
       
       const now = new Date().toISOString();
-      const updateData = {
+      
+      // If manual updates are provided, add them to the batch
+      if (manualUpdates) {
+        batch.update(uploadRef, {
+          ...manualUpdates,
+          updatedAt: now,
+        });
+      }
+      
+      // Determine approval type
+      const approvalType = (manualUpdates as any)?.approvalType || (isManual ? 'manual' as const : 'automatic' as const);
+      
+      // Add approval update to batch
+      batch.update(uploadRef, {
         requiresApproval: false,
         parentAction: 'approved' as const,
         approvedAt: now,
+        approvalType,
         updatedAt: now,
-      };
-      
-      console.log(`[approveUpload] Updating with:`, updateData);
-      await updateDoc(uploadRef, updateData);
-      
-      // Verify update after completion
-      const afterDoc = await getDoc(uploadRef);
-      const afterData = afterDoc.exists() ? afterDoc.data() as FirestoreDailyUpload : null;
-      console.log(`[approveUpload] After update:`, {
-        uploadId,
-        requiresApproval: afterData?.requiresApproval,
-        parentAction: afterData?.parentAction,
-        date: afterData?.date,
-        updatedAt: afterData?.updatedAt
       });
+      
+      logger.log(`Committing batch for upload ${uploadId}`, {
+        hasManualUpdates: !!manualUpdates,
+        approvalType
+      });
+      
+      // Commit all updates in a single batch write
+      await batch.commit();
+      
+      logger.log(`Successfully approved upload ${uploadId}`);
     } catch (error: any) {
-      console.error('Error approving upload:', error);
+      logger.error('Error batch approving upload:', error);
       if (error.code === 'permission-denied') {
         throw new Error('אין הרשאה לאשר העלאה. אנא בדוק את ההרשאות.');
       }
@@ -326,31 +332,40 @@ export async function approveUpload(uploadId: string): Promise<void> {
 }
 
 /**
- * Reject an upload
+ * Approve an upload (simplified version without manual updates)
+ * For manual updates, use batchApproveUpload instead
  */
-export async function rejectUpload(uploadId: string): Promise<void> {
+export async function approveUpload(uploadId: string, isManual: boolean = false): Promise<void> {
   return withRetry(async () => {
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
       const db = await getFirestoreInstance();
       const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-      const now = new Date().toISOString();
       
-      await updateDoc(uploadRef, {
+      const now = new Date().toISOString();
+      const approvalType = isManual ? 'manual' as const : 'automatic' as const;
+      
+      const updateData = {
         requiresApproval: false,
-        parentAction: 'rejected',
-        rejectedAt: now,
+        parentAction: 'approved' as const,
+        approvedAt: now,
+        approvalType,
         updatedAt: now,
-      });
+      };
+      
+      logger.log(`Approving upload ${uploadId}`, updateData);
+      await updateDoc(uploadRef, updateData);
+      
+      logger.log(`Successfully approved upload ${uploadId}`);
     } catch (error: any) {
-      console.error('Error rejecting upload:', error);
+      logger.error('Error approving upload:', error);
       if (error.code === 'permission-denied') {
-        throw new Error('אין הרשאה לדחות העלאה. אנא בדוק את ההרשאות.');
+        throw new Error('אין הרשאה לאשר העלאה. אנא בדוק את ההרשאות.');
       }
       if (error.code === 'not-found') {
         throw new Error('ההעלאה לא נמצאה.');
       }
-      throw new Error('שגיאה בדחיית ההעלאה.');
+      throw new Error('שגיאה באישור ההעלאה.');
     }
   });
 }
@@ -371,7 +386,7 @@ export async function updateUpload(
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error updating upload:', error);
+    logger.error('Error updating upload:', error);
     throw new Error('שגיאה בעדכון ההעלאה.');
   }
 }

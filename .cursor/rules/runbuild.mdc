@@ -1,0 +1,5 @@
+before commit and push to git - run build to ensure it works at leat localy
+
+---
+alwaysApply: true
+---

@@ -1,6 +1,9 @@
 // User Management API
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreUser } from '@/types/firestore';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Users');
 
 const USERS_COLLECTION = 'users';
 
@@ -26,7 +29,7 @@ export async function createUser(
     
     await setDoc(userRef, firestoreUser);
   } catch (error) {
-    console.error('Error creating user:', error);
+    logger.error('Error creating user:', error);
     throw new Error('שגיאה ביצירת משתמש. נסה שוב.');
   }
 }
@@ -40,7 +43,7 @@ export async function getUser(userId: string, useCache: boolean = true): Promise
     const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreUser>(cacheKeys.user(userId));
     if (cached) {
-      console.log(`[Users] Using cached user ${userId}`);
+      logger.log(`Using cached user ${userId}`);
       return cached;
     }
   }
@@ -65,7 +68,7 @@ export async function getUser(userId: string, useCache: boolean = true): Promise
     
     return user;
   } catch (error) {
-    console.error('Error getting user:', error);
+    logger.error('Error getting user:', error);
     throw new Error('שגיאה בטעינת נתוני המשתמש.');
   }
 }
@@ -86,7 +89,7 @@ export async function updateUser(
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error updating user:', error);
+    logger.error('Error updating user:', error);
     throw new Error('שגיאה בעדכון נתוני המשתמש.');
   }
 }
@@ -108,7 +111,7 @@ export async function getUserByUsername(username: string): Promise<FirestoreUser
     
     return querySnapshot.docs[0].data() as FirestoreUser;
   } catch (error) {
-    console.error('Error finding user by username:', error);
+    logger.error('Error finding user by username:', error);
     throw new Error('שגיאה בחיפוש משתמש.');
   }
 }
@@ -121,7 +124,7 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
     const user = await getUserByUsername(username);
     return user === null;
   } catch (error) {
-    console.error('Error checking username availability:', error);
+    logger.error('Error checking username availability:', error);
     return false;
   }
 }

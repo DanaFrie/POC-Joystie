@@ -66,7 +66,7 @@ export default function HelpPage() {
                 rel="noopener noreferrer"
                 className="font-varela text-base text-[#273143] hover:text-[#262135] transition-colors"
               >
-                LinkedIn
+                Joystie in LinkedIn
               </a>
             </div>
           </div>

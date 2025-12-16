@@ -3,8 +3,7 @@
 # This script detects the current branch and copies the appropriate config files
 # Usage: ./scripts/sync-branch-config.sh [branch]
 
-# Don't exit on error - we want to continue even if branch detection fails
-set +e
+set -e
 
 # Get branch from parameter or detect from git/environment
 BRANCH="${1:-}"
@@ -35,25 +34,9 @@ if [ -z "$BRANCH" ]; then
         fi
     fi
     
-    # If still no branch, check if apphosting.prod.yaml exists (indicates main branch)
+    # If still no branch and apphosting.prod.yaml exists, assume main branch
     if [ -z "$BRANCH" ] && [ -f "apphosting.prod.yaml" ]; then
         echo "Info: apphosting.prod.yaml found, assuming main branch" >&2
-        BRANCH="main"
-    fi
-    
-    # Last resort: check current apphosting.yaml content to infer branch
-    if [ -z "$BRANCH" ] && [ -f "apphosting.yaml" ]; then
-        if grep -q "FIREBASE_API_KEY_PROD_SECRET" apphosting.yaml 2>/dev/null; then
-            echo "Info: apphosting.yaml contains PROD secrets, assuming main branch" >&2
-            BRANCH="main"
-        elif grep -q "FIREBASE_API_KEY_INTGR_SECRET" apphosting.yaml 2>/dev/null; then
-            echo "Info: apphosting.yaml contains INTGR secrets, assuming intgr branch" >&2
-            BRANCH="intgr"
-        fi
-    fi
-    
-    # Normalize branch name (master -> main)
-    if [ "$BRANCH" = "master" ]; then
         BRANCH="main"
     fi
     
@@ -62,9 +45,6 @@ if [ -z "$BRANCH" ]; then
         BRANCH="intgr"
     fi
 fi
-
-# Re-enable exit on error for the rest of the script
-set -e
 
 echo "Current branch: $BRANCH"
 echo ""
@@ -106,14 +86,14 @@ fi
 
 # Check if source file exists
 if [ ! -f "$SOURCE_FILE" ]; then
-    echo "  Warning: Source file not found: $SOURCE_FILE" >&2
-    echo "  Skipping sync - using existing apphosting.yaml" >&2
-    echo ""
-    echo "Summary:"
-    echo "  Skipped: Source file not found (using existing config)"
-    export BRANCH_ENV="$ENV"
-    echo "Environment variable set: BRANCH_ENV=$ENV"
-    exit 0
+    echo "  Error: Source file not found: $SOURCE_FILE" >&2
+    echo "  Make sure you're on the correct branch:" >&2
+    if [ "$ENV" = "prod" ]; then
+        echo "    - main branch should have $SOURCE_FILE" >&2
+    else
+        echo "    - Intgr branch should have $SOURCE_FILE" >&2
+    fi
+    exit 1
 fi
 
 # Copy file

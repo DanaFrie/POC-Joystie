@@ -1,0 +1,65 @@
+# Example GitHub Actions workflow for deploying to Production
+# Copy this file to .github/workflows/deploy-prod.yml and customize as needed
+#
+# This workflow:
+# 1. Detects the branch (main = prod, Intgr = intgr)
+# 2. Uses the correct apphosting.yaml file
+# 3. Deploys to the appropriate Firebase project
+
+name: Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main
+      - Intgr
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Detect branch and set config
+        id: config
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+            echo "config_file=apphosting.prod.yaml" >> $GITHUB_OUTPUT
+            echo "firebase_project=prod" >> $GITHUB_OUTPUT
+            cp apphosting.prod.yaml apphosting.yaml
+          else
+            echo "env=intgr" >> $GITHUB_OUTPUT
+            echo "config_file=apphosting.yaml" >> $GITHUB_OUTPUT
+            echo "firebase_project=intgr" >> $GITHUB_OUTPUT
+          fi
+          echo "Using environment: ${{ steps.config.outputs.env }}"
+          echo "Using config: ${{ steps.config.outputs.config_file }}"
+      
+      - name: Setup Firebase CLI
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+          projectId: '${{ steps.config.outputs.firebase_project == 'prod' && 'joystie-poc-prod' || 'joystie-poc' }}'
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Deploy to Firebase App Hosting
+        run: |
+          firebase use ${{ steps.config.outputs.firebase_project }}
+          firebase apphosting:backends:deploy
+

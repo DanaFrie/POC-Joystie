@@ -5,6 +5,9 @@
 
 import { getFunctionsInstance } from '../firebase';
 import { httpsCallable } from 'firebase/functions';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Client');
 
 export interface ProcessScreenshotResponse {
   day: string;
@@ -52,7 +55,7 @@ export async function processScreenshot(
   imageFile: File,
   targetDay: string
 ): Promise<ProcessScreenshotResponse> {
-  console.log('[Client] Starting screenshot processing', {
+  logger.log('Starting screenshot processing', {
     fileName: imageFile.name,
     fileSize: imageFile.size,
     targetDay
@@ -62,12 +65,12 @@ export async function processScreenshot(
 
   try {
     // Convert image file to base64
-    console.log('[Client] Converting image to base64...');
+    logger.log('Converting image to base64...');
     const imageData = await fileToBase64(imageFile);
-    console.log('[Client] Image converted, base64 length:', imageData.length);
+    logger.log('Image converted, base64 length:', imageData.length);
 
     // Get Firebase Functions instance
-    console.log('[Client] Initializing Firebase Functions...');
+    logger.log('Initializing Firebase Functions...');
     const functions = await getFunctionsInstance();
     
     // Get the callable function
@@ -77,7 +80,7 @@ export async function processScreenshot(
     }, ProcessScreenshotResponse>(functions, 'processScreenshot');
 
     // Call the Firebase Function with timeout
-    console.log('[Client] Calling Firebase Function: processScreenshot');
+    logger.log('Calling Firebase Function: processScreenshot');
     
     // Add timeout to prevent hanging (60 seconds max)
     const timeoutPromise = new Promise<never>((_, reject) => 
@@ -92,7 +95,7 @@ export async function processScreenshot(
     const result = await Promise.race([functionPromise, timeoutPromise]);
 
     const elapsed = Date.now() - startTime;
-    console.log(`[Client] Firebase Function response received (${elapsed}ms)`, {
+    logger.log(`Firebase Function response received (${elapsed}ms)`, {
       result: result.data
     });
 
@@ -115,11 +118,11 @@ export async function processScreenshot(
       error: result.data.error,
     };
 
-    console.log('[Client] Processing result:', response);
+    logger.log('Processing result:', response);
     
     return response;
   } catch (error: any) {
-    console.error('[Client] Firebase Function call failed:', error);
+    logger.error('Firebase Function call failed:', error);
     
     // Handle Firebase Function errors
     if (error.code) {

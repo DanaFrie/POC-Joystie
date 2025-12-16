@@ -1,5 +1,6 @@
 // Error handling utilities
 import { FirebaseError } from 'firebase/app';
+import { createContextLogger } from './logger';
 
 /**
  * Get user-friendly error message in Hebrew
@@ -52,25 +53,16 @@ function getFirebaseErrorMessage(code: string): string {
     'internal': 'שגיאה פנימית. נסה שוב מאוחר יותר',
     'data-loss': 'אובדן נתונים',
     'unauthenticated': 'נדרשת התחברות',
-    
-    // Storage errors
-    'storage/unauthorized': 'אין הרשאה לגשת לקובץ זה',
-    'storage/canceled': 'העלאת הקובץ בוטלה',
-    'storage/unknown': 'שגיאה לא ידועה בהעלאת הקובץ',
-    'storage/invalid-format': 'פורמט קובץ לא תקין',
-    'storage/not-found': 'הקובץ לא נמצא',
-    'storage/quota-exceeded': 'חרגת ממכסת האחסון',
   };
   
   return errorMessages[code] || 'אירעה שגיאה. נסה שוב.';
 }
 
 /**
- * Log error for debugging (only in development)
+ * Log error for debugging (enabled in intgr, disabled in prod)
  */
 export function logError(error: unknown, context?: string): void {
-  if (process.env.NODE_ENV === 'development') {
-    console.error(`[${context || 'Error'}]`, error);
-  }
+  const logger = createContextLogger(context || 'Error');
+  logger.error(error);
 }
 
