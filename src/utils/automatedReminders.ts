@@ -9,11 +9,12 @@ import type { DashboardState } from '@/types/dashboard';
  * Process D: Check for pending approvals and send reminder
  * Should run twice a week (Tuesday and Thursday at 16:00)
  */
-export function checkPendingApprovals(
+export async function checkPendingApprovals(
   week: WeekDay[],
   childName: string,
+  parentId: string,
   childGender: 'boy' | 'girl' = 'boy'
-): boolean {
+): Promise<boolean> {
   const pendingDays = week.filter(
     day => day.requiresApproval && day.status === 'awaiting_approval'
   );
@@ -27,7 +28,7 @@ export function checkPendingApprovals(
       pendingDays.length,
       childGender
     );
-    saveNotification(notification);
+    await saveNotification(notification, parentId);
     return true;
   }
 
@@ -38,13 +39,14 @@ export function checkPendingApprovals(
  * Process E: Check for missing reports from yesterday
  * Should run daily at 05:00
  */
-export function checkMissingReport(
+export async function checkMissingReport(
   yesterdayDate: string,
   yesterdayDayName: string,
   week: WeekDay[],
   childName: string,
+  parentId: string,
   childGender: 'boy' | 'girl' = 'boy'
-): boolean {
+): Promise<boolean> {
   // Find yesterday's day in the week
   const yesterdayDay = week.find(day => day.date === yesterdayDate);
 
@@ -58,7 +60,7 @@ export function checkMissingReport(
       undefined,
       childGender
     );
-    saveNotification(notification);
+    await saveNotification(notification, parentId);
 
     // Update day status to missing
     yesterdayDay.status = 'missing';

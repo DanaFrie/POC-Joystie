@@ -21,22 +21,9 @@ export default function OnboardingPage() {
     updateLastActivity();
   }, [router]);
 
+  // Challenge existence will be determined from API when needed
   useEffect(() => {
-    const checkChallenge = () => {
-      if (typeof window === 'undefined') return;
-      const challengeMode = localStorage.getItem('challengeTestMode');
-      setChallengeExists(challengeMode === 'A');
-    };
-    
-    checkChallenge();
-    
-    window.addEventListener('storage', checkChallenge);
-    window.addEventListener('challengeTestModeChanged', checkChallenge);
-    
-    return () => {
-      window.removeEventListener('storage', checkChallenge);
-      window.removeEventListener('challengeTestModeChanged', checkChallenge);
-    };
+    setChallengeExists(false);
   }, []);
 
   const reasons = [
@@ -56,6 +43,10 @@ export default function OnboardingPage() {
 
   const handleContinue = () => {
     if (selectedReason) {
+      // שמור את הבחירה ב-sessionStorage כדי להעביר לדף הבא
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('motivationReason', selectedReason);
+      }
       router.push('/onboarding/setup');
     }
   };
@@ -73,6 +64,7 @@ export default function OnboardingPage() {
               width={120}
               height={120}
               className="object-contain"
+              priority
             />
           </div>
 
@@ -110,6 +102,7 @@ export default function OnboardingPage() {
             width={120}
             height={120}
             className="object-contain"
+            priority
           />
         </div>
 

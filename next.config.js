@@ -8,6 +8,14 @@ const nextConfig = {
         fs: false,
         path: false,
         crypto: false,
+        stream: false,
+        http: false,
+        https: false,
+        zlib: false,
+        url: false,
+        net: false,
+        tls: false,
+        child_process: false,
       };
     }
     
@@ -17,13 +25,55 @@ const nextConfig = {
       config.externals.push('tesseract.js');
     }
     
+      // Fix for Firebase - ignore Node.js specific modules in client bundle
+      if (!isServer) {
+        // Use IgnorePlugin to ignore Node.js modules that Firebase tries to import
+        const webpack = require('webpack');
+        if (!config.plugins) {
+          config.plugins = [];
+        }
+        config.plugins.push(
+          new webpack.IgnorePlugin({
+            resourceRegExp: /^undici$/,
+            contextRegExp: /node_modules\/firebase/,
+          }),
+          // Fix for encoding module warning
+          new webpack.IgnorePlugin({
+            resourceRegExp: /^encoding$/,
+            contextRegExp: /node_modules\/node-fetch/,
+          })
+        );
+      }
+      
+      // Fix encoding module resolution for server-side
+      if (isServer) {
+        config.resolve.fallback = {
+          ...config.resolve.fallback,
+          encoding: false,
+        };
+      }
+    
     return config;
   },
   // Disable server-side rendering for pages that use tesseract.js
   experimental: {
     serverComponentsExternalPackages: ['tesseract.js'],
   },
+  // Exclude functions directory from TypeScript checking (it has its own tsconfig)
+  typescript: {
+    ignoreBuildErrors: false, // We want to catch real errors
+  },
+  // Exclude functions directory from being processed by Next.js
+  pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
+  // Enable standalone output for Firebase App Hosting / Cloud Run
+  output: 'standalone',
 };
 
 module.exports = nextConfig;
+
+// Set HOSTNAME for Firebase App Hosting to listen on all interfaces
+// This ensures the Next.js server listens on 0.0.0.0 instead of 127.0.0.1
+if (process.env.NODE_ENV === 'production') {
+  process.env.HOSTNAME = process.env.HOSTNAME || '0.0.0.0';
+}
 

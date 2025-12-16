@@ -13,11 +13,10 @@ export interface Child {
 }
 
 export interface Challenge {
-  selectedBudget: number; // תקציב נבחר (100%)
-  weeklyBudget: number; // תקציב שבועי (90% מהתקציב הנבחר)
+  selectedBudget: number; // תקציב נבחר
+  weeklyBudget: number; // תקציב שבועי (שווה לתקציב הנבחר)
   dailyBudget: number;
   dailyScreenTimeGoal: number;
-  penaltyRate: number;
   weekNumber: number;
   totalWeeks: number;
   startDate: string;
@@ -72,6 +71,8 @@ export interface DashboardState {
   today: Today;
   week: WeekDay[];
   weeklyTotals: WeeklyTotals;
+  challengeNotStarted?: boolean;
+  challengeStartDate?: string;
 }
 
 

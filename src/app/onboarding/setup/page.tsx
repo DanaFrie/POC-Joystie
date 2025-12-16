@@ -1,13 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { getCurrentUserId } from '@/utils/auth';
+import { createChild } from '@/lib/api/children';
+import { createChallenge } from '@/lib/api/challenges';
+import { getUser } from '@/lib/api/users';
+import { clientConfig } from '@/config/client.config';
 
 export default function OnboardingSetupPage() {
   const [step, setStep] = useState(1);
   const [showBudgetExplanation, setShowBudgetExplanation] = useState(false);
+  const [availableAges, setAvailableAges] = useState<string[]>([]);
+  const [ageSelectedFromButton, setAgeSelectedFromButton] = useState(false);
   const [formData, setFormData] = useState({
     gender: '',
     name: '',
@@ -53,6 +60,18 @@ export default function OnboardingSetupPage() {
         [name]: value
       };
       
+      // If age is being changed manually, clear button selection
+      if (name === 'age') {
+        // If user types something, clear the button selection
+        if (value !== '' && ageSelectedFromButton) {
+          setAgeSelectedFromButton(false);
+        }
+        // If user clears the input, also clear button selection
+        if (value === '') {
+          setAgeSelectedFromButton(false);
+        }
+      }
+      
       // Show budget explanation if budget is selected and target hours are set
       if (name === 'targetScreenTime' && updated.weeklyBudget !== '' && value !== '') {
         setShowBudgetExplanation(true);
@@ -90,11 +109,12 @@ export default function OnboardingSetupPage() {
       return null;
     }
 
-    // תקציב שבועי = תקציב נבחר (ללא בונוס)
-    const weeklyBudget = selectedBudget;
-    const dailyBudget = weeklyBudget / 7;
+    // תקציב שבועי = התקציב הנבחר
+    // האתגר נמשך מספר ימים מוגדר, יום שבת הוא יום פדיון
+    const weeklyBudget = selectedBudget; // התקציב השבועי שווה לתקציב הנבחר
+    const dailyBudget = selectedBudget / clientConfig.challenge.budgetDivision;
     const hourlyRate = targetHours > 0 ? dailyBudget / targetHours : 0;
-    const weeklyHours = targetHours * 7;
+    const weeklyHours = targetHours * clientConfig.challenge.challengeDays;
 
     return {
       selectedBudget,
@@ -148,54 +168,165 @@ export default function OnboardingSetupPage() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { you: 'את' },
-    male: { you: 'אתה' }
+    female: { you: 'את', defined: 'הגדרת' },
+    male: { you: 'אתה', defined: 'הגדרת' }
   };
   const parentP = parentPronouns[parentData.parentGender as 'female' | 'male'] || parentPronouns.female;
 
-  const handleNext = () => {
+  // Load kids ages from user data (Firestore or localStorage)
+  useEffect(() => {
+    const loadKidsAges = async () => {
+      if (typeof window === 'undefined') return;
+      
+      try {
+        // First, try to get from Firestore (user profile)
+        try {
+          const userId = await getCurrentUserId();
+          if (userId) {
+            const userData = await getUser(userId);
+            if (userData && userData.kidsAges && Array.isArray(userData.kidsAges)) {
+              const validAges = userData.kidsAges.filter((age: string) => age && age.trim() !== '');
+              if (validAges.length > 0) {
+                setAvailableAges(validAges);
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          // If Firestore fails, continue to localStorage fallback
+          console.log('Could not load ages from Firestore, trying localStorage...');
+        }
+        
+        // Fallback: Try to get from parentData (after signup submission)
+        const parentDataStr = localStorage.getItem('parentData');
+        if (parentDataStr) {
+          const parsed = JSON.parse(parentDataStr);
+          if (parsed.kidsAges && Array.isArray(parsed.kidsAges)) {
+            const validAges = parsed.kidsAges.filter((age: string) => age && age.trim() !== '');
+            if (validAges.length > 0) {
+              setAvailableAges(validAges);
+              return;
+            }
+          }
+        }
+        
+        // Fallback: Try to get from signupFormData (during signup process)
+        const signupDataStr = localStorage.getItem('signupFormData');
+        if (signupDataStr) {
+          const parsed = JSON.parse(signupDataStr);
+          if (parsed.kidsAges && Array.isArray(parsed.kidsAges)) {
+            const validAges = parsed.kidsAges.filter((age: string) => age && age.trim() !== '');
+            if (validAges.length > 0) {
+              setAvailableAges(validAges);
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+        console.error('Error loading kids ages:', e);
+      }
+    };
+    
+    loadKidsAges();
+  }, []);
+
+  const handleNext = async () => {
     if (step < 6) {
       setStep(step + 1);
     } else {
-      // Save challenge data to localStorage
-      if (typeof window !== 'undefined') {
+      try {
+        // Get current user ID
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          console.error('User not authenticated');
+          router.push('/login');
+          return;
+        }
+
+        // Get user data to get parent name
+        const user = await getUser(userId);
+        const parentName = user?.firstName || '';
+
+        // Calculate budgets
         const selectedBudget = formData.weeklyBudget === 'custom' 
           ? parseFloat(formData.customBudget) 
           : parseFloat(formData.weeklyBudget) || 0;
-        const dailyBudget = selectedBudget / 7;
-        
-        // Get parent name from localStorage
-        let parentName = 'דנה';
-        try {
-          const parentData = localStorage.getItem('parentData');
-          if (parentData) {
-            const parsed = JSON.parse(parentData);
-            parentName = parsed.firstName || parsed.username || 'דנה';
-          }
-        } catch (e) {
-          // Ignore errors
-        }
-        
-        const challengeData = {
-          parentName: parentName,
-          childName: formData.name || '',
-          childGender: formData.gender || 'boy',
-          childAge: formData.age || '',
-          deviceType: formData.deviceType || 'ios',
-          weeklyBudget: selectedBudget,
+        const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
+        const dailyBudget = selectedBudget / clientConfig.challenge.budgetDivision;
+
+        // Create child profile
+        const childId = await createChild({
+          parentId: userId,
+          name: formData.name || '',
+          gender: formData.gender as 'boy' | 'girl',
+          age: formData.age || '',
+          deviceType: formData.deviceType as 'ios' | 'android',
+        });
+
+        // Calculate start date (next Sunday or current if it's Sunday)
+        const today = new Date();
+        const dayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+        const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() + daysUntilSunday);
+        startDate.setHours(0, 0, 0, 0);
+
+        // Get motivation reason from sessionStorage
+        const motivationReason = typeof window !== 'undefined' 
+          ? sessionStorage.getItem('motivationReason') as 'balance' | 'education' | 'communication' | null
+          : null;
+
+        // Create challenge (weeklyBudget is calculated from selectedBudget, not saved to DB)
+        const challengeId = await createChallenge({
+          parentId: userId,
+          childId: childId,
+          motivationReason: motivationReason || undefined,
+          selectedBudget: selectedBudget,
           dailyBudget: dailyBudget,
-          dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || 3
-        };
-        
-        localStorage.setItem('challengeData', JSON.stringify(challengeData));
+          dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || clientConfig.challenge.defaultDailyScreenTimeGoal,
+          weekNumber: 1,
+          totalWeeks: clientConfig.challenge.totalWeeks,
+          startDate: startDate.toISOString(),
+          challengeDays: clientConfig.challenge.challengeDays,
+          redemptionDay: clientConfig.challenge.redemptionDay,
+          isActive: true,
+        });
+
+        // נקה את sessionStorage אחרי השימוש
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('motivationReason');
+        }
+
+        // Save challenge ID to localStorage for backward compatibility (temporary)
+        if (typeof window !== 'undefined') {
+          const challengeData = {
+            parentName: parentName,
+            childName: formData.name || '',
+            childGender: formData.gender || 'boy',
+            childAge: formData.age || '',
+            deviceType: formData.deviceType || 'ios',
+            weeklyBudget: weeklyBudget,
+            dailyBudget: dailyBudget,
+            dailyScreenTimeGoal: parseFloat(formData.targetScreenTime) || clientConfig.challenge.defaultDailyScreenTimeGoal,
+            challengeDays: clientConfig.challenge.challengeDays,
+            redemptionDay: clientConfig.challenge.redemptionDay,
+            challengeId: challengeId,
+            childId: childId,
+          };
+          localStorage.setItem('challengeData', JSON.stringify(challengeData));
+        }
+
+        // Move to next screen with query params
+        const params = new URLSearchParams({
+          name: formData.name,
+          gender: formData.gender
+        });
+        router.push(`/onboarding/complete?${params.toString()}`);
+      } catch (error) {
+        console.error('Error creating challenge:', error);
+        alert('שגיאה ביצירת האתגר. נסה שוב.');
       }
-      
-      // Save data and move to next screen with query params
-      const params = new URLSearchParams({
-        name: formData.name,
-        gender: formData.gender
-      });
-      router.push(`/onboarding/complete?${params.toString()}`);
     }
   };
 
@@ -243,12 +374,12 @@ export default function OnboardingSetupPage() {
         {/* Progress indicator */}
         <div className="mb-6 mt-20">
           <div className="flex justify-between mb-2">
-            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 6</span>
+            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך {clientConfig.challenge.challengeDays}</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-[#273143] h-2 rounded-full transition-all"
-              style={{ width: `${(step / 6) * 100}%` }}
+              style={{ width: `${(step / clientConfig.challenge.challengeDays) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -302,16 +433,77 @@ export default function OnboardingSetupPage() {
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
                 {formData.gender === 'boy' ? 'בן' : 'בת'} כמה {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}?
               </h2>
-              <input
-                type="number"
-                name="age"
-                value={formData.age}
-                onChange={handleChange}
-                placeholder="הכניסו את הגיל"
-                min="1"
-                max="18"
-                className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
-              />
+              
+              {/* Show available ages as buttons if they exist */}
+              {availableAges.length > 0 ? (
+                <div className="mb-4">
+                  {/* Age suggestion buttons - smaller, in one row */}
+                  <div className="flex flex-wrap gap-2 mb-3 justify-center">
+                    {availableAges.map((age, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, age: age.trim() }));
+                          setAgeSelectedFromButton(true);
+                        }}
+                        className={`px-3 py-1.5 rounded-[12px] border-2 transition-all text-center ${
+                          formData.age === age.trim() && ageSelectedFromButton
+                            ? 'border-[#273143] bg-[#273143] bg-opacity-10'
+                            : 'border-gray-200 bg-white hover:border-[#273143] hover:border-opacity-50'
+                        }`}
+                      >
+                        <span className={`font-varela font-semibold text-sm ${
+                          formData.age === age.trim() && ageSelectedFromButton
+                            ? 'text-[#273143]'
+                            : 'text-[#282743]'
+                        }`}>
+                          {age.trim()}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Custom age input - separate from buttons */}
+                  <input
+                    type="number"
+                    name="age"
+                    value={formData.age}
+                    onChange={(e) => {
+                      // Clear button selection when user starts typing
+                      if (ageSelectedFromButton) {
+                        setAgeSelectedFromButton(false);
+                      }
+                      handleChange(e);
+                    }}
+                    onFocus={() => {
+                      // When focusing on input, clear button selection if it was selected
+                      if (ageSelectedFromButton) {
+                        setAgeSelectedFromButton(false);
+                        setFormData(prev => ({ ...prev, age: '' }));
+                      }
+                    }}
+                    placeholder="גיל"
+                    min="1"
+                    max="18"
+                    className={`w-full p-4 rounded-[18px] border-2 focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
+                      formData.age && !ageSelectedFromButton && formData.age.trim() !== ''
+                        ? 'border-[#273143] bg-[#273143] bg-opacity-5'
+                        : 'border-gray-200 bg-white'
+                    }`}
+                  />
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  name="age"
+                  value={formData.age}
+                  onChange={handleChange}
+                  placeholder="הכניסו את הגיל"
+                  min="1"
+                  max="18"
+                  className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
+                />
+              )}
             </div>
           )}
 
@@ -413,18 +605,23 @@ export default function OnboardingSetupPage() {
                       <h3 className="font-varela font-semibold text-base text-[#262135] mb-3">
                         מה זה אומר?
                       </h3>
-                      <div className="space-y-2 font-varela text-sm text-[#282743]">
-                        <p>
-                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד {explanation.targetHours} {explanation.targetHours === 1 ? 'שעה' : 'שעות'} זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong>₪{formatNumber(explanation.weeklyBudget)}</strong> של תקציב השבועי (₪{formatNumber(explanation.dailyBudget)} ליום). אם {formData.gender === 'boy' ? 'הוא יגדיל' : 'היא תגדיל'} את זמן המסך, התקציב יקטן בהתאם.
+                      <div className="space-y-3 font-varela text-sm text-[#282743]">
+                        <div className="bg-[#E6F19A] bg-opacity-50 rounded-[12px] p-4 border-2 border-[#E6F19A] shadow-sm">
+                          <p className="font-varela text-base text-[#262135] leading-relaxed font-semibold">
+                            אם <strong className="text-[#273143]">{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}</strong> {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד של <strong className="text-[#273143]">{explanation.targetHours}</strong> {explanation.targetHours === 1 ? 'שעה' : 'שעות'} זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong className="text-[#273143] text-lg">₪{formatNumber(explanation.weeklyBudget)}</strong> תקציב השבועי (₪{formatNumber(explanation.dailyBudget)} ליום).
+                          </p>
+                        </div>
+                        <p className="text-[#282743]">
+                          אם {formData.gender === 'boy' ? 'הוא יגדיל' : 'היא תגדיל'} את זמן המסך, התקציב יקטן בהתאם.
                         </p>
                         <p className="mt-2">
-                          במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / 6, 2)}</strong>.
+                          במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / clientConfig.challenge.budgetDivision, 2)}</strong>.
                         </p>
                         <p className="mt-2">
                           אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-1.5 שעות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
                         </p>
                         <p className="mt-2 pt-2 border-t border-[#E6F19A]">
-                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} הגדרת.
+                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} {parentP.defined}.
                         </p>
                       </div>
                       <button

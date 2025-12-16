@@ -1,7 +1,0 @@
-{
-  "/signup/page": "app/signup/page.js",
-  "/onboarding/setup/page": "app/onboarding/setup/page.js",
-  "/onboarding/complete/page": "app/onboarding/complete/page.js",
-  "/test-mode/image-processing/page": "app/test-mode/image-processing/page.js",
-  "/child/setup/page": "app/child/setup/page.js"
-}

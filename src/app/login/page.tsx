@@ -4,10 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createSession, isLoggedIn } from '@/utils/session';
+import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
+import { getUser, getUserByUsername } from '@/lib/api/users';
+import { getActiveChallenge } from '@/lib/api/challenges';
+import { getErrorMessage } from '@/utils/errors';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    username: '',
+    usernameOrEmail: '',
     password: ''
   });
 
@@ -16,12 +20,62 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState<string>('');
   const router = useRouter();
 
-  // Check if already logged in
+  // Check if already logged in - wait for Firebase Auth to be ready
   useEffect(() => {
-    if (isLoggedIn()) {
-      router.push('/dashboard');
-    }
+    const checkAuthAndRedirect = async () => {
+      // Check localStorage session first (quick check)
+      if (!isLoggedIn()) {
+        return; // Not logged in, stay on login page
+      }
+      
+      // Wait a bit for Firebase Auth to initialize
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Check Firebase Auth
+      try {
+        const { isAuthenticated } = await import('@/utils/auth');
+        const authenticated = await isAuthenticated();
+        if (authenticated) {
+          // User is authenticated with Firebase Auth, check redirect
+          await checkUserAndRedirect();
+        } else {
+          // Has localStorage session but not Firebase Auth - clear session and stay on login
+          console.warn('[Login] localStorage session exists but Firebase Auth not authenticated');
+          // Don't redirect - let user log in again
+        }
+      } catch (error) {
+        console.error('[Login] Error checking auth:', error);
+        // On error, stay on login page
+      }
+    };
+    
+    checkAuthAndRedirect();
   }, [router]);
+
+  // Check user and redirect to appropriate page
+  const checkUserAndRedirect = async () => {
+    try {
+      const userId = await getCurrentUserIdAsync();
+      if (!userId) {
+        router.push('/login');
+        return;
+      }
+
+      // Check if user has an active challenge
+      const challenge = await getActiveChallenge(userId);
+      
+      if (challenge) {
+        // User has active challenge, go to dashboard
+        router.push('/dashboard');
+      } else {
+        // No active challenge, go to onboarding/challenge setup
+        router.push('/onboarding');
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+      router.push('/onboarding');
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,8 +101,8 @@ export default function LoginPage() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'אנא הכנס שם משתמש';
+    if (!formData.usernameOrEmail.trim()) {
+      newErrors.usernameOrEmail = 'אנא הכנס שם משתמש או אימייל';
     }
     if (!formData.password.trim()) {
       newErrors.password = 'אנא הכנס סיסמה';
@@ -68,49 +122,57 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setLoginError('');
 
-    // Get stored parent data
-    if (typeof window === 'undefined') {
-      setIsSubmitting(false);
-      return;
-    }
-
-    const storedParentData = localStorage.getItem('parentData');
-    if (!storedParentData) {
-      setLoginError('לא נמצא חשבון. אנא הירשם תחילה.');
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      const parentData = JSON.parse(storedParentData);
+      const usernameOrEmail = formData.usernameOrEmail.trim().toLowerCase();
+      let email: string;
+
+      // Check if input is email or username
+      const isEmail = usernameOrEmail.includes('@');
       
-      // Check if username matches
-      if (parentData.username?.toLowerCase() !== formData.username.trim().toLowerCase()) {
-        setLoginError('שם משתמש לא נכון');
+      if (isEmail) {
+        // User entered email, use it directly
+        email = usernameOrEmail;
+      } else {
+        // User entered username, find user by username and get their email
+        const user = await getUserByUsername(usernameOrEmail);
+        if (!user) {
+          setLoginError('שם משתמש או אימייל לא נמצא');
+          setIsSubmitting(false);
+          return;
+        }
+        email = user.email;
+      }
+
+      // Sign in with Firebase Auth using email and password
+      const firebaseUser = await signIn(email, formData.password);
+
+      // Get user data from Firestore
+      const userData = await getUser(firebaseUser.uid);
+      if (!userData) {
+        setLoginError('נתוני המשתמש לא נמצאו. אנא הירשם מחדש.');
         setIsSubmitting(false);
         return;
       }
 
-      // Check password (in production, use proper password hashing)
-      const passwordHash = btoa(formData.password);
-      if (parentData.passwordHash !== passwordHash) {
-        setLoginError('סיסמה לא נכונה');
-        setIsSubmitting(false);
-        return;
-      }
+      // Create session with Firebase Auth UID
+      createSession(firebaseUser.uid);
 
-      // Create session
-      const userId = `user_${Date.now()}`;
-      createSession(userId);
-
-      // Redirect to dashboard
-      setTimeout(() => {
-        setIsSubmitting(false);
+      // Check if user has an active challenge and redirect accordingly
+      const challenge = await getActiveChallenge(firebaseUser.uid);
+      
+      setIsSubmitting(false);
+      
+      if (challenge) {
+        // User has active challenge, go to dashboard
         router.push('/dashboard');
-      }, 500);
+      } else {
+        // No active challenge, go to onboarding/challenge setup
+        router.push('/onboarding');
+      }
     } catch (error) {
       console.error('Login error:', error);
-      setLoginError('אירעה שגיאה בהתחברות. נסה שוב.');
+      const errorMessage = getErrorMessage(error);
+      setLoginError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
       setIsSubmitting(false);
     }
   };
@@ -118,27 +180,21 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-transparent pb-24">
       <div className="max-w-md mx-auto px-4 py-8 relative">
-        {/* Piggy Bank and Logo - פינה ימנית עליונה */}
-        <div className="absolute right-0 top-0 z-10 flex items-center gap-4">
-          <Image
-            src="/piggy-bank.png"
-            alt="Piggy Bank"
-            width={120}
-            height={120}
-            className="object-contain"
-          />
+        {/* Logo - מרכז עליון */}
+        <div className="flex justify-center items-center mb-8 pt-4">
           <Image
             src="/logo-joystie.png"
             alt="Joystie Logo"
-            width={120}
-            height={40}
-            className="h-10 w-auto"
-            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)' }}
+            width={200}
+            height={67}
+            className="h-12 w-auto sm:h-16 md:h-20"
+            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
+            priority
           />
         </div>
 
         {/* Welcome message */}
-        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-24">
+        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
           <h1 className="font-varela font-semibold text-2xl text-[#262135] text-center">
             התחברות
           </h1>
@@ -146,24 +202,24 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
-          {/* Username */}
+          {/* Username or Email */}
           <div className="mb-6">
-            <label htmlFor="username" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
-              שם משתמש <span className="text-red-500">*</span>
+            <label htmlFor="usernameOrEmail" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
+              שם משתמש או אימייל <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              id="username"
-              name="username"
-              value={formData.username}
+              id="usernameOrEmail"
+              name="usernameOrEmail"
+              value={formData.usernameOrEmail}
               onChange={handleChange}
-              placeholder="הכנס שם משתמש"
+              placeholder="הכנס שם משתמש או אימייל"
               className={`w-full p-4 border-2 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
-                errors.username ? 'border-red-500' : 'border-gray-200'
+                errors.usernameOrEmail ? 'border-red-500' : 'border-gray-200'
               }`}
             />
-            {errors.username && (
-              <p className="mt-2 text-sm text-red-500 font-varela">{errors.username}</p>
+            {errors.usernameOrEmail && (
+              <p className="mt-2 text-sm text-red-500 font-varela">{errors.usernameOrEmail}</p>
             )}
           </div>
 

@@ -4,41 +4,34 @@ import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { generateSetupUrl } from '@/utils/url-encoding';
+import { getCurrentUserId } from '@/utils/auth';
+import { getActiveChallenge } from '@/lib/api/challenges';
 
 function OnboardingCompleteContent() {
-  const shareLink = 'https://joystie.app/join?child=123456';
+  const [shareLink, setShareLink] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [copiedType, setCopiedType] = useState<'link' | 'text' | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const childName = searchParams.get('name') || '';
   const childGender = searchParams.get('gender') || 'boy';
+  const childId = searchParams.get('childId') || '';
 
   // Get parent data and challenge data from localStorage
   const getParentData = () => {
     try {
       if (typeof window !== 'undefined') {
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            return {
-              parentName: parsed.parent?.name || 'דנה',
-              parentGender: parsed.parent?.gender || 'female',
-              deviceType: parsed.challenge?.deviceType || 'ios'
-            };
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-        
         const challengeData = localStorage.getItem('challengeData');
         if (challengeData) {
           try {
             const parsed = JSON.parse(challengeData);
+            const parentName = parsed.parentName || '';
+            // Determine gender from name
+            const parentGender = (parentName.endsWith('ה') || parentName.endsWith('ית')) ? 'female' : 'male';
             return {
-              parentName: parsed.parentName || 'דנה',
-              parentGender: 'female', // Default, will be determined from name
+              parentName: parentName,
+              parentGender: parentGender,
               deviceType: parsed.deviceType || 'ios'
             };
           } catch (e) {
@@ -51,7 +44,7 @@ function OnboardingCompleteContent() {
           try {
             const parsed = JSON.parse(signupData);
             return {
-              parentName: parsed.firstName || 'דנה',
+              parentName: parsed.firstName || '',
               parentGender: parsed.gender === 'female' ? 'female' : 'male',
               deviceType: 'ios' // Default
             };
@@ -64,7 +57,7 @@ function OnboardingCompleteContent() {
       // Ignore errors
     }
     return {
-      parentName: 'דנה',
+      parentName: '',
       parentGender: 'female',
       deviceType: 'ios'
     };
@@ -82,11 +75,55 @@ function OnboardingCompleteContent() {
   };
   const parentP = parentPronouns[parentGender as 'female' | 'male'] || parentPronouns.female;
 
+  // Generate setup URL with token
+  useEffect(() => {
+    const generateUrl = async () => {
+      try {
+        // Wait a bit for Firebase to initialize if needed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const userId = await getCurrentUserId();
+        if (!userId) {
+          // User not logged in - show error message instead of invalid token
+          console.error('Cannot generate URL: User not logged in (getCurrentUserId returned null)');
+          setShareLink(''); // Empty string - UI should handle this
+          return;
+        }
+
+        console.log('User ID found:', userId);
+        
+        try {
+          const challenge = await getActiveChallenge(userId);
+          const childIdToUse = childId || challenge?.childId;
+          const challengeIdToUse = challenge?.id;
+          console.log('Challenge found:', challengeIdToUse, 'Child ID:', childIdToUse);
+          
+          const url = generateSetupUrl(userId, childIdToUse, challengeIdToUse);
+          console.log('Generated URL successfully');
+          setShareLink(url);
+        } catch (challengeError) {
+          console.error('Error getting challenge:', challengeError);
+          // Still generate URL with just parentId if challenge fetch fails
+          const url = generateSetupUrl(userId, childId);
+          setShareLink(url);
+        }
+      } catch (error) {
+        console.error('Error generating setup URL:', error);
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        // On error, set empty string - UI should show error message
+        setShareLink('');
+      }
+    };
+
+    generateUrl();
+  }, [childId]);
+
   // Set challenge exists when onboarding is complete
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('challengeTestMode', 'A');
-      window.dispatchEvent(new Event('challengeTestModeChanged'));
     }
   }, []);
   
@@ -103,6 +140,7 @@ function OnboardingCompleteContent() {
   const shareText = `${displayName}! מצאתי משהו חדש שגם נותן לך יותר שליטה בכסף שלך וגם ייתן לך יותר חופש בטלפון\n\nזה הקישור שלך – רוצה לגלות איך זה עובד ביחד?\n\n${shareLink}`;
 
   const handleCopyLink = async () => {
+    if (!shareLink) return;
     try {
       await navigator.clipboard.writeText(shareLink);
       setCopied(true);
@@ -117,6 +155,7 @@ function OnboardingCompleteContent() {
   };
 
   const handleCopyFullText = async () => {
+    if (!shareLink) return;
     try {
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
@@ -169,10 +208,10 @@ function OnboardingCompleteContent() {
             <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
               הסבר קצר כיצד לעשות זאת:
             </p>
-            <div className="relative w-full aspect-video bg-gray-100 rounded-[12px] overflow-hidden mb-3">
+            <div className="relative w-full bg-gray-100 rounded-[12px] overflow-hidden mb-3" style={{ minHeight: '300px' }}>
               <video
                 controls
-                className="w-full h-full object-contain"
+                className="w-full h-auto object-contain"
                 poster="/video-poster-parent-android.jpg"
               >
                 <source src="/screenshot-tutorial-parent-android.mp4" type="video/mp4" />
@@ -198,14 +237,17 @@ function OnboardingCompleteContent() {
                 העתק קישור עם טקסט
               </h3>
               <div className="bg-[#FFFCF8] rounded-[12px] p-4 mb-3 border-2 border-gray-200">
-                <p className="font-varela text-sm text-[#273143] leading-relaxed whitespace-pre-wrap">
+                <p className="font-varela text-sm text-[#273143] leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
                   {shareText}
                 </p>
               </div>
               <button
                 onClick={handleCopyFullText}
+                disabled={!shareLink}
                 className={`w-full py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
-                  copied && copiedType === 'text'
+                  !shareLink
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : copied && copiedType === 'text'
                     ? 'bg-[#E6F19A] text-[#273143]'
                     : 'bg-[#273143] text-white hover:bg-opacity-90'
                 }`}
@@ -219,24 +261,35 @@ function OnboardingCompleteContent() {
               <h3 className="font-varela font-semibold text-sm text-[#273143] mb-3">
                 העתק קישור בלבד
               </h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={shareLink}
-                  readOnly
-                  className="flex-1 p-3 border-2 border-gray-200 rounded-[12px] font-varela text-sm text-[#273143] bg-white"
-                />
-                <button
-                  onClick={handleCopyLink}
-                  className={`px-4 py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
-                    copied && copiedType === 'link'
-                      ? 'bg-[#E6F19A] text-[#273143]'
-                      : 'bg-[#273143] text-white hover:bg-opacity-90'
-                  }`}
-                >
-                  {copied && copiedType === 'link' ? 'הועתק! ✓' : 'העתק'}
-                </button>
-              </div>
+              {!shareLink ? (
+                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-3">
+                  <p className="font-varela text-sm text-[#262135] text-center">
+                    שגיאה ביצירת הקישור. אנא רענן את הדף או בדוק שהתחברת למערכת.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-1.5 sm:gap-2">
+                  <input
+                    type="text"
+                    value={shareLink}
+                    readOnly
+                    className="flex-1 min-w-0 p-2 sm:p-3 border-2 border-gray-200 rounded-[12px] font-varela text-xs sm:text-sm text-[#273143] bg-white"
+                  />
+                  <button
+                    onClick={handleCopyLink}
+                    disabled={!shareLink}
+                    className={`px-2.5 sm:px-3 md:px-4 py-2 sm:py-3 rounded-[12px] font-varela font-semibold text-xs sm:text-sm transition-all whitespace-nowrap flex-shrink-0 ${
+                      !shareLink
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : copied && copiedType === 'link'
+                        ? 'bg-[#E6F19A] text-[#273143]'
+                        : 'bg-[#273143] text-white hover:bg-opacity-90'
+                    }`}
+                  >
+                    {copied && copiedType === 'link' ? 'הועתק! ✓' : 'העתק'}
+                  </button>
+                </div>
+              )}
             </div>
 
 

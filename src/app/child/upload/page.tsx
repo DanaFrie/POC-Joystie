@@ -1,8 +1,21 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { processScreenshot } from '@/lib/api/screenshot';
+import { createUpload } from '@/lib/api/uploads';
+import { uploadScreenshot } from '@/lib/api/storage';
+import { getCurrentUserId } from '@/utils/auth';
+import { validateUploadUrl } from '@/utils/url-validation';
+import { generateRedemptionUrl } from '@/utils/url-encoding';
+import { decodeParentToken } from '@/utils/url-encoding';
+import { getChallenge } from '@/lib/api/challenges';
+import { getActiveChallenge } from '@/lib/api/challenges';
+import { getUser } from '@/lib/api/users';
+import { getChild } from '@/lib/api/children';
+import { clientConfig } from '@/config/client.config';
 
 interface UploadResult {
   screenTimeUsed: number;
@@ -20,7 +33,10 @@ interface SelectableDay {
   displayText: string;
 }
 
-export default function ChildUploadPage() {
+function ChildUploadContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token') || '';
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,174 +44,475 @@ export default function ChildUploadPage() {
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [selectedDay, setSelectedDay] = useState<SelectableDay | null>(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState<'ios' | 'android'>('ios');
+  const [deviceType, setDeviceType] = useState<'ios' | 'android'>('ios');
   const [ocrProgress, setOcrProgress] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const [showApprovedWarning, setShowApprovedWarning] = useState(false);
   const [approvedDayInfo, setApprovedDayInfo] = useState<{ date: string; dayName: string; isApproved?: boolean } | null>(null);
+  const [showFridayWarning, setShowFridayWarning] = useState(false);
+  const [urlValid, setUrlValid] = useState<boolean | null>(null);
+  const [urlError, setUrlError] = useState<string>('');
+  const [parentId, setParentId] = useState<string>('');
+  const [childId, setChildId] = useState<string>('');
+  const [challengeId, setChallengeId] = useState<string>('');
+  const [challengeNotStarted, setChallengeNotStarted] = useState<boolean>(false);
+  const [challengeStartDate, setChallengeStartDate] = useState<string>('');
+  const [challengeInactive, setChallengeInactive] = useState<boolean>(false);
+  const [parentName, setParentName] = useState<string>('אמא');
+  const [childGender, setChildGender] = useState<'boy' | 'girl'>('boy');
+  const [weekDays, setWeekDays] = useState<any[]>([]);
+  const [challengeData, setChallengeData] = useState<{
+    dailyScreenTimeGoal: number;
+    dailyBudget: number;
+    parentName: string;
+  }>({
+    dailyScreenTimeGoal: clientConfig.challenge.defaultDailyScreenTimeGoal,
+    dailyBudget: clientConfig.challenge.defaultSelectedBudget / clientConfig.challenge.budgetDivision,
+    parentName: 'אמא'
+  });
+  const hasInitializedDay = useRef(false);
 
   const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
 
-  // Generate list of selectable days (only past days - at least one day back)
-  const selectableDays = useMemo(() => {
-  const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const days: SelectableDay[] = [];
-    
-    // Start from yesterday (at least one day back)
-    for (let i = 1; i <= 7; i++) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      
-      const dateStr = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}`;
-      const dayName = dayNames[date.getDay()];
-      
-      let displayText = '';
-      if (i === 1) {
-        displayText = 'אתמול';
-      } else if (i === 2) {
-        displayText = 'שלשום';
-      } else {
-        displayText = `${dayName}, ${dateStr}`;
+  // Validate URL token on mount
+  useEffect(() => {
+    const validateUrl = async () => {
+      if (!token) {
+        setUrlValid(false);
+        setUrlError('כתובת לא תקינה - חסר טוקן');
+        return;
       }
+
+      try {
+        const validation = await validateUploadUrl(token);
+        if (validation.isValid && validation.parentId) {
+          // FIRST CHECK: Verify challenge is active
+          let challenge = null;
+          if (validation.challengeId) {
+            challenge = await getChallenge(validation.challengeId);
+          } else {
+            // Try to get active challenge
+            challenge = await getActiveChallenge(validation.parentId);
+          }
+          
+          // If challenge exists but is not active, show error
+          if (challenge && !challenge.isActive) {
+            setUrlValid(false);
+            setChallengeInactive(true);
+            setUrlError('האתגר הושלם כבר. הפדיון בוצע והאתגר לא פעיל יותר.');
+            return;
+          }
+          
+          setUrlValid(true);
+          setParentId(validation.parentId);
+          if (validation.childId) {
+            setChildId(validation.childId);
+          }
+          if (validation.challengeId) {
+            setChallengeId(validation.challengeId);
+          }
+          if (validation.challengeNotStarted) {
+            setChallengeNotStarted(true);
+          }
+          if (validation.challengeStartDate) {
+            setChallengeStartDate(validation.challengeStartDate);
+          }
+        } else {
+          setUrlValid(false);
+          setUrlError(validation.error || 'כתובת לא תקינה');
+        }
+      } catch (error) {
+        console.error('Error validating URL:', error);
+        setUrlValid(false);
+        setUrlError('שגיאה בבדיקת הכתובת');
+      }
+    };
+
+    validateUrl();
+  }, [token]);
+
+  // Load week days from challenge
+  useEffect(() => {
+    const loadWeekDays = async () => {
+      if (!parentId) return;
       
-      days.push({
-        date,
-        dateStr,
-        dayName,
-        displayText
-      });
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Filter days that:
+          // 1. Belong to the challenge (not redemption day)
+          // 2. Have passed (not future)
+          // 3. Haven't been uploaded yet (missing or pending status)
+          const availableDays = dashboardData.week
+            .filter(day => {
+              if (day.isRedemptionDay) return false;
+              
+              // Parse date string to Date object
+              const [dayNum, monthNum] = day.date.split('/').map(Number);
+              const currentYear = new Date().getFullYear();
+              const dayDate = new Date(currentYear, monthNum - 1, dayNum);
+              dayDate.setHours(0, 0, 0, 0);
+              
+              // Check if day has passed
+              if (dayDate > today) return false;
+              
+              // Check if day hasn't been uploaded yet OR was rejected (allows re-upload)
+              return day.status === 'missing' || day.status === 'pending' || day.status === 'rejected';
+            })
+            .map(day => {
+              // Parse date string to Date object (already parsed in filter, but need it here too)
+              const [dayNum, monthNum] = day.date.split('/').map(Number);
+              const currentYear = new Date().getFullYear();
+              const date = new Date(currentYear, monthNum - 1, dayNum);
+              
+              // Find full day name
+              const dayIndex = dayNames.findIndex(name => {
+                const dayAbbr = day.dayName;
+                const dayMap: { [key: string]: string } = {
+                  'א׳': 'ראשון',
+                  'ב׳': 'שני',
+                  'ג׳': 'שלישי',
+                  'ד׳': 'רביעי',
+                  'ה׳': 'חמישי',
+                  'ו׳': 'שישי',
+                  'ש׳': 'שבת'
+                };
+                return dayMap[dayAbbr] === name;
+              });
+              const fullDayName = dayIndex >= 0 ? dayNames[dayIndex] : day.dayName;
+              
+              // Determine display text
+              const daysDiff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+              let displayText = '';
+              if (daysDiff === 1) {
+                displayText = 'אתמול';
+              } else if (daysDiff === 2) {
+                displayText = 'שלשום';
+              } else {
+                displayText = `${fullDayName}, ${day.date}`;
+              }
+              
+              return {
+                date,
+                dateStr: day.date,
+                dayName: fullDayName,
+                displayText
+              };
+            })
+            .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort by date ascending (oldest first)
+          
+          setWeekDays(availableDays);
+        }
+      } catch (error) {
+        console.error('Error loading week days:', error);
+        // Fallback to empty array
+        setWeekDays([]);
+      }
+    };
+    
+    loadWeekDays();
+  }, [parentId]);
+
+  // Generate list of selectable days from challenge week
+  const selectableDays = useMemo(() => {
+    if (weekDays.length > 0) {
+      return weekDays;
     }
     
-    return days;
-  }, []);
+    // Fallback: if no week days loaded yet, return empty array
+    return [];
+  }, [weekDays]);
 
-  // Set default selected day to yesterday
+  // Set default selected day to first available day (only once)
   useEffect(() => {
-    if (selectableDays.length > 0 && !selectedDay) {
+    if (!hasInitializedDay.current && selectableDays.length > 0) {
+      hasInitializedDay.current = true;
       setSelectedDay(selectableDays[0]);
     }
-  }, [selectableDays, selectedDay]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectableDays.length]); // Only run when selectableDays becomes available
 
-  // Check if there's an approved upload for the selected day
+  // Find if selected day is the last day to upload (only one day left AND it's the last challenge day)
+  const [isLastDayToUpload, setIsLastDayToUpload] = useState<boolean>(false);
+  
   useEffect(() => {
-    if (!selectedDay) return;
+    const checkIfLastDay = async () => {
+      if (!selectedDay || !parentId || !challengeId) {
+        setIsLastDayToUpload(false);
+        return;
+      }
+      
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          // Find days that need UPLOAD only (not approval - approval goes to redemption separately)
+          const daysNeedingUpload = dashboardData.week
+            .filter(day => {
+              if (day.isRedemptionDay) return false;
+              // Only days that need upload (missing or pending)
+              if (day.status === 'missing' || day.status === 'pending') return true;
+              return false;
+            });
+          
+          // Check if there's exactly ONE day left that needs upload
+          if (daysNeedingUpload.length !== 1) {
+            setIsLastDayToUpload(false);
+            return;
+          }
+          
+          // Check if the selected day is that one day
+          const onlyDayLeft = daysNeedingUpload[0];
+          if (onlyDayLeft.date !== selectedDay.dateStr) {
+            setIsLastDayToUpload(false);
+            return;
+          }
+          
+          // Check if this day is the last day that needs upload (not calendar last day)
+          // Sort days needing upload by date to find the last one
+          const parseDate = (dateStr: string): Date => {
+            const [day, month] = dateStr.split('/').map(Number);
+            const currentYear = new Date().getFullYear();
+            return new Date(currentYear, month - 1, day);
+          };
+          
+          const sortedDaysNeedingUpload = [...daysNeedingUpload].sort((a, b) => {
+            const dateA = parseDate(a.date);
+            const dateB = parseDate(b.date);
+            return dateA.getTime() - dateB.getTime();
+          });
+          
+          const lastDayNeedingUpload = sortedDaysNeedingUpload[sortedDaysNeedingUpload.length - 1];
+          
+          // Only show warning if selected day is the last day that needs upload AND it's the only day left
+          setIsLastDayToUpload(lastDayNeedingUpload.date === selectedDay.dateStr);
+        } else {
+          setIsLastDayToUpload(false);
+        }
+      } catch (error) {
+        console.error('Error checking if last day:', error);
+        setIsLastDayToUpload(false);
+      }
+    };
     
-    try {
-      if (typeof window !== 'undefined') {
-        let foundApproved = false;
-        let approvedInfo: { date: string; dayName: string; isApproved?: boolean } | null = null;
+    checkIfLastDay();
+  }, [selectedDay, parentId, challengeId]);
+
+  // Update warning state based on isLastDayToUpload
+  useEffect(() => {
+    setShowFridayWarning(isLastDayToUpload);
+  }, [isLastDayToUpload]);
+
+  // Check if the selected day was rejected by parent (allows re-upload)
+  useEffect(() => {
+    const checkDayStatus = async () => {
+      if (!selectedDay || !parentId || !challengeId) {
+        setShowApprovedWarning(false);
+        setApprovedDayInfo(null);
+        return;
+      }
+      
+      try {
+        // Get dashboard data to check day status
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
         
-        // Check dashboard test data for approved days
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            const week = parsed.week || [];
-            
-            // Find if there's an approved day matching the selected day
-            const approvedDay = week.find((day: any) => 
-              day.date === selectedDay.dateStr && 
-              day.parentAction === 'approved'
-            );
-            
-            if (approvedDay) {
-              foundApproved = true;
-              approvedInfo = {
-                date: approvedDay.date,
-                dayName: approvedDay.dayName || selectedDay.dayName,
-                isApproved: true
-              };
-            }
-          } catch (e) {
-            // Ignore parse errors
+        if (dashboardData && dashboardData.week) {
+          // Find the day in the week array
+          const dayData = dashboardData.week.find(day => day.date === selectedDay.dateStr);
+          
+          // Only show warning if the day was rejected by parent (allows re-upload)
+          if (dayData && dayData.status === 'rejected') {
+            setApprovedDayInfo({
+              date: selectedDay.dateStr,
+              dayName: selectedDay.dayName,
+              isApproved: false
+            });
+            setShowApprovedWarning(true);
+          } else {
+            setShowApprovedWarning(false);
+            setApprovedDayInfo(null);
           }
-        }
-        
-        // Also check if there's an existing upload in childUploads
-        if (!foundApproved) {
-          try {
-            const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-            const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
-            
-            if (existingUpload) {
-              foundApproved = true;
-              approvedInfo = {
-                date: selectedDay.dateStr,
-                dayName: selectedDay.dayName,
-                isApproved: false
-              };
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-        
-        if (foundApproved && approvedInfo) {
-          setApprovedDayInfo(approvedInfo);
-          setShowApprovedWarning(true);
         } else {
           setShowApprovedWarning(false);
           setApprovedDayInfo(null);
         }
+      } catch (e) {
+        console.error('Error checking day status:', e);
+        setShowApprovedWarning(false);
+        setApprovedDayInfo(null);
       }
-    } catch (e) {
-      // Ignore errors
-      setShowApprovedWarning(false);
-      setApprovedDayInfo(null);
-    }
-  }, [selectedDay]);
-
-  // Get challenge data from localStorage (mock - in real app this would come from API)
-  const getChallengeData = () => {
-    // Try to get from localStorage or use defaults
-    const challengeData = {
-      dailyScreenTimeGoal: 3, // hours
-      dailyBudget: 12.9, // שקלים
-      parentName: 'אמא' // default
     };
+    
+    checkDayStatus();
+  }, [selectedDay, parentId, challengeId]);
 
-    // Try to get parent name from localStorage or mock data
-    try {
-      // In a real app, this would come from API/backend
-      // For now, we'll try to get from localStorage or use mock data
-      let parentNameFromStorage = '';
+  // Load parent and child data
+  useEffect(() => {
+    const loadData = async () => {
+      if (!parentId) return;
       
-      // Try to get from localStorage first
-      if (typeof window !== 'undefined') {
-        const storedChallenge = localStorage.getItem('challengeData');
-        if (storedChallenge) {
-          try {
-            const parsed = JSON.parse(storedChallenge);
-            parentNameFromStorage = parsed.parentName || '';
-          } catch (e) {
-            // Ignore parse errors
+      try {
+        const challenge = await getActiveChallenge(parentId);
+        if (!challenge) return;
+
+        const childIdToUse = childId || challenge.childId;
+        if (childIdToUse) {
+          const child = await getChild(childIdToUse);
+          if (child) {
+            setChildGender(child.gender || 'boy');
+            setDeviceType(child.deviceType || 'ios');
           }
         }
-      }
-      
-      // If not found, use mock data (from dashboard)
-      if (!parentNameFromStorage) {
-        parentNameFromStorage = 'דנה'; // Default from dashboard mock data
-      }
-      
-      // Simple heuristic: if name ends with 'ה' or 'ית', it's likely female
-      // In a real app, this would be stored explicitly
-      if (parentNameFromStorage && typeof parentNameFromStorage === 'string') {
-        const name = parentNameFromStorage.trim();
-        if (name.endsWith('ה') || name.endsWith('ית')) {
-          challengeData.parentName = 'אמא';
-        } else {
-          challengeData.parentName = 'אבא';
+
+        const parent = await getUser(parentId);
+        if (parent) {
+          const name = parent.firstName || '';
+          // Determine if parent is mom or dad
+          if (name.endsWith('ה') || name.endsWith('ית')) {
+            setParentName('אמא');
+          } else {
+            setParentName('אבא');
+          }
         }
+      } catch (e) {
+        console.error('Error loading data:', e);
       }
+    };
+
+    loadData();
+  }, [parentId, childId]);
+
+  // Load challenge and parent data from Firestore based on token
+  useEffect(() => {
+    const loadChallengeData = async () => {
+      if (!token) return;
       
-      return challengeData;
-    } catch (e) {
-      return challengeData;
+      try {
+        console.log('[child/upload] Decoding token to get challenge data...');
+        const decoded = decodeParentToken(token);
+        
+        if (!decoded || decoded.isExpired) {
+          console.warn('[child/upload] Invalid or expired token');
+          return;
+        }
+        
+        const { parentId: decodedParentId, challengeId: decodedChallengeId, childId: decodedChildId } = decoded;
+        console.log('[child/upload] Decoded token:', { decodedParentId, decodedChallengeId, decodedChildId });
+        
+        let challenge = null;
+        
+        // Try to fetch challenge data - first from challengeId in token, then from active challenge
+        if (decodedChallengeId) {
+          try {
+            challenge = await getChallenge(decodedChallengeId);
+            if (challenge) {
+              console.log('[child/upload] Loaded challenge from token challengeId:', challenge);
+            }
+          } catch (challengeError) {
+            console.error('[child/upload] Error loading challenge by ID:', challengeError);
+          }
+        }
+        
+        // If no challenge from token, try to get active challenge for parent
+        if (!challenge) {
+          try {
+            challenge = await getActiveChallenge(decodedParentId);
+            if (challenge) {
+              console.log('[child/upload] Loaded active challenge from parentId:', challenge);
+            }
+          } catch (activeChallengeError) {
+            console.error('[child/upload] Error loading active challenge:', activeChallengeError);
+          }
+        }
+        
+        // If we have challenge data, use it
+        if (challenge) {
+          // Calculate budgets
+          const dailyBudget = challenge.dailyBudget;
+          const dailyScreenTimeGoal = challenge.dailyScreenTimeGoal;
+          
+          // Get parent data for parent name
+          let parentNameValue = 'אמא';
+          try {
+            const parent = await getUser(decodedParentId);
+            if (parent) {
+              const firstName = parent.firstName || '';
+              // Determine if parent is mom or dad
+              if (firstName.endsWith('ה') || firstName.endsWith('ית')) {
+                parentNameValue = 'אמא';
+        } else {
+                parentNameValue = 'אבא';
+              }
+              console.log('[child/upload] Loaded parent from Firestore:', firstName);
+            }
+          } catch (parentError) {
+            console.error('[child/upload] Error loading parent:', parentError);
+          }
+          
+          // Get child data for deviceType
+          const childIdToUse = decodedChildId || challenge.childId;
+          if (childIdToUse) {
+            try {
+              const child = await getChild(childIdToUse);
+              if (child) {
+                setDeviceType(child.deviceType || 'ios');
+                console.log('[child/upload] Loaded child from Firestore, deviceType:', child.deviceType);
+              }
+            } catch (childError) {
+              console.error('[child/upload] Error loading child:', childError);
+            }
+          }
+          
+          setChallengeData({
+            dailyScreenTimeGoal,
+            dailyBudget,
+            parentName: parentNameValue
+          });
+          
+          setParentName(parentNameValue);
+          
+          console.log('[child/upload] Set challenge data from Firestore:', {
+            dailyScreenTimeGoal,
+            dailyBudget,
+            parentName: parentNameValue
+          });
+        } else {
+          // Fallback: if no challenge found, try to get parent data only
+          console.log('[child/upload] Challenge not available, using parent data only');
+          try {
+            const parent = await getUser(decodedParentId);
+            if (parent) {
+              const firstName = parent.firstName || '';
+              let parentNameValue = 'אמא';
+              if (firstName.endsWith('ה') || firstName.endsWith('ית')) {
+                parentNameValue = 'אמא';
+              } else {
+                parentNameValue = 'אבא';
+              }
+              setParentName(parentNameValue);
+              setChallengeData(prev => ({
+                ...prev,
+                parentName: parentNameValue
+              }));
+            }
+          } catch (parentError) {
+            console.error('[child/upload] Error loading parent as fallback:', parentError);
+          }
+        }
+      } catch (error) {
+        console.error('[child/upload] Error loading challenge data:', error);
     }
   };
+    
+    loadChallengeData();
+  }, [token]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -489,337 +806,195 @@ export default function ChildUploadPage() {
     });
   };
 
-  // Extract screen time from screenshot using OCR and pixel analysis
+  // Extract screen time from screenshot using Python service
   const extractScreenTimeFromImage = async (
     imageFile: File,
     targetDay: SelectableDay
-  ): Promise<{ time: number; extractedText: string }> => {
-    setOcrProgress('מתחיל ניתוח תמונה...');
-    
-    // Dynamically import tesseract.js only on client side
-    const { createWorker } = await import('tesseract.js');
-    
-    const worker = await createWorker('heb+eng', 1, {
-      logger: (m) => {
-        if (m.status === 'recognizing text') {
-          setOcrProgress(`מנתח תמונה... ${Math.round(m.progress * 100)}%`);
-        }
-      }
+  ): Promise<{ time: number; minutes: number; extractedText: string }> => {
+    console.log('[Upload] Starting screen time extraction', {
+      fileName: imageFile.name,
+      fileSize: imageFile.size,
+      targetDay: targetDay.dayName
     });
 
     try {
-      // First, do OCR to find day position and time scale
-      const { data: { text } } = await worker.recognize(imageFile);
-      await worker.terminate();
-      
-      // Store extracted text for display
-      setExtractedText(text);
-      
-      setOcrProgress('מחפש את היום הנכון...');
-      
-      // Get the day abbreviation we're looking for (both Hebrew and English)
-      const dayAbbrs = getDayAbbreviation(targetDay.dayName);
-      const targetDayAbbr = dayAbbrs.hebrew;
-      const targetDayAbbrEng = dayAbbrs.english;
-      
-      // Find day position in the week (0-6, where 0 is Sunday/ראשון)
-      const allDaysHeb = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-      const allDaysEng = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      let targetDayIndex = -1;
-      
-      // Find the day index by looking at the graph labels
-      const lines = text.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const hasDays = allDaysHeb.some(day => line.includes(day)) || 
-                       allDaysEng.some(day => line.includes(day));
-        
-        if (hasDays) {
-          // This is likely the graph row with day labels
-          // Find position of our target day
-          const dayAbbrPattern = new RegExp(`['"]?${targetDayAbbr}['"]?`, 'g');
-          const matchesHeb = line.match(dayAbbrPattern);
-          const matchesEng = targetDayAbbrEng.some(engDay => {
-            const engPattern = new RegExp(`\\b${engDay}\\b`, 'i');
-            return line.match(engPattern);
-          });
-          
-          if (matchesHeb || matchesEng) {
-            // Find the index of this day in the sequence
-            const daySequence = allDaysHeb.map((day, idx) => {
-              const hebMatch = line.includes(day) || line.includes(`'${day}'`) || line.includes(`"${day}"`);
-              const engMatch = allDaysEng[idx] && line.includes(allDaysEng[idx]);
-              return hebMatch || engMatch;
-            });
-            
-            targetDayIndex = daySequence.findIndex((found, idx) => {
-              const isTarget = (targetDayAbbr === allDaysHeb[idx]) || 
-                               targetDayAbbrEng.some(eng => eng === allDaysEng[idx]);
-              return found && isTarget;
-            });
-            
-            if (targetDayIndex === -1) {
-              // Fallback: find by position in sequence
-              for (let idx = 0; idx < allDaysHeb.length; idx++) {
-                if (targetDayAbbr === allDaysHeb[idx] || 
-                    targetDayAbbrEng.includes(allDaysEng[idx])) {
-                  targetDayIndex = idx;
-                  break;
-                }
-              }
-            }
-            break;
-          }
-        }
+      setOcrProgress('מעבד תמונה...');
+      console.log('[Upload] Step 1: Sending image to processing service');
+
+      // Call the API to process the screenshot
+      const result = await processScreenshot(imageFile, targetDay.dayName);
+
+      console.log('[Upload] Processing complete:', result);
+
+      if (result.error) {
+        console.error('[Upload] Processing error:', result.error);
+        throw new Error(result.error);
       }
-      
-      // Find max time from Y-axis labels
-      setOcrProgress('מחפש קנה מידה...');
-      const timeScalePattern = /(\d+)\s*(?:שעות?|hours?|hrs?)/gi;
-      const timeMatches: RegExpMatchArray[] = [];
-      let match;
-      while ((match = timeScalePattern.exec(text)) !== null) {
-        timeMatches.push(match);
+
+      if (!result.found) {
+        console.warn('[Upload] Target day not found in image');
+        setOcrProgress('יום לא נמצא בתמונה');
+        return {
+          time: 0,
+          minutes: 0,
+          extractedText: `יום ${targetDay.dayName} לא נמצא בתמונה`
+        };
       }
-      let maxTime = 4; // Default max time
-      
-      for (const match of timeMatches) {
-        const time = parseFloat(match[1]) || 0;
-        if (time > maxTime && time <= 24) {
-          maxTime = time;
-        }
+
+      setOcrProgress('מחשב זמן מסך...');
+      console.log('[Upload] Step 2: Calculating screen time', {
+        minutes: result.minutes,
+        hours: result.time,
+        metadata: result.metadata
+      });
+
+      // Convert minutes to hours
+      const timeInHours = result.time || (result.minutes / 60);
+      const minutes = result.minutes || 0;
+
+      setOcrProgress('סיום עיבוד...');
+      console.log('[Upload] Step 3: Processing complete', {
+        timeInHours,
+        minutes
+      });
+
+      // Format message with hours and minutes
+      const hoursInt = Math.floor(minutes / 60);
+      const minutesInt = Math.round(minutes % 60);
+      let timeText = '';
+      if (hoursInt > 0 && minutesInt > 0) {
+        timeText = `${hoursInt} שעות ו-${minutesInt} דקות`;
+      } else if (hoursInt > 0) {
+        timeText = `${hoursInt} שעות`;
+      } else {
+        timeText = `${minutesInt} דקות`;
       }
+
+      return {
+        time: timeInHours,
+        minutes: minutes,
+        extractedText: `זמן מסך מזוהה ליום ${targetDay.dayName}: ${timeText}`
+      };
+    } catch (error: any) {
+      console.error('[Upload] Error processing screenshot:', error);
+      setOcrProgress('שגיאה בעיבוד התמונה');
       
-      // If we found the day index, do pixel analysis
-      if (targetDayIndex >= 0 && targetDayIndex < 7) {
-        setOcrProgress('מנתח גובה עמודה בגרף...');
-        const pixelTime = await analyzeGraphPixels(imageFile, targetDayIndex, maxTime);
-        
-        if (pixelTime > 0) {
-          setOcrProgress(`נמצא: ${formatNumber(pixelTime, 2)} שעות (מניתוח גרף)`);
-          return { time: Math.round(pixelTime * 100) / 100, extractedText: text };
-        }
-      }
-      
-      // Fallback to OCR-based text search if pixel analysis didn't work
-      setOcrProgress('מחפש זמן בטקסט...');
-      
-      let foundTime = 0;
-      
-      // Strategy 1: Look for the day abbreviation in the graph
-      // The graph shows days as: א', ב', ג', ד', ה', ו', ש'
-      // We need to find the position of our target day and estimate time from graph height
-      const dayAbbrPattern = new RegExp(`['"]?${targetDayAbbr}['"]?`, 'g');
-      let dayFound = false;
-      let dayIndex = -1;
-      
-      // Note: allDaysHeb and allDaysEng are already defined above (lines 389-390)
-      // Use the existing definitions
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        // Check if this line contains day abbreviations (likely the graph labels)
-        const hasDaysHeb = allDaysHeb.some(day => line.includes(day) || line.includes(`'${day}'`) || line.includes(`"${day}"`));
-        const hasDaysEng = allDaysEng.some(day => line.includes(day));
-        const hasDays = hasDaysHeb || hasDaysEng;
-        
-        if (hasDays) {
-          // Check for Hebrew day abbreviation
-          const matchesHeb = line.match(dayAbbrPattern);
-          // Check for English day abbreviations
-          const matchesEng = targetDayAbbrEng.some(engDay => {
-            const engPattern = new RegExp(`\\b${engDay}\\b`, 'i');
-            return line.match(engPattern);
-          });
-          
-          // This might be the graph row - look for our target day
-          if (matchesHeb || matchesEng) {
-            dayFound = true;
-            dayIndex = i;
-            
-            // Try to find time patterns near this day
-            const searchLines = [
-              lines[Math.max(0, i - 3)] || '',
-              lines[Math.max(0, i - 2)] || '',
-              lines[Math.max(0, i - 1)] || '',
-              line,
-              lines[i + 1] || '',
-              lines[i + 2] || '',
-              lines[i + 3] || ''
-            ].join(' ');
-            
-            // Try to find time patterns (both Hebrew and English)
-            const timePatterns = [
-              // Hebrew patterns
-              /(\d+)\s*שעה\s*ו?-?\s*(\d+)\s*דק/,
-              /(\d+)\s*שעות?\s*ו?-?\s*(\d+)\s*דק/,
-              /(\d+\.\d+)\s*שעות?/,
-              /(\d+)\s*שעות?/,
-              // English patterns
-              /(\d+)\s*(?:h|hour|hours|hr|hrs)\s*(?:and|&)?\s*(\d+)\s*(?:m|min|minute|minutes)/i,
-              /(\d+)\s*(?:h|hour|hours|hr|hrs)/i,
-              /(\d+)\s*(?:m|min|minute|minutes)/i,
-              // Common format (works for both)
-              /(\d+):(\d+)/
-            ];
-            
-            for (const pattern of timePatterns) {
-              const match = searchLines.match(pattern);
-              if (match) {
-                // Use parseTimeToHours directly on the matched text
-                const time = parseTimeToHours(match[0]);
-                if (time > 0 && time <= 24) {
-                  foundTime = time;
-                  setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות`);
-                  return { time: Math.round(foundTime * 10) / 10, extractedText: text };
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      // Strategy 1.5: If we found the day but no time, look for time values in the graph area
-      // The graph might have time labels on the Y-axis (0, 1, 2, 3, 4 שעות or hours)
-      if (dayFound && foundTime === 0) {
-        // Look for time scale values near the graph
-        const graphArea = lines.slice(Math.max(0, dayIndex - 5), dayIndex + 10).join(' ');
-        const timeScalePattern = /(\d+)\s*(?:שעות?|hours?|hrs?)/gi;
-        const timeMatches: RegExpMatchArray[] = [];
-        let match;
-        while ((match = timeScalePattern.exec(graphArea)) !== null) {
-          timeMatches.push(match);
-        }
-        
-        // Try to estimate based on graph structure
-        // This is a heuristic - we'll use the maximum time found in the graph area
-        let maxTime = 0;
-        for (const match of timeMatches) {
-          const time = parseFloat(match[1]) || 0;
-          if (time > maxTime && time <= 24) {
-            maxTime = time;
-          }
-        }
-        
-        // If we found a reasonable max time, use a portion of it as estimate
-        // This is a rough estimate - in a real scenario, we'd need to analyze the bar height
-        if (maxTime > 0) {
-          // Use 50-80% of max as a reasonable estimate (bars are usually in this range)
-          foundTime = maxTime * 0.65;
-          setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות (משוער)`);
-          return { time: Math.round(foundTime * 10) / 10, extractedText: text };
-        }
-      }
-      
-      // Strategy 2: Look for time patterns in the entire text
-      // This is a fallback if we can't find the specific day
-      setOcrProgress('מחפש זמן מסך בכל התמונה...');
-      
-      const allTimePatterns = [
-        // Hebrew patterns
-        /(\d+)\s*שעה\s*ו?-?\s*(\d+)\s*דק/,
-        /(\d+)\s*שעות?\s*ו?-?\s*(\d+)\s*דק/,
-        /(\d+\.\d+)\s*שעות?/,
-        /(\d+)\s*שעות?/,
-        // English patterns
-        /(\d+)\s*(?:h|hour|hours|hr|hrs)\s*(?:and|&)?\s*(\d+)\s*(?:m|min|minute|minutes)/i,
-        /(\d+)\s*(?:h|hour|hours|hr|hrs)/i,
-        // Common format
-        /(\d+):(\d+)/
-      ];
-      
-      for (const pattern of allTimePatterns) {
-        const regex = new RegExp(pattern, 'g');
-        const matches: RegExpMatchArray[] = [];
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          matches.push(match);
-        }
-        if (matches.length > 0) {
-          // Take the first reasonable match (between 0 and 24 hours)
-          for (const match of matches) {
-            // Use parseTimeToHours directly on the matched text
-            const time = parseTimeToHours(match[0]);
-            if (time > 0 && time <= 24) {
-              foundTime = time;
-              break;
-            }
-          }
-          if (foundTime > 0) break;
-        }
-      }
-      
-      if (foundTime > 0) {
-        setOcrProgress(`נמצא: ${formatNumber(foundTime)} שעות`);
-        return { time: Math.round(foundTime * 10) / 10, extractedText: text };
-      }
-      
-      // If we still can't find it, return a default based on goal
-      setOcrProgress('לא נמצא זמן מדויק, משתמש בערך משוער');
-      const challengeData = getChallengeData();
-      return { time: challengeData.dailyScreenTimeGoal, extractedText: text };
-      
-    } catch (error) {
-      console.error('OCR Error:', error);
-      setOcrProgress('שגיאה בניתוח התמונה');
-      // Fallback to goal-based estimate
-      const challengeData = getChallengeData();
-      return { time: challengeData.dailyScreenTimeGoal, extractedText: '' };
+      // Return error result
+      return {
+        time: 0,
+        minutes: 0,
+        extractedText: `שגיאה בעיבוד התמונה: ${error.message || 'שגיאה לא ידועה'}`
+      };
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!screenshot || !selectedDay) return;
+    console.log('[Upload] Form submitted', {
+      hasScreenshot: !!screenshot,
+      selectedDay: selectedDay?.displayText
+    });
 
-    // Check if there's an approved upload for this day
+    // Prevent submission if challenge hasn't started
+    if (challengeNotStarted) {
+      console.warn('[Upload] Challenge has not started yet');
+      const childP = getChildPronouns();
+      alert(`האתגר עדיין לא התחיל. ${childP.youCan} לבדוק עם ${parentName} שלך.`);
+      return;
+    }
+
+    if (!screenshot || !selectedDay) {
+      console.warn('[Upload] Missing screenshot or selected day');
+      return;
+    }
+
+    // Check if this day was already approved (should not allow re-upload)
     try {
-      if (typeof window !== 'undefined') {
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          try {
-            const parsed = JSON.parse(dashboardData);
-            const week = parsed.week || [];
-            
-            const approvedDay = week.find((day: any) => 
-              day.date === selectedDay.dateStr && 
-              day.parentAction === 'approved'
-            );
-            
-            if (approvedDay) {
-              alert(`שימו לב: נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDay.dayName || selectedDay.dayName}, ${approvedDay.date}.\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
-              return;
-            }
-          } catch (e) {
-            // Ignore parse errors
+      if (parentId && challengeId) {
+        console.log('[Upload] Checking day status from Firestore...');
+        
+        // Get dashboard data to check day status
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          const dayData = dashboardData.week.find(day => day.date === selectedDay.dateStr);
+          
+          // Block if day is already approved (success or warning status means it was approved)
+          if (dayData && (dayData.status === 'success' || dayData.status === 'warning')) {
+            console.warn('[Upload] Day already approved, blocking submission');
+            const childP = getChildPronouns();
+            alert(`יום זה כבר אושר על ידי ${parentName}. ${childP.you} ${childP.youCanPlural} להעלות רק ימים שטרם אושרו או שנדחו.`);
+            setIsSubmitting(false);
+            return;
           }
-        }
-        
-        // Also check if there's an existing upload in childUploads
-        const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-        const existingUpload = existingUploads.find((upload: any) => upload.date === selectedDay.dateStr);
-        
-        if (existingUpload) {
-          alert(`שימו לב: כבר הועלתה תמונה עבור ${selectedDay.displayText} (${selectedDay.dateStr}).\n\nאם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.`);
-          return;
+          
+          // Allow if day is missing, pending, rejected, or awaiting approval
+          console.log('[Upload] Day status allows upload, proceeding');
         }
       }
     } catch (e) {
-      // Ignore errors and continue
+      console.warn('[Upload] Error checking day status:', e);
+      // Ignore errors and continue - better to allow upload than block incorrectly
     }
 
     setIsSubmitting(true);
     setOcrProgress('');
 
-    const challengeData = getChallengeData();
+    // challengeData is now from state (loaded from Firestore)
+    console.log('[Upload] Challenge data:', {
+      dailyScreenTimeGoal: challengeData.dailyScreenTimeGoal,
+      dailyBudget: challengeData.dailyBudget,
+      parentName: challengeData.parentName
+    });
     
     // Extract screen time from screenshot using OCR
-    const { time: screenTimeUsed, extractedText: ocrText } = await extractScreenTimeFromImage(screenshot, selectedDay);
-    setExtractedText(ocrText);
+    console.log('[Upload] Starting screen time extraction...');
+    let screenTimeUsed: number;
+    let screenTimeMinutes: number;
+    let ocrText: string;
+    
+    try {
+      const extractionResult = await extractScreenTimeFromImage(screenshot, selectedDay);
+      screenTimeUsed = extractionResult.time;
+      screenTimeMinutes = extractionResult.minutes;
+      ocrText = extractionResult.extractedText;
+      
+      // Check if extraction failed (error or day not found)
+      const hasError = ocrText.includes('שגיאה') || ocrText.includes('לא נמצא');
+      const hasNoTime = screenTimeUsed === 0 && screenTimeMinutes === 0;
+      
+      if (hasError || (hasNoTime && !extractionResult.extractedText.includes('זמן מסך מזוהה'))) {
+        console.error('[Upload] Extraction failed:', { hasError, hasNoTime, ocrText });
+        throw new Error(ocrText);
+      }
+      
+      setExtractedText(ocrText);
+      console.log('[Upload] Screen time extracted:', {
+        screenTimeUsed,
+        screenTimeMinutes,
+        extractedText: ocrText
+      });
+    } catch (extractionError: any) {
+      console.error('[Upload] Screen time extraction failed:', extractionError);
+      setIsSubmitting(false);
+      setOcrProgress('');
+      setExtractedText('');
+      // Show error to user - don't save anything
+      const childP = getChildPronouns();
+      alert(`שגיאה בעיבוד התמונה: ${extractionError.message || `לא הצלחנו לעבד את התמונה. אנא ${childP.youTryAgain}.`}`);
+      return; // Exit early - don't save anything
+    }
+
     const screenTimeGoal = challengeData.dailyScreenTimeGoal;
     
     // Calculate if goal was met
     const success = screenTimeUsed <= screenTimeGoal;
+    console.log('[Upload] Goal check:', {
+      screenTimeUsed,
+      screenTimeGoal,
+      success
+    });
     
     // Calculate coins earned
     // If goal met: full daily budget
@@ -830,6 +1005,11 @@ export default function ChildUploadPage() {
       : Math.max(0, coinsMaxPossible * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
 
     const coinsEarnedRounded = Math.round(coinsEarned * 10) / 10;
+    console.log('[Upload] Coins calculation:', {
+      coinsMaxPossible,
+      coinsEarned,
+      coinsEarnedRounded
+    });
     
     const result: UploadResult = {
       screenTimeUsed,
@@ -840,18 +1020,49 @@ export default function ChildUploadPage() {
       parentName: challengeData.parentName
     };
 
-    // Calculate weekly total BEFORE saving new upload
-    const existingUploads = JSON.parse(localStorage.getItem('childUploads') || '[]');
-    const weeklyTotalBefore = existingUploads.reduce((sum: number, upload: any) => {
+    // Store minutes in result for display
+    (result as any).screenTimeMinutes = screenTimeMinutes;
+
+    // Calculate weekly total from Firestore uploads (not localStorage)
+    let weeklyTotalBefore = 0;
+    let weeklyTotal = coinsEarnedRounded; // At minimum, the new upload
+    
+    if (challengeId && parentId) {
+      try {
+        const { getUploadsByChallenge } = await import('@/lib/api/uploads');
+        // Use cache for uploads (they're used for calculation only)
+        const existingUploads = await getUploadsByChallenge(challengeId, parentId, undefined, true);
+        
+        // Sum coins from existing approved uploads (exclude the current day if it exists)
+        weeklyTotalBefore = existingUploads
+          .filter(upload => upload.date !== selectedDay.dateStr) // Exclude current day
+          .filter(upload => upload.parentAction === 'approved' || !upload.requiresApproval) // Only approved or auto-approved
+          .reduce((sum: number, upload: any) => {
       return sum + (upload.coinsEarned || 0);
     }, 0);
-    const weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
+        
+        weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
+        console.log('[Upload] Weekly totals (from Firestore):', {
+      before: weeklyTotalBefore,
+      new: coinsEarnedRounded,
+          total: weeklyTotal,
+          existingUploadsCount: existingUploads.length
+        });
+      } catch (error) {
+        console.warn('[Upload] Error fetching weekly totals from Firestore, using new upload only:', error);
+        // Fallback: just use the new upload amount
+        weeklyTotal = coinsEarnedRounded;
+      }
+    } else {
+      console.warn('[Upload] Missing challengeId or parentId, cannot calculate weekly total from Firestore');
+    }
 
-    // Save to localStorage for demo purposes
+    // Prepare upload data with minutes
     const uploadData = {
       date: selectedDay.dateStr,
       dayName: selectedDay.dayName,
       screenTime: screenTimeUsed,
+      screenTimeMinutes: screenTimeMinutes, // Store minutes for display
       screenshot: screenshotPreview,
       uploadedAt: new Date().toISOString(),
       requiresApproval: true,
@@ -860,9 +1071,122 @@ export default function ChildUploadPage() {
       success: result.success
     };
 
-    // Add new upload
-    existingUploads.push(uploadData);
-    localStorage.setItem('childUploads', JSON.stringify(existingUploads));
+    console.log('[Upload] Saving upload data:', uploadData);
+
+    // Save to Firestore (no localStorage)
+    if (!challengeId || !parentId || !childId) {
+      console.error('[Upload] Missing required IDs:', { challengeId, parentId, childId });
+      setIsSubmitting(false);
+      const childP = getChildPronouns();
+      alert(`שגיאה בשמירת הנתונים. חסרים פרטים נדרשים.`);
+      return;
+    }
+
+    try {
+      const uploadChallengeId = challengeId;
+      const uploadParentId = parentId;
+      const uploadChildId = childId;
+      
+      if (uploadChallengeId && uploadParentId && uploadChildId) {
+        
+        // Save to Firestore first (with preview URL)
+        // Upload to Storage will happen in background after Firestore save
+        const firestoreUpload = {
+          challengeId: uploadChallengeId,
+          parentId: uploadParentId,
+          childId: uploadChildId,
+          date: selectedDay.dateStr,
+          dayName: selectedDay.dayName,
+          screenTimeUsed: screenTimeUsed,
+          screenTimeGoal: screenTimeGoal,
+          coinsEarned: coinsEarnedRounded,
+          coinsMaxPossible: coinsMaxPossible,
+          success: success,
+          screenshotUrl: screenshotPreview || undefined, // Use preview URL initially
+          screenshotStoragePath: '', // Will be updated if Storage upload succeeds
+          requiresApproval: true,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        const uploadId = await createUpload(firestoreUpload);
+        console.log('[Upload] Upload saved to Firestore:', uploadId);
+        
+        // Invalidate uploads cache since we just created a new upload
+        const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+        dataCache.invalidate(cacheKeys.uploads(uploadChallengeId, uploadParentId));
+        
+        // Store uploadId for potential later update with Storage URL
+        (result as any).uploadId = uploadId;
+
+        // NOTE: Do not upload screenshot to Cloud Storage
+        // The screenshot is stored in Firestore with the preview URL (screenshotPreview)
+        // Cloud Storage upload is disabled to avoid CORS and permission issues
+        // The preview URL from FileReader is sufficient for displaying the screenshot
+        /*
+        // Upload screenshot to Cloud Storage (with timeout and error handling)
+        // Try to upload, but don't block the flow if it fails
+        if (screenshot && uploadParentId) {
+          console.log('[Upload] Starting screenshot upload to Cloud Storage...');
+          
+          try {
+            // Add timeout to prevent hanging on CORS errors
+            const uploadPromise = uploadScreenshot(
+              screenshot,
+              uploadParentId,
+              uploadChallengeId,
+              selectedDay.dateStr
+            );
+            const timeoutPromise = new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Upload timeout after 30 seconds')), 30000)
+            );
+            
+            const storageResult = await Promise.race([uploadPromise, timeoutPromise]);
+            console.log('[Upload] ✅ Screenshot uploaded to Cloud Storage:', storageResult);
+            
+            // Update Firestore with the new URL if upload succeeded
+            try {
+              const { updateUpload } = await import('@/lib/api/uploads');
+              await updateUpload(uploadId, {
+                screenshotUrl: storageResult.url,
+                screenshotStoragePath: storageResult.path
+              });
+              console.log('[Upload] ✅ Updated Firestore with Storage URL');
+              setOcrProgress('תמונה הועלתה בהצלחה');
+            } catch (updateError) {
+              console.warn('[Upload] ⚠️ Failed to update Firestore with Storage URL:', updateError);
+              // Not critical - the upload succeeded, URL is available
+            }
+          } catch (storageError: any) {
+            // Skip Cloud Storage upload for Firebase Storage permission errors
+            const isStoragePermissionError = 
+              storageError.code === 'storage/unauthorized' ||
+              storageError.message?.includes('permission') ||
+              storageError.message?.includes('unauthorized') ||
+              storageError.message?.includes('אין הרשאה');
+            
+            if (isStoragePermissionError) {
+              console.warn('[Upload] ⚠️ Skipping Cloud Storage upload due to permission error (using preview URL):', storageError);
+            // Continue with preview URL - not critical for the upload to succeed
+            // The preview URL will be stored in Firestore and can be used
+            } else {
+              console.warn('[Upload] ⚠️ Failed to upload to Cloud Storage, using preview URL:', storageError);
+            if (storageError.message?.includes('CORS')) {
+              console.warn('[Upload] CORS error detected - check Firebase Storage CORS settings');
+              }
+            }
+          }
+        }
+        */
+      } else {
+        console.log('[Upload] User not authenticated, skipping Firestore save');
+      }
+    } catch (firestoreError) {
+      console.error('[Upload] Failed to save to Firestore:', firestoreError);
+      setIsSubmitting(false);
+      const childP = getChildPronouns();
+      alert(`שגיאה בשמירת הנתונים. אנא ${childP.youTryAgain}.`);
+      return;
+    }
 
     // Store weekly total in result for display
     (result as any).weeklyTotal = weeklyTotal;
@@ -870,54 +1194,136 @@ export default function ChildUploadPage() {
 
     // Trigger event for parent dashboard to update
     window.dispatchEvent(new Event('childUploaded'));
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: 'childUploads',
-      newValue: JSON.stringify(existingUploads)
-    }));
 
+    console.log('[Upload] Upload complete!', {
+      result,
+      weeklyTotal
+    });
+
+    // Always set submitting to false and submitted to true, even if Storage upload failed
     setIsSubmitting(false);
     setSubmitted(true);
-  };
 
-
-  // Get child gender for pronouns
-  const getChildGender = () => {
-    try {
-      if (typeof window !== 'undefined') {
-        const dashboardData = localStorage.getItem('dashboardTestData');
-        if (dashboardData) {
-          const parsed = JSON.parse(dashboardData);
-          return parsed.child?.gender || 'boy';
+    // Check if this was the last day to upload (only one day left AND it's the last challenge day)
+    // We check this condition directly here to ensure accuracy after upload
+    const checkAndRedirect = async () => {
+      if (!selectedDay || !parentId || !challengeId) return;
+      
+      try {
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId);
+        
+        if (dashboardData && dashboardData.week) {
+          // Find days that still need UPLOAD only (excluding redemption day and the day we just uploaded)
+          // Note: Days needing approval should already redirect separately
+          const daysNeedingUpload = dashboardData.week
+            .filter(day => {
+              if (day.isRedemptionDay) return false;
+              if (day.date === selectedDay.dateStr) return false; // Exclude the day we just uploaded
+              // Only days that need upload (missing or pending)
+              if (day.status === 'missing' || day.status === 'pending') return true;
+              return false;
+            });
+          
+          // If there are still days that need upload, don't redirect
+          if (daysNeedingUpload.length > 0) {
+            return;
+          }
+          
+          // If no days left need upload, we just uploaded the last one - redirect
+          // (We don't need to check if it was chronologically last - if it was the only one left, it was the last)
+          const redemptionUrl = parentId 
+            ? generateRedemptionUrl(parentId, childId || undefined, challengeId || undefined)
+            : `/child/redemption?lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
+          
+          setTimeout(() => {
+            router.push(`${redemptionUrl}${redemptionUrl.includes('?') ? '&' : '?'}lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
+          }, 500); // Short delay to ensure state is saved
         }
+      } catch (error) {
+        console.error('Error checking redirect condition:', error);
       }
-    } catch (e) {
-      // Ignore errors
-    }
-    return 'boy';
+    };
+    
+    checkAndRedirect();
   };
+
+
+  // Helper functions for gender-based pronouns
+  const getChildPronouns = () => {
+    const isBoy = childGender === 'boy';
+    return {
+      you: isBoy ? 'אתה' : 'את',
+      youPast: isBoy ? 'היית' : 'היית',
+      youFuture: isBoy ? 'תוכל' : 'תוכלי',
+      youWill: isBoy ? 'תרוויח' : 'תרוויחי',
+      youStart: isBoy ? 'תתחיל' : 'תתחילי',
+      youUpload: isBoy ? 'אתה מעלה' : 'את מעלה',
+      youEarn: isBoy ? 'אתה מרוויח' : 'את מרוויחה',
+      youGo: isBoy ? 'תעבור' : 'תעברי',
+      youNeed: isBoy ? 'תצטרך' : 'תצטרכי',
+      youWant: isBoy ? 'רוצה' : 'רוצה',
+      youCan: isBoy ? 'יכול' : 'יכולה',
+      youCanPlural: isBoy ? 'יכולים' : 'יכולות',
+      youUploaded: isBoy ? 'העלית' : 'העלית',
+      youAccumulated: isBoy ? 'צברת' : 'צברת',
+      youStood: isBoy ? 'עמדת' : 'עמדת',
+      youTry: isBoy ? 'נסה' : 'נסי',
+      youTryAgain: isBoy ? 'נסה שוב' : 'נסי שוב',
+      youSucceeded: isBoy ? 'הצלחת' : 'הצלחת',
+      youWillMeet: isBoy ? 'תפגשו' : 'תפגשו',
+      youWillWin: isBoy ? 'תוכל לזכות' : 'תוכלי לזכות',
+      youAccumulatedWhat: isBoy ? 'צברת' : 'צברת'
+    };
+  };
+
+  const getParentPronouns = () => {
+    const isMom = parentName === 'אמא' || parentName.endsWith('ה') || parentName.endsWith('ית');
+    return {
+      needs: isMom ? 'צריכה' : 'צריך',
+      pronoun: isMom ? 'שלה' : 'שלו'
+    };
+  };
+
+  // If last day was uploaded, redirect immediately to redemption (don't show result screen)
+  if (submitted && uploadResult && selectedDay && isLastDayToUpload) {
+    // Already redirected in handleSubmit, but in case it didn't work, redirect here too
+    return null; // Component will unmount and redirect
+  }
 
   // Show result in the same form instead of separate screen
   if (submitted && uploadResult && selectedDay) {
     const weeklyTotal = (uploadResult as any).weeklyTotal || uploadResult.coinsEarned;
-    const childGender = getChildGender();
+    const childP = getChildPronouns();
+    const parentP = getParentPronouns();
     const isYesterday = selectedDay.displayText === 'אתמול';
     const isDayBeforeYesterday = selectedDay.displayText === 'שלשום';
     const parentName = uploadResult.parentName;
     
-    // Determine message based on day and gender
-    const accumulatedVerb = childGender === 'boy' ? 'צברת' : 'צברת';
-    
+    // Format time with hours and minutes
+    const screenTimeMinutes = (uploadResult as any).screenTimeMinutes || (uploadResult.screenTimeUsed * 60);
+    const hoursInt = Math.floor(screenTimeMinutes / 60);
+    const minutesInt = Math.round(screenTimeMinutes % 60);
+    let timeText = '';
+    if (hoursInt > 0 && minutesInt > 0) {
+      timeText = `${hoursInt} שעות ו-${minutesInt} דקות`;
+    } else if (hoursInt > 0) {
+      timeText = `${hoursInt} שעות`;
+    } else {
+      timeText = `${minutesInt} דקות`;
+    }
+
     let dayMessage = '';
     if (isYesterday || isDayBeforeYesterday) {
-      dayMessage = `${selectedDay.displayText} היית ${uploadResult.screenTimeUsed} שעות בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+      dayMessage = `${selectedDay.displayText} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${childP.youAccumulated} ${formatNumber(weeklyTotal)} שקלים השבוע`;
     } else {
-      dayMessage = `ביום ${selectedDay.dayName} היית ${uploadResult.screenTimeUsed} שעות בטלפון והצלחת לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${accumulatedVerb} ${formatNumber(weeklyTotal)} שקלים השבוע`;
+      dayMessage = `ביום ${selectedDay.dayName} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} שקלים, סה"כ ${childP.youAccumulated} ${formatNumber(weeklyTotal)} שקלים השבוע`;
     }
 
     // Success message based on goal and gender
     const successMessage = uploadResult.success 
-      ? `כל הכבוד! ${childGender === 'boy' ? 'עמדת' : 'עמדת'} ביעד!`
-      : childGender === 'boy' ? 'נסה מחר לעבוד יותר טוב!' : 'נסי מחר לעבוד יותר טוב!';
+      ? `כל הכבוד! ${childP.youStood} ביעד!`
+      : `${childP.youTry} מחר לעבוד יותר טוב!`;
 
     return (
       <div className="min-h-screen bg-transparent pb-24">
@@ -949,11 +1355,123 @@ export default function ChildUploadPage() {
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4">
                 <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                  בכל מקרה {parentName} {parentName.endsWith('ה') || parentName.endsWith('ית') ? 'צריכה' : 'צריך'} לאשר לך את הסטטוס ש{childGender === 'boy' ? 'העלית' : 'העלית'}!
-                  <br />
-                  בסוף השבוע תפגשו כאן ו{childGender === 'boy' ? 'תוכל' : 'תוכלי'} לזכות במה ש{childGender === 'boy' ? 'צברת' : 'צברת'}
+                  {(() => {
+                    return (
+                      <>
+                        בכל מקרה {parentName} {parentP.needs} לאשר לך את הסטטוס ש{childP.youUploaded}!
+                        <br />
+                        בסוף השבוע {childP.youWillMeet} כאן ו{childP.youWillWin} במה ש{childP.youAccumulatedWhat}
+                      </>
+                    );
+                  })()}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if URL is invalid
+  if (urlValid === false) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+              כתובת לא תקינה
+            </h1>
+            <p className="font-varela text-base text-[#282743] mb-4">
+              {urlError || 'הכתובת ששותפה איתך לא תקינה או שהאתגר לא פעיל.'}
+            </p>
+            <p className="font-varela text-sm text-[#948DA9]">
+              בדוק עם ההורה שלך לקבלת כתובת חדשה.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while validating
+  if (urlValid === null) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
+        <div className="max-w-md mx-auto px-4 py-8">
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
+            <p className="font-varela text-base text-[#282743]">בודק כתובת...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if challenge is inactive (redemption completed)
+  if (challengeInactive) {
+    return (
+      <div className="min-h-screen bg-transparent pb-24">
+        <div className="max-w-md mx-auto px-4 py-8 relative">
+          {/* Piggy Bank - פינה ימנית עליונה */}
+          <div className="absolute right-0 top-0 z-10">
+            <Image
+              src="/piggy-bank.png"
+              alt="Piggy Bank"
+              width={120}
+              height={120}
+              className="object-contain"
+            />
+          </div>
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
+              האתגר הושלם
+            </h1>
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4 mb-4">
+              <p className="font-varela text-base text-[#262135] text-center leading-relaxed mb-2">
+                האתגר הושלם והפדיון בוצע.
+              </p>
+              <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                {parentName} צריך ליצור אתגר חדש כדי שתוכל להמשיך להעלות סטטוסים.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if challenge hasn't started yet
+  if (challengeNotStarted) {
+    const startDate = challengeStartDate ? new Date(challengeStartDate) : null;
+    const formattedDate = startDate 
+      ? `${String(startDate.getDate()).padStart(2, '0')}/${String(startDate.getMonth() + 1).padStart(2, '0')}`
+      : '';
+    const childP = getChildPronouns();
+    
+    return (
+      <div className="min-h-screen bg-transparent pb-24">
+        <div className="max-w-md mx-auto px-4 py-8 relative">
+          {/* Piggy Bank - פינה ימנית עליונה */}
+          <div className="absolute right-0 top-0 z-10">
+            <Image
+              src="/piggy-bank.png"
+              alt="Piggy Bank"
+              width={120}
+              height={120}
+              className="object-contain"
+            />
+          </div>
+          <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
+            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
+              ממש בקרוב האתגר יתחיל
+            </h1>
+            <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4 mb-4">
+              <p className="font-varela text-base text-[#262135] text-center leading-relaxed mb-2">
+                יום ראשון הקרוב {formattedDate ? formattedDate : ''} זה קורה
+              </p>
+              <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                כדי ש{childP.you} {childP.youWill}! {childP.youStart} לחשוב עם {parentName} איך הכי כדאי לנצל את הזמן במסך ומחוצה לו.
+              </p>
             </div>
           </div>
         </div>
@@ -975,45 +1493,83 @@ export default function ChildUploadPage() {
           />
         </div>
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
-          <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4 text-center">
-            העלאת סטטוס יומי
+          <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-2 text-center">
+            עדכון זמן מסך
           </h1>
+          <p className="font-varela text-base text-[#282743] mb-6 text-center">
+            כדי להתקדם, צלמו את מסך 'זמן המסך' בטלפון והעלו אותו כאן.
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Day Selection */}
             <div>
               <label className="block font-varela font-semibold text-base text-[#282743] mb-2">
-                עבור איזה יום אתה מעלה?
+                {(() => {
+                  const childP = getChildPronouns();
+                  return `איזה יום ${childP.youUpload}?`;
+                })()}
               </label>
-              <select
-                value={selectedDay ? selectableDays.findIndex(d => d.dateStr === selectedDay.dateStr) : -1}
-                onChange={(e) => {
-                  const index = parseInt(e.target.value);
-                  if (index >= 0 && index < selectableDays.length) {
-                    setSelectedDay(selectableDays[index]);
-                  }
-                }}
-                className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-white font-varela text-base text-[#282743] focus:outline-none focus:border-[#273143]"
-                required
-              >
-                {selectableDays.map((day, index) => (
-                  <option key={index} value={index}>
-                    {day.displayText}
-                  </option>
-                ))}
-              </select>
+              {selectableDays.length > 0 ? (
+                <select
+                  value={selectedDay ? selectableDays.findIndex(d => d.dateStr === selectedDay.dateStr) : -1}
+                  onChange={(e) => {
+                    const index = parseInt(e.target.value);
+                    if (index >= 0 && index < selectableDays.length) {
+                      setSelectedDay(selectableDays[index]);
+                    }
+                  }}
+                  className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-white font-varela text-base text-[#282743] focus:outline-none focus:border-[#273143]"
+                  required
+                >
+                  {selectableDays.map((day, index) => (
+                    <option key={index} value={index}>
+                      {day.displayText}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="w-full py-3 px-4 rounded-[12px] border-2 border-gray-300 bg-gray-50 font-varela text-base text-[#948DA9] text-center">
+                  אין ימים זמינים להעלאה
+                </div>
+              )}
             </div>
 
-            {/* Approved Warning */}
+            {/* Last Day Warning - need parent nearby */}
+            {showFridayWarning && selectedDay && (() => {
+              // challengeData is now from state (loaded from Firestore)
+              const parentName = challengeData.parentName || 'אמא';
+              const childP = getChildPronouns();
+              const parentP = getParentPronouns();
+              
+              // Gender-specific pronouns for child
+              const childHim = childGender === 'boy' ? 'לו' : 'לה';
+              const childHis = childGender === 'boy' ? 'שלו' : 'שלה';
+              
+              return (
+                <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] border-2 border-[#E6F19A] rounded-[12px] p-4 shadow-sm">
+                  <p className="font-varela text-base text-[#262135] text-center leading-relaxed font-bold mb-3">
+                    🎉 התראה חגיגית!
+                  </p>
+                  <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-3">
+                    {childP.youUpload} סטטוס של {selectedDay.dayName} {selectedDay.dateStr} - זה היום האחרון שנשאר להעלות בשבוע! זה אומר שאוטוטו {childP.youEarn} את הזכיה {childHis}!
+                  </p>
+                  <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
+                    ודא ש{parentName} לידך כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור {parentP.pronoun}.
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Rejected Warning - allows re-upload */}
             {showApprovedWarning && approvedDayInfo && (
               <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4">
                 <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-2">
-                  <strong>שימו לב:</strong> {approvedDayInfo.isApproved 
-                    ? `נמצא במאגר נתון תמונה מאושרת על ידי ההורה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}.`
-                    : `כבר הועלתה תמונה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}.`}
-                </p>
-                <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                  אם את/ה רוצה להעלות תמונה של יום אחר, את/ה יכולים לחזור ולהעלות.
+                  <strong>שימו לב:</strong> {(() => {
+                    const childP = getChildPronouns();
+                    const parentP = getParentPronouns();
+                    const rejectedVerb = parentName === 'אמא' ? 'דחתה' : 'דחה';
+                    return `${parentName} ${rejectedVerb} את ההעלאה עבור ${approvedDayInfo.dayName}, ${approvedDayInfo.date}. ${childP.you} ${childP.youCanPlural} להעלות שוב.`;
+                  })()}
                 </p>
               </div>
             )}
@@ -1100,40 +1656,14 @@ export default function ChildUploadPage() {
                 ×
               </button>
             </div>
-            
-            {/* Platform Selection */}
-            <div className="mb-4">
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setSelectedPlatform('ios')}
-                  className={`flex-1 py-2 px-4 rounded-[12px] font-varela font-semibold transition-all ${
-                    selectedPlatform === 'ios'
-                      ? 'bg-[#273143] text-white'
-                      : 'bg-gray-200 text-[#282743]'
-                  }`}
-                >
-                  iPhone
-                </button>
-                <button
-                  onClick={() => setSelectedPlatform('android')}
-                  className={`flex-1 py-2 px-4 rounded-[12px] font-varela font-semibold transition-all ${
-                    selectedPlatform === 'android'
-                      ? 'bg-[#273143] text-white'
-                      : 'bg-gray-200 text-[#282743]'
-                  }`}
-                >
-                  Android
-                </button>
-              </div>
-            </div>
 
             {/* Video Container */}
             <div className="mb-4">
-              <div className="relative w-full aspect-video bg-gray-100 rounded-[12px] overflow-hidden">
-                {selectedPlatform === 'ios' ? (
+              <div className="relative w-full bg-gray-100 rounded-[12px] overflow-hidden" style={{ minHeight: '300px' }}>
+                {deviceType === 'ios' ? (
                   <video
                     controls
-                    className="w-full h-full object-contain"
+                    className="w-full h-auto object-contain"
                     poster="/video-poster-ios.jpg"
                   >
                     <source src="/screenshot-tutorial-ios.mp4" type="video/mp4" />
@@ -1149,7 +1679,7 @@ export default function ChildUploadPage() {
                 ) : (
                   <video
                     controls
-                    className="w-full h-full object-contain"
+                    className="w-full h-auto object-contain"
                     poster="/video-poster-android.jpg"
                   >
                     <source src="/screenshot-tutorial-android.mp4" type="video/mp4" />
@@ -1176,6 +1706,14 @@ export default function ChildUploadPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ChildUploadPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">טוען...</div>}>
+      <ChildUploadContent />
+    </Suspense>
   );
 }
 

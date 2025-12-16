@@ -1,0 +1,74 @@
+# Firebase App Hosting configuration
+# This file configures environment variables and build settings for Firebase App Hosting
+#
+# IMPORTANT: Before deploying, set all secrets using Firebase CLI:
+#   1. Set each secret: firebase apphosting:secrets:set SECRET_NAME
+#   2. Grant access: firebase apphosting:secrets:grantaccess SECRET_NAME
+#
+# Example commands:
+#   firebase apphosting:secrets:set FIREBASE_API_KEY_INTGR_SECRET
+#   firebase apphosting:secrets:grantaccess FIREBASE_API_KEY_INTGR_SECRET --backend joystie-poc
+#   firebase apphosting:secrets:set FIREBASE_AUTH_DOMAIN_INTGR_SECRET
+#   firebase apphosting:secrets:grantaccess FIREBASE_AUTH_DOMAIN_INTGR_SECRET --backend joystie-poc
+#   ... (repeat for all secrets below)
+#   firebase apphosting:secrets:set GOOGLE_API_KEY_INTGR_SECRET
+#   firebase apphosting:secrets:grantaccess GOOGLE_API_KEY_INTGR_SECRET --backend joystie-poc
+
+env:
+  # Set HOSTNAME to 0.0.0.0 to ensure Next.js server listens on all interfaces
+  # This is required for Firebase App Hosting health checks to work
+  - variable: HOSTNAME
+    value: "0.0.0.0"
+    availability:
+      - RUNTIME
+
+  # Firebase Configuration (NEXT_PUBLIC_* variables)
+  # These are embedded at build time and also available at runtime
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: FIREBASE_API_KEY_INTGR_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: FIREBASE_AUTH_DOMAIN_INTGR_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: FIREBASE_PROJECT_ID_INTGR_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    secret: FIREBASE_STORAGE_BUCKET_INTGR_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    secret: FIREBASE_MESSAGING_SENDER_ID_INTGR_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+  
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: FIREBASE_APP_ID_INTGR_SECRET
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Google Gemini API Key (for screenshot processing)
+  - variable: GOOGLE_API_KEY
+    secret: GOOGLE_API_KEY_INTGR_SECRET
+    availability:
+      - RUNTIME
+
+  # Firebase Function URL (for screenshot processing)
+  - variable: FIREBASE_FUNCTION_URL
+    secret: FIREBASE_FUNCTION_URL_INTGR_SECRET
+    availability:
+      - RUNTIME
+

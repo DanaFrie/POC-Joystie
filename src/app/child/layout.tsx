@@ -22,6 +22,7 @@ export default function ChildLayout({
             priority
             style={{ 
               filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1)) brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)',
+              height: 'auto',
             }}
           />
         </div>

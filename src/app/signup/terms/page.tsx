@@ -20,7 +20,7 @@ export default function TermsPage() {
               width={120}
               height={40}
               className="h-10 w-auto"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)' }}
+              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
             />
           </div>
           <h1 className="font-varela font-semibold text-3xl text-[#262135] mb-2 text-center">

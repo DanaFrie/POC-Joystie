@@ -11,6 +11,7 @@ interface DayInfoModalProps {
   childName: string;
   childGender?: 'boy' | 'girl';
   uploadUrl: string;
+  dailyBudget: number; // Daily budget from challenge data (not hardcoded)
   onApprove?: (dayDate: string) => void;
   onReject?: (dayDate: string) => void;
   onClose: () => void;
@@ -21,6 +22,7 @@ export default function DayInfoModal({
   childName,
   childGender = 'boy',
   uploadUrl,
+  dailyBudget,
   onApprove, 
   onReject, 
   onClose 
@@ -62,7 +64,7 @@ export default function DayInfoModal({
   }
 
   // Calculate coins lost for exceeded goal
-  const dailyBudget = 12.9;
+  // Use dailyBudget from challenge data (passed as prop, not hardcoded)
   const hourlyRate = dailyBudget / day.screenTimeGoal;
   const coinsMaxPossible = dailyBudget;
   // Calculate coins lost: difference between max possible and what was actually earned

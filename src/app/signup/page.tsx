@@ -3,10 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { signUp } from '@/utils/auth';
+import { createUser, isUsernameAvailable } from '@/lib/api/users';
+import { getErrorMessage } from '@/utils/errors';
+import { createSession } from '@/utils/session';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     username: '',
+    email: '',
     gender: '',
     firstName: '',
     lastName: '',
@@ -70,6 +75,7 @@ export default function SignupPage() {
           setFormData(prev => ({
             ...prev,
             username: parsed.username || '',
+            email: parsed.email || '',
             gender: parsed.gender || '',
             firstName: parsed.firstName || '',
             lastName: parsed.lastName || '',
@@ -102,6 +108,7 @@ export default function SignupPage() {
     if (typeof window !== 'undefined' && !isInitialLoad) {
       const dataToSave = {
         username: formData.username,
+        email: formData.email,
         gender: formData.gender,
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -111,7 +118,7 @@ export default function SignupPage() {
       };
       localStorage.setItem('signupFormData', JSON.stringify(dataToSave));
     }
-  }, [formData.username, formData.gender, formData.firstName, formData.lastName, formData.kidsAges, formData.termsAccepted, isInitialLoad]);
+  }, [formData.username, formData.email, formData.gender, formData.firstName, formData.lastName, formData.kidsAges, formData.termsAccepted, isInitialLoad]);
 
   // Check notification permission on mount
   useEffect(() => {
@@ -125,6 +132,11 @@ export default function SignupPage() {
 
     if (!formData.username.trim()) {
       newErrors.username = 'אנא הכנס שם משתמש';
+    }
+    if (!formData.email.trim()) {
+      newErrors.email = 'אנא הכנס כתובת אימייל';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'כתובת אימייל לא תקינה';
     }
     if (!formData.gender) {
       newErrors.gender = 'אנא בחר מין';
@@ -267,44 +279,66 @@ export default function SignupPage() {
 
     setIsSubmitting(true);
 
-    // Hash password (in production, use proper hashing like bcrypt)
-    // For now, we'll store a simple hash (in production, this should be done server-side)
-    const passwordHash = btoa(formData.password); // Simple encoding - NOT secure for production!
-    
-    // Filter out empty ages
-    const validAges = formData.kidsAges.filter(age => age.trim() !== '');
-    
-    // Save parent data to localStorage (in a real app, this would go to a backend)
-    const parentData = {
-      username: formData.username,
-      gender: formData.gender,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      passwordHash: passwordHash, // In production, never store passwords in localStorage!
-      kidsAges: validAges,
-      termsAccepted: formData.termsAccepted,
-      notificationsEnabled: notificationPermission === 'granted',
-      signupDate: new Date().toISOString()
-    };
+    try {
+      // Check if username is available
+      const usernameAvailable = await isUsernameAvailable(formData.username.toLowerCase());
+      if (!usernameAvailable) {
+        setErrors(prev => ({
+          ...prev,
+          username: 'שם משתמש זה כבר תפוס. אנא בחר שם אחר.'
+        }));
+        setIsSubmitting(false);
+        return;
+      }
 
-    localStorage.setItem('parentData', JSON.stringify(parentData));
-    
-    // Create session
-    const sessionData = {
-      userId: `user_${Date.now()}`,
-      loginTime: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-    };
-    localStorage.setItem('session', JSON.stringify(sessionData));
+      // Create Firebase Auth user with email and password
+      const user = await signUp(
+        formData.email.trim(),
+        formData.password,
+        `${formData.firstName} ${formData.lastName}`
+      );
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+      // Filter out empty ages
+      const validAges = formData.kidsAges.filter(age => age.trim() !== '');
+
+      // Create user document in Firestore
+      await createUser(user.uid, {
+        username: formData.username.toLowerCase(),
+        email: formData.email.trim().toLowerCase(),
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        gender: formData.gender as 'male' | 'female',
+        kidsAges: validAges,
+        notificationsEnabled: notificationPermission === 'granted',
+        termsAccepted: formData.termsAccepted,
+        signupDate: new Date().toISOString(),
+      });
+
+      // Create session with Firebase Auth UID
+      createSession(user.uid);
+
       // Clear saved form data after successful submission
-      localStorage.removeItem('signupFormData');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('signupFormData');
+      }
+
       // Redirect to onboarding
       router.push('/onboarding');
-    }, 1000);
+    } catch (error) {
+      console.error('Signup error:', error);
+      const errorMessage = getErrorMessage(error);
+      
+      // Set appropriate error based on error message
+      if (errorMessage.includes('אימייל')) {
+        setErrors(prev => ({ ...prev, email: errorMessage }));
+      } else if (errorMessage.includes('סיסמה')) {
+        setErrors(prev => ({ ...prev, password: errorMessage }));
+      } else {
+        setErrors(prev => ({ ...prev, _general: errorMessage }));
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -319,7 +353,7 @@ export default function SignupPage() {
               width={120}
               height={40}
               className="h-10 w-auto"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)' }}
+              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
             />
           </div>
           <p className="font-varela text-base text-[#282743] leading-relaxed text-center mb-3">
@@ -337,7 +371,7 @@ export default function SignupPage() {
             <label htmlFor="username" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
               שם משתמש <span className="text-red-500">*</span>
             </label>
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <input
                 type="text"
                 id="username"
@@ -345,20 +379,41 @@ export default function SignupPage() {
                 value={formData.username}
                 readOnly
                 placeholder="לחץ על 'להגריל' כדי ליצור שם משתמש"
-                className={`flex-1 p-4 border-2 rounded-[18px] bg-gray-50 cursor-not-allowed font-varela text-base text-[#282743] ${
+                className={`flex-1 min-w-0 p-3 sm:p-4 border-2 rounded-[18px] bg-gray-50 cursor-not-allowed font-varela text-sm sm:text-base text-[#282743] ${
                   errors.username ? 'border-red-500' : 'border-gray-200'
                 }`}
               />
               <button
                 type="button"
                 onClick={generateRandomUsername}
-                className="px-4 sm:px-6 py-4 bg-[#E6F19A] hover:bg-[#E6F19A] hover:bg-opacity-80 border-2 border-[#E6F19A] rounded-[18px] font-varela font-semibold text-base text-[#262135] transition-all whitespace-nowrap"
+                className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#E6F19A] hover:bg-[#E6F19A] hover:bg-opacity-80 border-2 border-[#E6F19A] rounded-[18px] font-varela font-semibold text-sm sm:text-base text-[#262135] transition-all whitespace-nowrap flex-shrink-0"
               >
                 להגריל
               </button>
             </div>
             {errors.username && (
               <p className="mt-2 text-sm text-red-500 font-varela">{errors.username}</p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div className="mb-6">
+            <label htmlFor="email" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
+              כתובת אימייל <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="הכנס כתובת אימייל"
+              className={`w-full p-4 border-2 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
+                errors.email ? 'border-red-500' : 'border-gray-200'
+              }`}
+            />
+            {errors.email && (
+              <p className="mt-2 text-sm text-red-500 font-varela">{errors.email}</p>
             )}
           </div>
 
@@ -576,6 +631,13 @@ export default function SignupPage() {
               )}
             </div>
           </div>
+
+          {/* General Error Message */}
+          {errors._general && (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-[18px]">
+              <p className="font-varela text-sm text-red-600 text-center">{errors._general}</p>
+            </div>
+          )}
 
           {/* Submit Button */}
           <button
