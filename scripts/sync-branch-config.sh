@@ -52,6 +52,11 @@ if [ -z "$BRANCH" ]; then
         fi
     fi
     
+    # Normalize branch name (master -> main)
+    if [ "$BRANCH" = "master" ]; then
+        BRANCH="main"
+    fi
+    
     if [ -z "$BRANCH" ]; then
         echo "Warning: Could not detect git branch, defaulting to intgr" >&2
         BRANCH="intgr"
@@ -101,14 +106,14 @@ fi
 
 # Check if source file exists
 if [ ! -f "$SOURCE_FILE" ]; then
-    echo "  Error: Source file not found: $SOURCE_FILE" >&2
-    echo "  Make sure you're on the correct branch:" >&2
-    if [ "$ENV" = "prod" ]; then
-        echo "    - main branch should have $SOURCE_FILE" >&2
-    else
-        echo "    - Intgr branch should have $SOURCE_FILE" >&2
-    fi
-    exit 1
+    echo "  Warning: Source file not found: $SOURCE_FILE" >&2
+    echo "  Skipping sync - using existing apphosting.yaml" >&2
+    echo ""
+    echo "Summary:"
+    echo "  Skipped: Source file not found (using existing config)"
+    export BRANCH_ENV="$ENV"
+    echo "Environment variable set: BRANCH_ENV=$ENV"
+    exit 0
 fi
 
 # Copy file
