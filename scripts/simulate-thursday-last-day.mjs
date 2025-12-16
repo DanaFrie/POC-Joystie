@@ -1,8 +1,10 @@
 /**
- * Test script to simulate a parent and child in the middle of a challenge
- * Creates a challenge that started a few days ago with partial uploads
+ * Test script to simulate a challenge on Thursday - last day for upload
+ * Creates a challenge from a week before today
+ * We're on Thursday - one day left for upload (Friday)
+ * Has uploads for Sunday, Monday, Tuesday, Wednesday - missing Thursday and Friday
  * 
- * Usage: node scripts/simulate-mid-challenge.mjs
+ * Usage: node scripts/simulate-thursday-last-day.mjs
  * 
  * Make sure to set environment variables in .env.local:
  * - NEXT_PUBLIC_FIREBASE_API_KEY
@@ -25,7 +27,6 @@ const __dirname = dirname(__filename);
 config({ path: join(__dirname, '..', '.env.local') });
 
 // App configuration (matches src/config/client.config.ts)
-// Note: Only client config values are used in simulation scripts
 const CLIENT_CONFIG = {
   token: {
     expirationDays: 14,
@@ -35,8 +36,8 @@ const CLIENT_CONFIG = {
     challengeDays: 6,
     redemptionDay: 'saturday',
     budgetDivision: 6,
-    defaultDailyScreenTimeGoal: 1.5,
-    defaultSelectedBudget: 20,
+    defaultDailyScreenTimeGoal: 2.0, // Custom goal for this test
+    defaultSelectedBudget: 90, // Custom budget for this test
   },
 };
 
@@ -63,13 +64,9 @@ function getHebrewDayName(dayIndex) {
 }
 
 // Helper to encode parent token (matches src/utils/url-encoding.ts)
-// Uses compact pipe-delimited format: parentId|childId|challengeId|expiresAt
-// Note: In browser, this uses btoa/atob, but in Node.js we use Buffer
 function encodeParentToken(parentId, childId, challengeId) {
   const expiresAt = Date.now() + (CLIENT_CONFIG.token.expirationDays * 24 * 60 * 60 * 1000);
   
-  // Compact format: parentId|childId|challengeId|expiresAt
-  // Empty values use empty string (not null) to keep it compact
   const parts = [
     parentId,
     childId || '',
@@ -78,8 +75,6 @@ function encodeParentToken(parentId, childId, challengeId) {
   ];
   
   const compact = parts.join('|');
-  // Use base64url encoding (URL-safe)
-  // Buffer.from().toString('base64') is equivalent to btoa() in browser
   const encoded = Buffer.from(compact, 'utf8').toString('base64')
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
@@ -89,9 +84,7 @@ function encodeParentToken(parentId, childId, challengeId) {
 }
 
 // Helper to generate setup URL
-// Note: challengeId is NOT included in setup URL to keep it shorter (not needed for setup)
 function generateSetupUrl(parentId, childId, challengeId, baseUrl = 'http://localhost:3000') {
-  // Setup URL doesn't need challengeId - it's only needed for upload/redemption
   const token = encodeParentToken(parentId, childId, undefined);
   return `${baseUrl}/child/setup?token=${token}`;
 }
@@ -135,108 +128,107 @@ function calculateCoins(screenTimeUsed, screenTimeGoal, dailyBudget) {
 }
 
 async function main() {
-  console.log('🚀 Creating parent and child in the middle of a challenge\n');
+  console.log('🚀 יצירת אתגר - יום חמישי (יום אחרון להעלאה)\n');
   console.log('='.repeat(50));
+  console.log('📋 תרחיש: יום חמישי - נשאר יום אחד להעלאה (שישי)\n');
+  console.log('📅 האתגר משבוע שעבר');
+  console.log('✅ יש העלאות: ראשון, שני, שלישי, רביעי');
+  console.log('❌ חסרות העלאות: חמישי, שישי\n');
 
   // Validate Firebase config
   const required = ['apiKey', 'authDomain', 'projectId', 'messagingSenderId', 'appId'];
   const missing = required.filter(key => !firebaseConfig[key]);
   if (missing.length > 0) {
-    console.error('❌ Missing environment variables:');
+    console.error('❌ חסרות משתני סביבה:');
     missing.forEach(key => {
       console.error(`   - NEXT_PUBLIC_FIREBASE_${key.toUpperCase()}`);
     });
-    console.error('\nPlease make sure .env.local file exists and contains all required variables.');
+    console.error('\nאנא ודא שקובץ .env.local קיים ומכיל את כל המשתנים הנדרשים.');
     process.exit(1);
   }
 
   // Initialize Firebase
-  console.log('\n📦 Initializing Firebase...');
+  console.log('\n📦 מאתחל Firebase...');
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
 
   // Use fixed test user data (will be deleted and recreated each run)
-  const testEmail = 'test-mid@joystie-test.com';
+  const testEmail = 'test-thursday@joystie-test.com';
   const testPassword = 'TestPassword123!';
-  const testUsername = 'testmid';
+  const testUsername = 'testthursday';
   const parentName = 'דנה';
   const childName = 'יובל';
 
   try {
     // Step 0: Delete existing test user if exists
-    console.log('\n🗑️  Step 0: Deleting previous user (if exists)...');
+    console.log('\n🗑️  שלב 0: מוחק משתמש קיים (אם קיים)...');
     try {
-      // Try to sign in with the test email
       const existingUserCredential = await signInWithEmailAndPassword(auth, testEmail, testPassword);
       const existingUserId = existingUserCredential.user.uid;
       
-      console.log(`   Found existing user (ID: ${existingUserId}), deleting...`);
+      console.log(`   נמצא משתמש קיים (ID: ${existingUserId}), מוחק...`);
       
       // Delete all related documents
-      // 1. Find and delete all challenges
       const challengesQuery = query(collection(db, 'challenges'), where('parentId', '==', existingUserId));
       const challengesSnapshot = await getDocs(challengesQuery);
-      const challengeIds = [];
       for (const challengeDoc of challengesSnapshot.docs) {
-        challengeIds.push(challengeDoc.id);
         await deleteDoc(challengeDoc.ref);
       }
-      console.log(`   ✅ Deleted ${challengesSnapshot.size} challenges`);
+      console.log(`   ✅ נמחקו ${challengesSnapshot.size} אתגרים`);
       
-      // 2. Delete all uploads for those challenges
-      if (challengeIds.length > 0) {
-        const uploadsQuery = query(collection(db, 'daily_uploads'), where('parentId', '==', existingUserId));
-        const uploadsSnapshot = await getDocs(uploadsQuery);
-        for (const uploadDoc of uploadsSnapshot.docs) {
-          await deleteDoc(uploadDoc.ref);
-        }
-        console.log(`   ✅ Deleted ${uploadsSnapshot.size} uploads`);
+      const uploadsQuery = query(collection(db, 'daily_uploads'), where('parentId', '==', existingUserId));
+      const uploadsSnapshot = await getDocs(uploadsQuery);
+      for (const uploadDoc of uploadsSnapshot.docs) {
+        await deleteDoc(uploadDoc.ref);
       }
+      console.log(`   ✅ נמחקו ${uploadsSnapshot.size} העלאות`);
       
-      // 3. Find and delete all children (or clear their setup data)
       const childrenQuery = query(collection(db, 'children'), where('parentId', '==', existingUserId));
       const childrenSnapshot = await getDocs(childrenQuery);
       for (const childDoc of childrenSnapshot.docs) {
-        // Clear setup data (nickname and moneyGoals) to allow setup URL to work again
-        const childData = childDoc.data();
-        if (childData.nickname || childData.moneyGoals) {
-          await setDoc(childDoc.ref, {
-            ...childData,
-            nickname: null,
-            moneyGoals: null,
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-        }
         await deleteDoc(childDoc.ref);
       }
-      console.log(`   ✅ Deleted ${childrenSnapshot.size} children (and cleared setup data)`);
+      console.log(`   ✅ נמחקו ${childrenSnapshot.size} ילדים`);
       
-      // 4. Delete user document
+      // Delete notifications
+      const notificationsQuery = query(collection(db, 'notifications'), where('parentId', '==', existingUserId));
+      const notificationsSnapshot = await getDocs(notificationsQuery);
+      for (const notificationDoc of notificationsSnapshot.docs) {
+        await deleteDoc(notificationDoc.ref);
+      }
+      console.log(`   ✅ נמחקו ${notificationsSnapshot.size} התראות`);
+      
+      // Delete sessions
+      const sessionsQuery = query(collection(db, 'sessions'), where('userId', '==', existingUserId));
+      const sessionsSnapshot = await getDocs(sessionsQuery);
+      for (const sessionDoc of sessionsSnapshot.docs) {
+        await deleteDoc(sessionDoc.ref);
+      }
+      console.log(`   ✅ נמחקו ${sessionsSnapshot.size} סשנים`);
+      
       await deleteDoc(doc(db, 'users', existingUserId));
-      console.log('   ✅ Deleted user document');
+      console.log('   ✅ נמחק מסמך משתמש');
       
-      // 5. Delete auth user
       await deleteUser(existingUserCredential.user);
-      console.log('   ✅ Deleted Auth user');
+      console.log('   ✅ נמחק משתמש Auth');
       
     } catch (error) {
-      // User doesn't exist or already deleted - that's fine
       if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
-        console.log('   ℹ️  No existing user found - proceeding with creation');
+        console.log('   ℹ️  לא נמצא משתמש קיים - ממשיך ביצירה');
       } else {
-        console.log(`   ⚠️  Error during deletion (continuing anyway): ${error.message}`);
+        console.log(`   ⚠️  שגיאה במחיקה (ממשיך בכל זאת): ${error.message}`);
       }
     }
 
     // Step 1: Create parent user
-    console.log('\n👤 Step 1: Creating parent user...');
-    console.log(`   Email: ${testEmail}`);
-    console.log(`   Username: ${testUsername}`);
+    console.log('\n👤 שלב 1: יוצר משתמש הורה...');
+    console.log(`   אימייל: ${testEmail}`);
+    console.log(`   שם משתמש: ${testUsername}`);
     
     const userCredential = await createUserWithEmailAndPassword(auth, testEmail, testPassword);
     const userId = userCredential.user.uid;
-    console.log(`   ✅ User created successfully (ID: ${userId})`);
+    console.log(`   ✅ משתמש נוצר בהצלחה (ID: ${userId})`);
 
     // Create user document in Firestore
     const userData = {
@@ -255,10 +247,10 @@ async function main() {
     };
 
     await setDoc(doc(db, 'users', userId), userData);
-    console.log('   ✅ User data saved to Firestore');
+    console.log('   ✅ נתוני משתמש נשמרו ב-Firestore');
 
     // Step 2: Create child profile
-    console.log('\n👶 Step 2: Creating child profile...');
+    console.log('\n👶 שלב 2: יוצר פרופיל ילד...');
     const childData = {
       parentId: userId,
       name: childName,
@@ -275,10 +267,10 @@ async function main() {
       id: childId,
       ...childData,
     });
-    console.log(`   ✅ Child profile created (ID: ${childId})`);
+    console.log(`   ✅ פרופיל ילד נוצר (ID: ${childId})`);
 
     // Step 3: Create challenge starting last week's Sunday
-    console.log('\n🎯 Step 3: Creating challenge...');
+    console.log('\n🎯 שלב 3: יוצר אתגר...');
     const startDate = getLastWeekSunday();
     const selectedBudget = CLIENT_CONFIG.challenge.defaultSelectedBudget;
     const dailyBudget = selectedBudget / CLIENT_CONFIG.challenge.budgetDivision;
@@ -307,31 +299,34 @@ async function main() {
       id: challengeId,
       ...challengeData,
     });
-    console.log(`   ✅ Challenge created (ID: ${challengeId})`);
-    console.log(`   📅 Start date: ${formatDate(startDate)} (${getHebrewDayName(startDate.getDay())})`);
-    console.log(`   💰 Daily budget: ${dailyBudget.toFixed(2)} ₪`);
-    console.log(`   ⏰ Daily screen time goal: ${dailyScreenTimeGoal} hours`);
+    console.log(`   ✅ אתגר נוצר (ID: ${challengeId})`);
+    console.log(`   📅 תאריך התחלה: ${formatDate(startDate)} (${getHebrewDayName(startDate.getDay())})`);
+    console.log(`   💰 תקציב יומי: ${dailyBudget.toFixed(2)} ₪`);
+    console.log(`   ⏰ יעד זמן מסך יומי: ${dailyScreenTimeGoal} שעות`);
+    console.log(`   📊 תקציב שבועי: ${selectedBudget} ₪`);
 
-    // Step 4: Create uploads for past days (we're simulating mid-week of last week)
-    console.log('\n📸 Step 4: Creating uploads for past days...\n');
+    // Step 4: Create uploads for past days (Sunday, Monday, Tuesday, Wednesday)
+    // We're simulating being on Thursday - so we have uploads for the first 4 days
+    console.log('\n📸 שלב 4: יוצר העלאות לימים שעברו...\n');
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    console.log(`   📅 Challenge start date: ${formatDate(startDate)} (${getHebrewDayName(startDate.getDay())})`);
-    console.log(`   📅 Today: ${formatDate(today)} (${getHebrewDayName(today.getDay())})`);
-    console.log(`   💡 Challenge is from last week - all days have already passed\n`);
+    console.log(`   📅 תאריך התחלת אתגר: ${formatDate(startDate)} (${getHebrewDayName(startDate.getDay())})`);
+    console.log(`   📅 היום (חמישי): ${formatDate(today)} (${getHebrewDayName(today.getDay())})`);
+    console.log(`   💡 האתגר משבוע שעבר - יש העלאות לראשון-רביעי, חסרות חמישי-שישי\n`);
 
-    // Define uploads for past days (always create for Sunday, Monday, Tuesday)
+    // Define uploads for past days
     // Sunday: approved, successful
     // Monday: approved, successful  
-    // Tuesday: awaiting approval, successful
-    // Wednesday, Thursday, Friday: missing (not uploaded yet)
+    // Tuesday: approved, successful
+    // Wednesday: awaiting approval, successful
+    // Thursday, Friday: missing (not uploaded yet)
     const uploads = [];
     
     // Sunday (day 0) - approved, successful
     const sundayDate = new Date(startDate);
-    const screenTimeSunday = 2.5; // hours
+    const screenTimeSunday = 1.8; // hours
     const { coinsEarned: coinsSunday, success: successSunday } = calculateCoins(screenTimeSunday, dailyScreenTimeGoal, dailyBudget);
     const uploadDateSunday = new Date(startDate);
     uploadDateSunday.setDate(startDate.getDate() + 1); // Uploaded on Monday
@@ -350,7 +345,7 @@ async function main() {
     // Monday (day 1) - approved, successful
     const mondayDate = new Date(startDate);
     mondayDate.setDate(startDate.getDate() + 1);
-    const screenTimeMonday = 2.8; // hours
+    const screenTimeMonday = 1.9; // hours
     const { coinsEarned: coinsMonday, success: successMonday } = calculateCoins(screenTimeMonday, dailyScreenTimeGoal, dailyBudget);
     const uploadDateMonday = new Date(startDate);
     uploadDateMonday.setDate(startDate.getDate() + 2); // Uploaded on Tuesday
@@ -366,10 +361,10 @@ async function main() {
       uploadedAt: uploadDateMonday.toISOString(),
     });
 
-    // Tuesday (day 2) - awaiting approval, successful
+    // Tuesday (day 2) - approved, successful
     const tuesdayDate = new Date(startDate);
     tuesdayDate.setDate(startDate.getDate() + 2);
-    const screenTimeTuesday = 2.9; // hours
+    const screenTimeTuesday = 2.1; // hours (slightly over goal)
     const { coinsEarned: coinsTuesday, success: successTuesday } = calculateCoins(screenTimeTuesday, dailyScreenTimeGoal, dailyBudget);
     const uploadDateTuesday = new Date(startDate);
     uploadDateTuesday.setDate(startDate.getDate() + 3); // Uploaded on Wednesday
@@ -381,12 +376,34 @@ async function main() {
       screenTimeHours: screenTimeTuesday,
       coinsEarned: coinsTuesday,
       success: successTuesday,
-      parentAction: null, // Awaiting approval
+      parentAction: 'approved', // Already approved
       uploadedAt: uploadDateTuesday.toISOString(),
+    });
+
+    // Wednesday (day 3) - awaiting approval, successful
+    const wednesdayDate = new Date(startDate);
+    wednesdayDate.setDate(startDate.getDate() + 3);
+    const screenTimeWednesday = 1.7; // hours
+    const { coinsEarned: coinsWednesday, success: successWednesday } = calculateCoins(screenTimeWednesday, dailyScreenTimeGoal, dailyBudget);
+    const uploadDateWednesday = new Date(startDate);
+    uploadDateWednesday.setDate(startDate.getDate() + 4); // Uploaded on Thursday
+    uploadDateWednesday.setHours(16, 30, 0, 0);
+    
+    uploads.push({
+      date: formatDate(wednesdayDate),
+      dayName: getHebrewDayName(3),
+      screenTimeHours: screenTimeWednesday,
+      coinsEarned: coinsWednesday,
+      success: successWednesday,
+      parentAction: null, // Awaiting approval
+      uploadedAt: uploadDateWednesday.toISOString(),
     });
 
     // Create upload documents
     for (const upload of uploads) {
+      // Convert hours to minutes for screenTimeMinutes
+      const screenTimeMinutes = Math.round(upload.screenTimeHours * 60);
+      
       const uploadData = {
         challengeId: challengeId,
         parentId: userId,
@@ -394,16 +411,23 @@ async function main() {
         date: upload.date,
         dayName: upload.dayName,
         screenTimeUsed: upload.screenTimeHours,
+        screenTimeMinutes: screenTimeMinutes, // Add minutes for manual entry support
         screenTimeGoal: dailyScreenTimeGoal,
         coinsEarned: upload.coinsEarned,
         coinsMaxPossible: dailyBudget,
         success: upload.success,
-        requiresApproval: true,
+        requiresApproval: upload.parentAction === null ? true : false, // Only require approval if not already approved
         parentAction: upload.parentAction,
         uploadedAt: upload.uploadedAt,
         createdAt: upload.uploadedAt,
         updatedAt: upload.uploadedAt,
       };
+      
+      // If already approved, set requiresApproval to false and add approvedAt
+      if (upload.parentAction === 'approved') {
+        uploadData.requiresApproval = false;
+        uploadData.approvedAt = upload.uploadedAt; // Use uploadedAt as approvedAt for already approved uploads
+      }
 
       const uploadRef = doc(collection(db, 'daily_uploads'));
       await setDoc(uploadRef, {
@@ -411,66 +435,67 @@ async function main() {
         ...uploadData,
       });
 
-      const status = upload.parentAction === 'approved' ? '✅ Approved' : '⏳ Awaiting approval';
-      console.log(`   ${status} - ${upload.dayName} ${upload.date}: ${upload.screenTimeHours} hours, ${upload.coinsEarned.toFixed(2)} ₪`);
+      const status = upload.parentAction === 'approved' ? '✅ מאושר' : '⏳ ממתין לאישור';
+      console.log(`   ${status} - ${upload.dayName} ${upload.date}: ${upload.screenTimeHours} שעות, ${upload.coinsEarned.toFixed(2)} ₪`);
     }
 
     // Show summary
-    console.log('\n\n📊 Summary:');
+    console.log('\n\n📊 סיכום:');
     console.log('='.repeat(50));
-    console.log(`   👤 Parent: ${parentName} (${testEmail})`);
-    console.log(`   👶 Child: ${childName}`);
-    console.log(`   🎯 Challenge ID: ${challengeId}`);
-    console.log(`   📅 Start date: ${formatDate(startDate)} (${getHebrewDayName(startDate.getDay())})`);
-    console.log(`   📅 Today: ${formatDate(today)} (${getHebrewDayName(today.getDay())})`);
-    console.log(`   📸 Uploads created: ${uploads.length}`);
-    console.log(`   ✅ Approved: ${uploads.filter(u => u.parentAction === 'approved').length}`);
-    console.log(`   ⏳ Awaiting approval: ${uploads.filter(u => u.parentAction === null).length}`);
+    console.log(`   👤 הורה: ${parentName} (${testEmail})`);
+    console.log(`   👶 ילד: ${childName}`);
+    console.log(`   🎯 אתגר ID: ${challengeId}`);
+    console.log(`   📅 תאריך התחלה: ${formatDate(startDate)} (${getHebrewDayName(startDate.getDay())})`);
+    console.log(`   📅 היום (חמישי): ${formatDate(today)} (${getHebrewDayName(today.getDay())})`);
+    console.log(`   📸 העלאות שנוצרו: ${uploads.length}`);
+    console.log(`   ✅ מאושרות: ${uploads.filter(u => u.parentAction === 'approved').length}`);
+    console.log(`   ⏳ ממתינות לאישור: ${uploads.filter(u => u.parentAction === null).length}`);
+    console.log(`   ❌ חסרות: חמישי, שישי`);
     
     // Calculate total coins from approved uploads
     const totalCoins = uploads
       .filter(u => u.parentAction === 'approved')
       .reduce((sum, u) => sum + u.coinsEarned, 0);
-    console.log(`   💰 Total approved coins: ${totalCoins.toFixed(2)} ₪`);
+    console.log(`   💰 סה"כ מטבעות מאושרים: ${totalCoins.toFixed(2)} ₪`);
 
     // Generate URLs for child
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
     const setupUrl = generateSetupUrl(userId, childId, challengeId, baseUrl);
     const uploadUrl = generateUploadUrl(userId, childId, challengeId, baseUrl);
 
-    console.log('\n✅ Simulation completed successfully!');
-    console.log(`\n📋 User Information:`);
+    console.log('\n✅ סימולציה הושלמה בהצלחה!');
+    console.log(`\n📋 פרטי משתמש:`);
     console.log('='.repeat(50));
-    console.log(`   👤 Parent Name: ${parentName}`);
-    console.log(`   📧 Email: ${testEmail}`);
-    console.log(`   🔑 Password: ${testPassword}`);
+    console.log(`   👤 שם הורה: ${parentName}`);
+    console.log(`   📧 אימייל: ${testEmail}`);
+    console.log(`   🔑 סיסמה: ${testPassword}`);
     console.log(`   🆔 User ID: ${userId}`);
-    console.log(`\n👶 Child Information:`);
+    console.log(`\n👶 פרטי ילד:`);
     console.log('='.repeat(50));
-    console.log(`   👶 Child Name: ${childName}`);
+    console.log(`   👶 שם ילד: ${childName}`);
     console.log(`   🆔 Child ID: ${childId}`);
-    console.log(`\n🔗 URLs:`);
+    console.log(`\n🔗 כתובות:`);
     console.log('='.repeat(50));
-    console.log(`   📝 Setup URL (for child):`);
+    console.log(`   📝 כתובת הגדרה (לילד):`);
     console.log(`      ${setupUrl}`);
-    console.log(`\n   📤 Upload URL (for child):`);
+    console.log(`\n   📤 כתובת העלאה (לילד):`);
     console.log(`      ${uploadUrl}`);
-    console.log(`\n📱 Testing Instructions:`);
+    console.log(`\n📱 הוראות בדיקה:`);
     console.log('='.repeat(50));
-    console.log(`   1. Login as parent with:`);
-    console.log(`      Email: ${testEmail}`);
-    console.log(`      Password: ${testPassword}`);
-    console.log(`   2. Go to dashboard: ${baseUrl}/dashboard`);
-    console.log(`   3. Challenge is from last week (all days have passed)`);
-    console.log(`   4. Approved uploads: Sunday, Monday`);
-    console.log(`   5. Upload awaiting approval: Tuesday`);
-    console.log(`   6. Missing days: Wednesday, Thursday, Friday`);
-    console.log(`   7. Use "Send Reminder" button - it will use the upload URL`);
-    console.log(`   8. Child setup URL can be used to complete child setup`);
-    console.log(`\n💡 On each run, the previous user will be deleted and recreated`);
+    console.log(`   1. התחבר כהורה עם:`);
+    console.log(`      אימייל: ${testEmail}`);
+    console.log(`      סיסמה: ${testPassword}`);
+    console.log(`   2. עבור לדשבורד: ${baseUrl}/dashboard`);
+    console.log(`   3. האתגר הוא משבוע שעבר`);
+    console.log(`   4. העלאות מאושרות: ראשון, שני, שלישי`);
+    console.log(`   5. העלאה ממתינה לאישור: רביעי`);
+    console.log(`   6. ימים חסרים: חמישי, שישי (נשאר יום אחד להעלאה)`);
+    console.log(`   7. ניתן להשתמש בכפתור "שלח תזכורת" - ישתמש בכתובת העלאה`);
+    console.log(`   8. כתובת הגדרת ילד יכולה לשמש להשלמת הגדרת הילד`);
+    console.log(`\n💡 בכל הרצה, המשתמש הקודם יימחק וייווצר מחדש`);
 
   } catch (error) {
-    console.error('\n❌ Error in simulation:', error.message);
+    console.error('\n❌ שגיאה בסימולציה:', error.message);
     console.error(error);
     process.exit(1);
   }

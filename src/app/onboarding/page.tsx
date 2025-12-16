@@ -64,6 +64,7 @@ export default function OnboardingPage() {
               width={120}
               height={120}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
               priority
             />
           </div>

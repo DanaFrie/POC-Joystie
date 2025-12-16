@@ -1,7 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import ReminderButton from './ReminderButton';
 import type { WeekDay } from '@/types/dashboard';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('NotificationsPanel');
 
 interface NotificationsPanelProps {
   challengeNotStarted?: boolean;
@@ -9,13 +13,18 @@ interface NotificationsPanelProps {
   childName?: string;
   childGender?: 'boy' | 'girl';
   parentName?: string;
+  parentGender?: 'male' | 'female'; // Parent gender from Firestore
   missingDays?: WeekDay[];
+  setupUrl?: string; // Setup URL to show when setup is not completed
   uploadUrl?: string;
+  redemptionUrl?: string; // Redemption URL to show when all days are approved
   week?: WeekDay[];
   onOpenSummary?: (days: WeekDay[]) => void;
+  childSetupCompleted?: boolean; // Whether child has completed setup (has nickname and moneyGoals)
 }
 
-export default function NotificationsPanel({ challengeNotStarted, challengeStartDate, childName, childGender, parentName, missingDays, uploadUrl, week, onOpenSummary }: NotificationsPanelProps) {
+export default function NotificationsPanel({ challengeNotStarted, challengeStartDate, childName, childGender, parentName, parentGender, missingDays, setupUrl, uploadUrl, redemptionUrl, week, onOpenSummary, childSetupCompleted }: NotificationsPanelProps) {
+  const [copied, setCopied] = useState(false);
   const formatStartDate = (dateStr?: string): string => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -26,26 +35,17 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
     return `ביום ${dayName}, ${day}/${month}`;
   };
 
-  // Determine parent gender from name
-  const getParentGender = (): 'female' | 'male' => {
-    if (!parentName) return 'female'; // default
-    const name = parentName.trim();
-    if (name.endsWith('ה') || name.endsWith('ית')) {
-      return 'female';
-    }
-    return 'male';
-  };
+  // Use parentGender from Firestore, fallback to 'female' if not provided
+  const parentGenderValue = parentGender || 'female';
+  const parentVerb = parentGenderValue === 'female' ? 'תוכלי' : 'תוכל';
 
-  const parentGender = getParentGender();
-  const parentVerb = parentGender === 'female' ? 'תוכלי' : 'תוכל';
-
-  // Filter days that need approval or are missing
+  // Filter days that need approval
   // Only include days that actually need approval (not already approved)
   const daysNeedingApproval = week?.filter(day => {
     if (day.isRedemptionDay) return false;
-    // Include if status is awaiting_approval or rejected
-    if (day.status === 'awaiting_approval' || day.status === 'rejected') return true;
-    // Include if requiresApproval is true AND parentAction is null (not yet approved/rejected)
+    // Include if status is awaiting_approval
+    if (day.status === 'awaiting_approval') return true;
+    // Include if requiresApproval is true AND parentAction is null (not yet approved)
     if (day.requiresApproval && !day.parentAction) return true;
     return false;
   }) || [];
@@ -53,8 +53,8 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
   // Only include days that are actually missing (not uploaded yet)
   const daysMissingUpload = week?.filter(day => {
     if (day.isRedemptionDay) return false;
-    // Only include if status is missing or pending (not uploaded)
-    return day.status === 'missing' || day.status === 'pending';
+    // Only include if status is missing (not uploaded)
+    return day.status === 'missing';
   }) || [];
 
   const hasNotifications = challengeNotStarted || daysNeedingApproval.length > 0 || daysMissingUpload.length > 0;
@@ -65,18 +65,66 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
     }
   };
 
+  // Check if all non-redemption days are approved
+  const allDaysApproved = week && week.length > 0 && week
+    .filter(day => !day.isRedemptionDay)
+    .every(day => 
+      day.status === 'success' || 
+      day.status === 'warning' ||
+      day.parentAction === 'approved'
+    );
+
+  const handleCopyUrl = async (url: string) => {
+    if (!url) return;
+    
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      // Reset after 2 seconds
+      setTimeout(() => {
+        setCopied(false);
+      }, 2000);
+    } catch (error) {
+      logger.error('Failed to copy URL:', error);
+    }
+  };
+
+  // Determine which URL to show based on activity logic (same as URL validation):
+  // 1. If setup not completed → setup URL
+  // 2. If setup completed but not all days approved → upload URL
+  // 3. If all days approved → redemption URL
+  let urlToCopy: string | undefined;
+  if (!childSetupCompleted && setupUrl) {
+    // Setup not completed - show setup URL
+    urlToCopy = setupUrl;
+  } else if (allDaysApproved && redemptionUrl) {
+    // All days approved - show redemption URL
+    urlToCopy = redemptionUrl;
+  } else if (uploadUrl) {
+    // Setup completed but not all approved - show upload URL
+    urlToCopy = uploadUrl;
+  }
+  
+  // Show button when:
+  // 1. Challenge exists (we have childName)
+  // 2. We have a URL to copy (setup, upload, or redemption)
+  const showCopyButton = !!childName && !!urlToCopy;
+  const buttonText = `העתק כתובת לשימוש ${childName}`;
+
   return (
     <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-4">
-      <h2 className="font-varela font-semibold text-base text-[#282743] mb-3">
-        עדכונים
-      </h2>
+      <div className="mb-3">
+        <h2 className="font-varela font-semibold text-base text-[#282743]">
+          עדכונים
+        </h2>
+      </div>
       {challengeNotStarted && challengeStartDate ? (
         <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[12px] p-4 border-2 border-[#E6F19A] mb-3">
           <p className="font-varela text-sm text-[#262135] text-center leading-relaxed font-semibold mb-2">
             האתגר יתחיל ממש בקרוב! {formatStartDate(challengeStartDate)}.
           </p>
           <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-            בינתיים, {parentVerb} להכין את {childName || '[שם הילד/ה]'} ולהסביר {childGender === 'girl' ? 'לה' : 'לו'} על האתגר.
+            בינתיים, {parentVerb} לדבר עם {childName || '[שם הילד/ה]'} ולהבין מה יעזור {childGender === 'girl' ? 'לה' : 'לו'} להצליח.
           </p>
         </div>
       ) : null}
@@ -99,6 +147,7 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
 
+
       {/* Days missing upload - grouped with warning icon */}
       {daysMissingUpload.length > 0 && (
         <div 
@@ -117,7 +166,23 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
 
-      {!hasNotifications && (
+      {/* Copy URL button (upload or redemption) - styled like onboarding/setup copy buttons */}
+      {showCopyButton && urlToCopy && (
+        <div className="mb-3">
+          <button
+            onClick={() => urlToCopy && handleCopyUrl(urlToCopy)}
+            className={`w-full py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
+              copied
+                ? 'bg-[#E6F19A] text-[#273143]'
+                : 'bg-[#273143] text-white hover:bg-opacity-90'
+            }`}
+          >
+            {copied ? 'הועתק! ✓' : buttonText}
+          </button>
+        </div>
+      )}
+
+      {!hasNotifications && !showCopyButton && (
         <p className="font-varela text-sm text-[#948DA9] text-center py-2">
           אין עדכונים חדשים
         </p>

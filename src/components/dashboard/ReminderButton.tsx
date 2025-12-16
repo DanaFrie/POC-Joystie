@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { WeekDay } from '@/types/dashboard';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('ReminderButton');
 
 interface ReminderButtonProps {
   day: WeekDay;
@@ -21,7 +24,7 @@ export default function ReminderButton({ day, childName, uploadUrl }: ReminderBu
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      logger.error('Failed to copy:', err);
     }
   };
 

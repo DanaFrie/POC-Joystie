@@ -2,6 +2,9 @@
 import { getFirestoreInstance } from '@/lib/firebase';
 import type { FirestoreChallenge } from '@/types/firestore';
 import { withRetry } from '@/utils/firestore-retry';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Challenges');
 
 const CHALLENGES_COLLECTION = 'challenges';
 
@@ -29,7 +32,7 @@ export async function createChallenge(
       await setDoc(challengeRef, challenge);
       return challengeRef.id;
     } catch (error: any) {
-      console.error('Error creating challenge:', error);
+      logger.error('Error creating challenge:', error);
       if (error.code === 'permission-denied') {
         throw new Error('אין הרשאה ליצור אתגר. אנא בדוק את ההרשאות.');
       }
@@ -47,7 +50,7 @@ export async function getChallenge(challengeId: string, useCache: boolean = true
     const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreChallenge>(cacheKeys.challengeById(challengeId));
     if (cached) {
-      console.log(`[Challenges] Using cached challenge ${challengeId}`);
+      logger.log(`Using cached challenge ${challengeId}`);
       return cached;
     }
   }
@@ -76,7 +79,7 @@ export async function getChallenge(challengeId: string, useCache: boolean = true
     
     return challenge;
   } catch (error) {
-    console.error('Error getting challenge:', error);
+    logger.error('Error getting challenge:', error);
     throw new Error('שגיאה בטעינת נתוני האתגר.');
   }
 }
@@ -97,7 +100,7 @@ export async function updateChallenge(
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Error updating challenge:', error);
+    logger.error('Error updating challenge:', error);
     throw new Error('שגיאה בעדכון האתגר.');
   }
 }
@@ -111,7 +114,7 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreChallenge>(cacheKeys.challenge(parentId));
     if (cached) {
-      console.log(`[Challenges] Using cached challenge for ${parentId}`);
+      logger.log(`Using cached challenge for ${parentId}`);
       return cached;
     }
   }
@@ -122,7 +125,7 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     
     // Ensure db is valid
     if (!db) {
-      console.error('[Challenges] Firestore instance is null or undefined');
+      logger.error('Firestore instance is null or undefined');
       throw new Error('Firestore not initialized');
     }
     
@@ -131,12 +134,12 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     // First, check all challenges for this user (for debugging)
     const allChallengesQuery = query(challengesRef, where('parentId', '==', parentId));
     const allChallengesSnapshot = await getDocs(allChallengesQuery);
-    console.log(`[Challenges] Found ${allChallengesSnapshot.size} total challenges for user ${parentId}`);
+    logger.log(`Found ${allChallengesSnapshot.size} total challenges for user ${parentId}`);
     
     if (allChallengesSnapshot.size > 0) {
       allChallengesSnapshot.docs.forEach(doc => {
         const challenge = doc.data() as FirestoreChallenge;
-        console.log(`[Challenges] Challenge ${doc.id}: isActive=${challenge.isActive}, childId=${challenge.childId}`);
+        logger.log(`Challenge ${doc.id}: isActive=${challenge.isActive}, childId=${challenge.childId}`);
       });
     }
     
@@ -149,13 +152,13 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      console.warn(`[Challenges] No active challenge found for user ${parentId}`);
+      logger.warn(`No active challenge found for user ${parentId}`);
       return null;
     }
     
     // Return the first active challenge (should only be one)
     const challenge = querySnapshot.docs[0].data() as FirestoreChallenge;
-    console.log(`[Challenges] Found active challenge: ${querySnapshot.docs[0].id}`);
+    logger.log(`Found active challenge: ${querySnapshot.docs[0].id}`);
     
     // Cache the result
     if (useCache) {
@@ -165,7 +168,7 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     
     return challenge;
   } catch (error) {
-    console.error('Error getting active challenge:', error);
+    logger.error('Error getting active challenge:', error);
     throw new Error('שגיאה בטעינת האתגר הפעיל.');
   }
 }
@@ -183,7 +186,7 @@ export async function getUserChallenges(parentId: string): Promise<FirestoreChal
     
     return querySnapshot.docs.map(doc => doc.data() as FirestoreChallenge);
   } catch (error) {
-    console.error('Error getting user challenges:', error);
+    logger.error('Error getting user challenges:', error);
     throw new Error('שגיאה בטעינת האתגרים.');
   }
 }
@@ -210,7 +213,7 @@ export async function deactivateChallenge(
       })
     });
   } catch (error) {
-    console.error('Error deactivating challenge:', error);
+    logger.error('Error deactivating challenge:', error);
     throw new Error('שגיאה בביטול האתגר.');
   }
 }

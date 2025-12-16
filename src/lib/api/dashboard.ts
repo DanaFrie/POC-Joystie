@@ -1,11 +1,13 @@
 // Dashboard Data API
 import { getActiveChallenge } from './challenges';
 import { getUploadsByChallenge, getPendingApprovals } from './uploads';
-import { getNotifications } from './notifications';
 import { getUser } from './users';
 import { getChild } from './children';
 import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
 import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Dashboard');
 
 /**
  * Helper: Transform FirestoreChallenge to Challenge type (adds weeklyBudget)
@@ -77,14 +79,10 @@ function getUploadStatus(
   if (isFuture) return 'future';
   if (!upload) return 'missing';
   
-  // Check if approval is required and not yet approved/rejected
+  // Check if approval is required and not yet approved
   // Note: After approval, requiresApproval is set to false, so this check handles pending approvals
   if (upload.requiresApproval && (!upload.parentAction || upload.parentAction === null)) {
     return 'awaiting_approval';
-  }
-  
-  if (upload.parentAction === 'rejected') {
-    return 'rejected';
   }
   
   // If approved, show success/warning based on goal achievement
@@ -92,13 +90,14 @@ function getUploadStatus(
     return upload.success ? 'success' : 'warning';
   }
   
-  // If doesn't require approval (and not rejected, which we already checked above)
+  // If doesn't require approval
   // parentAction can be null/undefined/approved, all are OK if requiresApproval is false
   if (!upload.requiresApproval) {
     return upload.success ? 'success' : 'warning';
   }
   
-  return 'pending';
+  // This should not be reached, but if it is, treat as missing
+  return 'missing';
 }
 
 /**
@@ -115,24 +114,18 @@ function generateWeek(
   
   const week: WeekDay[] = [];
   
-  // Find the start of the challenge week (Sunday)
-  const challengeStartDay = startDate.getDay(); // 0 = Sunday
-  const challengeSunday = new Date(startDate);
-  challengeSunday.setDate(startDate.getDate() - challengeStartDay);
-  
-  // Generate 7 days starting from challenge Sunday
+  // Generate 7 days starting from challenge start date
   // Always generate the week, even if challenge hasn't started yet
   for (let i = 0; i < 7; i++) {
-    const day = new Date(challengeSunday);
-    day.setDate(challengeSunday.getDate() + i);
+    const day = new Date(startDate);
+    day.setDate(startDate.getDate() + i);
     
     const dateStr = formatDate(day);
     const dayName = getHebrewDayName(day);
     const dayAbbr = getHebrewDayAbbreviation(dayName);
     const isFuture = day > today;
-    const isRedemptionDay = challenge.redemptionDay === 'saturday' 
-      ? i === 6 
-      : dayName === challenge.redemptionDay;
+    // Redemption day is always the 7th day (index 6)
+    const isRedemptionDay = i === 6;
     
     // Find matching upload
     const matchingUploads = uploads.filter(u => u.date === dateStr);
@@ -140,7 +133,7 @@ function generateWeek(
     
     // Log if multiple uploads found for same date (data integrity issue)
     if (matchingUploads.length > 1) {
-      console.warn(`[Dashboard] Multiple uploads found for date ${dateStr}:`, matchingUploads.map(u => ({
+      logger.warn(`Multiple uploads found for date ${dateStr}:`, matchingUploads.map(u => ({
         id: u.id,
         date: u.date,
         requiresApproval: u.requiresApproval,
@@ -151,7 +144,7 @@ function generateWeek(
     
     // Log upload matching for debugging
     if (upload) {
-      console.log(`[Dashboard] Matched upload for ${dateStr}:`, {
+      logger.log(`Matched upload for ${dateStr}:`, {
         id: upload.id,
         date: upload.date,
         requiresApproval: upload.requiresApproval,
@@ -160,7 +153,7 @@ function generateWeek(
         uploadedAt: upload.uploadedAt
       });
     } else {
-      console.log(`[Dashboard] No upload found for ${dateStr}`);
+      logger.log(`No upload found for ${dateStr}`);
     }
     
     // Calculate coins
@@ -190,7 +183,9 @@ function generateWeek(
       uploadedAt: upload?.uploadedAt,
       parentAction: upload?.parentAction || null,
       screenshotUrl: upload?.screenshotUrl,
-      apps: (upload?.apps || []).filter((app): app is { name: string; timeUsed: number; icon: string } => app.icon !== undefined).map(app => ({ name: app.name, timeUsed: app.timeUsed, icon: app.icon! }))
+      screenTimeMinutes: (upload as any)?.screenTimeMinutes || (screenTimeUsed * 60),
+      apps: (upload?.apps || []).filter((app): app is { name: string; timeUsed: number; icon: string } => app.icon !== undefined).map(app => ({ name: app.name, timeUsed: app.timeUsed, icon: app.icon! })),
+      approvalType: (upload as any)?.approvalType
     });
   }
   
@@ -244,7 +239,7 @@ function buildToday(
     todayDay = {
       dayName: getHebrewDayAbbreviation(getHebrewDayName(today)),
       date: todayDateStr,
-      status: 'pending',
+      status: 'missing',
       coinsEarned: 0,
       screenTimeUsed: 0,
       screenTimeGoal: challenge.dailyScreenTimeGoal,
@@ -296,29 +291,29 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<DashboardState>(cacheKeys.dashboard(parentId));
     if (cached) {
-      console.log(`[Dashboard] Using cached dashboard data for ${parentId}`);
+      logger.log(`Using cached dashboard data for ${parentId}`);
       return cached;
     }
   }
   try {
-    console.log('[Dashboard] Loading data for user:', parentId);
+    logger.log('Loading data for user:', parentId);
     
     // Get user data
     const user = await getUser(parentId);
     if (!user) {
-      console.warn('[Dashboard] User not found in Firestore:', parentId);
+      logger.warn('User not found in Firestore:', parentId);
       return null;
     }
-    console.log('[Dashboard] User found:', user.username);
+    logger.log('User found:', user.username);
 
     // Get active challenge
     const challenge = await getActiveChallenge(parentId);
     if (!challenge) {
       // No active challenge - return null
-      console.warn('[Dashboard] No active challenge found for user:', parentId);
+      logger.warn('No active challenge found for user:', parentId);
       return null;
     }
-    console.log('[Dashboard] Active challenge found:', challenge.id);
+    logger.log('Active challenge found:', challenge.id);
 
     // Get child data
     const child = await getChild(challenge.childId);
@@ -328,7 +323,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     
     // Get uploads for current week (include parentId for security rules)
     const uploads = await getUploadsByChallenge(challenge.id, parentId);
-    console.log(`[Dashboard] Fetched ${uploads.length} uploads for challenge ${challenge.id}:`, uploads.map(u => ({
+    logger.log(`Fetched ${uploads.length} uploads for challenge ${challenge.id}:`, uploads.map(u => ({
       id: u.id,
       date: u.date,
       requiresApproval: u.requiresApproval,
@@ -362,13 +357,16 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
         name: user.firstName || user.username || 'הורה',
         id: user.id,
         googleAuth: {}, // TODO: Add if needed
-        profilePicture: '' // TODO: Add if available
+        profilePicture: '', // TODO: Add if available
+        gender: user.gender
       },
       child: {
         name: child.name,
         id: child.id,
         profilePicture: child.profilePicture || '',
-        gender: child.gender
+        gender: child.gender,
+        nickname: child.nickname,
+        moneyGoals: child.moneyGoals
       },
       challenge: challengeData,
       today: todayObj,
@@ -386,7 +384,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     
     return dashboardState;
   } catch (error) {
-    console.error('Error getting dashboard data:', error);
+    logger.error('Error getting dashboard data:', error);
     throw new Error('שגיאה בטעינת נתוני הדשבורד.');
   }
 }
@@ -398,7 +396,7 @@ export async function getWeekData(challengeId: string, parentId?: string): Promi
   try {
     return await getUploadsByChallenge(challengeId, parentId);
   } catch (error) {
-    console.error('Error getting week data:', error);
+    logger.error('Error getting week data:', error);
     throw new Error('שגיאה בטעינת נתוני השבוע.');
   }
 }
@@ -415,7 +413,7 @@ export async function getTodayData(
     const { getUploadByDate } = await import('./uploads');
     return await getUploadByDate(challengeId, date, parentId);
   } catch (error) {
-    console.error('Error getting today data:', error);
+    logger.error('Error getting today data:', error);
     throw new Error('שגיאה בטעינת נתוני היום.');
   }
 }

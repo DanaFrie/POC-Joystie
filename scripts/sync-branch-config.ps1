@@ -63,14 +63,6 @@ foreach ($mapping in $configMappings) {
     Write-Host "  Source: $sourceFile" -ForegroundColor Gray
     Write-Host "  Target: $targetFile" -ForegroundColor Gray
     
-    # Skip if source and target are the same (Intgr branch case)
-    if ($sourceFile -eq $targetFile) {
-        Write-Host "  Skipping: Source and target are the same (already correct)" -ForegroundColor Green
-        $successCount++
-        Write-Host ""
-        continue
-    }
-    
     # Check if source file exists
     if (-not (Test-Path $sourceFile)) {
         Write-Host "  Error: Source file not found: $sourceFile" -ForegroundColor Red

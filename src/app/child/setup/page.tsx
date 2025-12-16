@@ -9,10 +9,12 @@ import { generateUploadUrl } from '@/utils/url-encoding';
 import { decodeParentToken } from '@/utils/url-encoding';
 import { updateChild } from '@/lib/api/children';
 import { getChild } from '@/lib/api/children';
-import { getOccupiedNicknames } from '@/lib/api/children';
 import { getChallenge } from '@/lib/api/challenges';
 import { getUser } from '@/lib/api/users';
 import { clientConfig } from '@/config/client.config';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('child/setup');
 
 function ChildSetupContent() {
   const [step, setStep] = useState(1);
@@ -30,12 +32,14 @@ function ChildSetupContent() {
   const [copied, setCopied] = useState(false);
   const [dealData, setDealData] = useState<{
     parentName: string;
+    parentGender?: 'male' | 'female';
     weeklyBudget: number;
     dailyBudget: number;
     dailyScreenTimeGoal: number;
     deviceType: 'ios' | 'android';
   }>({
     parentName: '',
+    parentGender: 'female',
     weeklyBudget: clientConfig.challenge.defaultSelectedBudget,
     dailyBudget: clientConfig.challenge.defaultSelectedBudget / clientConfig.challenge.budgetDivision,
     dailyScreenTimeGoal: clientConfig.challenge.defaultDailyScreenTimeGoal,
@@ -54,16 +58,16 @@ function ChildSetupContent() {
       if (!token) return;
       
       try {
-        console.log('[child/setup] Decoding token to get challenge data...');
+        logger.log('Decoding token to get challenge data...');
         const decoded = decodeParentToken(token);
         
         if (!decoded || decoded.isExpired) {
-          console.warn('[child/setup] Invalid or expired token');
+          logger.warn('Invalid or expired token');
           return;
         }
         
         const { parentId: decodedParentId, challengeId: decodedChallengeId, childId: decodedChildId } = decoded;
-        console.log('[child/setup] Decoded token:', { decodedParentId, decodedChallengeId, decodedChildId });
+        logger.log('Decoded token:', { decodedParentId, decodedChallengeId, decodedChildId });
         
         let challenge = null;
         
@@ -72,10 +76,10 @@ function ChildSetupContent() {
           try {
             challenge = await getChallenge(decodedChallengeId);
             if (challenge) {
-              console.log('[child/setup] Loaded challenge from token challengeId:', challenge);
+              logger.log('Loaded challenge from token challengeId:', challenge);
             }
           } catch (challengeError) {
-            console.error('[child/setup] Error loading challenge by ID:', challengeError);
+            logger.error('Error loading challenge by ID:', challengeError);
           }
         }
         
@@ -85,10 +89,10 @@ function ChildSetupContent() {
             const { getActiveChallenge } = await import('@/lib/api/challenges');
             challenge = await getActiveChallenge(decodedParentId);
             if (challenge) {
-              console.log('[child/setup] Loaded active challenge from parentId:', challenge);
+              logger.log('Loaded active challenge from parentId:', challenge);
             }
           } catch (activeChallengeError) {
-            console.error('[child/setup] Error loading active challenge:', activeChallengeError);
+            logger.error('Error loading active challenge:', activeChallengeError);
           }
         }
         
@@ -99,34 +103,38 @@ function ChildSetupContent() {
           const dailyBudget = weeklyBudget / clientConfig.challenge.budgetDivision;
           const dailyScreenTimeGoal = challenge.dailyScreenTimeGoal;
           
-          // Get parent data for parent name
+          // Get parent data for parent name and gender
           let parentName = '';
+          let parentGender: 'male' | 'female' = 'female';
           try {
             const parent = await getUser(decodedParentId);
             if (parent) {
               parentName = parent.firstName || '';
-              console.log('[child/setup] Loaded parent from Firestore:', parent.firstName);
+              parentGender = parent.gender || 'female';
+              logger.log('Loaded parent from Firestore:', parent.firstName);
             }
           } catch (parentError) {
-            console.error('[child/setup] Error loading parent:', parentError);
+            logger.error('Error loading parent:', parentError);
           }
           
-          // Get child data for deviceType
+          // Get child data for deviceType and gender
           let deviceType: 'ios' | 'android' = 'ios';
           if (decodedChildId) {
             try {
               const child = await getChild(decodedChildId);
               if (child) {
                 deviceType = child.deviceType;
-                console.log('[child/setup] Loaded child from Firestore, deviceType:', deviceType);
+                setChildGender(child.gender || 'boy');
+                logger.log('Loaded child from Firestore, deviceType:', deviceType, 'gender:', child.gender);
       }
             } catch (childError) {
-              console.error('[child/setup] Error loading child:', childError);
+              logger.error('Error loading child:', childError);
             }
           }
           
           setDealData({
             parentName,
+            parentGender,
             weeklyBudget,
             dailyBudget,
             dailyScreenTimeGoal,
@@ -136,7 +144,7 @@ function ChildSetupContent() {
           // Store challengeId for generating upload URL
           setChallengeId(challenge.id);
           
-          console.log('[child/setup] Set deal data from Firestore:', {
+          logger.log('Set deal data from Firestore:', {
             parentName,
             weeklyBudget,
             dailyBudget,
@@ -146,34 +154,32 @@ function ChildSetupContent() {
           });
         } else {
           // Fallback: if no challenge found, try to get parent data only
-          console.log('[child/setup] Challenge not available, using parent data only');
+          logger.log('Challenge not available, using parent data only');
           try {
             const parent = await getUser(decodedParentId);
             if (parent) {
               setDealData(prev => ({
                 ...prev,
-                parentName: parent.firstName || ''
+                parentName: parent.firstName || '',
+                parentGender: parent.gender || 'female'
               }));
             }
           } catch (parentError) {
-            console.error('[child/setup] Error loading parent as fallback:', parentError);
+            logger.error('Error loading parent as fallback:', parentError);
           }
         }
       } catch (error) {
-        console.error('[child/setup] Error loading challenge data:', error);
+        logger.error('Error loading challenge data:', error);
       }
     };
     
     loadChallengeData();
   }, [token]);
   
-  // Determine if parent is mom or dad
+  // Determine if parent is mom or dad using gender from Firestore
   const getParentTitle = () => {
-    const name = dealData.parentName.trim();
-    if (name.endsWith('ה') || name.endsWith('ית')) {
-      return 'אמא';
-    }
-    return 'אבא';
+    const gender = dealData.parentGender || 'female';
+    return gender === 'female' ? 'אמא' : 'אבא';
   };
 
   const parentTitle = getParentTitle();
@@ -190,45 +196,28 @@ function ChildSetupContent() {
     'גיבורה@הכי@טובה', 'כוכבת#הכי$מגניבה', 'לוחמת&הכי@גיבורה', 'מלכת$הכי#טובה', 'נסיכת&הכי@מגניבה'
   ];
 
-  const generateRandomNickname = async () => {
-    try {
-      // Get occupied nicknames
-      const occupiedNicknames = await getOccupiedNicknames();
-      
-      // Filter out occupied nicknames
-      const availableNicknames = nicknamePool.filter(
-        nickname => !occupiedNicknames.includes(nickname)
-      );
-      
-      // If all nicknames are occupied, use the full pool (allow duplicates)
-      const poolToUse = availableNicknames.length > 0 ? availableNicknames : nicknamePool;
-      
-      // Select random nickname from available pool
-      const randomIndex = Math.floor(Math.random() * poolToUse.length);
-      const randomNickname = poolToUse[randomIndex];
-      setSelectedNickname(randomNickname);
-    } catch (error) {
-      console.error('Error generating nickname:', error);
-      // Fallback to simple random selection if error
-    const randomNickname = nicknamePool[Math.floor(Math.random() * nicknamePool.length)];
+  const generateRandomNickname = () => {
+    // Select random nickname from pool (no uniqueness check)
+    const randomIndex = Math.floor(Math.random() * nicknamePool.length);
+    const randomNickname = nicknamePool[randomIndex];
     setSelectedNickname(randomNickname);
-    }
   };
 
-  // Digital games and prizes options for kids (translated to Hebrew)
+  // Gift options for kids (translated to Hebrew)
+  // Pre-shuffled order (randomized once and saved)
   const moneyGoalOptions = [
-    { id: 'roblox', label: 'Robux ל-Roblox' },
-    { id: 'minecraft', label: 'מטבעות Minecraft' },
-    { id: 'fortnite', label: 'V-Bucks ל-Fortnite' },
-    { id: 'nintendo', label: 'Nintendo eShop' },
-    { id: 'xbox', label: 'כרטיס מתנה Xbox' },
-    { id: 'playstation', label: 'חנות PlayStation' },
-    { id: 'discord', label: 'Discord Nitro' },
-    { id: 'twitch', label: 'Twitch Bits' },
-    { id: 'tiktok', label: 'מטבעות TikTok' },
-    { id: 'slime', label: 'סליים' },
+    { id: 'pizza-friend', label: 'פיצה עם חבר/ה' },
+    { id: 'craft-kit', label: 'ערכת יצירה' },
+    { id: 'escape-room', label: 'חדר בריחה' },
+    { id: 'lego', label: 'לגו (LEGO)' },
     { id: 'icecream', label: 'גלידה' },
-    { id: 'girlsseries', label: 'מתנת K-pop' }
+    { id: 'football', label: 'כדורגל' },
+    { id: 'save-money', label: 'אני רוצה לחסוך!' },
+    { id: 'supergoal-cards', label: 'קלפי סופרגול' },
+    { id: 'slime', label: 'סלַיים (Slime)' },
+    { id: 'popcorn', label: 'פופקורן (לסרט)' },
+    { id: 'playstation-game', label: 'משחק לפלייסטיישן' },
+    { id: 'lol-doll', label: 'בובת לאבובו' }
   ];
 
   // Validate URL token on mount
@@ -280,7 +269,7 @@ function ChildSetupContent() {
                 }
               }
             } catch (error) {
-              console.error('Error loading child data:', error);
+              logger.error('Error loading child data:', error);
             }
           }
         } else {
@@ -288,7 +277,7 @@ function ChildSetupContent() {
           setUrlError(validation.error || 'כתובת לא תקינה');
         }
       } catch (error) {
-        console.error('Error validating URL:', error);
+        logger.error('Error validating URL:', error);
         setUrlValid(false);
         setUrlError('שגיאה בבדיקת הכתובת');
       }
@@ -310,7 +299,7 @@ function ChildSetupContent() {
             setChildName(child.name);
           }
         } catch (error) {
-          console.error('[child/setup] Error loading child name:', error);
+          logger.error('Error loading child name:', error);
       }
       };
       loadChildName();
@@ -345,7 +334,7 @@ function ChildSetupContent() {
         
         setShowCompleteScreen(true);
       } catch (error) {
-        console.error('Error saving setup data:', error);
+        logger.error('Error saving setup data:', error);
         alert('שגיאה בשמירת הנתונים. נסה שוב.');
       } finally {
         setIsLoading(false);
@@ -372,6 +361,11 @@ function ChildSetupContent() {
     }
   };
 
+  // Reset scroll position when step changes or complete screen is shown
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step, showCompleteScreen]);
+
   // Generate upload URL with token (include challengeId if available)
   const uploadUrl = parentId 
     ? generateUploadUrl(parentId, validatedChildId || undefined, challengeId || undefined)
@@ -385,7 +379,7 @@ function ChildSetupContent() {
         setCopied(false);
       }, 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      logger.error('Failed to copy:', err);
     }
   };
 
@@ -425,10 +419,7 @@ function ChildSetupContent() {
               כתובת לא תקינה
             </h1>
             <p className="font-varela text-base text-[#282743] mb-4">
-              {urlError || 'הכתובת ששותפה איתך לא תקינה או שכבר הושלמה ההגדרה.'}
-            </p>
-            <p className="font-varela text-sm text-[#948DA9]">
-              בדוק עם ההורה שלך לקבלת כתובת חדשה.
+              כנראה שכבר סיימת את השלב הזה, תפנה להורה שלך לקבל כתובת עדכנית.
             </p>
           </div>
         </div>
@@ -462,6 +453,7 @@ function ChildSetupContent() {
               width={120}
               height={120}
               className="object-contain"
+              style={{ width: 'auto', height: 'auto' }}
             />
           </div>
 
@@ -473,42 +465,14 @@ function ChildSetupContent() {
             </div>
 
             <div className="rounded-[18px] p-6 mb-6">
-              <h2 className="font-varela font-semibold text-lg text-[#262135] mb-4 text-center">
-                {childGender === 'boy' ? 'שמור' : 'שמרי'} את הכתובת הזו במקום בטוח!
-              </h2>
-              <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
-                כל יום {childGender === 'boy' ? 'תצטרך' : 'תצטרכי'} להיכנס לכתובת הזו ולהעלות את צילום המסך שלך של זמן מסך
-              </p>
-              
-              <div className="bg-white rounded-[12px] p-4 mb-4">
-                <p className="font-varela text-xs text-[#948DA9] mb-2 text-center">הכתובת שלך:</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={uploadUrl}
-                    readOnly
-                    className="flex-1 p-2 border-2 border-gray-200 rounded-[8px] font-varela text-xs text-[#282743] bg-gray-50"
-                  />
-                  <button
-                    onClick={handleCopyUrl}
-                    className={`px-4 py-2 rounded-[8px] font-varela font-semibold text-xs transition-all ${
-                      copied
-                        ? 'bg-[#E6F19A] text-[#273143]'
-                        : 'bg-[#273143] text-white hover:bg-opacity-90'
-                    }`}
-                  >
-                    {copied ? 'הועתק! ✓' : 'העתק'}
-                  </button>
-                </div>
-              </div>
-
+              {/* Video Container - First, right after title */}
               <div className="bg-white rounded-[12px] p-4 mb-4">
                 <h3 className="font-varela font-semibold text-sm text-[#262135] mb-3 text-center">
                   איך להעלות צילום מסך של זמן מסך?
                 </h3>
 
                 {/* Video Container - Full width for long video */}
-                <div className="relative w-full bg-gray-100 rounded-[8px] overflow-hidden mb-3" style={{ minHeight: '300px' }}>
+                <div className="relative w-full bg-gray-100 rounded-[8px] overflow-hidden mb-3" style={{ minHeight: '195px' }}>
                   {dealData.deviceType === 'ios' ? (
                     <video
                       controls
@@ -537,6 +501,37 @@ function ChildSetupContent() {
                 </div>
               </div>
 
+              {/* Important message with URL - Second */}
+              <h2 className="font-varela font-semibold text-lg text-[#262135] mb-4 text-center">
+                {childGender === 'boy' ? 'שמור' : 'שמרי'} את הכתובת הזו במקום בטוח!
+              </h2>
+              <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
+                כל יום {childGender === 'boy' ? 'תצטרך' : 'תצטרכי'} להיכנס לכתובת הזו ולהעלות את צילום המסך שלך של זמן מסך כמו שמופיע בסרטון.
+              </p>
+              
+              <div className="bg-white rounded-[12px] p-4 mb-4">
+                <p className="font-varela text-xs text-[#948DA9] mb-2 text-center">הכתובת שלך:</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={uploadUrl}
+                    readOnly
+                    className="flex-1 p-2 border-2 border-gray-200 rounded-[8px] font-varela text-xs text-[#282743] bg-gray-50"
+                  />
+                  <button
+                    onClick={handleCopyUrl}
+                    className={`px-4 py-2 rounded-[8px] font-varela font-semibold text-xs transition-all ${
+                      copied
+                        ? 'bg-[#E6F19A] text-[#273143]'
+                        : 'bg-[#273143] text-white hover:bg-opacity-90'
+                    }`}
+                  >
+                    {copied ? 'הועתק! ✓' : 'העתק'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Tip - Third */}
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4">
                 <p className="font-varela text-xs text-[#262135] text-center leading-relaxed">
                   <strong>טיפ:</strong> {childGender === 'boy' ? 'שמור' : 'שמרי'} את הכתובת בקיצור דרך או {childGender === 'boy' ? 'שלח' : 'שלחי'} אותה לעצמך בהודעה כדי ש{childGender === 'boy' ? 'תוכל' : 'תוכלי'} לגשת אליה כל יום בקלות!
@@ -633,7 +628,7 @@ function ChildSetupContent() {
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
                   <p className="font-varela text-sm text-[#948DA9] mb-1">יעד זמן מסך יומי:</p>
                   <p className="font-varela font-bold text-2xl text-[#262135]">
-                    {dealData.dailyScreenTimeGoal} שעות
+                    {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}
                   </p>
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
@@ -650,12 +645,12 @@ function ChildSetupContent() {
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
                   <p className="font-varela text-xs text-[#282743] text-center leading-relaxed">
-                    אם {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תעמודי' : 'תעמוד') : 'תעמוד'} ביעד של {dealData.dailyScreenTimeGoal} שעות ביום, {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
+                    אם {childName ? (childGender === 'girl' ? 'תעמודי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
                   </p>
                 </div>
                 <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">
                   <p className="font-varela text-xs text-[#262135] text-center leading-relaxed font-semibold">
-                    האתגר נמשך 6 ימים: מיום ראשון עד יום שישי. יום שבת הוא יום הפדיון שבו {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'תוכלי' : 'תוכל') : 'תוכל'} לראות כמה כסף {childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'צברת' : 'צברת') : 'צברת'} ולפדות אותו!
+                    האתגר נמשך 6 ימים ויום הפדיון הוא היום ה-7. ביום הפדיון {childName ? (childGender === 'girl' ? 'תוכלי' : 'תוכל') : 'תוכל'} לראות כמה כסף {childName ? (childGender === 'girl' ? 'צברת' : 'צברת') : 'צברת'} ולפדות אותו!
                   </p>
                 </div>
               </div>
@@ -668,7 +663,7 @@ function ChildSetupContent() {
                 מה תרצה לעשות עם הכסף?
               </h2>
               <p className="font-varela text-sm text-[#948DA9] mb-4 text-center">
-                בחר כמה ש{childName ? (childName.endsWith('ה') || childName.endsWith('ית') ? 'את' : 'אתה') : 'אתה'} רוצה (ניתן לבחור יותר מאחד)
+                בחר כמה ש{childName ? (childGender === 'girl' ? 'את' : 'אתה') : 'אתה'} רוצה (ניתן לבחור יותר מאחד)
               </p>
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {moneyGoalOptions.map((option, index) => {
@@ -705,7 +700,7 @@ function ChildSetupContent() {
         </div>
 
         {/* Navigation buttons */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 mb-8">
           {step > 1 && (
             <button
               onClick={handleBack}

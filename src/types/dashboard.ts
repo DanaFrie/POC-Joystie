@@ -3,6 +3,7 @@ export interface Parent {
   id: string;
   googleAuth: any; // Replace with proper Google Auth type
   profilePicture: string;
+  gender?: 'male' | 'female';
 }
 
 export interface Child {
@@ -10,6 +11,8 @@ export interface Child {
   id: string;
   profilePicture: string;
   gender?: 'boy' | 'girl';
+  nickname?: string;
+  moneyGoals?: string[];
 }
 
 export interface Challenge {
@@ -45,16 +48,18 @@ export interface Today {
 export interface WeekDay {
   dayName: string;
   date: string;
-  status: 'success' | 'warning' | 'pending' | 'missing' | 'future' | 'redemption' | 'awaiting_approval' | 'rejected';
+  status: 'success' | 'warning' | 'missing' | 'future' | 'redemption' | 'awaiting_approval';
   coinsEarned: number;
   screenTimeUsed: number;
   screenTimeGoal: number;
   isRedemptionDay: boolean;
   requiresApproval?: boolean; // האם דורש אישור הורה
   uploadedAt?: string; // תאריך ושעה של העלאה
-  parentAction?: 'approved' | 'rejected' | null; // פעולה של ההורה
+  parentAction?: 'approved' | null; // פעולה של ההורה
+  screenTimeMinutes?: number; // דקות זמן מסך (לצורך הצגה והכנסה ידנית)
   screenshotUrl?: string; // קישור לצילום מסך שהועלה
   apps?: App[]; // אפליקציות ששימשו באותו יום
+  approvalType?: 'manual' | 'automatic'; // האם האישור היה ידני או אוטומטי
 }
 
 export interface WeeklyTotals {

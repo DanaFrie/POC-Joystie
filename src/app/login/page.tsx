@@ -8,6 +8,9 @@ import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth'
 import { getUser, getUserByUsername } from '@/lib/api/users';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { getErrorMessage } from '@/utils/errors';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Login');
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -20,7 +23,7 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState<string>('');
   const router = useRouter();
 
-  // Check if already logged in - wait for Firebase Auth to be ready
+  // Check if already logged in - optimized for faster page load
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
       // Check localStorage session first (quick check)
@@ -28,10 +31,7 @@ export default function LoginPage() {
         return; // Not logged in, stay on login page
       }
       
-      // Wait a bit for Firebase Auth to initialize
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Check Firebase Auth
+      // Check Firebase Auth immediately without delay
       try {
         const { isAuthenticated } = await import('@/utils/auth');
         const authenticated = await isAuthenticated();
@@ -40,11 +40,11 @@ export default function LoginPage() {
           await checkUserAndRedirect();
         } else {
           // Has localStorage session but not Firebase Auth - clear session and stay on login
-          console.warn('[Login] localStorage session exists but Firebase Auth not authenticated');
+          logger.warn('localStorage session exists but Firebase Auth not authenticated');
           // Don't redirect - let user log in again
         }
       } catch (error) {
-        console.error('[Login] Error checking auth:', error);
+        logger.error('Error checking auth:', error);
         // On error, stay on login page
       }
     };
@@ -72,7 +72,7 @@ export default function LoginPage() {
         router.push('/onboarding');
       }
     } catch (error) {
-      console.error('Error checking user:', error);
+      logger.error('Error checking user:', error);
       router.push('/onboarding');
     }
   };
@@ -114,6 +114,11 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return;
+    }
     
     if (!validateForm()) {
       return;
@@ -160,8 +165,8 @@ export default function LoginPage() {
       // Check if user has an active challenge and redirect accordingly
       const challenge = await getActiveChallenge(firebaseUser.uid);
       
-      setIsSubmitting(false);
-      
+      // Keep isSubmitting true during redirect to prevent multiple clicks
+      // It will be reset when component unmounts or on error
       if (challenge) {
         // User has active challenge, go to dashboard
         router.push('/dashboard');
@@ -170,7 +175,7 @@ export default function LoginPage() {
         router.push('/onboarding');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       const errorMessage = getErrorMessage(error);
       setLoginError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
       setIsSubmitting(false);

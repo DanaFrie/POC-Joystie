@@ -1,4 +1,7 @@
 // Firestore retry utility with exponential backoff
+import { createContextLogger } from './logger';
+
+const logger = createContextLogger('Firestore Retry');
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -86,7 +89,7 @@ export async function withRetry<T>(
         opts.backoffMultiplier
       );
       
-      console.warn(
+      logger.warn(
         `Firestore operation failed (attempt ${attempt + 1}/${opts.maxRetries + 1}), retrying in ${delay}ms...`,
         error
       );

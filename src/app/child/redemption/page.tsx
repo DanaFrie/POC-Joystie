@@ -10,6 +10,12 @@ import { getChild } from '@/lib/api/children';
 import { getUser } from '@/lib/api/users';
 import { validateRedemptionUrl, isRedemptionCompleted } from '@/utils/url-validation';
 import { deactivateChallenge } from '@/lib/api/challenges';
+import { getFirestoreInstance } from '@/lib/firebase';
+import { generateUploadUrl } from '@/utils/url-encoding';
+import type { FirestoreDailyUpload } from '@/types/firestore';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Redemption');
 
 function ChildRedemptionContent() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -65,7 +71,7 @@ function ChildRedemptionContent() {
           setUrlError(validation.error || 'כתובת לא תקינה');
         }
       } catch (error) {
-        console.error('Error validating URL:', error);
+        logger.error('Error validating URL:', error);
         setUrlValid(false);
         setUrlError('שגיאה בבדיקת הכתובת');
       }
@@ -104,7 +110,7 @@ function ChildRedemptionContent() {
           });
         }
       } catch (e) {
-        console.error('Error loading data from Firebase:', e);
+        logger.error('Error loading data from Firebase:', e);
       }
     };
 
@@ -145,7 +151,7 @@ function ChildRedemptionContent() {
           setTotalEarnings(total);
         }
       } catch (e) {
-        console.error('Error loading total earnings:', e);
+        logger.error('Error loading total earnings:', e);
       }
     };
 
@@ -167,18 +173,13 @@ function ChildRedemptionContent() {
         const startDate = new Date(challenge.startDate);
         startDate.setHours(0, 0, 0, 0);
         
-        // Find the start of the challenge week (Sunday)
-        const challengeStartDay = startDate.getDay(); // 0 = Sunday
-        const challengeSunday = new Date(startDate);
-        challengeSunday.setDate(startDate.getDate() - challengeStartDay);
+        // Redemption day is 7 days after start date (day 6, index 6)
+        const redemptionDate = new Date(startDate);
+        redemptionDate.setDate(startDate.getDate() + 6);
         
-        // Saturday is day 6 (Sunday = 0, Monday = 1, ..., Saturday = 6)
-        const challengeSaturday = new Date(challengeSunday);
-        challengeSaturday.setDate(challengeSunday.getDate() + 6);
-        
-        setRedemptionDate(challengeSaturday.toLocaleDateString('he-IL'));
+        setRedemptionDate(redemptionDate.toLocaleDateString('he-IL'));
       } catch (error) {
-        console.error('Error calculating redemption date:', error);
+        logger.error('Error calculating redemption date:', error);
         setRedemptionDate('');
       }
     };
@@ -189,103 +190,110 @@ function ChildRedemptionContent() {
   // Use ref to store timer so it persists across re-renders
   const autoApproveTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Check if we came from last upload - if so, show awaiting approval
+  // Realtime listener for upload status changes - checks for all approvals
   useEffect(() => {
-    if (lastEarnings > 0 && challengeId && parentId) {
-      // Reset approval state when coming from last upload
-      setAwaitingParentApproval(true);
-      setLastApproved(false);
-      
-      // Clear any existing timer
-      if (autoApproveTimerRef.current) {
-        clearTimeout(autoApproveTimerRef.current);
-        autoApproveTimerRef.current = null;
-      }
-      
-      // Check Firebase for last pending approval status (lean query)
-      const checkLastApproval = async () => {
-        // Early exit if already approved
-        if (lastApproved) {
-          return true;
-        }
+    if (!challengeId || !parentId) return;
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    const setupRealtimeListener = async () => {
+      try {
+        const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+        const db = await getFirestoreInstance();
+        const uploadsRef = collection(db, 'daily_uploads');
         
-        try {
-          // Lean query: only fetch pending approvals for this challenge (limit 1)
-          const { getPendingApprovalsByChallenge } = await import('@/lib/api/uploads');
-          const pendingUploads = await getPendingApprovalsByChallenge(challengeId, parentId);
+        // Listen to all uploads for this challenge
+        const q = query(
+          uploadsRef,
+          where('challengeId', '==', challengeId),
+          where('parentId', '==', parentId)
+        );
+        
+        unsubscribe = onSnapshot(q, async (snapshot) => {
+          const uploads = snapshot.docs.map(doc => doc.data() as FirestoreDailyUpload);
           
-          // If no pending approvals, the last one was approved
-          if (pendingUploads.length === 0) {
-            // Stop polling and update state
-            if (autoApproveTimerRef.current) {
-              clearTimeout(autoApproveTimerRef.current);
-              autoApproveTimerRef.current = null;
+          
+          // Use getDashboardData to check status of all days (excludes redemption day automatically)
+          try {
+            const { getDashboardData } = await import('@/lib/api/dashboard');
+            const dashboardData = await getDashboardData(parentId, false); // Skip cache for real-time updates
+            
+            if (dashboardData && dashboardData.week) {
+              
+              // Check for days needing approval (excluding redemption day)
+              const daysNeedingApproval = dashboardData.week.filter(day => 
+                !day.isRedemptionDay && 
+                (day.status === 'awaiting_approval' || 
+                 (day.requiresApproval && !day.parentAction))
+              );
+              
+              // Check if all days are approved (excluding redemption day)
+              const nonRedemptionDays = dashboardData.week.filter(day => !day.isRedemptionDay);
+              const allApproved = nonRedemptionDays.every(day => 
+                day.status === 'success' || 
+                day.status === 'warning' ||
+                (day.parentAction === 'approved')
+              );
+              
+              // If all approved and no pending, update state
+              if (allApproved && daysNeedingApproval.length === 0 && nonRedemptionDays.length > 0) {
+                logger.log('All days approved, showing redemption options');
+                setAwaitingParentApproval(false);
+                setLastApproved(true);
+                
+                // Recalculate total earnings from approved uploads
+                const approvedUploads = uploads.filter(u => u.parentAction === 'approved');
+                const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
+                if (total > 0) {
+                  setTotalEarnings(total);
+                }
+              } else if (daysNeedingApproval.length > 0) {
+                // Still waiting for approval
+                logger.log('Still waiting for approval:', daysNeedingApproval.length, 'days');
+                setAwaitingParentApproval(true);
+                setLastApproved(false);
+              }
             }
-            setAwaitingParentApproval(false);
-            setLastApproved(true);
-            return true;
+          } catch (error) {
+            logger.error('Error checking approval status:', error);
           }
-          
-          // Still pending
-          return false;
-        } catch (e) {
-          console.error('Error checking last approval:', e);
-          return false;
-        }
-      };
-      
-      // Check initial state
-      checkLastApproval();
-      
-      // Listen for approval event from dashboard
-      const handleLastApproved = (event: CustomEvent) => {
-        // Cancel auto-approve if parent already approved
-        if (autoApproveTimerRef.current) {
-          clearTimeout(autoApproveTimerRef.current);
-          autoApproveTimerRef.current = null;
-        }
-        setAwaitingParentApproval(false);
-        setLastApproved(true);
-      };
-      
-      // Listen for approval event
-      window.addEventListener('lastApproved', handleLastApproved as EventListener);
-      
-      // Check Firebase periodically for approval status (stops when approved)
-      let checkInterval: NodeJS.Timeout | null = null;
-      const startPolling = () => {
-        if (checkInterval) return; // Already polling
-        
-        checkInterval = setInterval(async () => {
-          const approved = await checkLastApproval();
-          if (approved && checkInterval) {
-            // Stop polling once approved
-            clearInterval(checkInterval);
-            checkInterval = null;
-          }
-        }, 6000); // Check every 6 seconds
-      };
-      
-      startPolling();
-      
-      return () => {
-        if (autoApproveTimerRef.current) {
-          clearTimeout(autoApproveTimerRef.current);
-          autoApproveTimerRef.current = null;
-        }
-        window.removeEventListener('lastApproved', handleLastApproved as EventListener);
-        if (checkInterval) {
-        clearInterval(checkInterval);
-          checkInterval = null;
-        }
-      };
-    }
-  }, [lastEarnings, challengeId, parentId]);
+        }, (error) => {
+          logger.error('Error in realtime listener:', error);
+        });
+      } catch (error) {
+        logger.error('Error setting up realtime listener:', error);
+      }
+    };
+    
+    setupRealtimeListener();
+    
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [challengeId, parentId, validatedChildId, router]);
+  
+  // Listen for approval event from dashboard (cross-tab communication)
+  // The realtime listener above handles most cases, but this is for immediate updates
+  useEffect(() => {
+    const handleLastApproved = (event: CustomEvent) => {
+      logger.log('Received lastApproved event from dashboard');
+      setAwaitingParentApproval(false);
+      setLastApproved(true);
+    };
+    
+    window.addEventListener('lastApproved', handleLastApproved as EventListener);
+    
+    return () => {
+      window.removeEventListener('lastApproved', handleLastApproved as EventListener);
+    };
+  }, []);
 
   // Gender pronouns for child
   const childPronouns = {
-    boy: { he: 'הוא', him: 'אותו', his: 'שלו', earned: 'צבר', wants: 'תרצה', get: 'קבל', save: 'שמור', earn: 'תרוויח' },
-    girl: { he: 'היא', him: 'אותה', his: 'שלה', earned: 'צברה', wants: 'תרצי', get: 'קבלי', save: 'שמרי', earn: 'תרוויחי' }
+    boy: { he: 'הוא', him: 'אותו', his: 'שלו',  needs: 'צריך', wants: 'תרצה', get: 'קבל', save: 'שמור', earn: 'תרוויח' },
+    girl: { he: 'היא', him: 'אותה', his: 'שלה',  needs: 'צריכה', wants: 'תרצי', get: 'קבלי', save: 'שמרי', earn: 'תרוויחי' }
   };
   const childP = childPronouns[childGender as 'boy' | 'girl'] || childPronouns.boy;
 
@@ -302,8 +310,8 @@ function ChildRedemptionContent() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { they: 'היא', them: 'אותה', their: 'שלה', with: 'איתה', offers: 'מציעה', decide: 'תחליט', approved: 'אישרה' },
-    male: { they: 'הוא', them: 'אותו', their: 'שלו', with: 'איתו', offers: 'מציע', decide: 'יחליט', approved: 'אישר' }
+    female: { they: 'היא', them: 'אותה', their: 'שלה', with: 'איתה', offers: 'מציעה', decide: 'תחליט', approved: 'אישרה', needs: 'צריכה' },
+    male: { they: 'הוא', them: 'אותו', their: 'שלו', with: 'איתו', offers: 'מציע', decide: 'יחליט', approved: 'אישר', needs: 'צריך' }
   };
   const parentP = parentPronouns[childData.parentGender as 'female' | 'male'] || parentPronouns.female;
 
@@ -311,7 +319,7 @@ function ChildRedemptionContent() {
     { id: 'cash', label: 'מזומן 💵', description: `${childP.get} את הכסף במטבעות או שטרות ישר אלייך` },
     { id: 'gift', label: 'מתנה 🎁', description: `בחר מתנה מתוך מה ש${parentName} ${parentP.offers} לך` },
     { id: 'activity', label: 'פעילות 🎮', description: `הצע ל${parentName} חוויה ש${childP.he === 'היא' ? 'היית' : 'היית'} רוצה ${parentP.with}` },
-    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון ו${childP.earn} חצי שקל על כל שבוע שהוא שם` }
+    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון\nו${childP.earn} חצי שקל על כל שבוע שהוא שם` }
   ];
 
   const handleRedemption = async () => {
@@ -334,10 +342,9 @@ function ChildRedemptionContent() {
       // For now, just show success
       setTimeout(() => {
         setIsProcessing(false);
-        alert('הפדיון בוצע בהצלחה!');
       }, 2000);
     } catch (error) {
-      console.error('Error processing redemption:', error);
+      logger.error('Error processing redemption:', error);
       setIsProcessing(false);
       alert('שגיאה בעיבוד הפדיון. נסה שוב.');
     }
@@ -385,13 +392,13 @@ function ChildRedemptionContent() {
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
             <div className="text-6xl mb-4">✅</div>
             <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
-              הפדיון הושלם!
+              הפדיון בוצע בהצלחה!
             </h1>
             <p className="font-varela text-base text-[#282743] mb-4">
-              הפדיון בוצע בהצלחה. הכתובת הזו לא פעילה יותר.
+              לשבוע הבא, ההורה ישלח לך כתובת חדשה.
             </p>
             <p className="font-varela text-sm text-[#948DA9]">
-              לשבוע הבא, ההורה שלך ישלח לך כתובת חדשה.
+              הכתובת הזו לא פעילה יותר
             </p>
           </div>
         </div>
@@ -400,8 +407,18 @@ function ChildRedemptionContent() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent pb-24">
-      <div className="max-w-md mx-auto px-4 py-8 relative">
+    <div className="min-h-screen bg-transparent pb-24 relative">
+      {/* Loading overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="font-varela text-lg text-[#262135] mb-4">מעבד...</div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#262135] mx-auto"></div>
+          </div>
+        </div>
+      )}
+      
+      <div className={`max-w-md mx-auto px-4 py-8 relative ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* Piggy Bank - פינה ימנית עליונה */}
         <div className="absolute right-0 top-0 z-10">
           <Image
@@ -410,6 +427,7 @@ function ChildRedemptionContent() {
             width={120}
             height={120}
             className="object-contain"
+            style={{ width: 'auto', height: 'auto' }}
           />
         </div>
 
@@ -421,9 +439,9 @@ function ChildRedemptionContent() {
               ממתין לאישור של {parentName}...
             </h1>
             <p className="font-varela text-base text-[#282743] mb-4 leading-relaxed">
-              {childName}, העלית את ההעלאה האחרונה ו{childP.earned} <strong className="text-[#273143]">₪{lastEarnings.toFixed(1)}</strong>!
+              {childName}, העלית את ההעלאה האחרונה וצברת <strong className="text-[#273143]">₪{lastEarnings.toFixed(1)}</strong>!
               <br />
-              עכשיו צריך את האישור של {parentName} כדי לראות את כל מה ש{childP.earned} השבוע.
+              עכשיו {childP.needs} את האישור של {parentName} כדי לראות את כל מה שצברת השבוע.
             </p>
             <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mt-4">
               <p className="font-varela text-sm text-[#948DA9] mb-1">סכום ההעלאה האחרונה:</p>
@@ -432,7 +450,7 @@ function ChildRedemptionContent() {
               </p>
             </div>
             <p className="font-varela text-sm text-[#282743] mt-4">
-              {parentName} צריך לאשר את ההעלאה בדשבורד {parentP.their} כדי שתוכל לראות את כל הסכום.
+              {parentName} {parentP.needs} לאשר את ההעלאה בלוח הבקרה {parentP.their} כדי שתוכל לראות את כל הסכום.
             </p>
           </div>
         )}
@@ -468,7 +486,7 @@ function ChildRedemptionContent() {
                 יום הפדיון!
               </h1>
               <p className="font-varela text-base text-[#282743] mb-4">
-                {childName}, {childP.earned} השבוע:
+                {childName} צברת השבוע:
               </p>
               <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
                 <p className="font-varela font-bold text-3xl text-[#262135]">
@@ -501,7 +519,7 @@ function ChildRedemptionContent() {
                     <h3 className="font-varela font-semibold text-base text-[#282743] mb-1">
                       {option.label}
                     </h3>
-                    <p className="font-varela text-sm text-[#948DA9] whitespace-nowrap overflow-hidden text-ellipsis">
+                    <p className="font-varela text-sm text-[#948DA9] whitespace-pre-line">
                       {option.description}
                     </p>
                   </div>
@@ -526,7 +544,7 @@ function ChildRedemptionContent() {
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isProcessing ? 'מעבד...' : 'קח את הכסף!'}
+            קח את הכסף!
           </button>
         )}
 

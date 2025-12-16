@@ -9,7 +9,6 @@ interface DayApprovalModalProps {
   day: WeekDay;
   childName: string;
   onApprove: (dayDate: string) => void;
-  onReject: (dayDate: string) => void;
   onClose: () => void;
 }
 
@@ -17,7 +16,6 @@ export default function DayApprovalModal({
   day, 
   childName, 
   onApprove, 
-  onReject, 
   onClose 
 }: DayApprovalModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,13 +24,6 @@ export default function DayApprovalModal({
   const handleApprove = async () => {
     setIsProcessing(true);
     await onApprove(day.date);
-    setIsProcessing(false);
-    onClose();
-  };
-
-  const handleReject = async () => {
-    setIsProcessing(true);
-    await onReject(day.date);
     setIsProcessing(false);
     onClose();
   };
@@ -105,16 +96,9 @@ export default function DayApprovalModal({
         {/* Actions */}
         <div className="flex gap-3 mt-6">
           <button
-            onClick={handleReject}
-            disabled={isProcessing}
-            className="flex-1 py-3 px-4 rounded-[12px] font-varela font-semibold text-base bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all disabled:opacity-50"
-          >
-            {isProcessing ? 'מעבד...' : 'דחה / בקש תיקון'}
-          </button>
-          <button
             onClick={handleApprove}
             disabled={isProcessing}
-            className="flex-1 py-3 px-4 rounded-[12px] font-varela font-semibold text-base bg-[#273143] text-white hover:bg-opacity-90 transition-all disabled:opacity-50"
+            className="w-full py-3 px-4 rounded-[12px] font-varela font-semibold text-base bg-[#273143] text-white hover:bg-opacity-90 transition-all disabled:opacity-50"
           >
             {isProcessing ? 'מעבד...' : 'אשר'}
           </button>

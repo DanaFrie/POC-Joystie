@@ -59,17 +59,16 @@ export interface FirestoreDailyUpload {
   date: string; // Format: "DD/MM"
   dayName: string; // Hebrew day name
   screenTimeUsed: number; // שעות
+  screenTimeMinutes?: number; // דקות זמן מסך (לצורך הצגה והכנסה ידנית)
   screenTimeGoal: number; // שעות
   coinsEarned: number; // שקלים
   coinsMaxPossible: number; // שקלים
   success: boolean; // האם עמד ביעד
-  screenshotUrl?: string; // Cloud Storage URL
-  screenshotStoragePath?: string; // Path in Cloud Storage
+  screenshotUrl?: string; // Screenshot URL (data URL or external URL)
   requiresApproval: boolean;
-  parentAction?: 'approved' | 'rejected' | null;
+  parentAction?: 'approved' | null;
   uploadedAt: string; // ISO timestamp
   approvedAt?: string; // ISO timestamp
-  rejectedAt?: string; // ISO timestamp
   apps?: Array<{
     name: string;
     timeUsed: number;
