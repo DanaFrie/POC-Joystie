@@ -3,7 +3,8 @@
 # This script detects the current branch and copies the appropriate config files
 # Usage: ./scripts/sync-branch-config.sh [branch]
 
-set -e
+# Don't exit on error - we want to continue even if branch detection fails
+set +e
 
 # Get branch from parameter or detect from git/environment
 BRANCH="${1:-}"
@@ -34,10 +35,21 @@ if [ -z "$BRANCH" ]; then
         fi
     fi
     
-    # If still no branch and apphosting.prod.yaml exists, assume main branch
+    # If still no branch, check if apphosting.prod.yaml exists (indicates main branch)
     if [ -z "$BRANCH" ] && [ -f "apphosting.prod.yaml" ]; then
         echo "Info: apphosting.prod.yaml found, assuming main branch" >&2
         BRANCH="main"
+    fi
+    
+    # Last resort: check current apphosting.yaml content to infer branch
+    if [ -z "$BRANCH" ] && [ -f "apphosting.yaml" ]; then
+        if grep -q "FIREBASE_API_KEY_PROD_SECRET" apphosting.yaml 2>/dev/null; then
+            echo "Info: apphosting.yaml contains PROD secrets, assuming main branch" >&2
+            BRANCH="main"
+        elif grep -q "FIREBASE_API_KEY_INTGR_SECRET" apphosting.yaml 2>/dev/null; then
+            echo "Info: apphosting.yaml contains INTGR secrets, assuming intgr branch" >&2
+            BRANCH="intgr"
+        fi
     fi
     
     if [ -z "$BRANCH" ]; then
@@ -45,6 +57,9 @@ if [ -z "$BRANCH" ]; then
         BRANCH="intgr"
     fi
 fi
+
+# Re-enable exit on error for the rest of the script
+set -e
 
 echo "Current branch: $BRANCH"
 echo ""
