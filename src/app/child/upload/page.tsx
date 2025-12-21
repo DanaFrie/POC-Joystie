@@ -1157,22 +1157,21 @@ function ChildUploadContent() {
       youFuture: isBoy ? 'תוכל' : 'תוכלי',
       youWill: isBoy ? 'תרוויח' : 'תרוויחי',
       youStart: isBoy ? 'תתחיל' : 'תתחילי',
-      youUpload: isBoy ? 'אתה מעלה' : 'את מעלה',
+
       youEarn: isBoy ? 'אתה מרוויח' : 'את מרוויחה',
       youGo: isBoy ? 'תעבור' : 'תעברי',
       youNeed: isBoy ? 'תצטרך' : 'תצטרכי',
       youWant: isBoy ? 'רוצה' : 'רוצה',
       youCan: isBoy ? 'יכול' : 'יכולה',
       youCanPlural: isBoy ? 'יכולים' : 'יכולות',
-      youUploaded: isBoy ? 'העלית' : 'העלית',
-      youAccumulated: isBoy ? 'צברת' : 'צברת',
+ 
       youStood: isBoy ? 'עמדת' : 'עמדת',
       youTry: isBoy ? 'נסה' : 'נסי',
       youTryAgain: isBoy ? 'נסה שוב' : 'נסי שוב',
       youSucceeded: isBoy ? 'הצלחת' : 'הצלחת',
       youWillMeet: isBoy ? 'תפגשו' : 'תפגשו',
       youWillWin: isBoy ? 'תוכל לזכות' : 'תוכלי לזכות',
-      youAccumulatedWhat: isBoy ? 'צברת' : 'צברת',
+   
       watchWithParent: isBoy ? 'צפה עם' : 'צפי עם'
     };
   };
@@ -1223,9 +1222,9 @@ function ChildUploadContent() {
     const coinsEarnedText = uploadResult.coinsEarned === 1 ? 'שקל' : 'שקלים';
     const weeklyTotalText = weeklyTotal === 1 ? 'שקל' : 'שקלים';
     if (isYesterday || isDayBeforeYesterday) {
-      dayMessage = `${selectedDay.displayText} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} ${coinsEarnedText}, סה"כ ${childP.youAccumulated} ${formatNumber(weeklyTotal)} ${weeklyTotalText} השבוע`;
+      dayMessage = `${selectedDay.displayText} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} ${coinsEarnedText}, סה"כ צברת ${formatNumber(weeklyTotal)} ${weeklyTotalText} השבוע`;
     } else {
-      dayMessage = `ביום ${selectedDay.dayName} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} ${coinsEarnedText}, סה"כ ${childP.youAccumulated} ${formatNumber(weeklyTotal)} ${weeklyTotalText} השבוע`;
+      dayMessage = `ביום ${selectedDay.dayName} ${childP.youPast} ${timeText} בטלפון ו${childP.youSucceeded} לצבור ${formatNumber(uploadResult.coinsEarned)} ${coinsEarnedText}, סה"כ צברת ${formatNumber(weeklyTotal)} ${weeklyTotalText} השבוע`;
     }
 
     // Success message based on goal and gender
@@ -1281,9 +1280,9 @@ function ChildUploadContent() {
                         const parentP = getParentPronouns();
                         return (
                           <>
-                            בכל מקרה {parentName} {parentP.needs} לאשר לך את הסטטוס ש{childP.youUploaded}!
+                            בכל מקרה {parentName} {parentP.needs} לאשר לך את הסטטוס ש{childP.you} מעלה!
                             <br />
-                            בסוף השבוע {childP.youWillMeet} כאן ו{childP.youWillWin} במה ש{childP.youAccumulatedWhat}
+                            בסוף השבוע {childP.youWillMeet} כאן ו{childP.youWillWin} במה שצברת
                           </>
                         );
                       })()}
@@ -1617,7 +1616,7 @@ function ChildUploadContent() {
                 <h2 className="font-varela font-semibold text-lg text-[#262135] text-center">
                   {(() => {
                     const childP = getChildPronouns();
-                    return `איזה יום ${childP.youUpload}?`;
+                    return `איזה יום ${childP.you} מעלה?`;
                   })()}
                 </h2>
                 <p className="font-varela text-sm text-[#948DA9] text-center">
@@ -1660,7 +1659,7 @@ function ChildUploadContent() {
                         🎉 התראה חגיגית!
                       </p>
                       <p className="font-varela text-sm text-[#262135] text-center leading-relaxed mb-3">
-                        {childP.youUpload} סטטוס של {selectedDay.dayName} {selectedDay.dateStr} - זה היום האחרון שנשאר להעלות בשבוע! זה אומר שאוטוטו {childP.youEarn} את הזכייה {childGender === 'boy' ? 'שלך' : 'שלך'}!
+                        {childP.you} מעלה סטטוס של {selectedDay.dayName} {selectedDay.dateStr} - זה היום האחרון שנשאר להעלות בשבוע! זה אומר שאוטוטו {childP.youEarn} את הזכייה {childGender === 'boy' ? 'שלך' : 'שלך'}!
                       </p>
                       <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
                         ודא ש{parentName} לידך כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור של {parentName}.

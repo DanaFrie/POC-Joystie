@@ -1,5 +1,6 @@
 import * as functions from 'firebase-functions/v2';
 import * as admin from 'firebase-admin';
+import { sendNotificationEmail } from './email';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -102,6 +103,81 @@ export const processScreenshot = functions.https.onCall(
         },
         error: error.message || 'Failed to process screenshot'
       };
+    }
+  }
+);
+
+/**
+ * Test Firebase Function to send email notification
+ * This function sends a test email to verify email configuration
+ * 
+ * Usage: Call this function via HTTP GET or POST request
+ * Example: curl https://us-central1-joystie-poc.cloudfunctions.net/testEmailNotification
+ * 
+ * Prerequisites:
+ * 1. Set up email secrets:
+ *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_SERVICE=workspace
+ *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_USER=info@joystie.com
+ *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_PASSWORD=<app-password>
+ *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_FROM=info@joystie.com
+ */
+export const testEmailNotification = functions.https.onRequest(
+  {
+    region: 'us-central1',
+    timeoutSeconds: 60,
+    memory: '256MiB',
+    cors: true, // Enable CORS
+    secrets: [
+      'SERVICE_FUNCTION_EMAIL_SERVICE',
+      'SERVICE_FUNCTION_EMAIL_USER',
+      'SERVICE_FUNCTION_EMAIL_PASSWORD',
+      'SERVICE_FUNCTION_EMAIL_FROM',
+      'SERVICE_FUNCTION_BASE_URL',
+      // Note: SERVICE_FUNCTION_SENDGRID_API_KEY is optional - only add if using SendGrid
+    ],
+    // Note: After deployment, make the function public via Firebase Console:
+    // 1. Go to Firebase Console → Functions → testEmailNotification
+    // 2. Click "Permissions" tab
+    // 3. Add "allUsers" with role "Cloud Functions Invoker"
+  },
+  async (req, res) => {
+    try {
+      const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
+      const testEmail = 'frododana@gmail.com';
+      const title = 'בדיקת התראות אימייל - Joystie';
+      const content = `
+        <p>שלום!</p>
+        <p>זוהי הודעת בדיקה להתראות אימייל מ-Joystie.</p>
+        <p>אם קיבלת את המייל הזה, זה אומר שההגדרה עובדת בהצלחה! ✅</p>
+        <p>המייל נשלח מ-<strong>info@joystie.com</strong> באמצעות Google Workspace.</p>
+        <p>תאריך ושעה: ${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</p>
+      `;
+
+      console.log('[TestEmail] Sending test email to:', testEmail);
+      console.log('[TestEmail] From: info@joystie.com');
+      console.log('[TestEmail] Base URL:', baseUrl);
+
+      await sendNotificationEmail(
+        testEmail,
+        title,
+        content,
+        'ללוח הבקרה',
+        `${baseUrl}/dashboard`,
+        baseUrl
+      );
+
+      console.log('[TestEmail] Email sent successfully');
+
+      res.status(200).json({
+        success: true,
+        message: `Email sent successfully to ${testEmail}`,
+      });
+    } catch (error: any) {
+      console.error('[TestEmail] Error sending email:', error);
+      res.status(500).json({
+        success: false,
+        error: `Failed to send test email: ${error.message}`,
+      });
     }
   }
 );

@@ -269,6 +269,17 @@ export default function LoginPage() {
             {isSubmitting ? 'מתחבר...' : 'התחבר'}
           </button>
 
+          {/* Link to Forgot Password */}
+          <div className="mt-3 text-center">
+            <button
+              type="button"
+              onClick={() => router.push('/forgot-password')}
+              className="text-[#273143] underline font-varela text-sm"
+            >
+              שכחת סיסמא?
+            </button>
+          </div>
+
           {/* Link to Signup */}
           <div className="mt-4 text-center">
             <p className="font-varela text-sm text-[#282743]">

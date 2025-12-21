@@ -319,7 +319,7 @@ function ChildRedemptionContent() {
     { id: 'cash', label: 'מזומן 💵', description: `${childP.get} את הכסף במטבעות או שטרות ישר אלייך` },
     { id: 'gift', label: 'מתנה 🎁', description: `בחר מתנה מתוך מה ש${parentName} ${parentP.offers} לך` },
     { id: 'activity', label: 'פעילות 🎮', description: `הצע ל${parentName} חוויה ש${childP.he === 'היא' ? 'היית' : 'היית'} רוצה ${parentP.with}` },
-    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון\nו${childP.earn} חצי שקל על כל שבוע שהוא שם` }
+    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון\nו${childP.earn} 20 אגורות על כל שבוע שהוא שם` }
   ];
 
   const handleRedemption = async () => {

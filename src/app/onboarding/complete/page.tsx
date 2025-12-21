@@ -99,8 +99,8 @@ function OnboardingCompleteContent() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { you: 'את', youVerb: 'תשתפי', youAre: 'את', registered: 'רשומה', defined: 'הגדרת', user: 'משתמשת', only: 'יחידה' },
-    male: { you: 'אתה', youVerb: 'תשתף', youAre: 'אתה', registered: 'רשום', defined: 'הגדרת', user: 'משתמש', only: 'יחיד' }
+    female: { you: 'את', youVerb: 'תשתפי', youAre: 'את', registered: 'רשומה', user: 'משתמשת', only: 'יחידה' },
+    male: { you: 'אתה', youVerb: 'תשתף', youAre: 'אתה', registered: 'רשום',  user: 'משתמש', only: 'יחיד' }
   };
   const parentP = parentPronouns[parentGender as 'female' | 'male'] || parentPronouns.female;
 
@@ -240,7 +240,7 @@ function OnboardingCompleteContent() {
                   {parentP.youAre} ה{parentP.user} ה{parentP.only} ש{parentP.registered} למערכת, {displayName} רק מעלה את צילום זמן המסך {pronouns.his} ולנו אין גישה {pronouns.to}.
                 </li>
                 <li>
-                  בסוף השבוע, אם {displayName} {pronouns.he === 'היא' ? 'עמדה' : 'עמד'} באתגר {pronouns.he === 'היא' ? 'והרוויחה' : 'ורוויח'} כסף, {pronouns.he === 'היא' ? 'היא תקבל' : 'הוא יקבל'} כמה חלופות לכסף כמו חסכון, פעילות ומתנה.
+                  בסוף השבוע, אם {displayName} {pronouns.he === 'היא' ? 'עמדה' : 'עמד'} באתגר {pronouns.he === 'היא' ? 'והרוויחה' : 'והרוויח'} כסף, {pronouns.he === 'היא' ? 'היא תקבל' : 'הוא יקבל'} כמה חלופות לכסף כמו חסכון, פעילות ומתנה.
                 </li>
               </ul>
             </div>

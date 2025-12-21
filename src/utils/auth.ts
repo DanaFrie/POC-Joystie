@@ -111,6 +111,20 @@ export async function getCurrentUserId(): Promise<string | null> {
 }
 
 /**
+ * Send password reset email
+ */
+export async function sendPasswordReset(email: string): Promise<void> {
+  try {
+    const { sendPasswordResetEmail } = await import('firebase/auth');
+    const auth = await getAuthInstance();
+    await sendPasswordResetEmail(auth, email);
+  } catch (error) {
+    const authError = error as AuthError;
+    throw new Error(getAuthErrorMessage(authError.code));
+  }
+}
+
+/**
  * Get user-friendly error messages in Hebrew
  */
 function getAuthErrorMessage(code: string): string {

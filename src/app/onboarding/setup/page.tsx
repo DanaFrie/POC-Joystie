@@ -175,11 +175,10 @@ export default function OnboardingSetupPage() {
   
   // Parent pronouns
   const parentPronouns = {
-    female: { you: 'את', defined: 'הגדרת' },
-    male: { you: 'אתה', defined: 'הגדרת' }
+    female: { you: 'את', continue: 'ממשיכה', return: 'תחזרי', ready: 'מוכנה', do: 'תעשי' },
+    male: { you: 'אתה', continue: 'ממשיך', return: 'תחזור', ready: 'מוכן', do: 'תעשה' }
   };
   const parentP = parentPronouns[parentData.parentGender as 'female' | 'male'] || parentPronouns.female;
-  const isParentMale = parentData.parentGender === 'male';
   const childDisplayName = formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה');
 
   // Load kids ages from user data (Firestore or localStorage)
@@ -580,11 +579,7 @@ export default function OnboardingSetupPage() {
               <div className="space-y-4">
                 <div className="bg-[#E6F19A] bg-opacity-30 rounded-[18px] border-2 border-[#E6F19A] p-4">
                   <p className="font-varela text-base text-[#262135] leading-relaxed mb-4">
-                    {isParentMale
-                      ? 'במידה ואתה ממשיך - האתגר יתחיל מחר בבוקר ואם אתה עוד לא מוכן אנחנו מחכים לך שתעשה את ההכנות עם '
-                      : 'במידה ואת ממשיכה - האתגר יתחיל מחר בבוקר ואם את עוד לא מוכנה אנחנו מחכים לך שתעשי את ההכנות עם '}
-                    <strong>{childDisplayName}</strong>
-                    {isParentMale ? ' ותחזור לכתובת הזו:' : ' ותחזרי לכתובת הזו:'}
+                    במידה ו{parentP.you} {parentP.continue} - האתגר יתחיל מחר בבוקר ואם {parentP.you} עוד לא {parentP.ready} אנחנו מחכים לך ש{parentP.do} את ההכנות עם <strong>{childDisplayName}</strong> ו{parentP.return} לכתובת הזו:
                   </p>
                   <button
                     onClick={async () => {
@@ -729,7 +724,7 @@ export default function OnboardingSetupPage() {
                           אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-90 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
                         </p>
                         <p className="mt-2 pt-2 border-t border-[#E6F19A]">
-                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} {parentP.defined}.
+                          כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} הגדרת.
                         </p>
                       </div>
                       <button

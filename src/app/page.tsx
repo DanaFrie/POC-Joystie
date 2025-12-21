@@ -26,30 +26,30 @@ export default function Home() {
     <div className="min-h-screen bg-transparent pb-12 sm:pb-24">
       <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Logo and Action Buttons - Always Inline, aligned with content boxes */}
-        <div className="flex items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-8 pt-2 sm:pt-4 w-full overflow-hidden">
-          <div className="flex-shrink-0 min-w-0">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-3 mb-4 sm:mb-8 pt-2 sm:pt-4 w-full overflow-hidden">
+          <div className="flex-shrink min-w-0">
             <Image
               src="/logo-joystie.png"
               alt="Joystie Logo"
               width={200}
               height={67}
-              className="h-12 w-auto sm:h-16 md:h-20 max-w-[140px] sm:max-w-[180px] md:max-w-[220px]"
+              className="h-8 w-auto sm:h-16 md:h-20 max-w-[100px] sm:max-w-[180px] md:max-w-[220px]"
               style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
               priority
               loading="eager"
               fetchPriority="high"
             />
           </div>
-          <div className="flex gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex gap-1.5 sm:gap-3 flex-shrink-0">
             <button
               onClick={handleSignup}
-              className="px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] text-sm sm:text-sm md:text-base font-varela font-semibold bg-[#273143] text-white hover:bg-opacity-90 transition-all shadow-card whitespace-nowrap"
+              className="px-2.5 py-1.5 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-[8px] sm:rounded-[14px] md:rounded-[18px] text-xs sm:text-sm md:text-base font-varela font-semibold bg-[#273143] text-white hover:bg-opacity-90 transition-all shadow-card whitespace-nowrap"
             >
               הירשם
             </button>
             <button
               onClick={handleLogin}
-              className="px-4 py-2 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-[10px] sm:rounded-[14px] md:rounded-[18px] text-sm sm:text-sm md:text-base font-varela font-semibold bg-white text-[#273143] border-2 border-[#273143] hover:bg-[#273143] hover:text-white transition-all shadow-card whitespace-nowrap"
+              className="px-2.5 py-1.5 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-[8px] sm:rounded-[14px] md:rounded-[18px] text-xs sm:text-sm md:text-base font-varela font-semibold bg-white text-[#273143] border-2 border-[#273143] hover:bg-[#273143] hover:text-white transition-all shadow-card whitespace-nowrap"
             >
               התחבר
             </button>

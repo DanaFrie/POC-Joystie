@@ -645,12 +645,12 @@ function ChildSetupContent() {
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
                   <p className="font-varela text-xs text-[#282743] text-center leading-relaxed">
-                    אם {childName ? (childGender === 'girl' ? 'תעמודי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
+                    אם {childGender === 'girl' ? 'תעמדי' : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childGender === 'girl' ? 'תקבלי' : 'תקבל'} את כל התקציב היומי! אם {childGender === 'girl' ? 'תעברי' : 'תעבור'} את היעד, התקציב יקטן בהתאם.
                   </p>
                 </div>
                 <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">
                   <p className="font-varela text-xs text-[#262135] text-center leading-relaxed font-semibold">
-                    האתגר נמשך 6 ימים ויום הפדיון הוא היום ה-7. ביום הפדיון {childName ? (childGender === 'girl' ? 'תוכלי' : 'תוכל') : 'תוכל'} לראות כמה כסף {childName ? (childGender === 'girl' ? 'צברת' : 'צברת') : 'צברת'} ולפדות אותו!
+                    האתגר נמשך 6 ימים ויום הפדיון הוא היום ה-7. ביום הפדיון {childGender === 'girl' ? 'תוכלי' : 'תוכל'} לראות כמה כסף צברת ולפדות אותו!
                   </p>
                 </div>
               </div>
@@ -663,7 +663,7 @@ function ChildSetupContent() {
                 מה תרצה לעשות עם הכסף?
               </h2>
               <p className="font-varela text-sm text-[#948DA9] mb-4 text-center">
-                בחר כמה ש{childName ? (childGender === 'girl' ? 'את' : 'אתה') : 'אתה'} רוצה (ניתן לבחור יותר מאחד)
+                בחר כמה ש{childGender === 'girl' ? 'את' : 'אתה'} רוצה (ניתן לבחור יותר מאחד)
               </p>
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {moneyGoalOptions.map((option, index) => {
