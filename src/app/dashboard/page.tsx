@@ -467,8 +467,7 @@ export default function DashboardPage() {
                 alt="Piggy Bank"
                 width={100}
                 height={100}
-                className="object-contain"
-                style={{ width: 'auto', height: 'auto' }}
+                className="object-contain w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 max-w-[120px] sm:max-w-[160px] md:max-w-[200px]"
                 priority
               />
             </div>
@@ -640,8 +639,7 @@ export default function DashboardPage() {
               alt="Piggy Bank"
               width={100}
               height={100}
-              className="object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+                className="object-contain w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 max-w-[120px] sm:max-w-[160px] md:max-w-[200px]"
               priority
             />
           </div>

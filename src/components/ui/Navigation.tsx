@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearSession } from '@/utils/session';
-import { getActiveChallenge } from '@/lib/api/challenges';
+import { getUserChallenges } from '@/lib/api/challenges';
 import { getCurrentUserId, signOutUser } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -18,14 +18,14 @@ export default function Navigation() {
   const [challengeExists, setChallengeExists] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Check for active challenge
+  // Check if any challenge exists (not just active)
   useEffect(() => {
     const checkChallenge = async () => {
       try {
         const userId = await getCurrentUserId();
         if (userId) {
-          const challenge = await getActiveChallenge(userId);
-          setChallengeExists(!!challenge);
+          const challenges = await getUserChallenges(userId);
+          setChallengeExists(challenges.length > 0);
         } else {
           setChallengeExists(false);
         }

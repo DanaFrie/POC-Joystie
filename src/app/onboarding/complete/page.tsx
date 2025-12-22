@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
 import { generateSetupUrl } from '@/utils/url-encoding';
 import { getCurrentUserId } from '@/utils/auth';
-import { getActiveChallenge } from '@/lib/api/challenges';
+import { getUserChallenges } from '@/lib/api/challenges';
 import { getUser } from '@/lib/api/users';
 import { getChild } from '@/lib/api/children';
 import { createContextLogger } from '@/utils/logger';
@@ -52,7 +52,9 @@ function OnboardingCompleteContent() {
           // Get child data for deviceType
           let deviceType: 'ios' | 'android' = 'ios';
           try {
-            const challenge = await getActiveChallenge(userId);
+            const challenges = await getUserChallenges(userId);
+            // Get the most recent challenge (active or not)
+            const challenge = challenges.length > 0 ? challenges[0] : null;
             if (challenge && challenge.childId) {
               const child = await getChild(challenge.childId);
               if (child) {
@@ -120,7 +122,9 @@ function OnboardingCompleteContent() {
         logger.log('User ID found:', userId);
         
         try {
-          const challenge = await getActiveChallenge(userId);
+          const challenges = await getUserChallenges(userId);
+          // Get the most recent challenge (active or not)
+          const challenge = challenges.length > 0 ? challenges[0] : null;
           const childIdToUse = childId || challenge?.childId;
           const challengeIdToUse = challenge?.id;
           logger.log('Challenge found:', challengeIdToUse, 'Child ID:', childIdToUse);
@@ -228,7 +232,15 @@ function OnboardingCompleteContent() {
           
           <div className="space-y-4">
             <p className="font-varela text-base text-[#282743] leading-relaxed">
-              מתחילים עם {displayName}. {parentP.you} {parentP.youVerb} את {displayName} בקישור אליו {pronouns.he} {pronouns.he === 'היא' ? 'תכנס' : 'יכנס'} מדי יום כדי לעדכן את הסטטוס {pronouns.his}.
+              מתחילים עם {displayName}. באתגר זה עליך לשחרר את הגבלת המסך, למה חשוב לבטל את ההגבלה עכשיו? הגענו לצעד המשמעותי ביותר - אמון.
+            </p>
+            
+            <p className="font-varela text-base text-[#282743] leading-relaxed">
+               צאו מתפקיד השוטר- תנו אמון בילד ותקבלו בחזרה את השקט.
+            </p>
+            
+            <p className="font-varela text-base text-[#282743] leading-relaxed">
+              לאחר מכן, {parentP.you} {parentP.youVerb} את {displayName} בקישור אליו {pronouns.he} {pronouns.he === 'היא' ? 'תכנס' : 'יכנס'} מדי יום כדי לעדכן את הסטטוס {pronouns.his}.
             </p>
             
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4 mt-4">
@@ -251,10 +263,7 @@ function OnboardingCompleteContent() {
         {deviceType === 'android' && (
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
             <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
-              {displayName} {pronouns.he === 'היא' ? 'תבקש' : 'יבקש'} ממך צילום מסך של זמן המסך {pronouns.his}.
-            </p>
-            <p className="font-varela text-sm text-[#282743] mb-4 text-center leading-relaxed">
-              הסבר קצר כיצד לעשות זאת:
+              {displayName} {pronouns.he === 'היא' ? 'תבקש' : 'יבקש'} ממך צילום מסך של זמן המסך {pronouns.his}. הסבר קצר כיצד לעשות זאת:
             </p>
             <div className="relative w-full bg-gray-100 rounded-[12px] overflow-hidden mb-3" style={{ minHeight: '195px' }}>
               <video

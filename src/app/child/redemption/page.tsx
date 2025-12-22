@@ -32,12 +32,9 @@ function ChildRedemptionContent() {
   const [validatedChildId, setValidatedChildId] = useState<string>('');
   const [challengeId, setChallengeId] = useState<string>('');
   
-  // Initialize approval states based on whether we came from last upload
-  const [awaitingParentApproval, setAwaitingParentApproval] = useState(() => {
-    // If we have lastEarnings in URL, start with awaiting approval
-    return lastEarningsParam ? true : false;
-  });
-  const [lastApproved, setLastApproved] = useState(false); // Renamed from fridayApproved
+  // Initialize approval states - will be updated from Firestore immediately
+  const [awaitingParentApproval, setAwaitingParentApproval] = useState(false);
+  const [lastApproved, setLastApproved] = useState(false);
   const [redemptionCompleted, setRedemptionCompleted] = useState(false);
 
   // Validate URL token on mount
@@ -121,42 +118,111 @@ function ChildRedemptionContent() {
   const childGender = childData.childGender;
   
   // Get earnings from query params or calculate from Firestore
-  const lastEarnings = lastEarningsParam ? parseFloat(lastEarningsParam) : 0; // Renamed from fridayEarnings
+  const lastEarningsFromParams = lastEarningsParam ? parseFloat(lastEarningsParam) : 0;
   const weeklyTotalFromParams = weeklyTotalParam ? parseFloat(weeklyTotalParam) : 0;
   
-  // Calculate total earnings from Firebase if not from params
-  const [totalEarnings, setTotalEarnings] = useState(weeklyTotalFromParams || 89.5);
+  // State for last earnings - will be updated from Firestore when parent manually enters screen time
+  const [lastEarnings, setLastEarnings] = useState(lastEarningsFromParams);
   
-  // Load total earnings - recalculate when approval status changes
+  // Calculate total earnings from Firebase - start with 0, will be loaded from Firestore
+  const [totalEarnings, setTotalEarnings] = useState(0);
+  
+  // Check approval status immediately from Firestore on load
   useEffect(() => {
-    const loadTotalEarnings = async () => {
-      if (weeklyTotalFromParams > 0) {
-        setTotalEarnings(weeklyTotalFromParams);
-        return;
-      }
-      
-      // Don't calculate if we don't have parentId yet
-      if (!parentId) return;
+    const checkApprovalStatus = async () => {
+      if (!parentId || !challengeId) return;
       
       try {
-        const challenge = await getActiveChallenge(parentId);
-        if (!challenge) return;
+        const { getDashboardData } = await import('@/lib/api/dashboard');
+        const dashboardData = await getDashboardData(parentId, false); // Skip cache for accurate status
+        
+        if (dashboardData && dashboardData.week) {
+          // Check for days needing approval (excluding redemption day)
+          const daysNeedingApproval = dashboardData.week.filter(day => 
+            !day.isRedemptionDay && 
+            (day.status === 'awaiting_approval' || 
+             (day.requiresApproval && !day.parentAction))
+          );
+          
+          // Check if all days are approved (excluding redemption day)
+          const nonRedemptionDays = dashboardData.week.filter(day => !day.isRedemptionDay);
+          const allApproved = nonRedemptionDays.every(day => 
+            day.status === 'success' || 
+            day.status === 'warning' ||
+            (day.parentAction === 'approved')
+          );
+          
+          // Update approval states based on Firestore data
+          if (allApproved && daysNeedingApproval.length === 0 && nonRedemptionDays.length > 0) {
+            setAwaitingParentApproval(false);
+            setLastApproved(true);
+          } else if (daysNeedingApproval.length > 0) {
+            setAwaitingParentApproval(true);
+            setLastApproved(false);
+          }
+        }
+      } catch (error) {
+        logger.error('Error checking approval status on load:', error);
+      }
+    };
 
-        const uploads = await getUploadsByChallenge(challenge.id, parentId);
+    checkApprovalStatus();
+  }, [parentId, challengeId]);
+
+  // Load last earnings from Firestore - will be updated in realtime listener
+  useEffect(() => {
+    const loadLastEarnings = async () => {
+      // Don't calculate if we don't have parentId yet
+      if (!parentId || !challengeId) return;
+      
+      try {
+        const uploads = await getUploadsByChallenge(challengeId, parentId);
+        
+        // Find the last upload (most recent uploadedAt, excluding redemption day)
+        const sortedUploads = uploads
+          .filter(u => u.date && !u.date.includes('redemption') && u.uploadedAt) // Exclude redemption day
+          .sort((a, b) => {
+            const timeA = new Date(a.uploadedAt || '').getTime();
+            const timeB = new Date(b.uploadedAt || '').getTime();
+            return timeB - timeA; // Descending order (most recent first)
+          });
+        
+        if (sortedUploads.length > 0) {
+          const lastUpload = sortedUploads[0];
+          // Update lastEarnings if the upload has coinsEarned
+          if (lastUpload.coinsEarned !== undefined) {
+            setLastEarnings(lastUpload.coinsEarned);
+          }
+        }
+      } catch (e) {
+        logger.error('Error loading last earnings:', e);
+      }
+    };
+
+    loadLastEarnings();
+  }, [parentId, challengeId]); // Load when parentId or challengeId changes
+
+  // Load total earnings - always load from Firestore for accuracy
+  useEffect(() => {
+    const loadTotalEarnings = async () => {
+      // Don't calculate if we don't have parentId yet
+      if (!parentId || !challengeId) return;
+      
+      try {
+        const uploads = await getUploadsByChallenge(challengeId, parentId);
         // Only count approved uploads
         const approvedUploads = uploads.filter(u => u.parentAction === 'approved');
         const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
         
-        if (total > 0) {
-          setTotalEarnings(total);
-        }
+        // Always set total, even if 0 (to show accurate data)
+        setTotalEarnings(total);
       } catch (e) {
         logger.error('Error loading total earnings:', e);
       }
     };
 
     loadTotalEarnings();
-  }, [weeklyTotalFromParams, parentId, lastApproved]); // Recalculate when lastApproved changes
+  }, [parentId, challengeId, lastApproved]); // Recalculate when lastApproved changes
   
   // Calculate redemption date from challenge startDate (Saturday of challenge week)
   const [redemptionDate, setRedemptionDate] = useState<string>('');
@@ -212,6 +278,26 @@ function ChildRedemptionContent() {
         unsubscribe = onSnapshot(q, async (snapshot) => {
           const uploads = snapshot.docs.map(doc => doc.data() as FirestoreDailyUpload);
           
+          // Find the last upload (most recent uploadedAt, excluding redemption day)
+          // Sort by uploadedAt descending and get the first non-redemption day upload
+          const sortedUploads = uploads
+            .filter(u => u.date && !u.date.includes('redemption') && u.uploadedAt) // Exclude redemption day
+            .sort((a, b) => {
+              const timeA = new Date(a.uploadedAt || '').getTime();
+              const timeB = new Date(b.uploadedAt || '').getTime();
+              return timeB - timeA; // Descending order (most recent first)
+            });
+          
+          if (sortedUploads.length > 0) {
+            const lastUpload = sortedUploads[0];
+            // Update lastEarnings if the upload is approved and has coinsEarned
+            if (lastUpload.parentAction === 'approved' && lastUpload.coinsEarned !== undefined) {
+              setLastEarnings(lastUpload.coinsEarned);
+            } else if (lastUpload.coinsEarned !== undefined) {
+              // Even if not approved yet, update with current coinsEarned (might be from manual entry)
+              setLastEarnings(lastUpload.coinsEarned);
+            }
+          }
           
           // Use getDashboardData to check status of all days (excludes redemption day automatically)
           try {
@@ -319,7 +405,7 @@ function ChildRedemptionContent() {
     { id: 'cash', label: 'מזומן 💵', description: `${childP.get} את הכסף במטבעות או שטרות ישר אלייך` },
     { id: 'gift', label: 'מתנה 🎁', description: `בחר מתנה מתוך מה ש${parentName} ${parentP.offers} לך` },
     { id: 'activity', label: 'פעילות 🎮', description: `הצע ל${parentName} חוויה ש${childP.he === 'היא' ? 'היית' : 'היית'} רוצה ${parentP.with}` },
-    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון\nו${childP.earn} חצי שקל על כל שבוע שהוא שם` }
+    { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון\nו${childP.earn} 20 אגורות על כל שבוע שהוא שם` }
   ];
 
   const handleRedemption = async () => {
@@ -420,14 +506,13 @@ function ChildRedemptionContent() {
       
       <div className={`max-w-md mx-auto px-4 py-8 relative ${isProcessing ? 'opacity-50 pointer-events-none' : ''}`}>
         {/* Piggy Bank - פינה ימנית עליונה */}
-        <div className="absolute right-0 top-0 z-10">
+        <div className={`absolute right-0 top-0 pointer-events-none ${lastApproved ? 'z-10' : 'z-0'}`}>
           <Image
             src="/piggy-bank.png"
             alt="Piggy Bank"
             width={120}
             height={120}
-            className="object-contain"
-            style={{ width: 'auto', height: 'auto' }}
+            className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
           />
         </div>
 
@@ -457,7 +542,7 @@ function ChildRedemptionContent() {
 
         {/* Parent Approval Celebration Screen - show briefly after approval */}
         {lastApproved && (
-          <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[18px] shadow-card p-6 mb-6 text-center mt-20 animate-bounce">
+          <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[18px] shadow-card p-6 mb-6 text-center mt-20 animate-bounce relative z-0">
             <div className="text-6xl mb-4">🎉</div>
             <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
               {parentName} {parentP.approved}!
