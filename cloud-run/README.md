@@ -43,8 +43,8 @@ This is a Cloud Run service that processes screenshots and extracts screen time 
 
 For integration environment, use the same commands but with:
 - Project: `joystie-poc`
-- Image name: `us-central1-docker.pkg.dev/joystie-poc/cloud-run-source-deploy/process-screenshot-intgr`
-- Service name: `process-screenshot-intgr`
+- Image name: `us-central1-docker.pkg.dev/joystie-poc/cloud-run-source-deploy/process-screenshot`
+- Service name: `process-screenshot`
 
 ## Local Development
 
