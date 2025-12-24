@@ -1,9 +1,14 @@
 import * as functions from 'firebase-functions/v2';
+import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { sendNotificationEmail } from './email';
 
 // Initialize Firebase Admin
 admin.initializeApp();
+
+// Define secret for Cloud Run service URL
+// This secret must be set using: firebase functions:secrets:set CLOUD_RUN_SERVICE_URL
+const cloudRunServiceUrl = defineSecret('CLOUD_RUN_SERVICE_URL');
 
 interface ProcessScreenshotRequest {
   imageData: string; // Base64 encoded image
@@ -32,6 +37,7 @@ export const processScreenshot = functions.https.onCall(
     timeoutSeconds: 540, // 9 minutes max
     memory: '512MiB', // Reduced since we're just calling Cloud Run
     invoker: 'public', // Allow unauthenticated invocations (security via URL token validation)
+    secrets: [cloudRunServiceUrl], // Declare secret dependency
   },
   async (request): Promise<ProcessScreenshotResponse> => {
     // Note: Authentication is optional - child upload pages use URL token validation
@@ -48,16 +54,15 @@ export const processScreenshot = functions.https.onCall(
     }
 
     try {
-      // Get Cloud Run service URL from environment variable
-      // For Gen 2, use environment variables or secrets
-      const cloudRunUrl = process.env.FIREBASE_FUNCTION_URL;
+      // Get Cloud Run service URL from secret
+      // Secret is defined using: firebase functions:secrets:set CLOUD_RUN_SERVICE_URL
+      const cloudRunUrl = cloudRunServiceUrl.value();
       
       if (!cloudRunUrl) {
         throw new Error(
           'Cloud Run service URL not configured. ' +
-          'Set FIREBASE_FUNCTION_URL environment variable. ' +
-          'You can set it when deploying: ' +
-          'firebase functions:secrets:set FIREBASE_FUNCTION_URL'
+          'Set CLOUD_RUN_SERVICE_URL secret using: ' +
+          'firebase functions:secrets:set CLOUD_RUN_SERVICE_URL'
         );
       }
       

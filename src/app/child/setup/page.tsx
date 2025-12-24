@@ -446,14 +446,13 @@ function ChildSetupContent() {
       <div className="min-h-screen bg-transparent pb-24">
         <div className="max-w-md mx-auto px-4 py-8 relative">
           {/* Piggy Bank - פינה ימנית עליונה */}
-          <div className="absolute right-0 top-0 z-10">
+          <div className="absolute right-0 top-0 z-0 pointer-events-none">
             <Image
               src="/piggy-bank.png"
               alt="Piggy Bank"
               width={120}
               height={120}
-              className="object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+              className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
             />
           </div>
 
@@ -555,13 +554,13 @@ function ChildSetupContent() {
     <div className="min-h-screen bg-transparent pb-24">
       <div className="max-w-md mx-auto px-4 py-8 relative">
         {/* Piggy Bank - פינה ימנית עליונה */}
-        <div className="absolute right-0 top-0 z-10">
+        <div className="absolute right-0 top-0 z-0 pointer-events-none">
           <Image
             src="/piggy-bank.png"
             alt="Piggy Bank"
             width={120}
             height={120}
-            className="object-contain"
+            className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
           />
         </div>
 
@@ -645,7 +644,7 @@ function ChildSetupContent() {
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
                   <p className="font-varela text-xs text-[#282743] text-center leading-relaxed">
-                    אם {childGender === 'girl' ? 'תעמדי' : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childGender === 'girl' ? 'תקבלי' : 'תקבל'} את כל התקציב היומי! אם {childGender === 'girl' ? 'תעברי' : 'תעבור'} את היעד, התקציב יקטן בהתאם.
+                    אם {childName ? (childGender === 'girl' ? 'תעמדי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
                   </p>
                 </div>
                 <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">

@@ -9,6 +9,19 @@ const logger = createContextLogger('Challenges');
 const CHALLENGES_COLLECTION = 'challenges';
 
 /**
+ * Remove undefined values from an object (Firestore doesn't allow undefined)
+ */
+function removeUndefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  const cleaned: Partial<T> = {};
+  for (const key in obj) {
+    if (obj[key] !== undefined) {
+      cleaned[key] = obj[key];
+    }
+  }
+  return cleaned;
+}
+
+/**
  * Create a new challenge
  */
 export async function createChallenge(
@@ -22,12 +35,15 @@ export async function createChallenge(
       const challengeRef = doc(challengesRef);
       const now = new Date().toISOString();
       
+      // Remove undefined values before creating the challenge object
+      const cleanedData = removeUndefined(challengeData);
+      
       const challenge: FirestoreChallenge = {
         id: challengeRef.id,
-        ...challengeData,
+        ...cleanedData,
         createdAt: now,
         updatedAt: now,
-      };
+      } as FirestoreChallenge;
       
       await setDoc(challengeRef, challenge);
       return challengeRef.id;
@@ -95,10 +111,14 @@ export async function updateChallenge(
     const { doc, updateDoc } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
     const challengeRef = doc(db, CHALLENGES_COLLECTION, challengeId);
-    await updateDoc(challengeRef, {
+    
+    // Remove undefined values before updating
+    const cleanedUpdates = removeUndefined({
       ...updates,
       updatedAt: new Date().toISOString(),
     });
+    
+    await updateDoc(challengeRef, cleanedUpdates);
   } catch (error) {
     logger.error('Error updating challenge:', error);
     throw new Error('שגיאה בעדכון האתגר.');

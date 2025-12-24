@@ -1236,14 +1236,13 @@ function ChildUploadContent() {
       <div className="min-h-screen bg-transparent pb-24">
         <div className="max-w-md mx-auto px-4 py-8 relative">
           {/* Piggy Bank - פינה ימנית עליונה */}
-          <div className="absolute right-0 top-0 z-10">
+          <div className="absolute right-0 top-0 z-0 pointer-events-none">
             <Image
               src="/piggy-bank.png"
               alt="Piggy Bank"
               width={120}
               height={120}
-              className="object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+              className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
             />
           </div>
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mt-20">
@@ -1432,14 +1431,13 @@ function ChildUploadContent() {
       <div className="min-h-screen bg-transparent pb-24">
         <div className="max-w-md mx-auto px-4 py-8 relative">
           {/* Piggy Bank - פינה ימנית עליונה */}
-          <div className="absolute right-0 top-0 z-10">
+          <div className="absolute right-0 top-0 z-0 pointer-events-none">
             <Image
               src="/piggy-bank.png"
               alt="Piggy Bank"
               width={120}
               height={120}
-              className="object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+              className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
             />
           </div>
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
@@ -1478,14 +1476,13 @@ function ChildUploadContent() {
       <div className="min-h-screen bg-transparent pb-24">
         <div className="max-w-md mx-auto px-4 py-8 relative">
           {/* Piggy Bank - פינה ימנית עליונה */}
-          <div className="absolute right-0 top-0 z-10">
+          <div className="absolute right-0 top-0 z-0 pointer-events-none">
             <Image
               src="/piggy-bank.png"
               alt="Piggy Bank"
               width={120}
               height={120}
-              className="object-contain"
-              style={{ width: 'auto', height: 'auto' }}
+              className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
             />
           </div>
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
@@ -1510,13 +1507,13 @@ function ChildUploadContent() {
     <div className="min-h-screen bg-transparent pb-24">
       <div className="max-w-md mx-auto px-4 py-8 relative">
         {/* Piggy Bank - פינה ימנית עליונה */}
-        <div className="absolute right-0 top-0 z-10">
+        <div className="absolute right-0 top-0 z-0 pointer-events-none">
           <Image
             src="/piggy-bank.png"
             alt="Piggy Bank"
             width={120}
             height={120}
-            className="object-contain"
+            className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
           />
         </div>
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">

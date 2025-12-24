@@ -135,43 +135,33 @@ export default function OnboardingSetupPage() {
 
   const explanation = getBudgetExplanation();
 
-  // Get parent data from localStorage
-  const getParentData = () => {
-    try {
-      if (typeof window !== 'undefined') {
-        const parentData = localStorage.getItem('parentData');
-        if (parentData) {
-          try {
-            const parsed = JSON.parse(parentData);
-            return {
-              parentGender: parsed.gender === 'female' ? 'female' : 'male'
-            };
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-        
-        const signupData = localStorage.getItem('signupFormData');
-        if (signupData) {
-          try {
-            const parsed = JSON.parse(signupData);
-            return {
-              parentGender: parsed.gender === 'female' ? 'female' : 'male'
-            };
-          } catch (e) {
-            // Ignore parse errors
-          }
-        }
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-    return {
-      parentGender: 'female'
-    };
-  };
+  // Parent data state
+  const [parentData, setParentData] = useState<{
+    parentGender: 'female' | 'male';
+  }>({
+    parentGender: 'female' // Default to female until we load from Firestore
+  });
 
-  const parentData = getParentData();
+  // Load parent data from Firestore
+  useEffect(() => {
+    const loadParentData = async () => {
+      try {
+        const userId = await getCurrentUserId();
+        if (userId) {
+          const user = await getUser(userId);
+          if (user && user.gender) {
+            setParentData({
+              parentGender: user.gender === 'female' ? 'female' : 'male'
+            });
+          }
+        }
+      } catch (error) {
+        logger.error('Error loading parent data:', error);
+      }
+    };
+    
+    loadParentData();
+  }, []);
   
   // Parent pronouns
   const parentPronouns = {
@@ -306,7 +296,7 @@ export default function OnboardingSetupPage() {
 
           // Update challenge with new form data
           await updateChallenge(challengeId, {
-            motivationReason: motivationReason || undefined,
+            ...(motivationReason && { motivationReason }),
             selectedBudget: selectedBudget,
             dailyBudget: dailyBudget,
             dailyScreenTimeGoal: targetHours,
@@ -336,7 +326,7 @@ export default function OnboardingSetupPage() {
           challengeId = await createChallenge({
           parentId: userId,
           childId: childId,
-          motivationReason: motivationReason || undefined,
+          ...(motivationReason && { motivationReason }),
           selectedBudget: selectedBudget,
           dailyBudget: dailyBudget,
           dailyScreenTimeGoal: targetHours,
@@ -424,13 +414,13 @@ export default function OnboardingSetupPage() {
     <div className="min-h-screen bg-transparent pb-24">
       <div className="max-w-md mx-auto px-4 py-8 relative">
         {/* Piggy Bank - פינה ימנית עליונה */}
-        <div className="absolute right-0 top-0 z-10">
+        <div className="absolute right-0 top-0 z-0 pointer-events-none">
           <Image
             src="/piggy-bank.png"
             alt="Piggy Bank"
             width={120}
             height={120}
-            className="object-contain"
+            className="object-contain w-28 h-28 sm:w-28 sm:h-28 md:w-34 md:h-34 max-w-[112px] sm:max-w-[112px] md:max-w-[136px]"
             priority
           />
         </div>

@@ -62,24 +62,26 @@ export default function Home() {
             כך תהפכו את המלחמה על זמן המסך לשיתוף פעולה
           </h1>
           <p className="font-varela text-sm sm:text-base text-[#FFFCF8] leading-relaxed text-center max-w-3xl mx-auto">
-            ברוכים הבאים למסע משותף לאיזון דיגיטלי. אם אתם כאן, אתם בוודאי מבינים שהמאבק על המסכים הוא לא קרב הוגן. 
-            מול המשפחה שלכם עומדים תקציבי עתק וצוותים שלמים שמתמחים בעיצוב התנהגות. אתם לא לבד בהתמודדות הזו.
+            אם אתן כאן כנראה נמאס לכן להיות "משטרת זמן המסך" בבית? אתן ממש לא לבד.
+            <br />
+            בטח כבר ניסיתן הכל: בקרת הורים.. התניות.. ואפילו החרמות.
+            ובסוף? הקונפליקט תמיד חוזר
           </p>
         </div>
 
         {/* Three Feature Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-[#3a455a] rounded-[12px] sm:rounded-[16px] shadow-card p-4 sm:p-6 border border-white/10">
+          <div className="bg-[#3a455a] rounded-[12px] sm:rounded-[16px] shadow-card p-4 sm:p-6 border border-white/10 order-2 md:order-1">
             <div className="text-2xl sm:text-3xl md:text-4xl mb-2 sm:mb-4 text-center">🌱</div>
             <h3 className="font-varela font-bold text-base sm:text-lg md:text-xl text-[#FFFCF8] mb-1 sm:mb-2 text-center">חינוך פיננסי</h3>
             <p className="font-varela text-xs sm:text-sm text-white/80 text-center">כלים חיוניים לטווח ארוך</p>
           </div>
-          <div className="bg-[#3a455a] rounded-[12px] sm:rounded-[16px] shadow-card p-4 sm:p-6 border border-white/10">
+          <div className="bg-[#3a455a] rounded-[12px] sm:rounded-[16px] shadow-card p-4 sm:p-6 border border-white/10 order-3 md:order-3">
             <div className="text-2xl sm:text-3xl md:text-4xl mb-2 sm:mb-4 text-center">💳</div>
             <h3 className="font-varela font-bold text-base sm:text-lg md:text-xl text-[#FFFCF8] mb-1 sm:mb-2 text-center">ארנק דיגיטלי לילד</h3>
             <p className="font-varela text-xs sm:text-sm text-white/80 text-center">הבנק הראשון שלו</p>
           </div>
-          <div className="bg-[#3a455a] rounded-[12px] sm:rounded-[16px] shadow-card p-4 sm:p-6 border border-white/10">
+          <div className="bg-[#3a455a] rounded-[12px] sm:rounded-[16px] shadow-card p-4 sm:p-6 border border-white/10 order-1 md:order-2">
             <div className="text-2xl sm:text-3xl md:text-4xl mb-2 sm:mb-4 text-center">⚖️</div>
             <h3 className="font-varela font-bold text-base sm:text-lg md:text-xl text-[#FFFCF8] mb-1 sm:mb-2 text-center">איזון זמן מסך</h3>
             <p className="font-varela text-xs sm:text-sm text-white/80 text-center">בלי הריב היומי!</p>
