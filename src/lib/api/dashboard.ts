@@ -123,7 +123,9 @@ function generateWeek(
     const dateStr = formatDate(day);
     const dayName = getHebrewDayName(day);
     const dayAbbr = getHebrewDayAbbreviation(dayName);
-    const isFuture = day > today;
+    // Day is considered "future" if it's today or later (not yet passed)
+    // Only days that have already passed can be "missing"
+    const isFuture = day >= today;
     // Redemption day is always the 7th day (index 6)
     const isRedemptionDay = i === 6;
     
@@ -239,7 +241,7 @@ function buildToday(
     todayDay = {
       dayName: getHebrewDayAbbreviation(getHebrewDayName(today)),
       date: todayDateStr,
-      status: 'missing',
+      status: 'future', // Today hasn't passed yet, so it's future
       coinsEarned: 0,
       screenTimeUsed: 0,
       screenTimeGoal: challenge.dailyScreenTimeGoal,
@@ -254,7 +256,11 @@ function buildToday(
     screenshotStatus = 'uploaded';
   } else if (todayDay.status === 'awaiting_approval') {
     screenshotStatus = 'uploaded';
+  } else if (todayDay.status === 'future') {
+    // Today or future day - still pending (day hasn't passed yet)
+    screenshotStatus = 'pending';
   } else if (todayDay.status === 'missing') {
+    // Day has passed but no upload - missing or overdue
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
     if (new Date() > endOfDay) {

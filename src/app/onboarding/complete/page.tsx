@@ -252,7 +252,7 @@ function OnboardingCompleteContent() {
                   {parentP.youAre} ה{parentP.user} ה{parentP.only} ש{parentP.registered} למערכת, {displayName} רק מעלה את צילום זמן המסך {pronouns.his} ולנו אין גישה {pronouns.to}.
                 </li>
                 <li>
-                  בסוף השבוע, אם {displayName} {pronouns.he === 'היא' ? 'עמדה' : 'עמד'} באתגר {pronouns.he === 'היא' ? 'והרוויחה' : 'ורוויח'} כסף, {pronouns.he === 'היא' ? 'היא תקבל' : 'הוא יקבל'} כמה חלופות לכסף כמו חסכון, פעילות ומתנה.
+                  בסוף השבוע, אם {displayName} {pronouns.he === 'היא' ? 'עמדה' : 'עמד'} באתגר {pronouns.he === 'היא' ? 'והרוויחה' : 'והרוויח'} כסף, {pronouns.he === 'היא' ? 'היא תקבל' : 'הוא יקבל'} כמה חלופות לכסף כמו חסכון, פעילות ומתנה.
                 </li>
               </ul>
             </div>

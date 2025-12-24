@@ -644,7 +644,7 @@ function ChildSetupContent() {
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
                   <p className="font-varela text-xs text-[#282743] text-center leading-relaxed">
-                    אם {childName ? (childGender === 'girl' ? 'תעמודי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
+                    אם {childName ? (childGender === 'girl' ? 'תעמדי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
                   </p>
                 </div>
                 <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">
