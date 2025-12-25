@@ -212,17 +212,26 @@ export function generateEmailHTML(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light">
   <title>${title}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
     
     /* Force light mode - prevent dark mode from changing colors */
     :root {
-      color-scheme: light;
+      color-scheme: light only !important;
+      supported-color-schemes: light only !important;
     }
     
     html {
-      color-scheme: light !important;
+      color-scheme: light only !important;
+      supported-color-schemes: light only !important;
+      background-color: #FFFCF8 !important;
+    }
+    
+    * {
+      color-scheme: light only !important;
     }
     
     body {
@@ -236,10 +245,49 @@ export function generateEmailHTML(
         radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
         linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
         #FFFCF8 !important;
+      background-color: #FFFCF8 !important;
       margin: 0;
       padding: 0;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Prevent dark mode media query from affecting styles */
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: 
+          radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
+          linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
+          #FFFCF8 !important;
+        background-color: #FFFCF8 !important;
+        color: #262135 !important;
+      }
+      
+      .email-container {
+        background: 
+          radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
+          linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
+          #FFFCF8 !important;
+      }
+      
+      .email-content {
+        background-color: #FFFCF8 !important;
+      }
+      
+      .content {
+        color: #494358 !important;
+      }
+      
+      .button {
+        background-color: #273143 !important;
+        color: #FFFFFF !important;
+      }
     }
     
     .email-container {
@@ -253,6 +301,10 @@ export function generateEmailHTML(
         linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
         #FFFCF8 !important;
       padding: 20px;
+      min-height: auto !important;
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
     }
     
     .email-content {
@@ -261,11 +313,15 @@ export function generateEmailHTML(
       box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
       padding: 40px 30px;
       margin: 20px 0;
+      min-height: auto !important;
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
     }
     
     .header {
       text-align: center;
-      margin-bottom: 30px;
+      margin-bottom: 15px;
       position: relative;
       display: inline-block;
       width: 100%;
@@ -286,27 +342,100 @@ export function generateEmailHTML(
       display: block;
       /* Prevent any color inversion from dark mode */
       -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
+      /* Prevent dark mode from inverting the logo */
+      image-rendering: -webkit-optimize-contrast;
+      -webkit-appearance: none;
+      border: 0;
+      outline: none;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .logo-img {
+        filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
+        -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
+      }
     }
     
     .piggy-img {
       position: absolute;
       right: -20%;
       bottom: -20%;
-      height: 50px;
+      height: 65px;
       width: auto;
       z-index: 0;
       opacity: 0.6;
+      border: 0;
+      outline: none;
+      display: block;
     }
     
     .content {
       font-size: 16px;
-      color: #494358;
+      color: #494358 !important;
       line-height: 1.8;
       margin-bottom: 30px;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      white-space: normal !important;
+      min-height: auto !important;
+      max-height: none !important;
+      height: auto !important;
+      display: block !important;
+      -webkit-line-clamp: none !important;
+      line-clamp: none !important;
+      -webkit-box-orient: horizontal !important;
+      box-orient: horizontal !important;
     }
     
     .content p {
       margin-bottom: 15px;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      white-space: normal !important;
+      max-height: none !important;
+      height: auto !important;
+      display: block !important;
+      -webkit-line-clamp: none !important;
+      line-clamp: none !important;
+      -webkit-box-orient: horizontal !important;
+      box-orient: horizontal !important;
+    }
+    
+    /* Force desktop to show all content */
+    @media screen and (min-width: 601px) {
+      .email-container {
+        min-height: auto !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      
+      .email-content {
+        min-height: auto !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      
+      .content {
+        min-height: auto !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+        -webkit-line-clamp: none !important;
+        line-clamp: none !important;
+      }
+      
+      .content p {
+        min-height: auto !important;
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+        -webkit-line-clamp: none !important;
+        line-clamp: none !important;
+      }
     }
     
     .button-container {
@@ -317,8 +446,8 @@ export function generateEmailHTML(
     .button {
       display: inline-block;
       padding: 14px 32px;
-      background-color: #273143;
-      color: #FFFFFF;
+      background-color: #273143 !important;
+      color: #FFFFFF !important;
       text-decoration: none;
       border-radius: 18px;
       font-size: 16px;
@@ -326,10 +455,28 @@ export function generateEmailHTML(
       font-family: 'Varela Round', sans-serif;
       transition: background-color 0.3s;
       box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.15);
+      /* Force white text - prevent dark mode from changing to blue */
+      -webkit-text-fill-color: #FFFFFF !important;
+      text-fill-color: #FFFFFF !important;
     }
     
     .button:hover {
-      background-color: #1a2330;
+      background-color: #1a2330 !important;
+      color: #FFFFFF !important;
+      -webkit-text-fill-color: #FFFFFF !important;
+      text-fill-color: #FFFFFF !important;
+    }
+    
+    .button:visited {
+      color: #FFFFFF !important;
+      -webkit-text-fill-color: #FFFFFF !important;
+      text-fill-color: #FFFFFF !important;
+    }
+    
+    .button:link {
+      color: #FFFFFF !important;
+      -webkit-text-fill-color: #FFFFFF !important;
+      text-fill-color: #FFFFFF !important;
     }
     
     .footer {
@@ -374,30 +521,30 @@ export function generateEmailHTML(
       }
       
       .piggy-img {
-        height: 40px;
+        height: 52px;
         right: -15%;
         bottom: -15%;
       }
     }
   </style>
 </head>
-<body>
-  <div class="email-container">
-    <div class="email-content">
+<body style="background-color: #FFFCF8 !important; color: #262135 !important; color-scheme: light only !important;">
+  <div class="email-container" style="background-color: #FFFCF8 !important; color-scheme: light only !important; min-height: auto !important; max-height: none !important; height: auto !important; overflow: visible !important;">
+    <div class="email-content" style="background-color: #FFFCF8 !important; color: #262135 !important; min-height: auto !important; max-height: none !important; height: auto !important; overflow: visible !important;">
       <div class="header">
         <div class="logo-container">
-          <img src="${logoUrl}" alt="Joystie" class="logo-img" style="position: relative; z-index: 1;" />
-          <img src="${piggyUrl}" alt="Piggy Bank" class="piggy-img" />
+          <img src="${logoUrl}" alt="Joystie Logo" class="logo-img" role="presentation" referrerpolicy="no-referrer" loading="eager" style="position: relative; z-index: 1; filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; border: 0; outline: none; display: block;" />
+          <img src="${piggyUrl}" alt="Piggy Bank" class="piggy-img" role="presentation" referrerpolicy="no-referrer" loading="eager" style="border: 0; outline: none; display: block;" />
         </div>
       </div>
       
-      <div class="content">
+      <div class="content" style="color: #494358 !important; overflow: visible !important; text-overflow: clip !important; white-space: normal !important; min-height: auto !important; max-height: none !important; height: auto !important; display: block !important; -webkit-line-clamp: none !important; line-clamp: none !important;">
         ${content}
       </div>
       
       ${buttonText && buttonUrl ? `
       <div class="button-container">
-        <a href="${buttonUrl}" class="button">${buttonText}</a>
+        <a href="${buttonUrl}" class="button" style="background-color: #273143 !important; color: #FFFFFF !important; -webkit-text-fill-color: #FFFFFF !important; text-fill-color: #FFFFFF !important;">${buttonText}</a>
       </div>
       ` : ''}
       

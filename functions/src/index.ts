@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { sendNotificationEmail } from './email';
+import { processScheduledNotifications, processUploadNotification } from './notifications';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -140,10 +141,6 @@ export const testEmailNotification = functions.https.onRequest(
       'SERVICE_FUNCTION_BASE_URL',
       // Note: SERVICE_FUNCTION_SENDGRID_API_KEY is optional - only add if using SendGrid
     ],
-    // Note: After deployment, make the function public via Firebase Console:
-    // 1. Go to Firebase Console → Functions → testEmailNotification
-    // 2. Click "Permissions" tab
-    // 3. Add "allUsers" with role "Cloud Functions Invoker"
   },
   async (req, res) => {
     try {
@@ -183,6 +180,79 @@ export const testEmailNotification = functions.https.onRequest(
         success: false,
         error: `Failed to send test email: ${error.message}`,
       });
+    }
+  }
+);
+
+/**
+ * Scheduled function for automated email notifications
+ * Runs every 5 minutes to check for notification triggers at specific times:
+ * - 7:08 AM: First day of challenge notification
+ * - 7:07 AM: Missing upload notifications
+ * - 20:48 PM: Two pending approvals notification
+ */
+export const scheduledNotifications = functions.scheduler.onSchedule(
+  {
+    schedule: 'every 5 minutes',
+    timeZone: 'Asia/Jerusalem',
+    region: 'us-central1',
+    secrets: [
+      'SERVICE_FUNCTION_EMAIL_SERVICE',
+      'SERVICE_FUNCTION_EMAIL_USER',
+      'SERVICE_FUNCTION_EMAIL_PASSWORD',
+      'SERVICE_FUNCTION_EMAIL_FROM',
+      'SERVICE_FUNCTION_BASE_URL',
+    ],
+  },
+  async (event) => {
+    try {
+      const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
+      console.log('[ScheduledNotifications] Running scheduled notifications check');
+      await processScheduledNotifications(baseUrl);
+      console.log('[ScheduledNotifications] Completed successfully');
+    } catch (error) {
+      console.error('[ScheduledNotifications] Error:', error);
+      throw error;
+    }
+  }
+);
+
+/**
+ * Firestore trigger for upload notifications
+ * Triggers when a new upload is created
+ * Handles first upload success/failure notifications
+ */
+export const onUploadCreated = functions.firestore.onDocumentCreated(
+  {
+    document: 'daily_uploads/{uploadId}',
+    region: 'us-central1',
+    secrets: [
+      'SERVICE_FUNCTION_EMAIL_SERVICE',
+      'SERVICE_FUNCTION_EMAIL_USER',
+      'SERVICE_FUNCTION_EMAIL_PASSWORD',
+      'SERVICE_FUNCTION_EMAIL_FROM',
+      'SERVICE_FUNCTION_BASE_URL',
+    ],
+  },
+  async (event) => {
+    try {
+      if (!event.data) {
+        console.warn('[OnUploadCreated] No data in event');
+        return;
+      }
+      
+      const upload = {
+        id: event.data.id,
+        ...event.data.data()
+      } as any; // Type assertion needed for Firestore data
+      
+      const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
+      console.log('[OnUploadCreated] Processing upload notification for:', upload.id);
+      await processUploadNotification(upload, baseUrl);
+      console.log('[OnUploadCreated] Completed successfully');
+    } catch (error) {
+      console.error('[OnUploadCreated] Error:', error);
+      // Don't throw - we don't want to fail the upload creation
     }
   }
 );
