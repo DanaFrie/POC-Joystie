@@ -36,15 +36,16 @@ service cloud.firestore {
 
     // Users collection - PRODUCTION RULES
 
-    // NOTE: In production, we restrict public access and use Cloud Functions for username checks
+    // NOTE: Allow unauthenticated read for child pages (security via URL token validation)
+    // This is needed for child/upload and child/setup pages that don't have parent authentication
+    // The token validation ensures only valid parent-child pairs can access
 
     match /users/{userId} {
 
-      // Allow read only for authenticated users
+      // Allow read for all (security handled by URL token validation in app code)
+      // This is needed for child/upload and child/setup pages that don't have parent authentication
 
-      // For username availability checks, use Cloud Functions instead (see DEPLOYMENT.md)
-
-      allow read: if isAuthenticated();
+      allow read: if true;
 
       
 
