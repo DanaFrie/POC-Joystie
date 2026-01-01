@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat+Alternates:wght@400;600;700&family=Rubik:wght@600&family=Varela+Round&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Montserrat+Alternates:wght@400;600;700;900&family=Rubik:wght@600;900&family=Varela+Round&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -41,6 +41,99 @@ html[dir="rtl"] {
 
 .small-text {
   @apply font-varela text-xs leading-tight;
+}
+
+/* Landing Page Styles */
+/* Brand colors */
+.bg-joystie-blue { background-color: #BBE9FD; }
+.bg-joystie-lime { background-color: #E6F19A; }
+.bg-joystie-dark { background-color: #273143; }
+.text-joystie-dark { color: #273143; }
+.text-joystie-blue { color: #BBE9FD; }
+.text-joystie-lime { color: #E6F19A; }
+
+/* Gradient background */
+.gradient-bg {
+  background: linear-gradient(145deg, #BBE9FD 0%, #E6F19A 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+/* Grid background */
+.bg-grid {
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(39, 49, 67, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(39, 49, 67, 0.05) 1px, transparent 1px);
+}
+
+.shadow-custom {
+  filter: drop-shadow(0px 3.24687px 3.24687px rgba(0, 0, 0, 0.15));
+}
+
+/* Floating animations */
+.duo-float {
+  animation: duoFloat 4s ease-in-out infinite;
+}
+.duo-float-delayed {
+  animation: duoFloat 5s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+.duo-float-slow {
+  animation: duoFloat 7s ease-in-out infinite;
+  animation-delay: 0.6s;
+}
+.duo-float-alt {
+  animation: duoFloatAlt 4s ease-in-out infinite;
+}
+
+@keyframes duoFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-30px) rotate(4deg); }
+}
+
+@keyframes duoFloatAlt {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(25px) rotate(-5deg); }
+}
+
+/* Reveal on scroll */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.btn-main {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  font-family: 'Rubik', sans-serif;
+  font-weight: 900;
+}
+.btn-main:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 15px 30px rgba(39, 49, 67, 0.2);
+}
+
+/* Typography for landing page */
+h1, h2, h3, .font-brand {
+  font-family: 'Fredoka', sans-serif;
+  line-height: 1.1;
+}
+
+/* Placeholder styles */
+.placeholder-media {
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  font-weight: bold;
+  font-size: 0.75rem;
+  text-align: center;
 }
 
 /* Remove unwanted border in mobile view */
