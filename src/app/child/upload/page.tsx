@@ -268,25 +268,41 @@ function ChildUploadContent() {
           // Get all non-redemption days (challenge days)
           const nonRedemptionDays = dashboardData.week.filter(day => !day.isRedemptionDay);
           
+          // Total challenge days (all 6 days, including future)
+          const totalChallengeDays = nonRedemptionDays.length;
+          
+          // Get only days that have already passed (not future)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const pastDays = nonRedemptionDays.filter(day => {
+            const [dayNum, monthNum] = day.date.split('/').map(Number);
+            const currentYear = new Date().getFullYear();
+            const dayDate = new Date(currentYear, monthNum - 1, dayNum);
+            dayDate.setHours(0, 0, 0, 0);
+            return dayDate < today;
+          });
+          
+          // Find days that have been uploaded (only actual uploads, not future days)
+          const daysUploaded = pastDays.filter(day => 
+            day.status === 'success' || 
+            day.status === 'warning' || 
+            day.status === 'awaiting_approval'
+          );
+          
           // Find days that need UPLOAD (missing)
-          const daysNeedingUpload = nonRedemptionDays.filter(day => 
+          const daysNeedingUpload = pastDays.filter(day => 
             day.status === 'missing'
           );
           
-          // Find days that have been uploaded (not missing - includes awaiting_approval, success, warning)
-          const daysUploaded = nonRedemptionDays.filter(day => 
-            day.status !== 'missing'
-          );
-          
           // Logic: Show warning only if:
-          // 1. All days except one have been uploaded (X-1 days uploaded, 1 day left)
+          // 1. All challenge days except one have been uploaded (totalChallengeDays - 1 days uploaded, 1 day left)
           // 2. The selected day is that one remaining day
           // This matches the redemption page logic: only show when all days are uploaded except one
-          const totalChallengeDays = nonRedemptionDays.length;
           const uploadedCount = daysUploaded.length;
           const remainingCount = daysNeedingUpload.length;
           
-          // Check if all days except one have been uploaded (X-1 uploaded, 1 remaining)
+          // Check if all challenge days except one have been uploaded (totalChallengeDays - 1 uploaded, 1 remaining)
           if (uploadedCount === totalChallengeDays - 1 && remainingCount === 1) {
             // Check if the selected day is that one remaining day
             const onlyDayLeft = daysNeedingUpload[0];
@@ -1069,6 +1085,8 @@ function ChildUploadContent() {
         // Invalidate uploads cache since we just created a new upload
         const { dataCache, cacheKeys } = await import('@/utils/data-cache');
         dataCache.invalidate(cacheKeys.uploads(uploadChallengeId, uploadParentId));
+        // Also invalidate dashboard cache to ensure redirect check uses fresh data
+        dataCache.invalidate(cacheKeys.dashboard(uploadParentId));
         
         (result as any).uploadId = uploadId;
       } else {
@@ -1084,7 +1102,6 @@ function ChildUploadContent() {
 
     // Store weekly total in result for display
     (result as any).weeklyTotal = weeklyTotal;
-    setUploadResult(result);
 
     // Trigger event for parent dashboard to update
     window.dispatchEvent(new Event('childUploaded'));
@@ -1094,57 +1111,97 @@ function ChildUploadContent() {
       weeklyTotal
     });
 
-    // Always set submitting to false and submitted to true
-    setIsSubmitting(false);
-    setSubmitted(true);
-    // Reset upload step for next upload
-    setUploadStep(1);
-
-    // Check if this was the last day to upload (only one day left AND it's the last challenge day)
-    // We check this condition directly here to ensure accuracy after upload
-    const checkAndRedirect = async () => {
-      if (!selectedDay || !parentId || !challengeId) return;
+    // Check if this was the last day to upload BEFORE showing result screen
+    // This prevents showing "העלה יום נוסף" screen if redirect is needed
+    const checkAndRedirect = async (): Promise<boolean> => {
+      if (!selectedDay || !parentId || !challengeId) return false;
       
       try {
-        // Use cache for redirect check - this is not critical for UX and improves performance
+        // Don't use cache for redirect check - we need fresh data after upload
+        // Cache was already invalidated after upload, but we want to ensure we get the latest data
         const { getDashboardData } = await import('@/lib/api/dashboard');
-        const dashboardData = await getDashboardData(parentId, true); // Use cache
+        const dashboardData = await getDashboardData(parentId, false); // Don't use cache to ensure fresh data
         
         if (dashboardData && dashboardData.week) {
-          // Find days that still need UPLOAD only (excluding redemption day and the day we just uploaded)
-          const daysNeedingUpload = dashboardData.week
-            .filter(day => {
-              if (day.isRedemptionDay) return false;
-              if (day.date === selectedDay.dateStr) return false; // Exclude the day we just uploaded
-              // Only days that need upload (missing)
-              if (day.status === 'missing') return true;
-              return false;
-            });
+          // Get all non-redemption days (challenge days)
+          const nonRedemptionDays = dashboardData.week.filter(day => !day.isRedemptionDay);
           
-          // If there are still days that need upload, don't redirect
-          if (daysNeedingUpload.length > 0) {
-            return;
-          }
+          // Total challenge days (all 6 days, including future)
+          const totalChallengeDays = nonRedemptionDays.length;
           
-          // If no days left need upload, redirect to redemption
-          // The redemption page will handle the approval status and show appropriate UI
-          const redemptionUrl = parentId 
-            ? generateRedemptionUrl(parentId, childId || undefined, challengeId || undefined)
-            : `/child/redemption?lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
+          // Get only days that have already passed (not future)
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
           
-          logger.log('All days uploaded, redirecting to redemption');
+          const pastDays = nonRedemptionDays.filter(day => {
+            const [dayNum, monthNum] = day.date.split('/').map(Number);
+            const currentYear = new Date().getFullYear();
+            const dayDate = new Date(currentYear, monthNum - 1, dayNum);
+            dayDate.setHours(0, 0, 0, 0);
+            return dayDate < today;
+          });
           
-          setTimeout(() => {
+          // Find days that have been uploaded (only actual uploads, not future days)
+          // Exclude the day we just uploaded from the count
+          const daysUploaded = pastDays.filter(day => 
+            day.date !== selectedDay.dateStr && (
+              day.status === 'success' || 
+              day.status === 'warning' || 
+              day.status === 'awaiting_approval'
+            )
+          );
+          
+          // Find days that need UPLOAD (missing), excluding the day we just uploaded
+          const daysNeedingUpload = pastDays.filter(day => 
+            day.date !== selectedDay.dateStr &&
+            day.status === 'missing'
+          );
+          
+          // Logic: Redirect only if:
+          // 1. All challenge days except one have been uploaded (totalChallengeDays - 1 days uploaded)
+          // 2. No past days left need upload (all past days have been uploaded)
+          // This matches the warning logic: only redirect when all days are uploaded except one
+          const uploadedCount = daysUploaded.length;
+          const remainingCount = daysNeedingUpload.length;
+          
+          // Check if all challenge days except one have been uploaded (totalChallengeDays - 1 uploaded, 0 remaining)
+          // This means: we just uploaded the last day that needed upload
+          if (uploadedCount === totalChallengeDays - 1 && remainingCount === 0) {
+            // All past days have been uploaded, redirect to redemption immediately
+            // The redemption page will handle the approval status and show appropriate UI
+            const redemptionUrl = parentId 
+              ? generateRedemptionUrl(parentId, childId || undefined, challengeId || undefined)
+              : `/child/redemption?lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;
+            
+            logger.log('All days uploaded, redirecting to redemption immediately');
+            
+            // Redirect immediately without showing result screen
             router.push(`${redemptionUrl}${redemptionUrl.includes('?') ? '&' : '?'}lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`);
-          }, 500); // Short delay to ensure state is saved
+            return true; // Indicate that redirect happened
+          }
         }
       } catch (error) {
         logger.error('Error checking redirect condition:', error);
         // Don't redirect on error - better to stay on upload page
       }
+      return false; // No redirect needed
     };
     
-    checkAndRedirect();
+    // Check redirect BEFORE showing result screen
+    const shouldRedirect = await checkAndRedirect();
+    
+    // Only show result screen if redirect is not needed
+    if (!shouldRedirect) {
+      setUploadResult(result);
+      setIsSubmitting(false);
+      setSubmitted(true);
+      // Reset upload step for next upload
+      setUploadStep(1);
+    } else {
+      // Redirect is happening, don't show result screen
+      setIsSubmitting(false);
+      // Don't set submitted=true to prevent showing result screen
+    }
   };
 
 
@@ -1659,7 +1716,7 @@ function ChildUploadContent() {
                         {childP.you} מעלה סטטוס של {selectedDay.dayName} {selectedDay.dateStr} - זה היום האחרון שנשאר להעלות בשבוע! זה אומר שאוטוטו {childP.youEarn} את הזכייה {childGender === 'boy' ? 'שלך' : 'שלך'}!
                       </p>
                       <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                        ודא ש{parentName} לידך כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור של {parentName}.
+                        {childGender === 'boy' ? 'ודא' : 'ודאי'} ש{parentName} לידך כי אחרי ההעלאה {childP.youGo} למסך הפדיון שבו {childP.youNeed} את האישור של {parentName}.
                       </p>
                     </div>
                   );
