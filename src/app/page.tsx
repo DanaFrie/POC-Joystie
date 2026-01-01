@@ -299,7 +299,7 @@ export default function Home() {
           {/* Left: Contact Info (Enlarged) */}
           <div className="w-full md:w-1/4 flex flex-col items-center md:items-start gap-4">
             <a href="https://www.linkedin.com/company/joystie" target="_blank" rel="noopener noreferrer" className="text-joystie-dark font-black text-base hover:text-blue-600 transition-colors font-brand">
-              Joystie in Linkedin
+              Joystie on LinkedIn
             </a>
             <a href="mailto:info@joystie.com" className="text-joystie-dark font-black text-base font-brand">
               info@joystie.com
