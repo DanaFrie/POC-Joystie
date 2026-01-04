@@ -25,9 +25,11 @@
     "sync:branch:bash": "bash ./scripts/sync-branch-config.sh",
     "deploy:apphosting": "npm run sync:branch && firebase apphosting:backends:deploy",
     "deploy:apphosting:prod": "npm run sync:branch && firebase use prod && firebase apphosting:backends:deploy",
-    "deploy:apphosting:intgr": "npm run sync:branch && firebase use intgr && firebase apphosting:backends:deploy"},
+    "deploy:apphosting:intgr": "npm run sync:branch && firebase use intgr && firebase apphosting:backends:deploy"
+  },
   "dependencies": {
     "firebase": "^9.23.0",
+    "lucide-react": "^0.562.0",
     "next": "13.4.19",
     "react": "18.2.0",
     "react-dom": "18.2.0",

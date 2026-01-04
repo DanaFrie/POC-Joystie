@@ -56,7 +56,18 @@ html[dir="rtl"] {
 .gradient-bg {
   background: linear-gradient(145deg, #BBE9FD 0%, #E6F19A 100%);
   background-attachment: fixed;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
   position: relative;
+}
+
+/* Fix gradient position on mobile devices */
+@media (max-width: 768px) {
+  .gradient-bg {
+    background-attachment: scroll;
+    background-position: center top;
+  }
 }
 
 /* Grid background */
