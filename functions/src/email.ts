@@ -216,6 +216,11 @@ export function generateEmailHTML(
   <meta name="supported-color-schemes" content="light">
   <title>${title}</title>
   <style>
+    /* Force RTL direction for all elements */
+    html, body, * {
+      direction: rtl !important;
+      text-align: right !important;
+    }
     @import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
     
     /* Force light mode - prevent dark mode from changing colors */
@@ -238,16 +243,11 @@ export function generateEmailHTML(
       font-family: 'Varela Round', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       line-height: 1.8;
       color: #262135 !important;
-      background: 
-        radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
-        radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
-        linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
-        #FFFCF8 !important;
       background-color: #FFFCF8 !important;
       margin: 0;
       padding: 0;
+      direction: rtl !important;
+      text-align: right !important;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -255,25 +255,13 @@ export function generateEmailHTML(
     /* Prevent dark mode media query from affecting styles */
     @media (prefers-color-scheme: dark) {
       body {
-        background: 
-          radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
-          radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
-          radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
-          linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
-          #FFFCF8 !important;
         background-color: #FFFCF8 !important;
         color: #262135 !important;
       }
       
       .email-container {
-        background: 
-          radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
-          radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
-          radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
-          linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
-          #FFFCF8 !important;
+        background: linear-gradient(to bottom right, #E6F19A, #BBE9FD) !important;
+        background-color: #FFFCF8 !important;
       }
       
       .email-content {
@@ -293,18 +281,15 @@ export function generateEmailHTML(
     .email-container {
       max-width: 600px;
       margin: 0 auto;
-      background: 
-        radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
-        radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
-        radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
-        linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
-        #FFFCF8 !important;
+      background: linear-gradient(to bottom right, #E6F19A, #BBE9FD) !important;
+      background-color: #FFFCF8 !important;
       padding: 20px;
       min-height: auto !important;
       max-height: none !important;
       height: auto !important;
       overflow: visible !important;
+      direction: rtl !important;
+      text-align: right !important;
     }
     
     .email-content {
@@ -317,6 +302,9 @@ export function generateEmailHTML(
       max-height: none !important;
       height: auto !important;
       overflow: visible !important;
+      position: relative;
+      direction: rtl !important;
+      text-align: right !important;
     }
     
     .header {
@@ -331,39 +319,74 @@ export function generateEmailHTML(
       position: relative;
       display: inline-block;
       margin: 0 auto;
+      width: 100%;
+      text-align: center;
     }
     
     .logo-img {
-      height: 60px;
+      height: 51px;
       width: auto;
-      max-width: 200px;
+      max-width: 170px;
       /* Force dark blue color - always #273143 regardless of dark/light mode */
       filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
-      display: block;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      margin: 0 auto;
       /* Prevent any color inversion from dark mode */
       -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
+      -moz-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
       /* Prevent dark mode from inverting the logo */
-      image-rendering: -webkit-optimize-contrast;
-      -webkit-appearance: none;
+      image-rendering: -webkit-optimize-contrast !important;
+      image-rendering: crisp-edges !important;
+      -webkit-appearance: none !important;
+      appearance: none !important;
       border: 0;
       outline: none;
+      /* Gmail compatibility - maintain aspect ratio */
+      height: 51px !important;
+      width: auto !important;
+      max-width: 170px !important;
+      max-height: 51px !important;
+      object-fit: contain !important;
+      /* Force light mode for logo */
+      color-scheme: light only !important;
+      /* Prevent Chrome from applying any color transformations */
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
     
     @media (prefers-color-scheme: dark) {
       .logo-img {
         filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
         -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
+        -moz-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important;
+      }
+    }
+    
+    /* Chrome-specific fixes for logo filter */
+    @supports (-webkit-appearance: none) {
+      .logo-img {
+        will-change: filter;
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
       }
     }
     
     .piggy-img {
       position: absolute;
-      right: -20%;
-      bottom: -20%;
-      height: 65px;
+      left: 50%;
+      top: -10%;
+      transform: translateX(-50%);
+      margin-left: 100px;
+      height: 80px;
       width: auto;
       z-index: 0;
-      opacity: 0.6;
+      opacity: 0.7;
       border: 0;
       outline: none;
       display: block;
@@ -385,6 +408,8 @@ export function generateEmailHTML(
       line-clamp: none !important;
       -webkit-box-orient: horizontal !important;
       box-orient: horizontal !important;
+      font-family: 'Varela Round', sans-serif !important;
+      text-align: right !important;
     }
     
     .content p {
@@ -439,8 +464,9 @@ export function generateEmailHTML(
     }
     
     .button-container {
-      text-align: center;
+      text-align: center !important;
       margin: 30px 0;
+      direction: rtl !important;
     }
     
     .button {
@@ -517,24 +543,60 @@ export function generateEmailHTML(
       }
       
       .logo-img {
-        height: 50px;
+        height: 43px !important;
+        width: auto !important;
+        max-width: 144px !important;
+        object-fit: contain !important;
       }
       
       .piggy-img {
-        height: 52px;
-        right: -15%;
-        bottom: -15%;
+        height: 60px !important;
+        width: 60px !important;
+        left: 50%;
+        top: -8%;
+        transform: translateX(-50%);
+        margin-left: 85px;
       }
     }
   </style>
 </head>
-<body style="background-color: #FFFCF8 !important; color: #262135 !important; color-scheme: light only !important;">
-  <div class="email-container" style="background-color: #FFFCF8 !important; color-scheme: light only !important; min-height: auto !important; max-height: none !important; height: auto !important; overflow: visible !important;">
-    <div class="email-content" style="background-color: #FFFCF8 !important; color: #262135 !important; min-height: auto !important; max-height: none !important; height: auto !important; overflow: visible !important;">
+<body style="background-color: #FFFCF8 !important; color: #262135 !important; color-scheme: light only !important; margin: 0; padding: 0; direction: rtl !important; text-align: right !important;">
+  <!--[if mso]>
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #FFFCF8;">
+    <tr>
+      <td align="center" style="padding: 20px; background-color: #FFFCF8;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="background: linear-gradient(to bottom right, #E6F19A, #BBE9FD); border-radius: 18px; box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);">
+          <tr>
+            <td style="padding: 40px 30px; background-color: #FFFCF8;">
+  <![endif]-->
+  <div class="email-container" style="background: linear-gradient(to bottom right, #E6F19A, #BBE9FD) !important; background-color: #FFFCF8 !important; color-scheme: light only !important; min-height: auto !important; max-height: none !important; height: auto !important; overflow: visible !important; direction: rtl !important; text-align: right !important;">
+    <div class="email-content" style="background-color: #FFFCF8 !important; color: #262135 !important; min-height: auto !important; max-height: none !important; height: auto !important; overflow: visible !important; direction: rtl !important; text-align: right !important;">
       <div class="header">
         <div class="logo-container">
-          <img src="${logoUrl}" alt="Joystie Logo" class="logo-img" role="presentation" referrerpolicy="no-referrer" loading="eager" style="position: relative; z-index: 1; filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; border: 0; outline: none; display: block;" />
-          <img src="${piggyUrl}" alt="Piggy Bank" class="piggy-img" role="presentation" referrerpolicy="no-referrer" loading="eager" style="border: 0; outline: none; display: block;" />
+          <!--[if mso]>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+            <tr>
+              <td align="center">
+                <img src="${logoUrl}" alt="Joystie Logo" height="51" style="display: block; border: 0; outline: none; margin: 0 auto; width: auto; max-width: 170px; object-fit: contain;" />
+              </td>
+            </tr>
+          </table>
+          <![endif]-->
+          <!--[if !mso]><!-->
+          <img src="${logoUrl}" alt="Joystie" height="51" class="logo-img" role="presentation" referrerpolicy="no-referrer" style="position: relative; z-index: 1; filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; -webkit-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; -moz-filter: brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%) !important; border: 0; outline: none; display: block !important; visibility: visible !important; opacity: 1 !important; height: 51px !important; width: auto !important; max-width: 170px !important; max-height: 51px !important; margin: 0 auto; object-fit: contain !important; color-scheme: light only !important; image-rendering: -webkit-optimize-contrast !important; image-rendering: crisp-edges !important; -webkit-appearance: none !important; appearance: none !important;" />
+          <!--<![endif]-->
+          <!--[if mso]>
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="position: relative;">
+            <tr>
+              <td align="center" style="position: relative;">
+                <img src="${piggyUrl}" alt="Piggy Bank" width="80" height="80" style="display: block; border: 0; outline: none; opacity: 0.7; position: absolute; left: 50%; top: -10%; margin-left: 100px;" />
+              </td>
+            </tr>
+          </table>
+          <![endif]-->
+          <!--[if !mso]><!-->
+          <img src="${piggyUrl}" alt="" width="80" height="80" class="piggy-img" role="presentation" referrerpolicy="no-referrer" style="border: 0; outline: none; display: block; position: absolute; left: 50%; top: -10%; transform: translateX(-50%); margin-left: 100px; height: 80px; width: 80px; z-index: 0; opacity: 0.7;" />
+          <!--<![endif]-->
         </div>
       </div>
       
@@ -557,6 +619,14 @@ export function generateEmailHTML(
       </div>
     </div>
   </div>
+  <!--[if mso]>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <![endif]-->
 </body>
 </html>
   `.trim();

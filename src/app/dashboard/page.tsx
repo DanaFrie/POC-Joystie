@@ -8,7 +8,6 @@ import DayInfoModal from '@/components/dashboard/DayInfoModal';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import DaysSummaryModal from '@/components/dashboard/DaysSummaryModal';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
-import { checkGoalMet } from '@/utils/notifications';
 import { isLoggedIn, updateLastActivity, getCurrentUserId } from '@/utils/session';
 import { formatNumber } from '@/utils/formatting';
 import { getDashboardData } from '@/lib/api/dashboard';

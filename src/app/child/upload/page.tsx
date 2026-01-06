@@ -131,6 +131,24 @@ function ChildUploadContent() {
     validateUrl();
   }, [token]);
 
+  // Helper function to parse date string (DD/MM) to Date object, handling year boundaries
+  const parseDateWithYear = (dateStr: string, referenceDate: Date): Date => {
+    const [dayNum, monthNum] = dateStr.split('/').map(Number);
+    const currentYear = referenceDate.getFullYear();
+    
+    // Try current year first
+    let date = new Date(currentYear, monthNum - 1, dayNum);
+    date.setHours(0, 0, 0, 0);
+    
+    // If the date is in the future, try previous year (handles year boundary crossing)
+    if (date >= referenceDate) {
+      date = new Date(currentYear - 1, monthNum - 1, dayNum);
+      date.setHours(0, 0, 0, 0);
+    }
+    
+    return date;
+  };
+
   // Load week days from challenge
   useEffect(() => {
     const loadWeekDays = async () => {
@@ -158,11 +176,8 @@ function ChildUploadContent() {
             .filter(day => {
               if (day.isRedemptionDay) return false;
               
-              // Parse date string to Date object
-              const [dayNum, monthNum] = day.date.split('/').map(Number);
-              const currentYear = new Date().getFullYear();
-              const dayDate = new Date(currentYear, monthNum - 1, dayNum);
-              dayDate.setHours(0, 0, 0, 0);
+              // Parse date string to Date object, handling year boundaries
+              const dayDate = parseDateWithYear(day.date, today);
               
               // Check if day has ended (must be before today, not today or future)
               if (dayDate >= today) return false;
@@ -171,11 +186,8 @@ function ChildUploadContent() {
               return day.status === 'missing';
             })
             .map(day => {
-              // Parse date string to Date object (already parsed in filter, but need it here too)
-              const [dayNum, monthNum] = day.date.split('/').map(Number);
-              const currentYear = new Date().getFullYear();
-              const date = new Date(currentYear, monthNum - 1, dayNum);
-              date.setHours(0, 0, 0, 0); // Ensure time is set to midnight for accurate day difference calculation
+              // Parse date string to Date object, handling year boundaries
+              const date = parseDateWithYear(day.date, today);
               
               // Find full day name
               const dayIndex = dayNames.findIndex(name => {
@@ -1317,11 +1329,8 @@ function ChildUploadContent() {
                             .filter(day => {
                               if (day.isRedemptionDay) return false;
                               
-                              // Parse date string to Date object
-                              const [dayNum, monthNum] = day.date.split('/').map(Number);
-                              const currentYear = new Date().getFullYear();
-                              const dayDate = new Date(currentYear, monthNum - 1, dayNum);
-                              dayDate.setHours(0, 0, 0, 0);
+                              // Parse date string to Date object, handling year boundaries
+                              const dayDate = parseDateWithYear(day.date, today);
                               
                               // Check if day has ended (must be before today, not today or future)
                               if (dayDate >= today) return false;
@@ -1330,11 +1339,8 @@ function ChildUploadContent() {
                               return day.status === 'missing';
                             })
                             .map(day => {
-                              // Parse date string to Date object
-                              const [dayNum, monthNum] = day.date.split('/').map(Number);
-                              const currentYear = new Date().getFullYear();
-                              const date = new Date(currentYear, monthNum - 1, dayNum);
-                              date.setHours(0, 0, 0, 0);
+                              // Parse date string to Date object, handling year boundaries
+                              const date = parseDateWithYear(day.date, today);
                               
                               // Find full day name (convert abbreviation to full name)
                               const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];

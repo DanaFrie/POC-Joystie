@@ -117,7 +117,32 @@ export async function sendPasswordReset(email: string): Promise<void> {
   try {
     const { sendPasswordResetEmail } = await import('firebase/auth');
     const auth = await getAuthInstance();
-    await sendPasswordResetEmail(auth, email);
+    
+    // Get the current URL to determine the base URL
+    const baseUrl = typeof window !== 'undefined' 
+      ? `${window.location.protocol}//${window.location.host}`
+      : 'https://joystie.com'; // Fallback for server-side
+    
+    const actionCodeSettings = {
+      url: `${baseUrl}/reset-password`,
+      handleCodeInApp: true,
+    };
+    
+    await sendPasswordResetEmail(auth, email, actionCodeSettings);
+  } catch (error) {
+    const authError = error as AuthError;
+    throw new Error(getAuthErrorMessage(authError.code));
+  }
+}
+
+/**
+ * Confirm password reset with action code
+ */
+export async function confirmPasswordReset(oobCode: string, newPassword: string): Promise<void> {
+  try {
+    const { confirmPasswordReset: firebaseConfirmPasswordReset } = await import('firebase/auth');
+    const auth = await getAuthInstance();
+    await firebaseConfirmPasswordReset(auth, oobCode, newPassword);
   } catch (error) {
     const authError = error as AuthError;
     throw new Error(getAuthErrorMessage(authError.code));
@@ -139,6 +164,8 @@ function getAuthErrorMessage(code: string): string {
     'auth/too-many-requests': 'יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר',
     'auth/network-request-failed': 'שגיאת רשת. אנא בדוק את החיבור לאינטרנט',
     'auth/invalid-credential': 'פרטי התחברות לא נכונים',
+    'auth/expired-action-code': 'קישור פג תוקף. אנא בקש קישור חדש',
+    'auth/invalid-action-code': 'קישור לא תקין. אנא בקש קישור חדש',
   };
   
   return errorMessages[code] || 'אירעה שגיאה בהתחברות. נסה שוב.';

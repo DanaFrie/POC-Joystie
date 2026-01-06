@@ -5,17 +5,20 @@
  * 
  * Notification Types:
  * 1. First day of challenge (7:08 AM)
- * 2. First upload - success (triggered on upload)
- * 3. First upload - failure (triggered on upload)
+ * 2. First upload - success (triggered on upload, one-time per challenge)
+ * 3. First upload - failure (triggered on upload, one-time per challenge)
  * 4. Two pending approvals (8:48 PM daily, one-time)
- * 5. Missing uploads (7:07 AM daily, continues until first upload)
+ * 5. Missing uploads (7:07 AM daily, continues until first upload - success or failure)
  */
 
 import * as admin from 'firebase-admin';
 import { sendNotificationEmail } from './email';
 import type { FirestoreChallenge, FirestoreDailyUpload, FirestoreUser, FirestoreChild } from './types';
 
-const db = admin.firestore();
+// Lazy initialization of Firestore to avoid issues during code analysis
+function getDb() {
+  return admin.firestore();
+}
 
 // Helper: Get Hebrew day name
 function getHebrewDayName(date: Date): string {
@@ -37,6 +40,12 @@ function getParentPronouns(gender: 'male' | 'female' | undefined): {
   ready: string;
   do: string;
   return: string;
+  talk: string;
+  remind: string;
+  his: string;
+  together: string;
+  know: string;
+  suggest: string;
 } {
   if (gender === 'male') {
     return {
@@ -44,7 +53,13 @@ function getParentPronouns(gender: 'male' | 'female' | undefined): {
       continue: 'ממשיך',
       ready: 'מוכן',
       do: 'תעשה',
-      return: 'תחזור'
+      return: 'תחזור',
+      talk: 'שוחח',
+      remind: 'תזכיר',
+      his: 'שלך',
+      together: 'אתם יחד ואתם הולכים',
+      know: 'מכיר',
+      suggest: 'הציע'
     };
   }
   return {
@@ -52,7 +67,13 @@ function getParentPronouns(gender: 'male' | 'female' | undefined): {
     continue: 'ממשיכה',
     ready: 'מוכנה',
     do: 'תעשי',
-    return: 'תחזרי'
+    return: 'תחזרי',
+    talk: 'שוחחי',
+    remind: 'תזכירי',
+    his: 'שלך',
+    together: 'את יחד ואתן הולכות',
+    know: 'מכירה',
+    suggest: 'הציעי'
   };
 }
 
@@ -63,6 +84,8 @@ function getChildPronouns(gender: 'boy' | 'girl' | undefined): {
   his: string;
   he: string;
   she: string;
+  with: string;
+  himHer: string;
 } {
   if (gender === 'girl') {
     return {
@@ -70,7 +93,9 @@ function getChildPronouns(gender: 'boy' | 'girl' | undefined): {
       her: 'לה',
       his: 'שלה',
       he: 'היא',
-      she: 'היא'
+      she: 'היא',
+      with: 'איתה',
+      himHer: 'אותה'
     };
   }
   return {
@@ -78,26 +103,50 @@ function getChildPronouns(gender: 'boy' | 'girl' | undefined): {
     her: 'לו',
     his: 'שלו',
     he: 'הוא',
-    she: 'הוא'
+    she: 'הוא',
+    with: 'איתו',
+    himHer: 'אותו'
+  };
+}
+
+// Helper: Get combined pronouns for parent and child
+function getCombinedPronouns(
+  parentGender: 'male' | 'female' | undefined,
+  childGender: 'boy' | 'girl' | undefined
+): {
+  together: string;
+  going: string;
+} {
+  // If both are same gender or at least one is male, use masculine plural
+  if (parentGender === 'male' || (parentGender === 'female' && childGender === 'boy')) {
+    return {
+      together: 'אתם',
+      going: 'הולכים'
+    };
+  }
+  // If both are female
+  return {
+    together: 'אתן',
+    going: 'הולכות'
   };
 }
 
 /**
  * Notification 1: First day of challenge (7:08 AM)
  */
-async function sendFirstDayNotification(
+export async function sendFirstDayNotification(
   challenge: FirestoreChallenge,
   parent: FirestoreUser,
   child: FirestoreChild,
   baseUrl: string
 ): Promise<void> {
   const childP = getChildPronouns(child.gender);
-  
-  const title = `${parent.firstName || parent.username} - ${parent.username}`;
+  const parentP = getParentPronouns(parent.gender);
+  const combinedP = getCombinedPronouns(parent.gender, child.gender);
+  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
   const content = `
-    <p><strong>היום הראשון לאתגר</strong></p>
-    <p><strong>מ-ת-ח-י-ל-י-ם-!</strong></p>
-    <p>שוחחו עם ${child.name} כבר הבוקר ותזכירו ${childP.him} שאתם יחד ואתם הולכים להצליח.</p>
+    <p><strong>היום הראשון לאתגר מ-ת-ח-י-ל-י-ם-!</strong></p>
+    <p>${parentP.talk} עם ${child.name} כבר הבוקר ו${parentP.remind} ${childP.him} ש${parentP.you} יחד ${childP.with} ו${combinedP.together} ${combinedP.going} להצליח.</p>
     <p>החל ממחר בבוקר, ${child.name} יוכל להעלות את הסטטוס ${childP.his} בקישור שקיבל ולהתחיל לצבור הצלחות!</p>
   `;
   
@@ -114,15 +163,15 @@ async function sendFirstDayNotification(
 /**
  * Notification 2: First upload - success
  */
-async function sendFirstUploadSuccessNotification(
+export async function sendFirstUploadSuccessNotification(
   challenge: FirestoreChallenge,
   parent: FirestoreUser,
   child: FirestoreChild,
   baseUrl: string
 ): Promise<void> {
-  const title = `${parent.firstName || parent.username} - ${parent.username}`;
+  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
   const content = `
-    <p>וואו! ${child.name} העלה את הסטטוס היומי והתוצאה מפתיעה! 🥳 רוצה לאשר את זה?</p>
+    <p>וואו! ${child.name} העלה את הסטטוס היומי והתוצאה מפתיעה! רוצה לאשר את זה?</p>
   `;
   
   const dashboardUrl = `${baseUrl}/dashboard`;
@@ -140,7 +189,7 @@ async function sendFirstUploadSuccessNotification(
 /**
  * Notification 3: First upload - failure
  */
-async function sendFirstUploadFailureNotification(
+export async function sendFirstUploadFailureNotification(
   challenge: FirestoreChallenge,
   parent: FirestoreUser,
   child: FirestoreChild,
@@ -149,17 +198,16 @@ async function sendFirstUploadFailureNotification(
 ): Promise<void> {
   const childP = getChildPronouns(child.gender);
   
-  // Get yesterday's date
+  // Get the date of the upload (the day the child uploaded for)
   const uploadDate = new Date(upload.uploadedAt);
-  const yesterday = new Date(uploadDate);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayDateStr = formatDate(yesterday);
-  const yesterdayDayName = getHebrewDayName(yesterday);
+  const uploadDateStr = formatDate(uploadDate);
+  const uploadDayName = getHebrewDayName(uploadDate);
   
-  const title = `${parent.firstName || parent.username} - ${parent.username}`;
+  const parentP = getParentPronouns(parent.gender);
+  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
   const content = `
-    <p>התקבל סטטוס מ${child.name} עבור ${yesterdayDayName} (${yesterdayDateStr}). זה טבעי שלילד יהיה קשה להניח את הטלפון. רוב הניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר?</p>
-    <p><strong>טיפ:✨</strong> הציעו ל${child.name} רעיון לתכלית של החיסכון הכספי לפי מה שאתם מכירים הכי טוב שיכול להתאים ${childP.him}</p>
+    <p>התקבל סטטוס מ${child.name} עבור ${uploadDayName} (${uploadDateStr}). זה טבעי שלילד יהיה קשה להניח את הטלפון. רוב הניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר?</p>
+    <p><strong>טיפ:</strong> על פי איך ש${parentP.you} ${parentP.know} ${childP.himHer} - ${parentP.suggest} ל${child.name} רעיון למטרת החיסכון של הכסף.</p>
   `;
   
   await sendNotificationEmail(
@@ -175,7 +223,7 @@ async function sendFirstUploadFailureNotification(
 /**
  * Notification 4: Two pending approvals (8:48 PM, one-time)
  */
-async function sendTwoPendingApprovalsNotification(
+export async function sendTwoPendingApprovalsNotification(
   challenge: FirestoreChallenge,
   parent: FirestoreUser,
   child: FirestoreChild,
@@ -183,10 +231,10 @@ async function sendTwoPendingApprovalsNotification(
 ): Promise<void> {
   const childP = getChildPronouns(child.gender);
   
-  const title = `${parent.firstName || parent.username} - ${parent.username}`;
+  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
   const content = `
     <p>שמנו לב של${child.name} נצברו כבר שני סטטוסים שממתינים לאישור שלך.</p>
-    <p>עידוד קטן והתייחסות מצידך יכול לגרום ${childP.him} לאמץ את ההרגל הזה</p>
+    <p>עידוד קטן והתייחסות מצידך יכולים לגרום ${childP.him} לאמץ את ההרגל הזה.</p>
   `;
   
   const dashboardUrl = `${baseUrl}/dashboard`;
@@ -205,7 +253,7 @@ async function sendTwoPendingApprovalsNotification(
  * Notification 5: Missing uploads (7:07 AM, continues until first upload)
  * Different messages based on challenge day
  */
-async function sendMissingUploadNotification(
+export async function sendMissingUploadNotification(
   challenge: FirestoreChallenge,
   parent: FirestoreUser,
   child: FirestoreChild,
@@ -213,43 +261,54 @@ async function sendMissingUploadNotification(
   baseUrl: string,
   uploadUrl: string
 ): Promise<void> {
-  const parentP = getParentPronouns(parent.gender);
   const childP = getChildPronouns(child.gender);
   
-  const title = `${parent.firstName || parent.username} - ${parent.username}`;
+  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
   let content = '';
   
   if (challengeDay === 3) {
     content = `
-      <p>היי,</p>
-      <p>שמנו לב שהיום לא התקבל דיווח מ${child.name} טבעי שהמעבר יהיה צעד צעד. מה אפשר לעשות? היום? - כלום 🙂 תנו ${childP.him} את הזמן ומצאו זמן לדבר איתו כשיתאפשר</p>
+      <p>היי ${parent.firstName || parent.username},</p>
+      <p>שמנו לב שהיום לא התקבל דיווח מ${child.name}, טבעי שהמעבר יהיה צעד-צעד.</p>
+      <p>מה אפשר לעשות? היום? - כלום, תני ${childP.him} את הזמן ומצאי זמן לדבר איתו כשיתאפשר.</p>
     `;
   } else if (challengeDay === 4) {
     content = `
-      <p>בוקר טוב.</p>
-      <p>גם אתמול לא התקבל דיווח מ${child.name}. זה טבעי שלילד יהיה קשה להניח את הטלפון🙃. סביר מאוד הניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר?🗣️✨</p>
-      <p><strong>טיפ:✨</strong> הציעו לילד רעיון לתכלית של החיסכון הכספי לפי מה ש${parentP.you} מכירים הכי טוב שיכול להתאים ${childP.him}</p>
+      <p>בוקר טוב ${parent.firstName || parent.username}!</p>
+      <p>גם אתמול לא התקבל דיווח מ${child.name}. זה טבעי שלילד יהיה קשה להניח את הטלפון. סביר מאוד שהניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר? מה קשה ${childP.him}?</p>
     `;
   } else if (challengeDay === 6) {
+    const tell = parent.gender === 'male' ? 'ספר' : 'ספרי';
+    const youTry = parent.gender === 'male' ? 'אתה מנסה' : 'את מנסה';
     content = `
-      <p>אם זה מנחם… גם לנו ההורים לפעמים קשה להניח את הטלפון, פשוט זה לא 🥴😉 ${child.name} טרם עדכן את הסטאטוס ${childP.his}… אולי כדאי להציע ${childP.him} לשלוח את הדיווח יחד בפעם הראשונה. זה גם ${childP.his} 🙂</p>
-      <p><strong>טיפ:✨</strong> ספרו ${childP.him} מה עובד לכם שאתם מנסים לרכוש הרגל חדש</p>
+      <p>אם זה מנחם… גם לנו ההורים לפעמים קשה להניח את הטלפון, זה באמת לא פשוט 🥴😉 ${child.name} טרם עדכן את הסטטוסildP.his}… אולי כדאי להציע ${childP.him} לשלוח את הדיווח יחד בפעם הראשונה.</p>
+      <p><strong>טיפ:</strong> ${tell} ${childP.him} מה עובד לך כש${youTry} לרכוש הרגל חדש.</p>
     `;
   } else if (challengeDay === 7) {
+    // Helper verbs for "think" and "try to understand"
+    const think = parent.gender === 'male' ? 'תחשוב' : 'תחשבי';
+    const tryToUnderstand = parent.gender === 'male' ? 'נסה להבין' : 'נסי להבין';
+    const understand = parent.gender === 'male' ? 'בוא נבין' : 'בואי נבין';
+    const explain = parent.gender === 'male' ? 'הסבר' : 'הסבירי';
     content = `
-      <p>מרימים משקולות? 🏋️גם אצלנו ההורים לפעמים קשה להתמיד ביעדי הכושר שהגדרנו לעצמנו (מחר אנחנו בטוח קמים מוקדם לרוץ!) , אבל תחשבו על זה: כל עוד אנחנו ממשיכים להתאמן - הגוף מתחזק לאט לאט, גם ל${child.name} יש את הקצב ${childP.his} - נסו להבין איזו תוכנית אימון מתאימה ${childP.him}?</p>
-      <p>אנחנו בונים כלכלה של קשב בה ילדים גדלים בסביבה מאוזנת - ${child.name} כבר חצי צעד בפנים, בא נבין מה יכול לעזור? {ניתן להשתמש ביועץ קשב שלנו לצורך זה > לינק לשיחת ווצאפ}</p>
-      <p>זה אומר שאם אין עדיין סטטוס צריך להוריד משקל בדרך לניצחון ${childP.his} 💪😏</p>
-      <p><strong>טיפ:✨</strong> המשיגו לילד מה הWin-Win ${childP.his}! לדוגמא "גם תוכל לבחור מה לקנות לפני בית ספר וגם תצליח לפנות עוד קצת זמן בבוקר להגיע בזמן"</p>
+      <p>מרימים משקולות? גם אצלנו ההורים לפעמים קשה להתמיד ביעדי הכושר שהגדרנו לעצמנו (מחר אנחנו בטוח קמים מוקדם לרוץ!) , אבל ${think} על זה: כל עוד אנחנו ממשיכים להתאמן - הגוף מתחזק לאט לאט, גם ל${child.name} יש את הקצב ${childP.his} - ${tryToUnderstand} איזו תוכנית אימון מתאימה ${childP.him}?</p>
+      <p>אנחנו בונים כלכלה של קשב בה ילדים גדלים בסביבה מאוזנת - ${child.name} כבר חצי צעד בפנים, ${understand} מה יכול לעזור?</p>
+      <p>ניתן להשתמש ביועץ הקשב שלנו לצורך זה - יכולים <a href="https://calendar.app.google/uZAZZk61eKmZtvmu8" style="color: #273143; text-decoration: underline; font-weight: 600;">ללחוץ כאן</a> ולקבוע <strong>התייעצות חינם</strong>.</p>
+      <p>זה אומר שאם אין עדיין סטטוס צריך להוריד משקל בדרך לניצחון ${childP.his}.</p>
+      <p><strong>טיפ:</strong> ${explain} ל${child.name} מה הWin-Win ${childP.his}! לדוגמא "גם פינית לעצמך זמן ביום לתחביבים אחרים, וגם יש לך כסף בכיס שהוא 'שלך' לגמרי".</p>
     `;
   }
+  
+  // Only show button for day 6
+  const buttonText = challengeDay === 6 ? 'להעלאת דיווח' : undefined;
+  const buttonUrl = challengeDay === 6 ? uploadUrl : undefined;
   
   await sendNotificationEmail(
     parent.email,
     title,
     content,
-    'להעלאת דיווח',
-    uploadUrl,
+    buttonText,
+    buttonUrl,
     baseUrl
   );
 }
@@ -284,21 +343,6 @@ function getCurrentChallengeDay(challenge: FirestoreChallenge): number {
 }
 
 /**
- * Check if this is the first upload for the challenge
- * First upload means no other uploads exist for this challenge
- */
-async function isFirstUpload(challengeId: string, uploadId: string): Promise<boolean> {
-  const uploadsRef = db.collection('daily_uploads');
-  const querySnapshot = await uploadsRef
-    .where('challengeId', '==', challengeId)
-    .get();
-  
-  // If there's only one upload (the current one), it's the first
-  // We check all uploads, not just approved ones, because we want to know if this is truly the first
-  return querySnapshot.size === 1;
-}
-
-/**
  * Check if user has already received notification type
  * Store notification flags in challenge document or separate collection
  */
@@ -306,7 +350,7 @@ async function hasReceivedNotification(
   challengeId: string,
   notificationType: 'first_day' | 'first_upload_success' | 'first_upload_failure' | 'two_pending' | 'missing_upload'
 ): Promise<boolean> {
-  const challengeRef = db.collection('challenges').doc(challengeId);
+  const challengeRef = getDb().collection('challenges').doc(challengeId);
   const challengeDoc = await challengeRef.get();
   
   if (!challengeDoc.exists) {
@@ -326,7 +370,7 @@ async function markNotificationSent(
   challengeId: string,
   notificationType: 'first_day' | 'first_upload_success' | 'first_upload_failure' | 'two_pending' | 'missing_upload'
 ): Promise<void> {
-  const challengeRef = db.collection('challenges').doc(challengeId);
+  const challengeRef = getDb().collection('challenges').doc(challengeId);
   await challengeRef.update({
     [`notificationsSent.${notificationType}`]: true,
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -337,7 +381,7 @@ async function markNotificationSent(
  * Get all active challenges
  */
 async function getActiveChallenges(): Promise<FirestoreChallenge[]> {
-  const challengesRef = db.collection('challenges');
+  const challengesRef = getDb().collection('challenges');
   const querySnapshot = await challengesRef
     .where('isActive', '==', true)
     .get();
@@ -352,7 +396,7 @@ async function getActiveChallenges(): Promise<FirestoreChallenge[]> {
  * Get user by ID
  */
 async function getUserById(userId: string): Promise<FirestoreUser | null> {
-  const userRef = db.collection('users').doc(userId);
+  const userRef = getDb().collection('users').doc(userId);
   const userDoc = await userRef.get();
   
   if (!userDoc.exists) {
@@ -369,7 +413,7 @@ async function getUserById(userId: string): Promise<FirestoreUser | null> {
  * Get child by ID
  */
 async function getChildById(childId: string): Promise<FirestoreChild | null> {
-  const childRef = db.collection('children').doc(childId);
+  const childRef = getDb().collection('children').doc(childId);
   const childDoc = await childRef.get();
   
   if (!childDoc.exists) {
@@ -386,7 +430,7 @@ async function getChildById(childId: string): Promise<FirestoreChild | null> {
  * Get uploads for challenge
  */
 async function getUploadsForChallenge(challengeId: string): Promise<FirestoreDailyUpload[]> {
-  const uploadsRef = db.collection('daily_uploads');
+  const uploadsRef = getDb().collection('daily_uploads');
   const querySnapshot = await uploadsRef
     .where('challengeId', '==', challengeId)
     .get();
@@ -400,7 +444,7 @@ async function getUploadsForChallenge(challengeId: string): Promise<FirestoreDai
 /**
  * Generate upload URL using the same encoding as the client
  */
-function generateUploadUrl(parentId: string, childId: string, challengeId: string, baseUrl: string): string {
+export function generateUploadUrl(parentId: string, childId: string, challengeId: string, baseUrl: string): string {
   // Use the same encoding format as the client: base64url(parentId|childId|challengeId|expiresAt)
   const expiresAt = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 days expiration
   const parts = [parentId, childId || '', challengeId || '', expiresAt.toString()];
@@ -419,12 +463,20 @@ function generateUploadUrl(parentId: string, childId: string, challengeId: strin
  * Handles notifications 1, 4, and 5
  */
 export async function processScheduledNotifications(baseUrl: string): Promise<void> {
+  // Get current time in Asia/Jerusalem timezone
   const now = new Date();
-  const hour = now.getHours();
-  const minute = now.getMinutes();
+  const jerusalemTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jerusalem',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).formatToParts(now);
+  
+  const hour = parseInt(jerusalemTime.find(part => part.type === 'hour')?.value || '0', 10);
+  const minute = parseInt(jerusalemTime.find(part => part.type === 'minute')?.value || '0', 10);
   const timeStr = `${hour}:${String(minute).padStart(2, '0')}`;
   
-  console.log(`[Notifications] Processing scheduled notifications at ${timeStr}`);
+  console.log(`[Notifications] Processing scheduled notifications at ${timeStr} (Asia/Jerusalem)`);
   
   // Get all active challenges
   const challenges = await getActiveChallenges();
@@ -438,12 +490,6 @@ export async function processScheduledNotifications(baseUrl: string): Promise<vo
       
       if (!parent || !child) {
         console.warn(`[Notifications] Missing parent or child for challenge ${challenge.id}`);
-        continue;
-      }
-      
-      // Check if notifications are enabled
-      if (parent.notificationsEnabled === false) {
-        console.log(`[Notifications] Notifications disabled for user ${parent.id}`);
         continue;
       }
       
@@ -476,13 +522,15 @@ export async function processScheduledNotifications(baseUrl: string): Promise<vo
         }
       }
       
-      // Notification 5: Missing uploads (7:07 AM, continues until first upload)
+      // Notification 5: Missing uploads (7:07 AM, continues until first upload - success or failure)
       if (timeStr === '7:07') {
-        const uploads = await getUploadsForChallenge(challenge.id);
-        const hasAnyUpload = uploads.length > 0;
+        // Check if first upload (success or failure) has already happened
+        const hasFirstUploadSuccess = await hasReceivedNotification(challenge.id, 'first_upload_success');
+        const hasFirstUploadFailure = await hasReceivedNotification(challenge.id, 'first_upload_failure');
+        const hasFirstUpload = hasFirstUploadSuccess || hasFirstUploadFailure;
         
-        // Only send if no uploads yet (continues until first upload)
-        if (!hasAnyUpload) {
+        // Only send if first upload (success or failure) hasn't happened yet
+        if (!hasFirstUpload) {
           const challengeDay = getCurrentChallengeDay(challenge);
           
           // Only send on days 3, 4, 6, or 7
@@ -515,7 +563,7 @@ export async function processUploadNotification(
   
   try {
     // Get challenge, parent, and child data
-    const challengeRef = db.collection('challenges').doc(upload.challengeId);
+    const challengeRef = getDb().collection('challenges').doc(upload.challengeId);
     const challengeDoc = await challengeRef.get();
     
     if (!challengeDoc.exists) {
@@ -536,32 +584,23 @@ export async function processUploadNotification(
       return;
     }
     
-    // Check if notifications are enabled
-    if (parent.notificationsEnabled === false) {
-      console.log(`[Notifications] Notifications disabled for user ${parent.id}`);
-      return;
-    }
-    
-    // Check if this is the first upload
-    const isFirst = await isFirstUpload(upload.challengeId, upload.id);
-    
-    if (isFirst) {
-      if (upload.success) {
-        // Notification 2: First upload - success
-        const hasReceived = await hasReceivedNotification(challenge.id, 'first_upload_success');
-        if (!hasReceived) {
-          console.log(`[Notifications] Sending first upload success notification for challenge ${challenge.id}`);
-          await sendFirstUploadSuccessNotification(challenge, parent, child, baseUrl);
-          await markNotificationSent(challenge.id, 'first_upload_success');
-        }
-      } else {
-        // Notification 3: First upload - failure
-        const hasReceived = await hasReceivedNotification(challenge.id, 'first_upload_failure');
-        if (!hasReceived) {
-          console.log(`[Notifications] Sending first upload failure notification for challenge ${challenge.id}`);
-          await sendFirstUploadFailureNotification(challenge, parent, child, upload, baseUrl);
-          await markNotificationSent(challenge.id, 'first_upload_failure');
-        }
+    // Check if this is the first upload (success or failure)
+    // Each type (success/failure) can be sent once per challenge
+    if (upload.success) {
+      // Notification 2: First upload - success (one-time per challenge)
+      const hasReceived = await hasReceivedNotification(challenge.id, 'first_upload_success');
+      if (!hasReceived) {
+        console.log(`[Notifications] Sending first upload success notification for challenge ${challenge.id}`);
+        await sendFirstUploadSuccessNotification(challenge, parent, child, baseUrl);
+        await markNotificationSent(challenge.id, 'first_upload_success');
+      }
+    } else {
+      // Notification 3: First upload - failure (one-time per challenge)
+      const hasReceived = await hasReceivedNotification(challenge.id, 'first_upload_failure');
+      if (!hasReceived) {
+        console.log(`[Notifications] Sending first upload failure notification for challenge ${challenge.id}`);
+        await sendFirstUploadFailureNotification(challenge, parent, child, upload, baseUrl);
+        await markNotificationSent(challenge.id, 'first_upload_failure');
       }
     }
   } catch (error) {

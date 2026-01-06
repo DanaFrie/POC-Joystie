@@ -1,11 +1,23 @@
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
-import { sendNotificationEmail } from './email';
-import { processScheduledNotifications, processUploadNotification } from './notifications';
+import { 
+  processScheduledNotifications, 
+  processUploadNotification,
+  sendFirstDayNotification,
+  sendFirstUploadSuccessNotification,
+  sendFirstUploadFailureNotification,
+  sendTwoPendingApprovalsNotification,
+  sendMissingUploadNotification,
+  generateUploadUrl
+} from './notifications';
 
 // Initialize Firebase Admin
-admin.initializeApp();
+// In Firebase Functions Gen 2, this automatically uses the default service account
+// which has permissions to access Firestore
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // Define secret for Cloud Run service URL
 // This secret must be set using: firebase functions:secrets:set CLOUD_RUN_SERVICE_URL
@@ -114,11 +126,22 @@ export const processScreenshot = functions.https.onCall(
 );
 
 /**
- * Test Firebase Function to send email notification
- * This function sends a test email to verify email configuration
+ * Test Firebase Function to send all notification types
+ * This function sends all 8 notification types in a single request for testing:
+ * 1. First day of challenge
+ * 2. First upload - success
+ * 3. First upload - failure
+ * 4. Two pending approvals
+ * 5. Missing upload (day 3)
+ * 6. Missing upload (day 4)
+ * 7. Missing upload (day 6) - includes button "להעלאת דיווח"
+ * 8. Missing upload (day 7) - includes link to consultation
  * 
  * Usage: Call this function via HTTP GET or POST request
- * Example: curl https://us-central1-joystie-poc.cloudfunctions.net/testEmailNotification
+ * Example: curl https://us-central1-joystie-poc.cloudfunctions.net/testAllNotifications?challengeId=xxx
+ * 
+ * Query Parameters:
+ * - challengeId (required): The challenge ID to use for testing
  * 
  * Prerequisites:
  * 1. Set up email secrets:
@@ -126,13 +149,16 @@ export const processScreenshot = functions.https.onCall(
  *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_USER=info@joystie.com
  *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_PASSWORD=<app-password>
  *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_FROM=info@joystie.com
+ *    firebase functions:secrets:set SERVICE_FUNCTION_BASE_URL=https://joystie.com
  */
-export const testEmailNotification = functions.https.onRequest(
+export const testAllNotifications = functions.https.onRequest(
   {
     region: 'us-central1',
-    timeoutSeconds: 60,
-    memory: '256MiB',
+    timeoutSeconds: 120,
+    memory: '512MiB',
     cors: true, // Enable CORS
+    // Use Firebase Admin SDK service account which has Firestore permissions
+    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
     secrets: [
       'SERVICE_FUNCTION_EMAIL_SERVICE',
       'SERVICE_FUNCTION_EMAIL_USER',
@@ -144,41 +170,184 @@ export const testEmailNotification = functions.https.onRequest(
   },
   async (req, res) => {
     try {
+      const challengeId = req.query.challengeId as string;
+      
+      if (!challengeId) {
+        res.status(400).json({
+          success: false,
+          error: 'Missing required parameter: challengeId',
+        });
+        return;
+      }
+
       const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
-      const testEmail = 'frododana@gmail.com';
-      const title = 'בדיקת התראות אימייל - Joystie';
-      const content = `
-        <p>שלום!</p>
-        <p>זוהי הודעת בדיקה להתראות אימייל מ-Joystie.</p>
-        <p>אם קיבלת את המייל הזה, זה אומר שההגדרה עובדת בהצלחה! ✅</p>
-        <p>המייל נשלח מ-<strong>info@joystie.com</strong> באמצעות Google Workspace.</p>
-        <p>תאריך ושעה: ${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</p>
-      `;
+      console.log('[TestAllNotifications] Starting test for challenge:', challengeId);
+      console.log('[TestAllNotifications] Base URL:', baseUrl);
 
-      console.log('[TestEmail] Sending test email to:', testEmail);
-      console.log('[TestEmail] From: info@joystie.com');
-      console.log('[TestEmail] Base URL:', baseUrl);
+      // Get challenge data
+      const challengeRef = admin.firestore().collection('challenges').doc(challengeId);
+      const challengeDoc = await challengeRef.get();
+      
+      if (!challengeDoc.exists) {
+        res.status(404).json({
+          success: false,
+          error: `Challenge ${challengeId} not found`,
+        });
+        return;
+      }
 
-      await sendNotificationEmail(
-        testEmail,
-        title,
-        content,
-        'ללוח הבקרה',
-        `${baseUrl}/dashboard`,
-        baseUrl
-      );
+      const challenge = {
+        id: challengeDoc.id,
+        ...challengeDoc.data()
+      } as any;
 
-      console.log('[TestEmail] Email sent successfully');
+      // Get parent and child data
+      const parentRef = admin.firestore().collection('users').doc(challenge.parentId);
+      const parentDoc = await parentRef.get();
+      
+      if (!parentDoc.exists) {
+        res.status(404).json({
+          success: false,
+          error: `Parent ${challenge.parentId} not found`,
+        });
+        return;
+      }
+
+      const parent = {
+        id: parentDoc.id,
+        ...parentDoc.data()
+      } as any;
+
+      const childRef = admin.firestore().collection('children').doc(challenge.childId);
+      const childDoc = await childRef.get();
+      
+      if (!childDoc.exists) {
+        res.status(404).json({
+          success: false,
+          error: `Child ${challenge.childId} not found`,
+        });
+        return;
+      }
+
+      const child = {
+        id: childDoc.id,
+        ...childDoc.data()
+      } as any;
+
+      // Get uploads for challenge (for testing first upload failure notification)
+      const uploadsRef = admin.firestore().collection('daily_uploads');
+      const uploadsQuery = await uploadsRef
+        .where('challengeId', '==', challengeId)
+        .limit(1)
+        .get();
+      
+      let testUpload: any = null;
+      if (!uploadsQuery.empty) {
+        const uploadDoc = uploadsQuery.docs[0];
+        testUpload = {
+          id: uploadDoc.id,
+          ...uploadDoc.data(),
+          uploadedAt: uploadDoc.data().uploadedAt || new Date().toISOString()
+        };
+      } else {
+        // Create a mock upload for testing
+        testUpload = {
+          id: 'test-upload-id',
+          challengeId: challengeId,
+          parentId: challenge.parentId,
+          childId: challenge.childId,
+          uploadedAt: new Date().toISOString(),
+          success: false
+        };
+      }
+
+      const results: string[] = [];
+
+      // Send all 8 notification types
+      try {
+        console.log('[TestAllNotifications] Sending notification 1: First day of challenge');
+        await sendFirstDayNotification(challenge, parent, child, baseUrl);
+        results.push('1. First day notification - sent');
+      } catch (error: any) {
+        results.push(`1. First day notification - error: ${error.message}`);
+      }
+
+      try {
+        console.log('[TestAllNotifications] Sending notification 2: First upload - success');
+        await sendFirstUploadSuccessNotification(challenge, parent, child, baseUrl);
+        results.push('2. First upload success notification - sent');
+      } catch (error: any) {
+        results.push(`2. First upload success notification - error: ${error.message}`);
+      }
+
+      try {
+        console.log('[TestAllNotifications] Sending notification 3: First upload - failure');
+        await sendFirstUploadFailureNotification(challenge, parent, child, testUpload, baseUrl);
+        results.push('3. First upload failure notification - sent');
+      } catch (error: any) {
+        results.push(`3. First upload failure notification - error: ${error.message}`);
+      }
+
+      try {
+        console.log('[TestAllNotifications] Sending notification 4: Two pending approvals');
+        await sendTwoPendingApprovalsNotification(challenge, parent, child, baseUrl);
+        results.push('4. Two pending approvals notification - sent');
+      } catch (error: any) {
+        results.push(`4. Two pending approvals notification - error: ${error.message}`);
+      }
+
+      // Send all missing upload notifications (days 3, 4, 6, 7)
+      try {
+        console.log('[TestAllNotifications] Sending notification 5: Missing upload (day 3)');
+        const uploadUrl = generateUploadUrl(challenge.parentId, challenge.childId, challenge.id, baseUrl);
+        await sendMissingUploadNotification(challenge, parent, child, 3, baseUrl, uploadUrl);
+        results.push('5. Missing upload notification (day 3) - sent');
+      } catch (error: any) {
+        results.push(`5. Missing upload notification (day 3) - error: ${error.message}`);
+      }
+
+      try {
+        console.log('[TestAllNotifications] Sending notification 6: Missing upload (day 4)');
+        const uploadUrl = generateUploadUrl(challenge.parentId, challenge.childId, challenge.id, baseUrl);
+        await sendMissingUploadNotification(challenge, parent, child, 4, baseUrl, uploadUrl);
+        results.push('6. Missing upload notification (day 4) - sent');
+      } catch (error: any) {
+        results.push(`6. Missing upload notification (day 4) - error: ${error.message}`);
+      }
+
+      try {
+        console.log('[TestAllNotifications] Sending notification 7: Missing upload (day 6)');
+        const uploadUrl = generateUploadUrl(challenge.parentId, challenge.childId, challenge.id, baseUrl);
+        await sendMissingUploadNotification(challenge, parent, child, 6, baseUrl, uploadUrl);
+        results.push('7. Missing upload notification (day 6) - sent');
+      } catch (error: any) {
+        results.push(`7. Missing upload notification (day 6) - error: ${error.message}`);
+      }
+
+      try {
+        console.log('[TestAllNotifications] Sending notification 8: Missing upload (day 7)');
+        const uploadUrl = generateUploadUrl(challenge.parentId, challenge.childId, challenge.id, baseUrl);
+        await sendMissingUploadNotification(challenge, parent, child, 7, baseUrl, uploadUrl);
+        results.push('8. Missing upload notification (day 7) - sent');
+      } catch (error: any) {
+        results.push(`8. Missing upload notification (day 7) - error: ${error.message}`);
+      }
+
+      console.log('[TestAllNotifications] All notifications sent');
 
       res.status(200).json({
         success: true,
-        message: `Email sent successfully to ${testEmail}`,
+        message: 'All notification tests completed',
+        results: results,
+        challengeId: challengeId,
+        parentEmail: parent.email,
+        childName: child.name,
       });
     } catch (error: any) {
-      console.error('[TestEmail] Error sending email:', error);
+      console.error('[TestAllNotifications] Error:', error);
       res.status(500).json({
         success: false,
-        error: `Failed to send test email: ${error.message}`,
+        error: `Failed to send test notifications: ${error.message}`,
       });
     }
   }
@@ -188,7 +357,7 @@ export const testEmailNotification = functions.https.onRequest(
  * Scheduled function for automated email notifications
  * Runs every 5 minutes to check for notification triggers at specific times:
  * - 7:08 AM: First day of challenge notification
- * - 7:07 AM: Missing upload notifications
+ * - 7:07 AM: Missing upload notifications (continues until first upload - success or failure)
  * - 20:48 PM: Two pending approvals notification
  */
 export const scheduledNotifications = functions.scheduler.onSchedule(

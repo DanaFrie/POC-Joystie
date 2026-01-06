@@ -157,8 +157,8 @@ async function main() {
   const db = getFirestore(app);
 
   // Use fixed test user data (will be deleted and recreated each run)
-  const testEmail = 'test-mid@joystie-test.com';
-  const testPassword = 'TestPassword123!';
+  const testEmail = 'frododana@gmail.com';
+  const testPassword = '123456';
   const testUsername = 'testmid';
   const parentName = 'דנה';
   const childName = 'יובל';
