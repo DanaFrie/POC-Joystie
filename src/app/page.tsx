@@ -264,7 +264,7 @@ export default function Home() {
                     />
                   </div>
                   <h3 className="text-xl md:text-2xl font-black text-joystie-dark mb-3 md:mb-4 font-brand text-center">ארנק דיגיטלי</h3>
-                  <p className="text-base md:text-lg text-gray-500 leading-relaxed">הבנק הראשון שלו. המקום שבו הוא לומד לנהל כסף אמיתי, לחסוך ולהוציא בתבונה.</p>
+                  <p className="text-base md:text-lg text-gray-500 leading-relaxed">הבנק הראשון של הילד. המקום שבו הוא לומד לנהל כסף אמיתי, לחסוך ולהוציא בתבונה.</p>
                 </div>
               </div>
 
@@ -346,16 +346,16 @@ export default function Home() {
           <div className="space-y-3 md:space-y-4">
             {[
               {
-                q: "האם זה לא מרגיש כמו 'שוחד' לילד?",
-                a: "ממש לא. שוחד הוא נקודתי ולא מלמד. Joystie מלמדת ניהול משאבים. בדיוק כמו בעולם המבוגרים – זמן שווה כסף, ואחריות מובילה לתגמול. הילד לא מקבל 'פרס', הוא מנהל תקציב של משאבים."
+                q: "האם נוצרת כאן מוטיבציה שאינה חינוכית?",
+                a: "לגמרי הפוך :) העסקה הקיימת מזיקה בעשרות מונים - כל יום הילד שלך (ותכלס גם את) מקבל שירותים בחינם ומשלם בענק באמצעות ריגוש שצד שלישי מוכר (פרסומות).\nאנחנו שמים את העסקה הזו על השולחן בשקיפות וגם מייצרים מוטיבציה לשינוי בבית: במקום ריב - שיחה על איזון.\nJoystie משתמש במנגנון של מוטיבציה חיצונית כדי להפסיק את ההתמכרות ולרכוש הרגלים מיטיבים."
               },
               {
                 q: "מה קורה עם ההגבלה שיש היום?",
-                a: "ההגבלות הטכניות (כמו Screen Time של אפל או Google Link) הן מצוינות כשוטר, אבל הן לא מלמדות. Joystie יושבת מעל השכבה הזו ונותנת לילד את ה'למה' ואת המוטיבציה הפנימית לנהל את עצמו, במקום שרק יחסמו אותו."
+                a: "ההגבלות הטכניות - ScreenTime, Family Link - מציבות אותנו כשוטר מול הילד. ההגבלה שמה את הילד במקום בלתי אפשרי, בדיוק ברגע שהוא הכי רוצה להמשיך, המערכת זורקת אותו החוצה.\nדמיינו אתכם בשיא הדיאטה עם עוגת גבינה מול הפנים!\nJoystie יוצר בסיס לתקשורת משפחתית, במקום ריב על המסך נוצרת תקשורת של מינונים והחלטות. אתם מתקשרים עם הילד 'כמה זה עולה לי?' כל יום. משוטרים להורים - כמו פעם."
               },
               {
-                q: "איך אפשר לחזור אחורה מול הילד בהתחייבות על הכסף?",
-                a: "המערכת גמישה לחלוטין. אנחנו ממליצים להתחיל ב'בנק' קטן ולתקשר לילד שמדובר בתהליך למידה משותף. תמיד אפשר לעדכן את החוקים יחד ב'ישיבה משפחתית' שבועית, מה שבעצמו מהווה שיעור מצוין בניהול משא ומתן."
+                q: "ומה אם אנחנו לא נותנים דמי כיס?",
+                a: "המערכת כיום היא אתגר של שבוע בלבד. כך גם אנחנו מציעים להסביר את זה לילד. אנחנו רוצים להצית את הניצוץ שיחל ליצור הרגלים מיטיבים."
               }
             ].map((item, idx) => (
               <div key={idx} ref={addRevealRef(6 + idx)} className="reveal bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all">
@@ -368,7 +368,9 @@ export default function Home() {
                 </button>
                 {activeQuestion === idx && (
                   <div className="px-5 pb-5 md:px-8 md:pb-8 text-joystie-dark/70 text-base md:text-lg leading-relaxed animate-fadeIn">
-                    {item.a}
+                    {item.a.split('\n').map((line, lineIdx) => (
+                      <p key={lineIdx} className={lineIdx > 0 ? 'mt-3' : ''}>{line}</p>
+                    ))}
                   </div>
                 )}
               </div>
@@ -387,21 +389,47 @@ export default function Home() {
 
           <div className="grid lg:grid-cols-2 gap-10 md:gap-20 items-center">
             <div className="space-y-4 md:space-y-6 text-base md:text-lg text-joystie-dark/80 leading-relaxed text-right order-2 lg:order-1">
-              <p className="font-bold text-joystie-dark text-xl md:text-2xl font-brand">זה התחיל מהסלון של מאיר...</p>
-              <p>מאיר ניצן, אבא לארבעה, מצא את עצמו מנהל "משא ומתן" מתיש כל ערב על עוד 5 דקות של מסך. הוא הבין שהבעיה היא לא הטכנולוגיה, אלא חוסר בשפה משותפת על ערך הזמן והאחריות.</p>
-              <p>יחד עם דנה פרידמן, מומחית לחוויית משתמש וחינוך, הם יצרו את Joystie – כלי שהופך את הקונפליקט להזדמנות לימודית מדהימה על ניהול משאבים, כסף ואחריות אישית.</p>
+              <p>מצאתי את עצמי מתוסכל משעות של בזבוז - גלילה אינסופית שגרמה לי להרגיש חרדה ותסכול - והרגשתי שאני לא מרוכז דווקא בזמנים שהכי רציתי להיות נוכח: עם הילדים שלי.</p>
+              <p>כשהבנות שלי התחילו לחקות אותי, הבנתי שאני בבעיה. יצאתי למסע של איזון דיגיטלי - בשביל המשפחה שלי ובשביל הנפש שלי. הבנתי שהילדים שלי משלמים מחיר בעסקה שאף אחד לא חתם איתם עליה: הן נותנות את תשומת הלב שלהן ומקבלות שירותים "בחינם".</p>
+              <p>בדרך פגשתי את דנה, שחולקת איתי את האתגר הזה. יחד החלטנו ליצור עסקה אחרת - מנגנון שמצד אחד שם את העסקה המקורית על השולחן בשקיפות מלאה, ומצד שני עוזר למשפחות למצוא איזון אמיתי.</p>
+              <p>ככה נולד Joystie - כלי שהופך את הקונפליקט הדיגיטלי להזדמנות מעשית ללמד את הילדים על ניהול משאבים, כסף ואחריות אישית.</p>
+              <p className="font-bold text-joystie-dark text-xl md:text-2xl font-brand mt-6">מאיר, מייסד Joystie</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4 md:gap-6 order-1 lg:order-2">
               <div ref={addRevealRef(10)} className="reveal bg-joystie-lime p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] text-center rotate-2 shadow-sm border-2 border-white transition-transform hover:rotate-0">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-white/40 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center text-slate-400 text-[10px] rotate-2 placeholder-media">Meir</div>
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center rotate-2">
+                  <Image 
+                    src="/meir_img.jfif" 
+                    alt="מאיר ניצן" 
+                    width={96} 
+                    height={96} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="font-black text-joystie-dark font-brand text-base md:text-lg">מאיר ניצן</div>
-                <p className="text-[9px] md:text-[10px] italic mt-1 md:mt-2 leading-tight text-gray-500 font-bold">"רציתי להפסיק להיות השוטר של הבית ולהתחיל להיות המנטור שלהם"</p>
+                <div className="text-[10px] md:text-[11px] mt-1 md:mt-2 leading-tight text-joystie-dark/80 space-y-1">
+                  <p>יזם חברתי, מרצה בכיר לאיזון דיגיטלי</p>
+                  <p>עשור ביחידות העילית של הצבא וראש מכינה קדם צבאית</p>
+                  <p className="font-bold mt-2">CEO & Co-founder</p>
+                </div>
               </div>
               <div ref={addRevealRef(11)} className="reveal bg-joystie-lime p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] text-center -rotate-2 shadow-sm border-2 border-white transition-transform hover:rotate-0">
-                <div className="w-20 h-20 md:w-24 md:h-24 bg-white/40 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center text-slate-400 text-[10px] -rotate-2 placeholder-media">Dana</div>
+                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center -rotate-2">
+                  <Image 
+                    src="/dana_img.jfif" 
+                    alt="דנה פרידמן" 
+                    width={96} 
+                    height={96} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="font-black text-joystie-dark font-brand text-base md:text-lg">דנה פרידמן</div>
-                <p className="text-[9px] md:text-[10px] italic mt-1 md:mt-2 leading-tight text-gray-500 font-bold">"הטכנולוגיה כאן כדי לשרת את השקט והחינוך, לא כדי להחליף אותם"</p>
+                <div className="text-[10px] md:text-[11px] mt-1 md:mt-2 leading-tight text-joystie-dark/80 space-y-1">
+                  <p>יזמת טכנולוגית, Data Scientist</p>
+                  <p>מנהלת מוצר וקצינה במילואים</p>
+                  <p className="font-bold mt-2">Head of product & Co-founder</p>
+                </div>
               </div>
             </div>
           </div>
@@ -427,11 +455,27 @@ export default function Home() {
             <div className="text-joystie-dark font-black text-xl mb-10 font-brand tracking-tight">Time is Money. We own Time</div>
             <div className="flex justify-center gap-12">
               <div className="flex flex-col items-center max-w-[140px] transition-transform hover:scale-105">
-                <div className="w-14 h-14 bg-white/40 rounded-2xl overflow-hidden mb-3 shadow-sm border-2 border-white/60 flex items-center justify-center text-slate-400 text-[10px] rotate-2 placeholder-media">Meir</div>
+                <div className="w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-sm border-2 border-white/60 flex items-center justify-center rotate-2">
+                  <Image 
+                    src="/meir_img.jfif" 
+                    alt="מאיר ניצן" 
+                    width={56} 
+                    height={56} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="font-bold text-joystie-dark text-sm font-brand leading-none">מאיר ניצן</div>
               </div>
               <div className="flex flex-col items-center max-w-[120px] transition-transform hover:scale-105">
-                <div className="w-14 h-14 bg-white/40 rounded-2xl overflow-hidden mb-3 shadow-sm border-2 border-white/60 flex items-center justify-center text-slate-400 text-[10px] -rotate-2 placeholder-media">Dana</div>
+                <div className="w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-sm border-2 border-white/60 flex items-center justify-center -rotate-2">
+                  <Image 
+                    src="/dana_img.jfif" 
+                    alt="דנה פרידמן" 
+                    width={56} 
+                    height={56} 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <div className="font-bold text-joystie-dark text-sm font-brand leading-none">דנה פרידמן</div>
               </div>
             </div>
