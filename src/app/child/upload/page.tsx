@@ -1214,6 +1214,7 @@ function ChildUploadContent() {
       youFuture: isBoy ? 'תוכל' : 'תוכלי',
       youWill: isBoy ? 'תרוויח' : 'תרוויחי',
       youStart: isBoy ? 'תתחיל' : 'תתחילי',
+      ready: isBoy ? 'מוכן' : 'מוכנה',
 
       youEarn: isBoy ? 'אתה מרוויח' : 'את מרוויחה',
       youGo: isBoy ? 'תעבור' : 'תעברי',
@@ -1548,7 +1549,7 @@ function ChildUploadContent() {
             </h1>
             <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4 mb-4 space-y-3">
               <p className="font-varela text-base text-[#262135] text-center leading-relaxed">
-                {childP.you} מוכן? אנחנו מקווים מאוד שכן! משהו טוב עומד לקרות
+                {childP.you} {childP.ready}? אנחנו מקווים מאוד שכן! משהו טוב עומד לקרות
               </p>
               <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
                 את צילום זמן המסך שלך תוכל{childP.you === 'את' ? 'י' : ''} להעלות על יום שעבר כבר. ביום {nextDayName} תוכל{childP.you === 'את' ? 'י' : ''} להעלות את יום {startDayName}.

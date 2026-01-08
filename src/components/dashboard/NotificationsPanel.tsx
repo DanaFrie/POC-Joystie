@@ -109,7 +109,10 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
   // 1. Challenge exists (we have childName)
   // 2. We have a URL to copy (setup, upload, or redemption)
   const showCopyButton = !!childName && !!urlToCopy;
-  const buttonText = `העתק כתובת לשימוש ${childName}`;
+  const copyVerb = parentGenderValue === 'female' ? 'העתיקי' : 'העתק';
+  const childPossessive = childGender === 'girl' ? 'שלה' : 'שלו';
+  const buttonText = `${copyVerb} את הכתובת לעמוד של ${childName}`;
+  const subtitleText = `לשימוש ${childPossessive}`;
 
   return (
     <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-4">
@@ -179,6 +182,9 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
           >
             {copied ? 'הועתק! ✓' : buttonText}
           </button>
+          <p className="font-varela text-xs text-[#948DA9] text-center mt-1">
+            {subtitleText}
+          </p>
         </div>
       )}
 
