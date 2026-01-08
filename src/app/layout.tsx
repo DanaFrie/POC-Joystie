@@ -2,6 +2,8 @@ import './globals.css'
 import type { Metadata } from 'next'
 import { Lato } from 'next/font/google'
 import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
+import ScrollToTop from '@/components/ui/ScrollToTop'
+import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
 
 const lato = Lato({
   subsets: ['latin'],
@@ -33,14 +35,16 @@ export default function RootLayout({
             #FFFCF8
           `,
           backgroundSize: 'cover',
-          backgroundAttachment: 'fixed'
+          backgroundAttachment: 'fixed',
+          scrollBehavior: 'smooth'
         }}
       >
         <div className="relative min-h-screen">
+          <ScrollToTop />
           <ConditionalNavigation />
-          <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8 lg:[&>*]:rounded-[20px] lg:rounded-[20px] rounded-none overflow-x-hidden" style={{ border: 'none', outline: 'none' }}>
+          <ConditionalMainWrapper>
             {children}
-          </main>
+          </ConditionalMainWrapper>
         </div>
       </body>
     </html>
