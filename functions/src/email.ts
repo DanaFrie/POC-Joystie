@@ -1,45 +1,24 @@
 /**
  * Email sending utilities for Firebase Functions
- * Supports multiple email providers: SendGrid API and Google Workspace SMTP
- *
- * The service automatically selects the provider based on SERVICE_FUNCTION_EMAIL_SERVICE environment variable:
- * - 'sendgrid' - Uses SendGrid API (requires SERVICE_FUNCTION_SENDGRID_API_KEY)
- * - 'workspace' or 'gmail' - Uses Google Workspace/Gmail SMTP (requires SERVICE_FUNCTION_EMAIL_USER and SERVICE_FUNCTION_EMAIL_PASSWORD)
+ * Uses Google Workspace SMTP for sending emails
  *
  * SETUP INSTRUCTIONS:
  *
- * For SendGrid:
- * 1. Sign up at https://sendgrid.com
- * 2. Create API key in SendGrid dashboard
- * 3. Set secrets:
- *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_SERVICE=sendgrid
- *    firebase functions:secrets:set SERVICE_FUNCTION_SENDGRID_API_KEY=<your-api-key>
- *
- * For Google Workspace:
  * 1. Use an existing Google Workspace account (no need to create new user)
  * 2. Enable 2-factor authentication on that account
  * 3. Generate App Password: https://myaccount.google.com/apppasswords
  * 4. Set secrets:
- *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_SERVICE=workspace
  *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_USER=<your-existing-email@joystie.com>
  *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_PASSWORD=<app-password>
  *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_FROM=notifications@joystie.com (optional - for display name)
  */
 
-import * as sgMail from '@sendgrid/mail';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 
-// Email service configuration
-const EMAIL_SERVICE = process.env.SERVICE_FUNCTION_EMAIL_SERVICE || 'workspace';
-const SENDGRID_API_KEY = process.env.SERVICE_FUNCTION_SENDGRID_API_KEY;
+// Email service configuration - using Google Workspace SMTP
 const EMAIL_USER = process.env.SERVICE_FUNCTION_EMAIL_USER;
 const EMAIL_PASSWORD = process.env.SERVICE_FUNCTION_EMAIL_PASSWORD;
-
-// Initialize SendGrid if configured
-if (EMAIL_SERVICE === 'sendgrid' && SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
-}
 
 interface EmailOptions {
   to: string;
@@ -51,51 +30,6 @@ interface EmailOptions {
 interface EmailProvider {
   send(options: EmailOptions): Promise<void>;
   verify?(): Promise<boolean>;
-}
-
-/**
- * SendGrid provider implementation
- */
-class SendGridProvider implements EmailProvider {
-  async send(options: EmailOptions): Promise<void> {
-    if (!SENDGRID_API_KEY) {
-      throw new Error(
-        'SERVICE_FUNCTION_SENDGRID_API_KEY not configured. Set it using: firebase functions:secrets:set SERVICE_FUNCTION_SENDGRID_API_KEY'
-      );
-    }
-
-    try {
-      // Use SERVICE_FUNCTION_EMAIL_FROM if set, otherwise default to notifications@joystie.com
-      const fromEmail = process.env.SERVICE_FUNCTION_EMAIL_FROM || 'notifications@joystie.com';
-      const msg = {
-        to: options.to,
-        from: {
-          email: fromEmail,
-          name: 'Joystie',
-        },
-        replyTo: 'info@joystie.com',
-        subject: options.subject,
-        html: options.html,
-        text: options.text || options.html.replace(/<[^>]*>/g, ''),
-      };
-
-      await sgMail.send(msg);
-      console.log('[Email] Email sent successfully via SendGrid:', {
-        to: options.to,
-        subject: options.subject,
-      });
-    } catch (error: any) {
-      console.error('[Email] SendGrid error:', error);
-      if (error.response) {
-        console.error('[Email] SendGrid error details:', error.response.body);
-      }
-      throw new Error(`Failed to send email via SendGrid: ${error.message}`);
-    }
-  }
-
-  async verify(): Promise<boolean> {
-    return !!SENDGRID_API_KEY;
-  }
 }
 
 /**
@@ -168,21 +102,10 @@ class WorkspaceSMTPProvider implements EmailProvider {
 }
 
 /**
- * Get email provider based on configuration
+ * Get email provider - always uses Google Workspace SMTP
  */
 function getEmailProvider(): EmailProvider {
-  switch (EMAIL_SERVICE.toLowerCase()) {
-    case 'sendgrid':
-      return new SendGridProvider();
-    case 'workspace':
-    case 'gmail':
-      return new WorkspaceSMTPProvider();
-    default:
-      console.warn(
-        `[Email] Unknown EMAIL_SERVICE: ${EMAIL_SERVICE}, defaulting to workspace`
-      );
-      return new WorkspaceSMTPProvider();
-  }
+  return new WorkspaceSMTPProvider();
 }
 
 /**
@@ -481,6 +404,7 @@ export function generateEmailHTML(
       font-family: 'Varela Round', sans-serif;
       transition: background-color 0.3s;
       box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.15);
+      text-align: center !important;
       /* Force white text - prevent dark mode from changing to blue */
       -webkit-text-fill-color: #FFFFFF !important;
       text-fill-color: #FFFFFF !important;
@@ -540,6 +464,7 @@ export function generateEmailHTML(
         font-size: 14px;
         display: block;
         margin: 10px 0;
+        text-align: center !important;
       }
       
       .logo-img {
@@ -606,7 +531,7 @@ export function generateEmailHTML(
       
       ${buttonText && buttonUrl ? `
       <div class="button-container">
-        <a href="${buttonUrl}" class="button" style="background-color: #273143 !important; color: #FFFFFF !important; -webkit-text-fill-color: #FFFFFF !important; text-fill-color: #FFFFFF !important;">${buttonText}</a>
+        <a href="${buttonUrl}" class="button" style="background-color: #273143 !important; color: #FFFFFF !important; -webkit-text-fill-color: #FFFFFF !important; text-fill-color: #FFFFFF !important; text-align: center !important;">${buttonText}</a>
       </div>
       ` : ''}
       

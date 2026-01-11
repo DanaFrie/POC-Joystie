@@ -33,6 +33,25 @@ function formatDate(date: Date): string {
   return `${day}/${month}`;
 }
 
+// Helper: Parse date from DD/MM format (with year from reference date)
+function parseDateFromDDMM(dateStr: string, referenceDate: Date = new Date()): Date {
+  const [day, month] = dateStr.split('/').map(Number);
+  if (isNaN(day) || isNaN(month)) {
+    // If parsing fails, return reference date
+    return referenceDate;
+  }
+  // Use current year, or previous year if the date hasn't occurred yet this year
+  let year = referenceDate.getFullYear();
+  const date = new Date(year, month - 1, day);
+  // If the date is in the future (more than 6 months ahead), assume it's from last year
+  const monthsDiff = (date.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+  if (monthsDiff > 6) {
+    year = year - 1;
+    return new Date(year, month - 1, day);
+  }
+  return date;
+}
+
 // Helper: Get parent pronouns based on gender
 function getParentPronouns(gender: 'male' | 'female' | undefined): {
   you: string;
@@ -86,6 +105,7 @@ function getChildPronouns(gender: 'boy' | 'girl' | undefined): {
   she: string;
   with: string;
   himHer: string;
+  uploaded: string; // העלה/העלתה
 } {
   if (gender === 'girl') {
     return {
@@ -95,7 +115,8 @@ function getChildPronouns(gender: 'boy' | 'girl' | undefined): {
       he: 'היא',
       she: 'היא',
       with: 'איתה',
-      himHer: 'אותה'
+      himHer: 'אותה',
+      uploaded: 'העלתה'
     };
   }
   return {
@@ -105,7 +126,8 @@ function getChildPronouns(gender: 'boy' | 'girl' | undefined): {
     he: 'הוא',
     she: 'הוא',
     with: 'איתו',
-    himHer: 'אותו'
+    himHer: 'אותו',
+    uploaded: 'העלה'
   };
 }
 
@@ -198,24 +220,29 @@ export async function sendFirstUploadFailureNotification(
 ): Promise<void> {
   const childP = getChildPronouns(child.gender);
   
-  // Get the date of the upload (the day the child uploaded for)
-  const uploadDate = new Date(upload.uploadedAt);
-  const uploadDateStr = formatDate(uploadDate);
-  const uploadDayName = getHebrewDayName(uploadDate);
+  // Get the date of the reported day (not the upload date)
+  // upload.date is in format DD/MM
+  const uploadDate = new Date(upload.uploadedAt); // Use upload date as reference
+  const reportedDate = parseDateFromDDMM(upload.date, uploadDate);
+  const reportedDateStr = formatDate(reportedDate);
+  // Use upload.dayName if available, otherwise calculate from date
+  const reportedDayName = upload.dayName || getHebrewDayName(reportedDate);
   
   const parentP = getParentPronouns(parent.gender);
   const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
   const content = `
-    <p>התקבל סטטוס מ${child.name} עבור ${uploadDayName} (${uploadDateStr}). זה טבעי שלילד יהיה קשה להניח את הטלפון. רוב הניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר?</p>
+    <p>${child.name} ${childP.uploaded} את הדיווח עבור ${reportedDayName} (${reportedDateStr}). זה טבעי שלילד יהיה קשה להניח את הטלפון. רוב הניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר?</p>
     <p><strong>טיפ:</strong> על פי איך ש${parentP.you} ${parentP.know} ${childP.himHer} - ${parentP.suggest} ל${child.name} רעיון למטרת החיסכון של הכסף.</p>
   `;
+  
+  const dashboardUrl = `${baseUrl}/dashboard`;
   
   await sendNotificationEmail(
     parent.email,
     title,
     content,
-    undefined, // No button
-    undefined,
+    'ללוח הבקרה',
+    dashboardUrl,
     baseUrl
   );
 }
@@ -270,12 +297,12 @@ export async function sendMissingUploadNotification(
     content = `
       <p>היי ${parent.firstName || parent.username},</p>
       <p>שמנו לב שהיום לא התקבל דיווח מ${child.name}, טבעי שהמעבר יהיה צעד-צעד.</p>
-      <p>מה אפשר לעשות? היום? - כלום, תני ${childP.him} את הזמן ומצאי זמן לדבר איתו כשיתאפשר.</p>
+      <p>מה אפשר לעשות? היום? - כלום, תני ${childP.him} את הזמן ומצאי זמן לדבר ${childP.with} כשיתאפשר.</p>
     `;
   } else if (challengeDay === 4) {
     content = `
       <p>בוקר טוב ${parent.firstName || parent.username}!</p>
-      <p>גם אתמול לא התקבל דיווח מ${child.name}. זה טבעי שלילד יהיה קשה להניח את הטלפון. סביר מאוד שהניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר? מה קשה ${childP.him}?</p>
+      <p>גם אתמול לא התקבל דיווח מ${child.name}. זה טבעי שלילד יהיה קשה להניח את הטלפון. סביר מאוד שהניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר ${childP.with} ולחשוב יחד איך מצליחים מחר? מה קשה ${childP.him}?</p>
     `;
   } else if (challengeDay === 6) {
     const tell = parent.gender === 'male' ? 'ספר' : 'ספרי';
@@ -459,90 +486,113 @@ export function generateUploadUrl(parentId: string, childId: string, challengeId
 }
 
 /**
- * Main scheduled function - runs daily at 7:07, 7:08, and 20:48
- * Handles notifications 1, 4, and 5
+ * Process first day notification (runs at 7:08 AM)
  */
-export async function processScheduledNotifications(baseUrl: string): Promise<void> {
-  // Get current time in Asia/Jerusalem timezone
-  const now = new Date();
-  const jerusalemTime = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Jerusalem',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).formatToParts(now);
+export async function processFirstDayNotification(baseUrl: string): Promise<void> {
+  console.log(`[Notifications] Processing first day notifications at 7:08 AM (Asia/Jerusalem)`);
   
-  const hour = parseInt(jerusalemTime.find(part => part.type === 'hour')?.value || '0', 10);
-  const minute = parseInt(jerusalemTime.find(part => part.type === 'minute')?.value || '0', 10);
-  const timeStr = `${hour}:${String(minute).padStart(2, '0')}`;
-  
-  console.log(`[Notifications] Processing scheduled notifications at ${timeStr} (Asia/Jerusalem)`);
-  
-  // Get all active challenges
   const challenges = await getActiveChallenges();
   console.log(`[Notifications] Found ${challenges.length} active challenges`);
   
   for (const challenge of challenges) {
     try {
-      // Get parent and child data
-      const parent = await getUserById(challenge.parentId);
-      const child = await getChildById(challenge.childId);
-      
-      if (!parent || !child) {
-        console.warn(`[Notifications] Missing parent or child for challenge ${challenge.id}`);
-        continue;
-      }
-      
-      // Notification 1: First day of challenge (7:08 AM)
-      if (timeStr === '7:08') {
-        if (isFirstDayOfChallenge(challenge)) {
-          const hasReceived = await hasReceivedNotification(challenge.id, 'first_day');
-          if (!hasReceived) {
-            console.log(`[Notifications] Sending first day notification for challenge ${challenge.id}`);
-            await sendFirstDayNotification(challenge, parent, child, baseUrl);
-            await markNotificationSent(challenge.id, 'first_day');
-          }
-        }
-      }
-      
-      // Notification 4: Two pending approvals (20:48 PM, one-time)
-      if (timeStr === '20:48') {
-        const hasReceived = await hasReceivedNotification(challenge.id, 'two_pending');
+      if (isFirstDayOfChallenge(challenge)) {
+        const hasReceived = await hasReceivedNotification(challenge.id, 'first_day');
         if (!hasReceived) {
-          const uploads = await getUploadsForChallenge(challenge.id);
-          const pendingApprovals = uploads.filter(u => 
-            u.requiresApproval && (!u.parentAction || u.parentAction === null)
-          );
+          const parent = await getUserById(challenge.parentId);
+          const child = await getChildById(challenge.childId);
           
-          if (pendingApprovals.length >= 2) {
-            console.log(`[Notifications] Sending two pending approvals notification for challenge ${challenge.id}`);
-            await sendTwoPendingApprovalsNotification(challenge, parent, child, baseUrl);
-            await markNotificationSent(challenge.id, 'two_pending');
+          if (!parent || !child) {
+            console.warn(`[Notifications] Missing parent or child for challenge ${challenge.id}`);
+            continue;
           }
+          
+          console.log(`[Notifications] Sending first day notification for challenge ${challenge.id}`);
+          await sendFirstDayNotification(challenge, parent, child, baseUrl);
+          await markNotificationSent(challenge.id, 'first_day');
         }
       }
+    } catch (error) {
+      console.error(`[Notifications] Error processing challenge ${challenge.id}:`, error);
+    }
+  }
+}
+
+/**
+ * Process missing upload notifications (runs at 7:07 AM)
+ */
+export async function processMissingUploadNotifications(baseUrl: string): Promise<void> {
+  console.log(`[Notifications] Processing missing upload notifications at 7:07 AM (Asia/Jerusalem)`);
+  
+  const challenges = await getActiveChallenges();
+  console.log(`[Notifications] Found ${challenges.length} active challenges`);
+  
+  for (const challenge of challenges) {
+    try {
+      // Check if first upload (success or failure) has already happened
+      const hasFirstUploadSuccess = await hasReceivedNotification(challenge.id, 'first_upload_success');
+      const hasFirstUploadFailure = await hasReceivedNotification(challenge.id, 'first_upload_failure');
+      const hasFirstUpload = hasFirstUploadSuccess || hasFirstUploadFailure;
       
-      // Notification 5: Missing uploads (7:07 AM, continues until first upload - success or failure)
-      if (timeStr === '7:07') {
-        // Check if first upload (success or failure) has already happened
-        const hasFirstUploadSuccess = await hasReceivedNotification(challenge.id, 'first_upload_success');
-        const hasFirstUploadFailure = await hasReceivedNotification(challenge.id, 'first_upload_failure');
-        const hasFirstUpload = hasFirstUploadSuccess || hasFirstUploadFailure;
+      // Only send if first upload (success or failure) hasn't happened yet
+      if (!hasFirstUpload) {
+        const challengeDay = getCurrentChallengeDay(challenge);
         
-        // Only send if first upload (success or failure) hasn't happened yet
-        if (!hasFirstUpload) {
-          const challengeDay = getCurrentChallengeDay(challenge);
+        // Only send on days 3, 4, 6, or 7
+        // Day 3: child didn't upload day 1 (which could be uploaded on day 2)
+        // Day 4: child didn't upload day 2 (which could be uploaded on day 3)
+        // Day 6: child didn't upload day 4 (which could be uploaded on day 5)
+        // Day 7: child didn't upload day 5 (which could be uploaded on day 6)
+        if (challengeDay === 3 || challengeDay === 4 || challengeDay === 6 || challengeDay === 7) {
+          const parent = await getUserById(challenge.parentId);
+          const child = await getChildById(challenge.childId);
           
-          // Only send on days 3, 4, 6, or 7
-          // Day 3: child didn't upload day 1 (which could be uploaded on day 2)
-          // Day 4: child didn't upload day 2 (which could be uploaded on day 3)
-          // Day 6: child didn't upload day 4 (which could be uploaded on day 5)
-          // Day 7: child didn't upload day 5 (which could be uploaded on day 6)
-          if (challengeDay === 3 || challengeDay === 4 || challengeDay === 6 || challengeDay === 7) {
-            const uploadUrl = generateUploadUrl(challenge.parentId, challenge.childId, challenge.id, baseUrl);
-            console.log(`[Notifications] Sending missing upload notification (day ${challengeDay}) for challenge ${challenge.id}`);
-            await sendMissingUploadNotification(challenge, parent, child, challengeDay, baseUrl, uploadUrl);
+          if (!parent || !child) {
+            console.warn(`[Notifications] Missing parent or child for challenge ${challenge.id}`);
+            continue;
           }
+          
+          const uploadUrl = generateUploadUrl(challenge.parentId, challenge.childId, challenge.id, baseUrl);
+          console.log(`[Notifications] Sending missing upload notification (day ${challengeDay}) for challenge ${challenge.id}`);
+          await sendMissingUploadNotification(challenge, parent, child, challengeDay, baseUrl, uploadUrl);
+        }
+      }
+    } catch (error) {
+      console.error(`[Notifications] Error processing challenge ${challenge.id}:`, error);
+    }
+  }
+}
+
+/**
+ * Process two pending approvals notification (runs at 20:48 PM)
+ */
+export async function processTwoPendingApprovalsNotification(baseUrl: string): Promise<void> {
+  console.log(`[Notifications] Processing two pending approvals notifications at 20:48 PM (Asia/Jerusalem)`);
+  
+  const challenges = await getActiveChallenges();
+  console.log(`[Notifications] Found ${challenges.length} active challenges`);
+  
+  for (const challenge of challenges) {
+    try {
+      const hasReceived = await hasReceivedNotification(challenge.id, 'two_pending');
+      if (!hasReceived) {
+        const uploads = await getUploadsForChallenge(challenge.id);
+        const pendingApprovals = uploads.filter(u => 
+          u.requiresApproval && (!u.parentAction || u.parentAction === null)
+        );
+        
+        if (pendingApprovals.length >= 2) {
+          const parent = await getUserById(challenge.parentId);
+          const child = await getChildById(challenge.childId);
+          
+          if (!parent || !child) {
+            console.warn(`[Notifications] Missing parent or child for challenge ${challenge.id}`);
+            continue;
+          }
+          
+          console.log(`[Notifications] Sending two pending approvals notification for challenge ${challenge.id}`);
+          await sendTwoPendingApprovalsNotification(challenge, parent, child, baseUrl);
+          await markNotificationSent(challenge.id, 'two_pending');
         }
       }
     } catch (error) {
@@ -560,9 +610,18 @@ export async function processUploadNotification(
   baseUrl: string
 ): Promise<void> {
   console.log(`[Notifications] Processing upload notification for upload ${upload.id}`);
+  console.log(`[Notifications] Upload data:`, JSON.stringify({
+    id: upload.id,
+    challengeId: upload.challengeId,
+    parentId: upload.parentId,
+    childId: upload.childId,
+    success: upload.success,
+    uploadedAt: upload.uploadedAt
+  }));
   
   try {
     // Get challenge, parent, and child data
+    console.log(`[Notifications] Fetching challenge ${upload.challengeId}`);
     const challengeRef = getDb().collection('challenges').doc(upload.challengeId);
     const challengeDoc = await challengeRef.get();
     
@@ -575,32 +634,46 @@ export async function processUploadNotification(
       id: challengeDoc.id,
       ...challengeDoc.data()
     } as FirestoreChallenge;
+    console.log(`[Notifications] Challenge found: ${challenge.id}`);
     
+    console.log(`[Notifications] Fetching parent ${upload.parentId} and child ${upload.childId}`);
     const parent = await getUserById(upload.parentId);
     const child = await getChildById(upload.childId);
     
     if (!parent || !child) {
-      console.warn(`[Notifications] Missing parent or child for upload ${upload.id}`);
+      console.warn(`[Notifications] Missing parent or child for upload ${upload.id} - parent: ${!!parent}, child: ${!!child}`);
       return;
     }
+    console.log(`[Notifications] Parent and child found - parent: ${parent.email}, child: ${child.name}`);
     
     // Check if this is the first upload (success or failure)
     // Each type (success/failure) can be sent once per challenge
-    if (upload.success) {
+    console.log(`[Notifications] Upload success value: ${upload.success} (type: ${typeof upload.success})`);
+    if (upload.success === true) {
       // Notification 2: First upload - success (one-time per challenge)
+      console.log(`[Notifications] Processing success path for upload ${upload.id}`);
       const hasReceived = await hasReceivedNotification(challenge.id, 'first_upload_success');
+      console.log(`[Notifications] Has received first_upload_success: ${hasReceived}`);
       if (!hasReceived) {
         console.log(`[Notifications] Sending first upload success notification for challenge ${challenge.id}`);
         await sendFirstUploadSuccessNotification(challenge, parent, child, baseUrl);
         await markNotificationSent(challenge.id, 'first_upload_success');
+        console.log(`[Notifications] First upload success notification sent and marked for challenge ${challenge.id}`);
+      } else {
+        console.log(`[Notifications] First upload success notification already sent for challenge ${challenge.id}`);
       }
     } else {
       // Notification 3: First upload - failure (one-time per challenge)
+      console.log(`[Notifications] Processing failure path for upload ${upload.id} (success=${upload.success})`);
       const hasReceived = await hasReceivedNotification(challenge.id, 'first_upload_failure');
+      console.log(`[Notifications] Has received first_upload_failure: ${hasReceived}`);
       if (!hasReceived) {
         console.log(`[Notifications] Sending first upload failure notification for challenge ${challenge.id}`);
         await sendFirstUploadFailureNotification(challenge, parent, child, upload, baseUrl);
         await markNotificationSent(challenge.id, 'first_upload_failure');
+        console.log(`[Notifications] First upload failure notification sent and marked for challenge ${challenge.id}`);
+      } else {
+        console.log(`[Notifications] First upload failure notification already sent for challenge ${challenge.id}`);
       }
     }
   } catch (error) {
