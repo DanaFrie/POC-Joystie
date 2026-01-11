@@ -77,8 +77,8 @@ export default function ForgotPasswordPage() {
         {success ? (
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
             <div className="space-y-4">
-              <div className="bg-green-50 border-2 border-green-200 rounded-[18px] p-4">
-                <p className="font-varela text-sm text-green-700 text-center">
+              <div className="bg-[#E6F19A] border-2 border-[#E6F19A] rounded-[18px] p-4">
+                <p className="font-varela font-semibold text-sm text-[#273143] text-center">
                   נשלח אימייל עם קישור לשחזור הסיסמא. אנא בדוק את תיבת הדואר הנכנס שלך.
                 </p>
               </div>
@@ -113,8 +113,8 @@ export default function ForgotPasswordPage() {
 
             {/* Error message */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-[18px]">
-                <p className="font-varela text-sm text-red-600 text-center">{error}</p>
+              <div className="mb-6 p-4 bg-[#dc3545] bg-opacity-10 border-2 border-[#dc3545] rounded-[18px]">
+                <p className="font-varela font-semibold text-sm text-[#dc3545] text-center">{error}</p>
               </div>
             )}
 

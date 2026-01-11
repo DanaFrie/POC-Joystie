@@ -1,10 +1,19 @@
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
-import { sendNotificationEmail } from './email';
+import { 
+  processFirstDayNotification,
+  processMissingUploadNotifications,
+  processTwoPendingApprovalsNotification,
+  processUploadNotification
+} from './notifications';
 
 // Initialize Firebase Admin
-admin.initializeApp();
+// In Firebase Functions Gen 2, this automatically uses the default service account
+// which has permissions to access Firestore
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
 // Define secret for Cloud Run service URL
 // This secret must be set using: firebase functions:secrets:set CLOUD_RUN_SERVICE_URL
@@ -113,76 +122,144 @@ export const processScreenshot = functions.https.onCall(
 );
 
 /**
- * Test Firebase Function to send email notification
- * This function sends a test email to verify email configuration
- * 
- * Usage: Call this function via HTTP GET or POST request
- * Example: curl https://us-central1-joystie-poc.cloudfunctions.net/testEmailNotification
- * 
- * Prerequisites:
- * 1. Set up email secrets:
- *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_SERVICE=workspace
- *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_USER=info@joystie.com
- *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_PASSWORD=<app-password>
- *    firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_FROM=info@joystie.com
+ * Scheduled function for first day notification
+ * Runs daily at 7:08 AM (Asia/Jerusalem)
  */
-export const testEmailNotification = functions.https.onRequest(
+export const scheduledFirstDayNotification = functions.scheduler.onSchedule(
   {
+    schedule: '7 8 * * *', // Cron: 7:08 AM every day
+    timeZone: 'Asia/Jerusalem',
     region: 'us-central1',
-    timeoutSeconds: 60,
-    memory: '256MiB',
-    cors: true, // Enable CORS
+    // Use Firebase Admin SDK service account which has Firestore permissions
+    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
     secrets: [
-      'SERVICE_FUNCTION_EMAIL_SERVICE',
       'SERVICE_FUNCTION_EMAIL_USER',
       'SERVICE_FUNCTION_EMAIL_PASSWORD',
       'SERVICE_FUNCTION_EMAIL_FROM',
       'SERVICE_FUNCTION_BASE_URL',
-      // Note: SERVICE_FUNCTION_SENDGRID_API_KEY is optional - only add if using SendGrid
     ],
-    // Note: After deployment, make the function public via Firebase Console:
-    // 1. Go to Firebase Console → Functions → testEmailNotification
-    // 2. Click "Permissions" tab
-    // 3. Add "allUsers" with role "Cloud Functions Invoker"
   },
-  async (req, res) => {
+  async (event) => {
     try {
       const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
-      const testEmail = 'frododana@gmail.com';
-      const title = 'בדיקת התראות אימייל - Joystie';
-      const content = `
-        <p>שלום!</p>
-        <p>זוהי הודעת בדיקה להתראות אימייל מ-Joystie.</p>
-        <p>אם קיבלת את המייל הזה, זה אומר שההגדרה עובדת בהצלחה! ✅</p>
-        <p>המייל נשלח מ-<strong>info@joystie.com</strong> באמצעות Google Workspace.</p>
-        <p>תאריך ושעה: ${new Date().toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' })}</p>
-      `;
+      console.log('[ScheduledFirstDayNotification] Running at 7:08 AM');
+      await processFirstDayNotification(baseUrl);
+      console.log('[ScheduledFirstDayNotification] Completed successfully');
+    } catch (error) {
+      console.error('[ScheduledFirstDayNotification] Error:', error);
+      throw error;
+    }
+  }
+);
 
-      console.log('[TestEmail] Sending test email to:', testEmail);
-      console.log('[TestEmail] From: info@joystie.com');
-      console.log('[TestEmail] Base URL:', baseUrl);
+/**
+ * Scheduled function for missing upload notifications
+ * Runs daily at 7:07 AM (Asia/Jerusalem)
+ */
+export const scheduledMissingUploadNotifications = functions.scheduler.onSchedule(
+  {
+    schedule: '7 7 * * *', // Cron: 7:07 AM every day
+    timeZone: 'Asia/Jerusalem',
+    region: 'us-central1',
+    // Use Firebase Admin SDK service account which has Firestore permissions
+    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    secrets: [
+      'SERVICE_FUNCTION_EMAIL_USER',
+      'SERVICE_FUNCTION_EMAIL_PASSWORD',
+      'SERVICE_FUNCTION_EMAIL_FROM',
+      'SERVICE_FUNCTION_BASE_URL',
+    ],
+  },
+  async (event) => {
+    try {
+      const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
+      console.log('[ScheduledMissingUploadNotifications] Running at 7:07 AM');
+      await processMissingUploadNotifications(baseUrl);
+      console.log('[ScheduledMissingUploadNotifications] Completed successfully');
+    } catch (error) {
+      console.error('[ScheduledMissingUploadNotifications] Error:', error);
+      throw error;
+    }
+  }
+);
 
-      await sendNotificationEmail(
-        testEmail,
-        title,
-        content,
-        'ללוח הבקרה',
-        `${baseUrl}/dashboard`,
-        baseUrl
-      );
+/**
+ * Scheduled function for two pending approvals notification
+ * Runs daily at 20:48 PM (Asia/Jerusalem)
+ */
+export const scheduledTwoPendingApprovalsNotification = functions.scheduler.onSchedule(
+  {
+    schedule: '48 20 * * *', // Cron: 20:48 PM every day
+    timeZone: 'Asia/Jerusalem',
+    region: 'us-central1',
+    // Use Firebase Admin SDK service account which has Firestore permissions
+    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    secrets: [
+      'SERVICE_FUNCTION_EMAIL_USER',
+      'SERVICE_FUNCTION_EMAIL_PASSWORD',
+      'SERVICE_FUNCTION_EMAIL_FROM',
+      'SERVICE_FUNCTION_BASE_URL',
+    ],
+  },
+  async (event) => {
+    try {
+      const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
+      console.log('[ScheduledTwoPendingApprovalsNotification] Running at 20:48 PM');
+      await processTwoPendingApprovalsNotification(baseUrl);
+      console.log('[ScheduledTwoPendingApprovalsNotification] Completed successfully');
+    } catch (error) {
+      console.error('[ScheduledTwoPendingApprovalsNotification] Error:', error);
+      throw error;
+    }
+  }
+);
 
-      console.log('[TestEmail] Email sent successfully');
-
-      res.status(200).json({
-        success: true,
-        message: `Email sent successfully to ${testEmail}`,
+/**
+ * Firestore trigger for upload notifications
+ * Triggers when a new upload is created
+ * Handles first upload success/failure notifications
+ */
+export const onUploadCreated = functions.firestore.onDocumentCreated(
+  {
+    document: 'daily_uploads/{uploadId}',
+    region: 'us-central1',
+    // Use Firebase Admin SDK service account which has Firestore permissions
+    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    secrets: [
+      'SERVICE_FUNCTION_EMAIL_USER',
+      'SERVICE_FUNCTION_EMAIL_PASSWORD',
+      'SERVICE_FUNCTION_EMAIL_FROM',
+      'SERVICE_FUNCTION_BASE_URL',
+    ],
+  },
+  async (event) => {
+    try {
+      console.log('[OnUploadCreated] Trigger fired, event ID:', event.params.uploadId);
+      if (!event.data) {
+        console.warn('[OnUploadCreated] No data in event');
+        return;
+      }
+      
+      const upload = {
+        id: event.data.id,
+        ...event.data.data()
+      } as any; // Type assertion needed for Firestore data
+      
+      console.log('[OnUploadCreated] Upload data extracted:', {
+        id: upload.id,
+        challengeId: upload.challengeId,
+        success: upload.success,
+        uploadedAt: upload.uploadedAt
       });
-    } catch (error: any) {
-      console.error('[TestEmail] Error sending email:', error);
-      res.status(500).json({
-        success: false,
-        error: `Failed to send test email: ${error.message}`,
-      });
+      
+      const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
+      console.log('[OnUploadCreated] Processing upload notification for:', upload.id, 'Base URL:', baseUrl);
+      await processUploadNotification(upload, baseUrl);
+      console.log('[OnUploadCreated] Completed successfully');
+    } catch (error) {
+      console.error('[OnUploadCreated] Error:', error);
+      console.error('[OnUploadCreated] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      // Don't throw - we don't want to fail the upload creation
     }
   }
 );
