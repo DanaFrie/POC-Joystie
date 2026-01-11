@@ -114,9 +114,10 @@ function generateWeek(
   
   const week: WeekDay[] = [];
   
-  // Generate 7 days starting from challenge start date
+  // Generate challengeDays + 1 days (challenge days + redemption day) starting from challenge start date
   // Always generate the week, even if challenge hasn't started yet
-  for (let i = 0; i < 7; i++) {
+  const totalDays = challenge.challengeDays + 1; // challenge days + redemption day
+  for (let i = 0; i < totalDays; i++) {
     const day = new Date(startDate);
     day.setDate(startDate.getDate() + i);
     
@@ -126,8 +127,8 @@ function generateWeek(
     // Day is considered "future" if it's today or later (not yet passed)
     // Only days that have already passed can be "missing"
     const isFuture = day >= today;
-    // Redemption day is always the 7th day (index 6)
-    const isRedemptionDay = i === 6;
+    // Redemption day is the day after challenge days (index challengeDays)
+    const isRedemptionDay = i === challenge.challengeDays;
     
     // Find matching upload
     const matchingUploads = uploads.filter(u => u.date === dateStr);
@@ -201,8 +202,35 @@ function calculateWeeklyTotals(
   week: WeekDay[],
   challenge: FirestoreChallenge
 ): { coinsEarned: number; coinsMaxPossible: number; redemptionDate: string; redemptionDay: string } {
-  const coinsEarned = week.reduce((sum, day) => sum + day.coinsEarned, 0);
-  const coinsMaxPossible = challenge.dailyBudget * 7; // Max possible for 7 days
+  const coinsMaxPossible = challenge.dailyBudget * challenge.challengeDays; // Max possible for challenge days
+  
+  // Get approved non-redemption days
+  const nonRedemptionDays = week.filter(day => !day.isRedemptionDay);
+  const approvedDays = nonRedemptionDays.filter(day => 
+    day.parentAction === 'approved' || !day.requiresApproval
+  );
+  
+  // Calculate accurate total based on original data (before rounding)
+  // This fixes rounding errors from daily values
+  let accurateTotal = 0;
+  for (const day of approvedDays) {
+    const screenTimeUsed = day.screenTimeUsed || 0;
+    const screenTimeGoal = day.screenTimeGoal || 0;
+    const dailyBudget = challenge.dailyBudget;
+    
+    // Calculate coins earned using the same formula as in upload page
+    // If goal met: full daily budget
+    // If not met: proportional reduction
+    const success = screenTimeUsed <= screenTimeGoal;
+    const coinsEarned = success 
+      ? dailyBudget 
+      : Math.max(0, dailyBudget * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
+    
+    accurateTotal += coinsEarned;
+  }
+  
+  // Round the final total to 1 decimal place (not individual daily values)
+  const coinsEarned = Math.round(accurateTotal * 10) / 10;
   
   // Find redemption day
   const redemptionDay = week.find(day => day.isRedemptionDay);

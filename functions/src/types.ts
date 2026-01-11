@@ -42,10 +42,9 @@ export interface FirestoreChallenge {
   totalWeeks: number;
   startDate: string;
   challengeDays: number;
-  redemptionDay: 'saturday' | string;
   isActive: boolean;
   redemptionAmount?: number;
-  redemptionChoice?: 'cash' | 'gift' | 'activity' | 'save';
+  redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save';
   redeemedAt?: string;
   createdAt: string;
   updatedAt: string;

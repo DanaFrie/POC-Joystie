@@ -33,7 +33,9 @@ function ChildRedemptionContent() {
   const [challengeId, setChallengeId] = useState<string>('');
   
   // Initialize approval states - will be updated from Firestore immediately
-  const [awaitingParentApproval, setAwaitingParentApproval] = useState(false);
+  // Start with awaitingParentApproval = true to show "awaiting approval" screen immediately
+  // This prevents showing the final redemption screen before checking approval status
+  const [awaitingParentApproval, setAwaitingParentApproval] = useState(true);
   const [lastApproved, setLastApproved] = useState(false);
   const [redemptionCompleted, setRedemptionCompleted] = useState(false);
 
@@ -212,7 +214,44 @@ function ChildRedemptionContent() {
         const uploads = await getUploadsByChallenge(challengeId, parentId);
         // Only count approved uploads
         const approvedUploads = uploads.filter(u => u.parentAction === 'approved');
-        const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
+        
+        // Get challenge to check weekly budget and daily budget
+        const challenge = await getActiveChallenge(parentId);
+        if (!challenge) {
+          // Fallback: sum rounded values if challenge not found
+          const total = approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0);
+          setTotalEarnings(total);
+          return;
+        }
+        
+        // Calculate accurate total based on original data (before rounding)
+        // This fixes rounding errors from daily values
+        let accurateTotal = 0;
+        for (const upload of approvedUploads) {
+          const screenTimeUsed = upload.screenTimeUsed || 0;
+          const screenTimeGoal = upload.screenTimeGoal || 0;
+          const dailyBudget = upload.coinsMaxPossible || challenge.dailyBudget;
+          
+          // Calculate coins earned using the same formula as in upload page
+          // If goal met: full daily budget
+          // If not met: proportional reduction
+          const success = screenTimeUsed <= screenTimeGoal;
+          const coinsEarned = success 
+            ? dailyBudget 
+            : Math.max(0, dailyBudget * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
+          
+          accurateTotal += coinsEarned;
+        }
+        
+        // Round the final total to 1 decimal place (not individual daily values)
+        const total = Math.round(accurateTotal * 10) / 10;
+        
+        logger.log('Calculated accurate weekly total:', {
+          roundedSum: approvedUploads.reduce((sum, upload) => sum + (upload.coinsEarned || 0), 0),
+          accurateTotal,
+          roundedTotal: total,
+          uploadsCount: approvedUploads.length
+        });
         
         // Always set total, even if 0 (to show accurate data)
         setTotalEarnings(total);
@@ -235,13 +274,13 @@ function ChildRedemptionContent() {
         const challenge = await getActiveChallenge(parentId);
         if (!challenge) return;
         
-        // Calculate Saturday of the challenge week
+        // Calculate redemption day (day after challenge days)
         const startDate = new Date(challenge.startDate);
         startDate.setHours(0, 0, 0, 0);
         
-        // Redemption day is 7 days after start date (day 6, index 6)
+        // Redemption day is challengeDays days after start date
         const redemptionDate = new Date(startDate);
-        redemptionDate.setDate(startDate.getDate() + 6);
+        redemptionDate.setDate(startDate.getDate() + challenge.challengeDays);
         
         setRedemptionDate(redemptionDate.toLocaleDateString('he-IL'));
       } catch (error) {
@@ -403,8 +442,8 @@ function ChildRedemptionContent() {
 
   const redemptionOptions = [
     { id: 'cash', label: 'מזומן 💵', description: `${childP.get} את הכסף במטבעות או שטרות ישר אלייך` },
-    { id: 'gift', label: 'מתנה 🎁', description: `בחר מתנה מתוך מה ש${parentName} ${parentP.offers} לך` },
     { id: 'activity', label: 'פעילות 🎮', description: `הצע ל${parentName} חוויה ש${childP.he === 'היא' ? 'היית' : 'היית'} רוצה ${parentP.with}` },
+    { id: 'donation', label: 'תרומה ❤️', description: `תרום את הכסף למטרה טובה\nו${childP.he === 'היא' ? 'תעשי' : 'תעשה'} טוב לאחרים` },
     { id: 'save', label: 'חסכון 🏦', description: `${childP.save} את הכסף בחסכון\nו${childP.earn} 20 אגורות על כל שבוע שהוא שם` }
   ];
 
@@ -418,7 +457,7 @@ function ChildRedemptionContent() {
         const { deactivateChallenge } = await import('@/lib/api/challenges');
         await deactivateChallenge(challengeId, {
           redemptionAmount: totalEarnings,
-          redemptionChoice: selectedOption as 'cash' | 'gift' | 'activity' | 'save',
+          redemptionChoice: selectedOption as 'cash' | 'donation' | 'activity' | 'save',
           redeemedAt: new Date().toISOString()
         });
         setRedemptionCompleted(true);

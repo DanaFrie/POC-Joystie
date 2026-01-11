@@ -10,6 +10,7 @@ interface WeeklyProgressProps {
   childGender?: 'boy' | 'girl';
   totalWeeklyHours?: number;
   weeklyBudget?: number; // תקציב שבועי
+  dailyBudget?: number; // תקציב יומי
   onDayClick?: (day: WeekDay) => void;
 }
 
@@ -93,7 +94,7 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
   );
 }
 
-export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, onDayClick }: WeeklyProgressProps) {
+export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, onDayClick }: WeeklyProgressProps) {
   // Gender pronouns for child
   const childPronouns = {
     boy: { was: 'היה', earned: 'הרוויח' },
@@ -117,13 +118,40 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
     return sum;
   }, 0);
 
-  // Calculate approved coins (only days with status 'success' or 'warning')
-  const approvedCoins = week.reduce((sum, day) => {
-    if (day.status === 'success' || day.status === 'warning') {
-      return sum + (day.coinsEarned || 0);
+  // Calculate approved coins accurately (only days with status 'success' or 'warning')
+  // Calculate from original data (before rounding) to avoid rounding errors
+  let accurateApprovedCoins = 0;
+  if (dailyBudget !== undefined) {
+    const approvedDays = week.filter(day => 
+      (day.status === 'success' || day.status === 'warning') && !day.isRedemptionDay
+    );
+    
+    for (const day of approvedDays) {
+      const screenTimeUsed = day.screenTimeUsed || 0;
+      const screenTimeGoal = day.screenTimeGoal || 0;
+      
+      // Calculate coins earned using the same formula as in upload page
+      // If goal met: full daily budget
+      // If not met: proportional reduction
+      const success = screenTimeUsed <= screenTimeGoal;
+      const coinsEarned = success 
+        ? dailyBudget 
+        : Math.max(0, dailyBudget * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
+      
+      accurateApprovedCoins += coinsEarned;
     }
-    return sum;
-  }, 0);
+  } else {
+    // Fallback: sum rounded daily values if dailyBudget is not available
+    accurateApprovedCoins = week.reduce((sum, day) => {
+      if (day.status === 'success' || day.status === 'warning') {
+        return sum + (day.coinsEarned || 0);
+      }
+      return sum;
+    }, 0);
+  }
+  
+  // Round the final total to 1 decimal place (not individual daily values)
+  const approvedCoins = Math.round(accurateApprovedCoins * 10) / 10;
 
   // Calculate goal line percent - use average of days with goals, excluding Saturday (redemption day)
   const daysWithGoals = week.filter(day => (day.screenTimeGoal || 0) > 0 && !day.isRedemptionDay);

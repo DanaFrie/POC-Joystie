@@ -1007,8 +1007,8 @@ function ChildUploadContent() {
 
     // Calculate weekly total from Firestore uploads (not localStorage)
     // Use cache for better performance - uploads are used for calculation only
-    let weeklyTotalBefore = 0;
-    let weeklyTotal = coinsEarnedRounded; // At minimum, the new upload
+    // Calculate accurate total based on original data (before rounding) to fix rounding errors
+    let weeklyTotal = coinsEarned; // Start with unrounded value for new upload
     
     if (challengeId && parentId) {
       try {
@@ -1016,26 +1016,47 @@ function ChildUploadContent() {
         // Use cache (useCache=true) for uploads - they're used for calculation only and don't need to be real-time
         const existingUploads = await getUploadsByChallenge(challengeId, parentId, undefined, true);
         
-        // Sum coins from existing approved uploads (exclude the current day if it exists)
-        weeklyTotalBefore = existingUploads
-          .filter(upload => upload.date !== selectedDay.dateStr) // Exclude current day
-          .filter(upload => upload.parentAction === 'approved' || !upload.requiresApproval) // Only approved or auto-approved
-          .reduce((sum: number, upload: any) => sum + (upload.coinsEarned || 0), 0);
+        // Calculate accurate total based on original data (before rounding)
+        let accurateTotal = coinsEarned; // Start with unrounded value for new upload
         
-        weeklyTotal = weeklyTotalBefore + coinsEarnedRounded;
-        logger.log('Weekly totals (from cached Firestore):', {
-          before: weeklyTotalBefore,
-          new: coinsEarnedRounded,
-          total: weeklyTotal,
+        const approvedExistingUploads = existingUploads
+          .filter(upload => upload.date !== selectedDay.dateStr) // Exclude current day
+          .filter(upload => upload.parentAction === 'approved' || !upload.requiresApproval); // Only approved or auto-approved
+        
+        for (const upload of approvedExistingUploads) {
+          const screenTimeUsed = upload.screenTimeUsed || 0;
+          const screenTimeGoal = upload.screenTimeGoal || 0;
+          const dailyBudget = upload.coinsMaxPossible || challengeData.dailyBudget;
+          
+          // Calculate coins earned using the same formula as in upload page
+          // If goal met: full daily budget
+          // If not met: proportional reduction
+          const success = screenTimeUsed <= screenTimeGoal;
+          const coinsEarnedForDay = success 
+            ? dailyBudget 
+            : Math.max(0, dailyBudget * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
+          
+          accurateTotal += coinsEarnedForDay;
+        }
+        
+        // Round the final total to 1 decimal place (not individual daily values)
+        weeklyTotal = Math.round(accurateTotal * 10) / 10;
+        
+        logger.log('Weekly totals (calculated accurately from original data):', {
+          roundedSum: approvedExistingUploads.reduce((sum: number, upload: any) => sum + (upload.coinsEarned || 0), 0) + coinsEarnedRounded,
+          accurateTotal,
+          roundedTotal: weeklyTotal,
           existingUploadsCount: existingUploads.length
         });
       } catch (error) {
         logger.warn('Error fetching weekly totals from Firestore, using new upload only:', error);
-        // Fallback: just use the new upload amount
+        // Fallback: just use the new upload amount (rounded)
         weeklyTotal = coinsEarnedRounded;
       }
     } else {
       logger.warn('Missing challengeId or parentId, cannot calculate weekly total from Firestore');
+      // Fallback: just use the new upload amount (rounded)
+      weeklyTotal = coinsEarnedRounded;
     }
 
     // Prepare upload data with minutes
@@ -1181,6 +1202,7 @@ function ChildUploadContent() {
           if (uploadedCount === totalChallengeDays - 1 && remainingCount === 0) {
             // All past days have been uploaded, redirect to redemption immediately
             // The redemption page will handle the approval status and show appropriate UI
+            // (either "awaiting approval" screen or full redemption screen)
             const redemptionUrl = parentId 
               ? generateRedemptionUrl(parentId, childId || undefined, challengeId || undefined)
               : `/child/redemption?lastEarnings=${coinsEarnedRounded}&weeklyTotal=${weeklyTotal}`;

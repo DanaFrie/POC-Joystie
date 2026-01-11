@@ -33,7 +33,6 @@ const CLIENT_CONFIG = {
   challenge: {
     totalWeeks: 4,
     challengeDays: 6,
-    redemptionDay: 'saturday',
     budgetDivision: 6,
     defaultDailyScreenTimeGoal: 2.5, // Custom goal for this test
     defaultSelectedBudget: 80, // Custom budget for this test
@@ -262,7 +261,6 @@ async function main() {
       totalWeeks: CLIENT_CONFIG.challenge.totalWeeks,
       startDate: startDate.toISOString(),
       challengeDays: CLIENT_CONFIG.challenge.challengeDays,
-      redemptionDay: CLIENT_CONFIG.challenge.redemptionDay,
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -114,6 +114,9 @@ export async function getCurrentUserId(): Promise<string | null> {
  * Send password reset email
  */
 export async function sendPasswordReset(email: string): Promise<void> {
+  const { createContextLogger } = await import('@/utils/logger');
+  const logger = createContextLogger('sendPasswordReset');
+  
   try {
     const { sendPasswordResetEmail } = await import('firebase/auth');
     const auth = await getAuthInstance();
@@ -128,10 +131,57 @@ export async function sendPasswordReset(email: string): Promise<void> {
       handleCodeInApp: true,
     };
     
+    logger.log('Sending password reset email:', {
+      email,
+      baseUrl,
+      resetUrl: actionCodeSettings.url,
+      authDomain: auth.app.options.authDomain,
+      projectId: auth.app.options.projectId,
+    });
+    
+    // Note: fetchSignInMethodsForEmail is unreliable - it may return empty array
+    // even when user exists, so we don't use it for validation
+    
+    const startTime = Date.now();
     await sendPasswordResetEmail(auth, email, actionCodeSettings);
+    const duration = Date.now() - startTime;
+    
+    logger.log('Password reset email sent successfully (Firebase returned success)', {
+      email,
+      duration: `${duration}ms`,
+      resetUrl: actionCodeSettings.url,
+    });
+    
+    // IMPORTANT: Firebase Auth always returns success even if:
+    // 1. Email template is not configured in Firebase Console
+    // 2. User doesn't exist (for security reasons)
+    // 3. Email sending fails for other reasons
+    // 
+    // To verify email templates are configured:
+    // 1. Go to Firebase Console > Authentication > Templates
+    // 2. Ensure "Password reset" template is configured and enabled
+    // 3. Check that the action URL in the template matches your app's domain
+    // 4. Verify the template has proper content and is not empty
+    // 5. For localhost development, ensure the template allows localhost URLs
+    // 
+    // Common issues:
+    // - Template not configured: Email won't be sent but Firebase returns success
+    // - Wrong action URL: Email sent but link doesn't work
+    // - Template disabled: Email won't be sent
+    // - localhost not allowed: Email won't be sent in development
   } catch (error) {
+    logger.error('Password reset email error:', error);
     const authError = error as AuthError;
-    throw new Error(getAuthErrorMessage(authError.code));
+    const errorCode = authError.code || 'unknown';
+    const errorMessage = getAuthErrorMessage(errorCode);
+    
+    logger.error('Password reset error details:', {
+      code: errorCode,
+      message: errorMessage,
+      originalError: authError.message,
+    });
+    
+    throw new Error(errorMessage);
   }
 }
 

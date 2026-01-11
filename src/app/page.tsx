@@ -346,12 +346,12 @@ export default function Home() {
           <div className="space-y-3 md:space-y-4">
             {[
               {
-                q: "האם נוצרת כאן מוטיבציה שאינה חינוכית?",
-                a: "לגמרי הפוך :) העסקה הקיימת מזיקה בעשרות מונים - כל יום הילד שלך (ותכלס גם את) מקבל שירותים בחינם ומשלם בענק באמצעות ריגוש שצד שלישי מוכר (פרסומות).\nאנחנו שמים את העסקה הזו על השולחן בשקיפות וגם מייצרים מוטיבציה לשינוי בבית: במקום ריב - שיחה על איזון.\nJoystie משתמש במנגנון של מוטיבציה חיצונית כדי להפסיק את ההתמכרות ולרכוש הרגלים מיטיבים."
+                q: "האם לא נוצרת כאן מוטיבציה שגויה שאינה חינוכית?",
+                a: "המוטיבציה השגויה קיימת במצב הנוכחי. כיום, הילד מקבל שירותי תוכן \"בחינם\" לכאורה, אך משלם עליהם במטבע יקר של קשב ובריאות נפשית.\nהמודל הקיים מעודד חוסר גבולות, חרדה וקושי בדחיית סיפוקים.\nהמוצר שלנו מחליף את \"התשלום השקוף\" וההרסני הזה במודל כלכלי גלוי, המלמד את הילד לנהל תקציב, לקבל החלטות מושכלות ולדחות סיפוקים - בדיוק כמו בעולם האמיתי"
               },
               {
                 q: "מה קורה עם ההגבלה שיש היום?",
-                a: "ההגבלות הטכניות - ScreenTime, Family Link - מציבות אותנו כשוטר מול הילד. ההגבלה שמה את הילד במקום בלתי אפשרי, בדיוק ברגע שהוא הכי רוצה להמשיך, המערכת זורקת אותו החוצה.\nדמיינו אתכם בשיא הדיאטה עם עוגת גבינה מול הפנים!\nJoystie יוצר בסיס לתקשורת משפחתית, במקום ריב על המסך נוצרת תקשורת של מינונים והחלטות. אתם מתקשרים עם הילד 'כמה זה עולה לי?' כל יום. משוטרים להורים - כמו פעם."
+                a: "ההגבלות הטכניות - ScreenTime, Family Link - מציבות אותנו כשוטר מול הילד. ההגבלה שמה את הילד במקום בלתי אפשרי, בדיוק ברגע שהוא הכי רוצה להמשיך, המערכת זורקת אותו החוצה.\nדמיינו אתכם בשיא הדיאטה עם עוגת גבינה מול הפנים!\nJoystie יוצר בסיס לתקשורת משפחתית, במקום ריב על המסך נוצרת תקשורת.\nמשוטרים להורים - כמו פעם."
               },
               {
                 q: "ומה אם אנחנו לא נותנים דמי כיס?",
@@ -440,7 +440,7 @@ export default function Home() {
       <footer className="py-12 md:py-20 gradient-bg border-t border-white/20">
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-8 md:gap-12 text-center md:text-right">
           
-          <div className="w-full md:w-1/4 flex justify-center md:justify-start">
+          <div className="w-full md:w-1/4 flex justify-center md:justify-start items-center">
             <Image
               src="/logo-joystie.png"
               alt="Joystie Logo"
@@ -451,34 +451,8 @@ export default function Home() {
             />
           </div>
 
-          <div className="w-full md:w-2/4 flex flex-col items-center">
-            <div className="text-joystie-dark font-black text-xl mb-10 font-brand tracking-tight">Time is Money. We own Time</div>
-            <div className="flex justify-center gap-12">
-              <div className="flex flex-col items-center max-w-[140px] transition-transform hover:scale-105">
-                <div className="w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-sm border-2 border-white/60 flex items-center justify-center rotate-2">
-                  <Image 
-                    src="/meir_img.jfif" 
-                    alt="מאיר ניצן" 
-                    width={56} 
-                    height={56} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="font-bold text-joystie-dark text-sm font-brand leading-none">מאיר ניצן</div>
-              </div>
-              <div className="flex flex-col items-center max-w-[120px] transition-transform hover:scale-105">
-                <div className="w-14 h-14 rounded-2xl overflow-hidden mb-3 shadow-sm border-2 border-white/60 flex items-center justify-center -rotate-2">
-                  <Image 
-                    src="/dana_img.jfif" 
-                    alt="דנה פרידמן" 
-                    width={56} 
-                    height={56} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="font-bold text-joystie-dark text-sm font-brand leading-none">דנה פרידמן</div>
-              </div>
-            </div>
+          <div className="w-full md:w-2/4 flex flex-col items-center md:items-center">
+            <div className="text-joystie-dark font-black text-[1.3rem] md:text-[2.25rem] mb-6 md:mb-0 font-brand tracking-tight">Time is Money. We own Time</div>
           </div>
 
           <div className="w-full md:w-1/4 flex flex-col items-center md:items-start gap-4">

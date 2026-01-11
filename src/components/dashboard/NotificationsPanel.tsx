@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Link2, Share2, Check } from 'lucide-react';
 import ReminderButton from './ReminderButton';
 import type { WeekDay } from '@/types/dashboard';
 import { createContextLogger } from '@/utils/logger';
@@ -110,9 +111,13 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
   // 2. We have a URL to copy (setup, upload, or redemption)
   const showCopyButton = !!childName && !!urlToCopy;
   const copyVerb = parentGenderValue === 'female' ? 'העתיקי' : 'העתק';
+  const sendVerb = parentGenderValue === 'female' ? 'שלחי' : 'שלח';
   const childPossessive = childGender === 'girl' ? 'שלה' : 'שלו';
-  const buttonText = `${copyVerb} את הכתובת לעמוד של ${childName}`;
-  const subtitleText = `לשימוש ${childPossessive}`;
+  // More explicit text about sharing/sending - makes it clear this is for sharing a link
+  const buttonText = `${copyVerb} קישור לעמוד של ${childName}`;
+  // Text explaining how to share the link
+  const subtitleText = `${sendVerb} את הקישור ל${childName} דרך וואטסאפ או הודעה`;
+  const copiedSubtitleText = `הקישור הועתק! הדבקי אותו בהודעה ל${childName}`;
 
   return (
     <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-4">
@@ -169,21 +174,31 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
 
-      {/* Copy URL button (upload or redemption) - styled like onboarding/setup copy buttons */}
+      {/* Copy URL button (upload or redemption) - improved UX with sharing context */}
       {showCopyButton && urlToCopy && (
-        <div className="mb-3">
+        <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
           <button
             onClick={() => urlToCopy && handleCopyUrl(urlToCopy)}
-            className={`w-full py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
+            className={`w-full py-3 px-4 rounded-[12px] font-varela font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
               copied
-                ? 'bg-[#E6F19A] text-[#273143]'
-                : 'bg-[#273143] text-white hover:bg-opacity-90'
+                ? 'bg-[#E6F19A] text-[#273143] border-2 border-[#E6F19A]'
+                : 'bg-[#273143] text-white hover:bg-opacity-90 border-2 border-[#273143]'
             }`}
           >
-            {copied ? 'הועתק! ✓' : buttonText}
+            {copied ? (
+              <>
+                <Check size={18} className="flex-shrink-0" />
+                <span>הועתק!</span>
+              </>
+            ) : (
+              <>
+                <Link2 size={18} className="flex-shrink-0" />
+                <span>{buttonText}</span>
+              </>
+            )}
           </button>
-          <p className="font-varela text-xs text-[#948DA9] text-center mt-1">
-            {subtitleText}
+          <p className="font-varela text-xs text-[#948DA9] text-center mt-2 leading-relaxed px-2">
+            {copied ? copiedSubtitleText : subtitleText}
           </p>
         </div>
       )}

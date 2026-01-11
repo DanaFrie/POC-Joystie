@@ -500,6 +500,7 @@ export default function DashboardPage() {
               childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
               totalWeeklyHours={totalWeeklyHours}
               weeklyBudget={dashboardData.challenge.weeklyBudget}
+              dailyBudget={dashboardData.challenge.dailyBudget}
               onDayClick={handleDayClick}
         />
       </div>
@@ -675,6 +676,7 @@ export default function DashboardPage() {
                 childName={dashboardData.child.name}
                 totalWeeklyHours={totalWeeklyHours}
                 weeklyBudget={dashboardData.challenge.weeklyBudget}
+                dailyBudget={dashboardData.challenge.dailyBudget}
                 onDayClick={handleDayClick}
               />
             </div>

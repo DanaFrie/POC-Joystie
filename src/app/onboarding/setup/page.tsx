@@ -334,7 +334,6 @@ export default function OnboardingSetupPage() {
           totalWeeks: clientConfig.challenge.totalWeeks,
           startDate: startDate.toISOString(),
           challengeDays: clientConfig.challenge.challengeDays,
-          redemptionDay: clientConfig.challenge.redemptionDay,
           isActive: true,
         });
         }
@@ -357,7 +356,6 @@ export default function OnboardingSetupPage() {
             dailyBudget: dailyBudget,
             dailyScreenTimeGoal: targetHours,
             challengeDays: clientConfig.challenge.challengeDays,
-            redemptionDay: clientConfig.challenge.redemptionDay,
             challengeId: challengeId,
             childId: childId,
           };

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createSession, isLoggedIn } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
-import { getUser, getUserByUsername } from '@/lib/api/users';
+import { getUser } from '@/lib/api/users';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { getErrorMessage } from '@/utils/errors';
 import { createContextLogger } from '@/utils/logger';
@@ -14,7 +14,7 @@ const logger = createContextLogger('Login');
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
-    usernameOrEmail: '',
+    email: '',
     password: ''
   });
 
@@ -101,8 +101,14 @@ export default function LoginPage() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.usernameOrEmail.trim()) {
-      newErrors.usernameOrEmail = 'אנא הכנס שם משתמש או אימייל';
+    if (!formData.email.trim()) {
+      newErrors.email = 'אנא הכנס אימייל';
+    } else {
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'כתובת אימייל לא תקינה';
+      }
     }
     if (!formData.password.trim()) {
       newErrors.password = 'אנא הכנס סיסמה';
@@ -128,25 +134,7 @@ export default function LoginPage() {
     setLoginError('');
 
     try {
-      const usernameOrEmail = formData.usernameOrEmail.trim().toLowerCase();
-      let email: string;
-
-      // Check if input is email or username
-      const isEmail = usernameOrEmail.includes('@');
-      
-      if (isEmail) {
-        // User entered email, use it directly
-        email = usernameOrEmail;
-      } else {
-        // User entered username, find user by username and get their email
-        const user = await getUserByUsername(usernameOrEmail);
-        if (!user) {
-          setLoginError('שם משתמש או אימייל לא נמצא');
-          setIsSubmitting(false);
-          return;
-        }
-        email = user.email;
-      }
+      const email = formData.email.trim().toLowerCase();
 
       // Sign in with Firebase Auth using email and password
       const firebaseUser = await signIn(email, formData.password);
@@ -207,24 +195,24 @@ export default function LoginPage() {
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
-          {/* Username or Email */}
+          {/* Email */}
           <div className="mb-6">
-            <label htmlFor="usernameOrEmail" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
-              שם משתמש או אימייל <span className="text-red-500">*</span>
+            <label htmlFor="email" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
+              אימייל <span className="text-red-500">*</span>
             </label>
             <input
-              type="text"
-              id="usernameOrEmail"
-              name="usernameOrEmail"
-              value={formData.usernameOrEmail}
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
-              placeholder="הכנס שם משתמש או אימייל"
+              placeholder="הכנס אימייל"
               className={`w-full p-4 border-2 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
-                errors.usernameOrEmail ? 'border-red-500' : 'border-gray-200'
+                errors.email ? 'border-red-500' : 'border-gray-200'
               }`}
             />
-            {errors.usernameOrEmail && (
-              <p className="mt-2 text-sm text-red-500 font-varela">{errors.usernameOrEmail}</p>
+            {errors.email && (
+              <p className="mt-2 text-sm text-red-500 font-varela">{errors.email}</p>
             )}
           </div>
 

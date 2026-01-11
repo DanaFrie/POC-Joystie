@@ -41,11 +41,10 @@ export interface FirestoreChallenge {
   totalWeeks: number;
   startDate: string; // ISO date
   challengeDays: number; // מספר ימי האתגר (6 ימים)
-  redemptionDay: 'saturday' | string; // יום פדיון
   isActive: boolean;
   // Redemption data (set when redemption is completed)
   redemptionAmount?: number; // Final amount redeemed
-  redemptionChoice?: 'cash' | 'gift' | 'activity' | 'save'; // Redemption option selected
+  redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save'; // Redemption option selected
   redeemedAt?: string; // ISO timestamp when redemption was completed
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp

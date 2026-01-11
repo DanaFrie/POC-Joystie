@@ -219,7 +219,7 @@ export async function deactivateChallenge(
   challengeId: string,
   redemptionData?: {
     redemptionAmount?: number;
-    redemptionChoice?: 'cash' | 'gift' | 'activity' | 'save';
+    redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save';
     redeemedAt?: string;
   }
 ): Promise<void> {

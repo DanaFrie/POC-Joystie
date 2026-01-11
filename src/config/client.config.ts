@@ -19,7 +19,6 @@ export const clientConfig = {
   challenge: {
     totalWeeks: 4,
     challengeDays: 6, // Sunday-Friday (6 days)
-    redemptionDay: 'saturday' as const,
     budgetDivision: 6, // Divide selectedBudget by this number to get dailyBudget
     defaultDailyScreenTimeGoal: 3, // hours
     defaultSelectedBudget: 100, // For simulation/testing
