@@ -393,42 +393,42 @@ export default function Home() {
               <p>כשהבנות שלי התחילו לחקות אותי, הבנתי שאני בבעיה. יצאתי למסע של איזון דיגיטלי - בשביל המשפחה שלי ובשביל הנפש שלי. הבנתי שהילדים שלי משלמים מחיר בעסקה שאף אחד לא חתם איתם עליה: הן נותנות את תשומת הלב שלהן ומקבלות שירותים "בחינם".</p>
               <p>בדרך פגשתי את דנה, שחולקת איתי את האתגר הזה. יחד החלטנו ליצור עסקה אחרת - מנגנון שמצד אחד שם את העסקה המקורית על השולחן בשקיפות מלאה, ומצד שני עוזר למשפחות למצוא איזון אמיתי.</p>
               <p>ככה נולד Joystie - כלי שהופך את הקונפליקט הדיגיטלי להזדמנות מעשית ללמד את הילדים על ניהול משאבים, כסף ואחריות אישית.</p>
-              <p className="font-bold text-joystie-dark text-xl md:text-2xl font-brand mt-6">מאיר, מייסד Joystie</p>
+              <p className="text-joystie-dark text-sm md:text-base font-brand mt-6">מאיר, מייסד Joystie</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4 md:gap-6 order-1 lg:order-2">
               <div ref={addRevealRef(10)} className="reveal bg-joystie-lime p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] text-center rotate-2 shadow-sm border-2 border-white transition-transform hover:rotate-0">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center rotate-2">
+                <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center rotate-2">
                   <Image 
                     src="/meir_img.jfif" 
                     alt="מאיר ניצן" 
-                    width={96} 
-                    height={96} 
+                    width={128} 
+                    height={128} 
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="font-black text-joystie-dark font-brand text-base md:text-lg">מאיר ניצן</div>
                 <div className="text-[10px] md:text-[11px] mt-1 md:mt-2 leading-tight text-joystie-dark/80 space-y-1">
+                  <p className="font-bold">CEO & Co-founder</p>
                   <p>יזם חברתי, מרצה בכיר לאיזון דיגיטלי</p>
                   <p>עשור ביחידות העילית של הצבא וראש מכינה קדם צבאית</p>
-                  <p className="font-bold mt-2">CEO & Co-founder</p>
                 </div>
               </div>
               <div ref={addRevealRef(11)} className="reveal bg-joystie-lime p-5 md:p-8 rounded-[2rem] md:rounded-[3rem] text-center -rotate-2 shadow-sm border-2 border-white transition-transform hover:rotate-0">
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center -rotate-2">
+                <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl overflow-hidden mx-auto mb-3 md:mb-4 shadow-sm border-2 border-white/60 flex items-center justify-center -rotate-2">
                   <Image 
                     src="/dana_img.jfif" 
                     alt="דנה פרידמן" 
-                    width={96} 
-                    height={96} 
+                    width={128} 
+                    height={128} 
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div className="font-black text-joystie-dark font-brand text-base md:text-lg">דנה פרידמן</div>
                 <div className="text-[10px] md:text-[11px] mt-1 md:mt-2 leading-tight text-joystie-dark/80 space-y-1">
+                  <p className="font-bold">Head of product & Co-founder</p>
                   <p>יזמת טכנולוגית, Data Scientist</p>
                   <p>מנהלת מוצר וקצינה במילואים</p>
-                  <p className="font-bold mt-2">Head of product & Co-founder</p>
                 </div>
               </div>
             </div>
