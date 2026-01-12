@@ -125,13 +125,32 @@ export const processScreenshot = functions.https.onCall(
  * Scheduled function for first day notification
  * Runs daily at 7:08 AM (Asia/Jerusalem)
  */
+// Determine service account based on project ID
+// In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
+const getServiceAccount = (): string => {
+  const projectId = process.env.GCLOUD_PROJECT;
+  const serviceAccount = projectId === 'joystie-poc-prod'
+    ? 'firebase-adminsdk-fbsvc@joystie-poc-prod.iam.gserviceaccount.com'
+    : 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com';
+  
+  // Log for debugging - this will appear in Cloud Functions logs
+  console.log('[getServiceAccount] Project ID:', projectId);
+  console.log('[getServiceAccount] Selected service account:', serviceAccount);
+  console.log('[getServiceAccount] Environment variable:', {
+    GCLOUD_PROJECT: process.env.GCLOUD_PROJECT
+  });
+  
+  return serviceAccount;
+};
+
 export const scheduledFirstDayNotification = functions.scheduler.onSchedule(
   {
     schedule: '7 8 * * *', // Cron: 7:08 AM every day
     timeZone: 'Asia/Jerusalem',
     region: 'us-central1',
     // Use Firebase Admin SDK service account which has Firestore permissions
-    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    // Different service account for prod vs intgr
+    serviceAccount: getServiceAccount(),
     secrets: [
       'SERVICE_FUNCTION_EMAIL_USER',
       'SERVICE_FUNCTION_EMAIL_PASSWORD',
@@ -162,7 +181,8 @@ export const scheduledMissingUploadNotifications = functions.scheduler.onSchedul
     timeZone: 'Asia/Jerusalem',
     region: 'us-central1',
     // Use Firebase Admin SDK service account which has Firestore permissions
-    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    // Different service account for prod vs intgr
+    serviceAccount: getServiceAccount(),
     secrets: [
       'SERVICE_FUNCTION_EMAIL_USER',
       'SERVICE_FUNCTION_EMAIL_PASSWORD',
@@ -193,7 +213,8 @@ export const scheduledTwoPendingApprovalsNotification = functions.scheduler.onSc
     timeZone: 'Asia/Jerusalem',
     region: 'us-central1',
     // Use Firebase Admin SDK service account which has Firestore permissions
-    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    // Different service account for prod vs intgr
+    serviceAccount: getServiceAccount(),
     secrets: [
       'SERVICE_FUNCTION_EMAIL_USER',
       'SERVICE_FUNCTION_EMAIL_PASSWORD',
@@ -224,7 +245,8 @@ export const onUploadCreated = functions.firestore.onDocumentCreated(
     document: 'daily_uploads/{uploadId}',
     region: 'us-central1',
     // Use Firebase Admin SDK service account which has Firestore permissions
-    serviceAccount: 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com',
+    // Different service account for prod vs intgr
+    serviceAccount: getServiceAccount(),
     secrets: [
       'SERVICE_FUNCTION_EMAIL_USER',
       'SERVICE_FUNCTION_EMAIL_PASSWORD',
@@ -234,6 +256,11 @@ export const onUploadCreated = functions.firestore.onDocumentCreated(
   },
   async (event) => {
     try {
+      // Log service account info for debugging
+      const serviceAccount = getServiceAccount();
+      console.log('[OnUploadCreated] Using service account:', serviceAccount);
+      console.log('[OnUploadCreated] Project ID:', process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT);
+      
       console.log('[OnUploadCreated] Trigger fired, event ID:', event.params.uploadId);
       if (!event.data) {
         console.warn('[OnUploadCreated] No data in event');
