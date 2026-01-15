@@ -17,6 +17,15 @@ export default function Home() {
     router.prefetch('/login');
   }, [router]);
 
+  // Track home page view
+  useEffect(() => {
+    const trackHomePageView = async () => {
+      const { logEvent, AnalyticsEvents } = await import('@/utils/analytics');
+      await logEvent(AnalyticsEvents.HOME_PAGE_VIEW);
+    };
+    trackHomePageView();
+  }, []);
+
   // Intersection Observer for reveal animations
   useEffect(() => {
     const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
@@ -137,7 +146,9 @@ export default function Home() {
               <span className="text-white drop-shadow-lg">לשיעור לחיים.</span>
             </h1>
             <p className="text-lg md:text-xl lg:text-2xl text-joystie-dark/80 leading-relaxed mb-6 md:mb-10 max-w-xl font-medium">
-              מקום בו תגלו שפה חדשה ומשותפת. מחברים בין דמי כיס לזמן מסך והופכים אותם לשיעור מעשי על אחריות ובחירה.
+              אנחנו יודעים שכבר ניסיתם הכל והריבים עם הילד סביב המסך ממשיכים.
+              <br />
+              מקשרים בין דמי כיס לאיזון זמן מסך והופכים אותם לשיעור מעשי על אחריות ובחירה.
             </p>
             <div className="flex flex-col items-center gap-3 md:gap-4" id="register">
               {/* Signup button */}

@@ -219,6 +219,9 @@ async function initializeFirebase(): Promise<void> {
       dbInstance = getFirestore(app);
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
       
+      // Initialize Analytics (client-side only, lazy-loaded when needed)
+      // Analytics is initialized separately in utils/analytics.ts to avoid SSR issues
+      
       // Log config for debugging (without sensitive data)
       const firebaseLogger = createContextLogger('Firebase');
       firebaseLogger.log('Initialized with config:', {

@@ -265,6 +265,14 @@ export default function SignupPage() {
       // Create session with Firebase Auth UID
       createSession(user.uid);
 
+      // Track signup event
+      const { logEvent, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
+      await setUserId(user.uid);
+      await logEvent(AnalyticsEvents.SIGNUP, {
+        user_id: user.uid,
+        email: formData.email.trim().toLowerCase(),
+      });
+
       // Clear saved form data after successful submission
       if (typeof window !== 'undefined') {
         localStorage.removeItem('signupFormData');

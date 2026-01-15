@@ -336,6 +336,17 @@ export default function OnboardingSetupPage() {
           challengeDays: clientConfig.challenge.challengeDays,
           isActive: true,
         });
+
+        // Track challenge creation event
+        const { logEvent, AnalyticsEvents } = await import('@/utils/analytics');
+        await logEvent(AnalyticsEvents.CHALLENGE_CREATED, {
+          challenge_id: challengeId,
+          parent_id: userId,
+          child_id: childId,
+          daily_budget: dailyBudget,
+          daily_screen_time_goal: targetHours,
+          challenge_days: clientConfig.challenge.challengeDays,
+        });
         }
 
         // נקה את sessionStorage אחרי השימוש
