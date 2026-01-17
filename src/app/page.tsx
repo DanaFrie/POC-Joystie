@@ -146,7 +146,10 @@ export default function Home() {
               <span className="text-white drop-shadow-lg"> לשנות גישה</span>
             </h1>
             <p className="text-xl md:text-2xl lg:text-3xl text-joystie-dark/80 leading-relaxed mb-6 md:mb-10 max-w-xl font-medium">
-              אנחנו הופכים את דמי הכיס למנוע שיעזור בצמצום זמן מסך! והילדים מקבלים שיעור מעשי על אחריות ובחירה.
+              אנחנו הופכים את דמי הכיס למנוע שיעזור לכם להוריד את זמני המסך! 
+              <br />
+              מה הילדים מקבלים? שיעור מעשי על אחריות ובחירה
+        
             </p>
             <div className="flex flex-col items-center gap-3 md:gap-4" id="register">
               {/* Signup button */}
