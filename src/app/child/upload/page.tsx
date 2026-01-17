@@ -1115,6 +1115,22 @@ function ChildUploadContent() {
         const uploadId = await createUpload(firestoreUpload);
         logger.log('Upload saved to Firestore:', uploadId);
         
+        // Track upload event
+        const { logEvent, AnalyticsEvents } = await import('@/utils/analytics');
+        await logEvent(AnalyticsEvents.UPLOAD_SUBMITTED, {
+          upload_id: uploadId,
+          challenge_id: uploadChallengeId,
+          parent_id: uploadParentId,
+          child_id: uploadChildId,
+          date: selectedDay.dateStr,
+          day_name: selectedDay.dayName,
+          screen_time_used: screenTimeUsed,
+          screen_time_goal: screenTimeGoal,
+          success: success,
+          coins_earned: coinsEarnedRounded,
+          upload_type: screenshot ? 'screenshot' : 'manual', // Will be screenshot in most cases
+        });
+        
         // Invalidate uploads cache since we just created a new upload
         const { dataCache, cacheKeys } = await import('@/utils/data-cache');
         dataCache.invalidate(cacheKeys.uploads(uploadChallengeId, uploadParentId));

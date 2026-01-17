@@ -460,6 +460,18 @@ function ChildRedemptionContent() {
           redemptionChoice: selectedOption as 'cash' | 'donation' | 'activity' | 'save',
           redeemedAt: new Date().toISOString()
         });
+        
+        // Track challenge deactivation event (isActive changed from true to false)
+        const { logEvent, AnalyticsEvents } = await import('@/utils/analytics');
+        await logEvent(AnalyticsEvents.CHALLENGE_DEACTIVATED, {
+          challenge_id: challengeId,
+          parent_id: parentId,
+          child_id: validatedChildId || childId,
+          redemption_amount: totalEarnings,
+          redemption_choice: selectedOption,
+          redeemed_at: new Date().toISOString(),
+        });
+        
         setRedemptionCompleted(true);
       }
       
