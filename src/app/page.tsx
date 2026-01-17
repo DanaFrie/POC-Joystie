@@ -141,14 +141,12 @@ export default function Home() {
       <section className="min-h-screen flex items-center pt-20 pb-12 md:pt-24 md:pb-20 gradient-bg overflow-hidden relative">
         <div className="max-w-7xl mx-auto px-4 md:px-6 grid lg:grid-cols-2 gap-8 md:gap-12 items-center relative z-10">
           <div ref={addRevealRef(0)} className="reveal active text-right">
-            <h1 className="text-4xl md:text-5xl lg:text-[4.1rem] font-black text-joystie-dark mb-6 md:mb-8 tracking-tighter font-brand">
-              הופכים זמן מסך <br/> 
-              <span className="text-white drop-shadow-lg">לשיעור לחיים.</span>
+            <h1 className="text-[2.9rem] md:text-[3.9rem] lg:text-[5.33rem] font-black text-joystie-dark mb-6 md:mb-8 tracking-tighter font-brand">
+              הגיע הזמן <br/> 
+              <span className="text-white drop-shadow-lg"> לשנות גישה</span>
             </h1>
-            <p className="text-lg md:text-xl lg:text-2xl text-joystie-dark/80 leading-relaxed mb-6 md:mb-10 max-w-xl font-medium">
-              אנחנו יודעים שכבר ניסיתם הכל והריבים עם הילד סביב המסך ממשיכים.
-              <br />
-              מקשרים בין דמי כיס לאיזון זמן מסך והופכים אותם לשיעור מעשי על אחריות ובחירה.
+            <p className="text-xl md:text-2xl lg:text-3xl text-joystie-dark/80 leading-relaxed mb-6 md:mb-10 max-w-xl font-medium">
+              אנחנו הופכים את דמי הכיס למנוע שיעזור בצמצום זמן מסך! והילדים מקבלים שיעור מעשי על אחריות ובחירה.
             </p>
             <div className="flex flex-col items-center gap-3 md:gap-4" id="register">
               {/* Signup button */}

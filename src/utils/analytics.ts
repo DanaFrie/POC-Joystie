@@ -41,31 +41,6 @@ async function getAnalytics(): Promise<Analytics | null> {
       }
 
       const app = await getFirebaseApp();
-      
-      // Check if debug mode is enabled via URL parameter
-      // Usage: Add ?debug_mode=true to the URL to enable DebugView
-      const urlParams = new URLSearchParams(window.location.search);
-      const debugMode = urlParams.get('debug_mode') === 'true';
-      
-      if (debugMode) {
-        // Enable debug mode for Firebase Analytics
-        // This allows events to appear in Firebase Console → Analytics → DebugView
-        console.log('[Analytics] 🔍 Debug mode enabled via URL parameter');
-        console.log('[Analytics] Events will appear in Firebase Console → Analytics → DebugView');
-        console.log('[Analytics] To disable, remove ?debug_mode=true from URL');
-        
-        // Set debug mode in localStorage to persist across page refreshes
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('firebase_analytics_debug', 'true');
-        }
-      } else {
-        // Check if debug mode was previously enabled in localStorage
-        if (typeof window !== 'undefined' && localStorage.getItem('firebase_analytics_debug') === 'true') {
-          console.log('[Analytics] 🔍 Debug mode enabled from localStorage');
-          console.log('[Analytics] To disable, add ?debug_mode=false to URL or clear localStorage');
-        }
-      }
-      
       analyticsInstance = getAnalytics(app);
       
       return analyticsInstance;
@@ -95,32 +70,8 @@ export async function logEvent(
       return;
     }
 
-    // Check if debug mode is enabled
-    const isDebugMode = typeof window !== 'undefined' && (
-      new URLSearchParams(window.location.search).get('debug_mode') === 'true' ||
-      localStorage.getItem('firebase_analytics_debug') === 'true'
-    );
-
     const { logEvent: firebaseLogEvent } = await import('firebase/analytics');
     firebaseLogEvent(analytics, eventName, eventParams);
-    
-    // Log to console for debugging (always log to help verify events are sent)
-    if (isDebugMode) {
-      console.log('[Analytics] 🔍 [DEBUG MODE] Event logged:', {
-        eventName,
-        eventParams: eventParams || {},
-        timestamp: new Date().toISOString(),
-        projectId: analytics.app.options.projectId,
-        viewInConsole: 'Firebase Console → Analytics → DebugView'
-      });
-    } else {
-      console.log('[Analytics] ✅ Event logged successfully:', {
-        eventName,
-        eventParams: eventParams || {},
-        timestamp: new Date().toISOString(),
-        projectId: analytics.app.options.projectId
-      });
-    }
   } catch (error) {
     // Log error but don't break the app
     console.error('[Analytics] ❌ Error logging event:', {
