@@ -26,16 +26,11 @@ export default function RootLayout({
       <body 
         className="font-lato min-h-screen overflow-y-auto overflow-x-hidden" 
         style={{ 
-          background: `
-            radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
-            radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
-            linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
-            #FFFCF8
-          `,
+          backgroundImage: 'url(/background.png)',
           backgroundSize: 'cover',
+          backgroundPosition: 'center',
           backgroundAttachment: 'fixed',
+          backgroundRepeat: 'no-repeat',
           scrollBehavior: 'smooth'
         }}
       >

@@ -28,7 +28,7 @@ const execAsync = promisify(exec);
 
 interface ProcessScreenshotRequest {
   image: File;
-  targetDay: string;
+  targetDay?: string; // Optional, default "weekly"
 }
 
 export async function POST(request: NextRequest) {
@@ -50,20 +50,12 @@ export async function POST(request: NextRequest) {
   
   try {
     const imageFile = formData.get('image') as File;
-    const targetDay = formData.get('targetDay') as string;
+    const targetDay = (formData.get('targetDay') as string)?.trim() || 'weekly';
 
     if (!imageFile) {
       logger.error('No image file provided');
       return NextResponse.json(
         { error: 'No image file provided' },
-        { status: 400 }
-      );
-    }
-
-    if (!targetDay) {
-      logger.error('No target day provided');
-      return NextResponse.json(
-        { error: 'No target day provided' },
         { status: 400 }
       );
     }

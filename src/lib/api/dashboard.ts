@@ -1,5 +1,5 @@
 // Dashboard Data API
-import { getActiveChallenge } from './challenges';
+import { getActiveChallenge, getLatestChallenge } from './challenges';
 import { getUploadsByChallenge, getPendingApprovals } from './uploads';
 import { getUser } from './users';
 import { getChild } from './children';
@@ -107,6 +107,11 @@ function generateWeek(
   challenge: FirestoreChallenge,
   uploads: FirestoreDailyUpload[]
 ): WeekDay[] {
+  if (!challenge.startDate) {
+    // Challenge not started yet - return empty week
+    return [];
+  }
+  
   const startDate = new Date(challenge.startDate);
   startDate.setHours(0, 0, 0, 0);
   const today = new Date();
@@ -340,14 +345,18 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     }
     logger.log('User found:', user.username);
 
-    // Get active challenge
-    const challenge = await getActiveChallenge(parentId);
+    // Get challenge: prefer active, then latest (pending - e.g. after onboarding, before consultation)
+    let challenge = await getActiveChallenge(parentId);
     if (!challenge) {
-      // No active challenge - return null
-      logger.warn('No active challenge found for user:', parentId);
-      return null;
+      challenge = await getLatestChallenge(parentId);
+      if (!challenge) {
+        logger.warn('No challenge found for user:', parentId);
+        return null;
+      }
+      logger.log('Using latest (pending) challenge:', challenge.id);
+    } else {
+      logger.log('Active challenge found:', challenge.id);
     }
-    logger.log('Active challenge found:', challenge.id);
 
     // Get child data
     const child = await getChild(challenge.childId);
@@ -367,11 +376,13 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     })));
     
     // Check if challenge hasn't started yet
-    const startDate = new Date(challenge.startDate);
-    startDate.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const challengeNotStarted = today < startDate;
+    const challengeNotStarted = !challenge.startDate || (() => {
+      const startDate = new Date(challenge.startDate!);
+      startDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today < startDate;
+    })();
     
     // Generate week array (empty if challenge hasn't started)
     const week = challengeNotStarted ? [] : generateWeek(challenge, uploads);
@@ -407,11 +418,12 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       week,
       weeklyTotals,
       challengeNotStarted: challengeNotStarted,
-      challengeStartDate: challenge.startDate
+      challengeStartDate: challenge.startDate,
+      consultationCompleted: challenge.consultationCompleted ?? false
     };
     
-    // Cache the result
-    if (useCache) {
+    // Cache the result (skip cache for pending challenges so we get fresh data after admin approval)
+    if (useCache && challenge.isActive) {
       const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
       dataCache.set(cacheKeys.dashboard(parentId), dashboardState, cacheTTL.dashboard);
     }

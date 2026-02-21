@@ -14,6 +14,10 @@ export interface ProcessScreenshotResponse {
   minutes: number;
   time: number; // hours (for backward compatibility)
   found: boolean;
+  /** When processing weekly, minutes per Hebrew day name */
+  minutes_per_day?: Record<string, number>;
+  /** When true, save to challenge and show that manual review is required */
+  manual_review_required?: boolean;
   metadata: {
     scale_min_per_px: number;
     max_val_y: number;
@@ -48,17 +52,17 @@ function fileToBase64(file: File): Promise<string> {
  * Process a screenshot to extract screen time for a specific day
  * Calls Firebase Function directly
  * @param imageFile - The screenshot image file
- * @param targetDay - Hebrew day name (e.g., "ראשון", "שני")
+ * @param targetDay - Always "weekly" (single-day mode removed)
  * @returns Promise with processing result
  */
 export async function processScreenshot(
   imageFile: File,
-  targetDay: string
+  targetDay: string = 'weekly'
 ): Promise<ProcessScreenshotResponse> {
   logger.log('Starting screenshot processing', {
     fileName: imageFile.name,
     fileSize: imageFile.size,
-    targetDay
+    targetDay: targetDay || 'weekly'
   });
 
   const startTime = Date.now();
@@ -104,13 +108,14 @@ export async function processScreenshot(
       throw new Error(result.data.error);
     }
 
-    // Convert the result to match the expected format
     const minutes = result.data.minutes || 0;
     const response: ProcessScreenshotResponse = {
       day: result.data.day || targetDay,
-      minutes: minutes,
-      time: minutes / 60, // Convert minutes to hours
+      minutes,
+      time: minutes / 60,
       found: result.data.found || false,
+      minutes_per_day: result.data.minutes_per_day,
+      manual_review_required: result.data.manual_review_required,
       metadata: result.data.metadata || {
         scale_min_per_px: 0,
         max_val_y: 0,

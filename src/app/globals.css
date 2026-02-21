@@ -108,6 +108,21 @@ html[dir="rtl"] {
   50% { transform: translateY(25px) rotate(-5deg); }
 }
 
+/* Hero wallet card float + shimmer */
+@keyframes heroWalletFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(0.4deg); }
+}
+.hero-wallet-float {
+  animation: heroWalletFloat 6s ease-in-out infinite;
+}
+@keyframes heroWalletShimmer {
+  100% { transform: translateX(100%); }
+}
+.hero-wallet-shimmer {
+  animation: heroWalletShimmer 3s infinite;
+}
+
 /* Reveal on scroll */
 .reveal {
   opacity: 0;

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Menu, X, ChevronDown } from 'lucide-react';
+import HeroWalletCard from '@/components/landing/HeroWalletCard';
 
 export default function Home() {
   const router = useRouter();
@@ -87,42 +88,45 @@ export default function Home() {
   return (
     <div className="overflow-x-hidden text-right" style={{ fontFamily: "'Varela Round', sans-serif" }}>
 
-      {/* Navigation */}
-      <nav className="fixed w-full z-50 bg-white/80 backdrop-blur-xl border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      {/* Navigation – גובה מוקטן ~10%, לינקים במרכז */}
+      <nav className="fixed w-full z-50 py-4 bg-white/80 backdrop-blur-sm overflow-x-hidden" dir="rtl">
+        <div className="max-w-7xl mx-auto px-4 relative w-full">
           <div className="flex items-center">
-            <Image
-              src="/logo-joystie.png"
-              alt="Joystie Logo"
-              width={128}
-              height={40}
-              className="h-10 w-auto"
-              style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)' }}
-              priority
-            />
-          </div>
+            {/* צד ימין (RTL): לוגו תמיד בימין */}
+            <div className="flex-1 flex justify-start min-w-0">
+              <a href="#" className="flex items-center shrink-0">
+                <Image
+                  src="/logo-joystie.png"
+                  alt="Joystie"
+                  width={120}
+                  height={40}
+                  className="h-8 sm:h-6 w-auto"
+                  style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
+                  priority
+                />
+              </a>
+            </div>
 
-          <div className="hidden md:flex items-center gap-8 font-bold text-joystie-dark">
-            <a href="#how-it-works" className="hover:text-joystie-blue transition-colors font-brand">איך זה עובד?</a>
-            <a href="#questions" className="hover:text-joystie-blue transition-colors font-brand">שאלות חשובות</a>
-            <a href="#behind-idea" className="hover:text-joystie-blue transition-colors font-brand">מאחורי הרעיון</a>
-            <button
-              onClick={handleLogin}
-              className="text-sm font-bold opacity-70 hover:opacity-100 transition-opacity"
-            >
-              יש לי משתמש
-            </button>
-            <button
-              onClick={handleSignup}
-              className="bg-joystie-dark text-white px-7 py-2.5 rounded-full text-sm shadow-lg hover:bg-opacity-90 transition-all font-brand btn-main"
-            >
-              הירשם
-            </button>
-          </div>
+            {/* מרכז: לינקים */}
+            <div className="hidden md:flex flex-1 justify-center gap-8 font-bold text-joystie-dark shrink-0">
+              <a href="#how-it-works" className="hover:text-joystie-blue transition-colors font-brand">איך זה עובד?</a>
+              <a href="#questions" className="hover:text-joystie-blue transition-colors font-brand">שאלות חשובות</a>
+              <a href="#behind-idea" className="hover:text-joystie-blue transition-colors font-brand">מאחורי הרעיון</a>
+            </div>
 
-          <button className="md:hidden p-2 text-joystie-dark" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-            {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
-          </button>
+            {/* צד שמאל (RTL): המבורגר במובייל תמיד בשמאל */}
+            <div className="flex-1 flex justify-end min-w-0">
+              <div className="flex md:hidden items-center">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className="p-2 rounded-md text-joystie-dark hover:bg-gray-100"
+                  aria-label="תפריט"
+                >
+                  {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {isMenuOpen && (
@@ -130,110 +134,114 @@ export default function Home() {
             <a href="#how-it-works" onClick={(e) => handleSectionClick(e, 'how-it-works')}>איך זה עובד?</a>
             <a href="#questions" onClick={(e) => handleSectionClick(e, 'questions')}>שאלות חשובות</a>
             <a href="#behind-idea" onClick={(e) => handleSectionClick(e, 'behind-idea')}>מאחורי הרעיון</a>
-            <hr className="opacity-10" />
-            <button onClick={handleLogin} className="bg-white text-joystie-dark border-2 border-joystie-dark py-3 rounded-full shadow-lg font-brand">יש לי משתמש</button>
-            <button onClick={handleSignup} className="bg-joystie-dark text-white py-3 rounded-full shadow-lg font-brand">הירשם עכשיו</button>
           </div>
         )}
       </nav>
 
-      {/* Hero Section */}
-      <section className="min-h-screen flex items-center pt-20 pb-12 md:pt-24 md:pb-20 gradient-bg overflow-hidden relative">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 grid lg:grid-cols-2 gap-8 md:gap-12 items-center relative z-10">
-          <div ref={addRevealRef(0)} className="reveal active text-right">
-            <h1 className="text-[2.9rem] md:text-[3.9rem] lg:text-[5.33rem] font-black text-joystie-dark mb-6 md:mb-8 tracking-tighter font-brand">
-              הגיע הזמן <br/> 
-              <span className="text-white drop-shadow-lg"> לשנות גישה</span>
+      {/* Hero Section - מובייל: טקסט למעלה, כותרת, ארנק (תופס את השאר). דסקטופ: כמו קודם */}
+      <section 
+        className="min-h-0 md:min-h-screen flex flex-col md:flex-row md:items-center pt-20 pb-4 md:pt-24 md:pb-12 lg:pb-20 overflow-hidden relative" 
+        style={{ backgroundImage: 'url(/background.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        <div className="max-w-7xl mx-auto px-4 md:px-6 w-full flex flex-col md:grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6 lg:gap-8 md:items-center relative z-10 flex-1 min-h-0">
+          {/* עמודה שמאל: טקסט + כותרת. מובייל: טקסט למעלה (order-1) ואז כותרת (order-2) */}
+          <div className="flex flex-col gap-2 lg:gap-8 lg:justify-center lg:items-center order-1 md:order-1 shrink-0 self-center">
+            <div className="reveal active text-center order-1 lg:order-2">
+              <p className="text-[1.16rem] sm:text-[1.46rem] md:text-[1.63rem] lg:text-[1.95rem] text-joystie-dark/85 leading-relaxed mb-2 md:mb-6 lg:mb-10 max-w-xl font-medium mx-auto">
+                <span className="block text-[1.62rem] sm:text-inherit font-black text-joystie-dark drop-shadow-sm tracking-tight">המהפכה מתחילה!</span>
+                הארנק שמחבר דמי כיס לזמן מסך!<br />הילדים שלכם לומדים לבחור, לחסוך ולהוביל.
+              </p>
+              {/* כפתורים בדסקטופ – במובייל מופיעים מתחת לארנק */}
+              <div className="hidden md:flex flex-col items-center gap-2 md:gap-5" id="register">
+                <button 
+                  onClick={handleSignup}
+                  className="btn-main bg-joystie-dark text-white px-14 py-6 text-2xl rounded-full font-black shadow-2xl"
+                >
+                  התחילו ניסיון
+                </button>
+                <button 
+                  onClick={handleLogin}
+                  className="btn-main bg-transparent text-joystie-dark border-2 border-joystie-dark px-14 py-6 text-2xl rounded-full font-black shadow-lg hover:bg-joystie-dark/5 transition-all"
+                >
+                  יש לי משתמש
+                </button>
+              </div>
+            </div>
+            <h1 ref={addRevealRef(0)} className="reveal active text-center order-2 lg:order-1 text-[2.25rem] sm:text-[3.25rem] md:text-[4.25rem] lg:text-[5.2rem] font-black text-joystie-dark mb-0 tracking-tight font-brand">
+              Joystie Wallet
             </h1>
-            <p className="text-xl md:text-2xl lg:text-3xl text-joystie-dark/80 leading-relaxed mb-6 md:mb-10 max-w-xl font-medium">
-              כך דמי הכיס יגרמו לילד להניח את הטלפון בצד בעצמו.
-              הצטרפו להורים שכבר עושים את זה!
-            </p>
-            <div className="flex flex-col items-center gap-3 md:gap-4" id="register">
-              {/* Signup button */}
-              <button 
-                onClick={handleSignup}
-                className="btn-main bg-joystie-dark text-white px-8 py-4 md:px-12 md:py-5 rounded-full text-lg md:text-xl font-black shadow-2xl"
-              >
-                התחילו ניסיון חינם
-              </button>
-              
-              {/* Features banner */}
-              <div className="flex items-center gap-2 md:gap-3 text-[10px] md:text-xs font-bold text-joystie-dark/60">
-                <span>ללא צורך בכרטיס אשראי</span>
-                <span className="opacity-30">|</span>
-                <span>הקמה ב-2 דקות</span>
-              </div>
-            </div>
           </div>
-
-          <div ref={addRevealRef(1)} className="relative flex justify-center lg:justify-end reveal active" style={{ transitionDelay: '0.2s' }}>
-            <div className="relative w-full max-w-[400px] md:max-w-[500px] lg:max-w-[600px] aspect-square flex items-center justify-center">
-              
-              {/* Main App Icon - Larger with thinner border, moved up */}
-              <div className="w-48 h-48 md:w-60 md:h-60 lg:w-72 lg:h-72 bg-white rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl flex items-center justify-center duo-float z-30 border border-white/50 shadow-custom p-2 md:p-3 -mt-8 md:-mt-12 lg:-mt-16">
-                <Image
-                  src="/icon-joystie.png"
-                  alt="App Icon"
-                  width={288}
-                  height={288}
-                  className="w-full h-full object-contain"
-                  priority
-                />
-              </div>
-
-              {/* Kids Outdoor - Moved to left side */}
-              <div className="absolute bottom-3 left-3 md:bottom-5 md:left-5 lg:bottom-8 lg:left-8 w-24 h-24 md:w-36 md:h-36 lg:w-48 lg:h-48 duo-float-alt z-40 bg-white/90 rounded-xl md:rounded-2xl shadow-lg flex items-center justify-center border border-white overflow-hidden p-0.5 md:p-1">
-                <Image
-                  src="/kids_outdoor.png"
-                  alt="Kids Outdoor"
-                  width={192}
-                  height={192}
-                  className="w-full h-full object-cover rounded-lg md:rounded-xl"
-                />
-              </div>
-              
-              {/* Parent-Child Conversation - Moved to right side */}
-              <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 lg:bottom-6 lg:right-6 w-36 h-36 md:w-48 md:h-48 lg:w-60 lg:h-60 duo-float-slow z-40 bg-white/80 backdrop-blur-md rounded-[2rem] md:rounded-[2.5rem] lg:rounded-[3rem] shadow-2xl rotate-12 flex items-center justify-center border border-white overflow-hidden p-1 md:p-2">
-                <Image
-                  src="/parent_kid_conv.png"
-                  alt="Parent and Child Conversation"
-                  width={240}
-                  height={240}
-                  className="w-full h-full object-cover rounded-[1.5rem] md:rounded-[2rem] lg:rounded-[2.5rem]"
-                />
-              </div>
-
-              {/* Time Coin - Smaller on mobile */}
-              <div className="absolute top-1/3 right-0 md:top-1/3 md:right-2 w-16 h-16 md:w-20 md:h-20 lg:w-28 lg:h-28 duo-float z-10 bg-joystie-lime rounded-full shadow-lg -rotate-12 flex items-center justify-center border md:border-2 border-white p-0.5 md:p-1">
-                <Image
-                  src="/time-coin.png"
-                  alt="Time Coin"
-                  width={112}
-                  height={112}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-
-              {/* Piggy Bank - Smaller on mobile */}
-              <div className="absolute top-3 left-3 md:top-5 md:left-10 lg:top-8 lg:left-12 w-20 h-20 md:w-28 md:h-28 lg:w-36 lg:h-36 duo-float-delayed z-20 bg-white rounded-2xl md:rounded-3xl shadow-xl p-1 md:p-2 flex items-center justify-center overflow-hidden">
-                <Image
-                  src="/piggy-bank.png"
-                  alt="Piggy Bank"
-                  width={160}
-                  height={160}
-                  className="w-full h-full object-contain scale-[1.2]"
-                />
-              </div>
-            </div>
+          {/* מובייל: ארנק בלי flex-1 – לוקח רק גובה התוכן. דסקטופ: ארנק בעמודה ימין. ממדים כאן כדי wrapper אחד בלבד */}
+          <div
+            ref={addRevealRef(1)}
+            className="relative flex flex-none md:flex-1 min-h-0 min-w-0 overflow-hidden justify-center items-center reveal active order-2 md:order-2 pt-4 pb-0 md:py-0 self-center w-[216px] sm:w-[223px] h-[431px] sm:h-[445px] md:w-full md:h-auto md:h-full"
+            style={{ transitionDelay: '0.2s' }}
+          >
+            <HeroWalletCard />
+          </div>
+          {/* מובייל בלבד: כפתורים בשורה אחת, תמיד ממורכזים */}
+          <div className="flex md:hidden flex-row items-stretch gap-2 sm:gap-3 shrink-0 order-3 pt-0 pb-4 -mt-4 mx-auto w-fit max-w-[min(100%,28rem)]" id="register-mobile">
+            <button 
+              onClick={handleSignup}
+              className="btn-main flex-1 min-w-0 bg-joystie-dark text-white px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-2xl whitespace-nowrap"
+            >
+              התחילו ניסיון
+            </button>
+            <button 
+              onClick={handleLogin}
+              className="btn-main flex-1 min-w-0 bg-transparent text-joystie-dark border-2 border-joystie-dark px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-lg hover:bg-joystie-dark/5 transition-all whitespace-nowrap"
+            >
+              יש לי משתמש
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Features Section - WITH WRAPPER */}
-      <section className="py-16 md:py-32 bg-white bg-grid relative z-10">
+      {/* How it Works Section - first */}
+      <section id="how-it-works" className="py-12 md:py-24 bg-joystie-dark text-white overflow-hidden relative">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 relative z-10">
+          <div ref={addRevealRef(2)} className="text-center mb-10 md:mb-16 reveal">
+            <h2 className="text-3xl md:text-4xl lg:text-[3.5rem] font-black mb-4 md:mb-6 font-brand text-center">איך זה עובד?</h2>
+            <div className="w-24 h-1.5 bg-joystie-lime mx-auto rounded-full opacity-40"></div>
+          </div>
+
+          <div className="flex flex-col md:flex-row justify-center md:justify-between items-center md:items-start gap-6 md:gap-8 relative">
+            <div className="hidden md:block absolute top-8 left-10 right-10 h-1 bg-white/10 z-0"></div>
+
+            <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[260px]">
+              <div className="w-12 h-12 md:w-[4.25rem] md:h-[4.25rem] bg-joystie-blue text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-[1.4rem] font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">1</div>
+              <h3 className="text-lg md:text-2xl font-black mb-2 md:mb-3 font-brand">דמי כיס דרך Joystie Wallet</h3>
+              <p className="text-gray-300 text-xs md:text-base leading-relaxed">אתם טוענים סכום כסף שבועי. שווי הכסף עבור הילד הוא כסף וזמן מסך יחדיו.</p>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[260px]">
+              <div className="w-12 h-12 md:w-[4.25rem] md:h-[4.25rem] bg-joystie-lime text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-[1.4rem] font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">2</div>
+              <h3 className="text-lg md:text-2xl font-black mb-2 md:mb-3 font-brand">הילד מקבל החלטות</h3>
+              <p className="text-gray-300 text-xs md:text-base leading-relaxed">כל שעת מסך שווה כסף שניתן לקנות ב-Joystie, בסוף השבוע הילד פודה את הכסף שהצליח לחסוך.</p>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[260px]">
+              <div className="w-12 h-12 md:w-[4.25rem] md:h-[4.25rem] bg-white text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-[1.4rem] font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">3</div>
+              <h3 className="text-lg md:text-2xl font-black mb-2 md:mb-3 font-brand">Joystie והילד מוצאים<br />את האיזון</h3>
+              <p className="text-gray-300 text-xs md:text-base leading-relaxed">מגיעים יחד לנוסחה שמתאימה למשפחה שלכם.</p>
+            </div>
+          </div>
+          
+          <div ref={addRevealRef(12)} className="reveal flex justify-center mt-10 md:mt-16">
+            <button 
+              onClick={handleSignup}
+              className="btn-main bg-white text-joystie-dark px-8 py-4 md:px-12 md:py-5 rounded-full text-lg md:text-xl shadow-2xl border-2 border-white hover:bg-joystie-lime hover:border-joystie-lime transition-all font-brand"
+            >
+              הצטרפו עכשיו
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section - הכלים שיעזרו לכם להצליח */}
+      <section id="tools" className="py-16 md:py-32 bg-white bg-grid relative z-10">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div ref={addRevealRef(2)} className="text-center mb-12 md:mb-24 reveal">
+          <div ref={addRevealRef(4)} className="text-center mb-12 md:mb-24 reveal">
             <h2 className="text-3xl md:text-4xl lg:text-6xl font-black text-joystie-dark mb-4 md:mb-6 font-brand text-center">הכלים שיעזרו לכם להצליח</h2>
             <div className="w-32 h-2.5 bg-joystie-lime mx-auto rounded-full"></div>
           </div>
@@ -248,7 +256,6 @@ export default function Home() {
             }}>
               
               <div className="grid md:grid-cols-2 gap-6 md:gap-10">
-                {/* Tool 1 */}
                 <div className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white border border-gray-100 shadow-xl group hover:scale-[1.03] transition-all flex flex-col items-center text-center">
                   <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl md:rounded-2xl mb-4 md:mb-8 shadow-inner flex items-center justify-center overflow-hidden">
                     <Image
@@ -262,7 +269,6 @@ export default function Home() {
                   <h3 className="text-xl md:text-2xl font-black text-joystie-dark mb-3 md:mb-4 font-brand text-center">איזון זמן מסך</h3>
                   <p className="text-base md:text-lg text-gray-500 leading-relaxed">בלי הריב היומי! הופכים את המסכים לכלי של ניהול עצמי ואחריות אישית.</p>
                 </div>
-                {/* Tool 2 */}
                 <div className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white border border-gray-100 shadow-xl group hover:scale-[1.03] transition-all flex flex-col items-center text-center">
                   <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl md:rounded-2xl mb-4 md:mb-8 shadow-inner flex items-center justify-center overflow-hidden">
                     <Image
@@ -278,14 +284,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Colorful tag - Static and vibrant */}
               <div style={{
                 position: 'absolute',
                 bottom: 0,
                 left: '50%',
                 transform: 'translate(-50%, 50%)',
                 whiteSpace: 'nowrap',
-                background: 'linear-gradient(90deg, #BBE9FD 0%, #E6F19A 100%)',
+                backgroundImage: 'url(/background.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 color: '#273143',
                 padding: '0.75rem 2rem',
                 borderRadius: '9999px',
@@ -299,48 +306,6 @@ export default function Home() {
                 חינוך פיננסי מעשי
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works Section */}
-      <section id="how-it-works" className="py-12 md:py-24 bg-joystie-dark text-white overflow-hidden relative">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 relative z-10">
-          <div ref={addRevealRef(4)} className="text-center mb-10 md:mb-16 reveal">
-            <h2 className="text-3xl md:text-4xl lg:text-[3.5rem] font-black mb-4 md:mb-6 font-brand text-center">איך זה עובד?</h2>
-            <div className="w-24 h-1.5 bg-joystie-lime mx-auto rounded-full opacity-40"></div>
-          </div>
-
-          <div className="flex flex-col md:flex-row justify-center md:justify-between items-center md:items-start gap-6 md:gap-8 relative">
-            <div className="hidden md:block absolute top-8 left-10 right-10 h-1 bg-white/10 z-0"></div>
-
-            <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[240px]">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-joystie-blue text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-2xl font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">1</div>
-              <h3 className="text-lg md:text-xl font-black mb-2 md:mb-3 font-brand">קובעים חוקים</h3>
-              <p className="text-gray-300 text-xs md:text-sm leading-relaxed">מגדירים יחד "בנק" שעות מסך שבועיות שמותאם לצרכים שלכם.</p>
-            </div>
-
-            <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[240px]">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-joystie-lime text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-2xl font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">2</div>
-              <h3 className="text-lg md:text-xl font-black mb-2 md:mb-3 font-brand">מגדירים תגמול</h3>
-              <p className="text-gray-300 text-xs md:text-sm leading-relaxed">קושרים את השעות לדמי כיס קבועים. הופכים את הזמן למשאב בעל ערך.</p>
-            </div>
-
-            <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[240px]">
-              <div className="w-12 h-12 md:w-16 md:h-16 bg-white text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-2xl font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">3</div>
-              <h3 className="text-lg md:text-xl font-black mb-2 md:mb-3 font-brand">התוצאה בידיים שלהם</h3>
-              <p className="text-gray-300 text-xs md:text-sm leading-relaxed">חיסכון בזמן מתגמל בתוספת כספית, חריגה גוררת הפחתה. הכל קורה אוטומטית.</p>
-            </div>
-          </div>
-          
-          {/* Signup Button below "How it Works" */}
-          <div ref={addRevealRef(12)} className="reveal flex justify-center mt-10 md:mt-16">
-            <button 
-              onClick={handleSignup}
-              className="btn-main bg-white text-joystie-dark px-8 py-4 md:px-12 md:py-5 rounded-full text-lg md:text-xl shadow-2xl border-2 border-white hover:bg-joystie-lime hover:border-joystie-lime transition-all font-brand"
-            >
-              הצטרפו עכשיו
-            </button>
           </div>
         </div>
       </section>
@@ -447,7 +412,10 @@ export default function Home() {
       </section>
 
       {/* Footer - WITH TILTED OBJECTS */}
-      <footer className="py-12 md:py-20 gradient-bg border-t border-white/20">
+      <footer 
+        className="py-12 md:py-20 border-t border-white/20" 
+        style={{ backgroundImage: 'url(/background.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row justify-between items-center gap-8 md:gap-12 text-center md:text-right">
           
           <div className="w-full md:w-1/4 flex justify-center md:justify-start items-center">

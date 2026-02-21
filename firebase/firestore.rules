@@ -22,6 +22,16 @@ service cloud.firestore {
 
     }
 
+    // Helper function to check if user is admin
+    // Auth token email (same as app); fallback to users collection. Compare exact 'admin@joystie.com'.
+    function isAdmin() {
+      let authEmail = request.auth.token.email != null ? request.auth.token.email : '';
+      let userRes = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let docEmail = userRes != null && userRes.data != null ? userRes.data.get('email', '') : '';
+      return isAuthenticated() &&
+        (authEmail == 'admin@joystie.com' || docEmail == 'admin@joystie.com');
+    }
+
     
 
     // Users collection - users can read/write their own data
@@ -140,9 +150,31 @@ service cloud.firestore {
 
     match /challenges/{challengeId} {
 
+      // Admin can read/write all challenges (for consultation approval)
+
+      allow read, write: if isAdmin();
+
       // Allow read for all (security handled by URL token validation in app code)
 
       allow read: if true;
+
+      // Allow unauthenticated update for weeklyUpload field only (child redemption page)
+
+      // Security: Token validation in app code ensures only valid parent-child-challenge pairs can update
+
+      allow update: if !isAuthenticated() &&
+
+        resource != null &&
+
+        // Ensure parentId and other critical fields don't change
+
+        request.resource.data.parentId == resource.data.parentId &&
+
+        request.resource.data.childId == resource.data.childId &&
+
+        // Only allow if updating weeklyUpload field
+
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weeklyUpload', 'updatedAt']);
 
       // Allow write only if authenticated and owns the challenge
 

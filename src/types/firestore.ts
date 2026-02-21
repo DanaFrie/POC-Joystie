@@ -29,6 +29,36 @@ export interface FirestoreChild {
   updatedAt: string; // ISO timestamp
 }
 
+// Weekly upload data (single upload per week on redemption day)
+export interface WeeklyUpload {
+  screenshotUrl: string; // Screenshot URL from Firebase Storage
+  uploadedAt: string; // ISO timestamp
+  uploadedBy: 'parent' | 'child'; // Who performed the upload
+  status: 'pending' | 'approved' | 'rejected'; // Approval status
+  // Child's self-assessment before seeing results
+  childEstimate?: {
+    metGoal: boolean; // Did they think they met the goal?
+    estimatedEarnings: number; // How much did they think they earned?
+  };
+  // OCR processed data
+  processedData?: {
+    screenTimeMinutes: number; // Total screen time in minutes (sum of all days)
+    /** Minutes per day (Hebrew day name -> minutes). From single weekly processing. */
+    minutesPerDay?: Record<string, number>;
+    apps?: Array<{
+      name: string;
+      timeUsed: number; // Minutes
+      icon?: string;
+    }>;
+  };
+  // Approval/rejection data
+  approvedAt?: string; // ISO timestamp
+  rejectedAt?: string; // ISO timestamp
+  rejectionReason?: string;
+  /** Set by image processing when manual review is needed (mismatch, all zero, etc.); reason is logged in service only */
+  manualReviewRequired?: boolean;
+}
+
 export interface FirestoreChallenge {
   id: string; // Document ID
   parentId: string; // Reference to users collection
@@ -39,9 +69,12 @@ export interface FirestoreChallenge {
   dailyScreenTimeGoal: number; // שעות זמן מסך יומי
   weekNumber: number;
   totalWeeks: number;
-  startDate: string; // ISO date
+  startDate?: string; // ISO date - set by admin after consultation approval
   challengeDays: number; // מספר ימי האתגר (6 ימים)
   isActive: boolean;
+  consultationCompleted?: boolean; // Whether consultation with advisor has been completed
+  // Weekly upload (single upload on redemption day)
+  weeklyUpload?: WeeklyUpload;
   // Redemption data (set when redemption is completed)
   redemptionAmount?: number; // Final amount redeemed
   redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save'; // Redemption option selected

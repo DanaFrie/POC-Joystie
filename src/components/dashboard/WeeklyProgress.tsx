@@ -2,6 +2,7 @@
 
 import { WeekDay, WeeklyTotals } from '@/types/dashboard';
 import { formatNumber } from '@/utils/formatting';
+import type { WeeklyUpload } from '@/types/firestore';
 
 interface WeeklyProgressProps {
   week: WeekDay[];
@@ -11,7 +12,8 @@ interface WeeklyProgressProps {
   totalWeeklyHours?: number;
   weeklyBudget?: number; // תקציב שבועי
   dailyBudget?: number; // תקציב יומי
-  onDayClick?: (day: WeekDay) => void;
+  weeklyUpload?: WeeklyUpload | null; // Weekly upload status
+  onWeeklyUploadClick?: () => void; // Click handler for weekly upload summary
 }
 
 const statusConfig = {
@@ -94,7 +96,7 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
   );
 }
 
-export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, onDayClick }: WeeklyProgressProps) {
+export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, weeklyUpload, onWeeklyUploadClick }: WeeklyProgressProps) {
   // Gender pronouns for child
   const childPronouns = {
     boy: { was: 'היה', earned: 'הרוויח' },
@@ -209,6 +211,48 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
           </h2>
         )}
         
+        {/* Weekly Upload Status Banner */}
+        {weeklyUpload && (
+          <div 
+            className={`mx-4 mb-4 p-4 rounded-[12px] cursor-pointer transition-all hover:opacity-90 ${
+              weeklyUpload.status === 'pending' 
+                ? 'bg-[#BBE9FD] bg-opacity-30 border-2 border-[#BBE9FD]'
+                : weeklyUpload.status === 'approved'
+                ? 'bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]'
+                : 'bg-red-100 border-2 border-red-300'
+            }`}
+            onClick={onWeeklyUploadClick}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">
+                  {weeklyUpload.status === 'pending' ? '⏳' : weeklyUpload.status === 'approved' ? '✅' : '❌'}
+                </span>
+                <div>
+                  <p className="font-varela font-semibold text-sm text-[#282743]">
+                    {weeklyUpload.status === 'pending' 
+                      ? 'העלאה ממתינה לאישור'
+                      : weeklyUpload.status === 'approved'
+                      ? 'העלאה אושרה'
+                      : 'העלאה נדחתה'}
+                  </p>
+                  <p className="font-varela text-xs text-[#948DA9]">
+                    לחץ לפרטים
+                  </p>
+                </div>
+              </div>
+              {weeklyUpload.childEstimate && (
+                <div className="text-left">
+                  <p className="font-varela text-xs text-[#948DA9]">הערכת הילד/ה</p>
+                  <p className="font-varela font-bold text-lg text-[#273143]">
+                    ₪{weeklyUpload.childEstimate.estimatedEarnings}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
         {/* Chart layout - separate container for axes, bars, and labels */}
         <div className="px-4 pb-28">
           {/* Chart with Y-axis */}
@@ -264,7 +308,6 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
                         key={index} 
                         day={day} 
                         maxHours={maxHours}
-                        onClick={onDayClick ? () => onDayClick(day) : undefined}
                       />
                     );
                   })}

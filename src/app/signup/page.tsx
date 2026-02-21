@@ -278,8 +278,8 @@ export default function SignupPage() {
         localStorage.removeItem('signupFormData');
       }
 
-      // Redirect to onboarding
-      router.push('/onboarding');
+      // Redirect to dashboard - user will see "הגדר אתגר" notification there
+      router.push('/dashboard');
     } catch (error) {
       logger.error('Signup error:', error);
       const errorMessage = getErrorMessage(error);

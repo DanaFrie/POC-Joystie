@@ -95,47 +95,20 @@ export function decodeParentToken(token: string): {
   }
 }
 
-/**
- * Generate setup URL with parent identifier and optional child ID
- * Note: challengeId is NOT included in setup URL to keep it shorter (not needed for setup)
- */
-export function generateSetupUrl(
-  parentId: string, 
-  childId?: string, 
-  challengeId?: string, // Ignored for setup URL - kept for API compatibility
-  baseUrl?: string
-): string {
-  // Setup URL doesn't need challengeId - it's only needed for upload/redemption
-  const token = encodeParentToken(parentId, childId, undefined);
-  const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}/child/setup?token=${token}`;
-}
+/** Base path for unified child flow (setup + redemption same URL) */
+const CHILD_PATH = '/child';
 
 /**
- * Generate upload URL with parent identifier and optional challenge ID
+ * Generate the single child URL (setup and redemption use the same link).
+ * After setup the child keeps this link; on redemption day it shows the redemption funnel.
  */
-export function generateUploadUrl(
-  parentId: string, 
-  childId?: string, 
+export function generateChildUrl(
+  parentId: string,
+  childId?: string,
   challengeId?: string,
   baseUrl?: string
 ): string {
   const token = encodeParentToken(parentId, childId, challengeId);
   const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}/child/upload?token=${token}`;
+  return `${base}${CHILD_PATH}?token=${token}`;
 }
-
-/**
- * Generate redemption URL with parent identifier and optional challenge ID
- */
-export function generateRedemptionUrl(
-  parentId: string, 
-  childId?: string, 
-  challengeId?: string,
-  baseUrl?: string
-): string {
-  const token = encodeParentToken(parentId, childId, challengeId);
-  const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}/child/redemption?token=${token}`;
-}
-

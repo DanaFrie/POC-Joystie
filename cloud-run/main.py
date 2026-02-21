@@ -67,13 +67,15 @@ def process_screenshot():
         image_data = data.get('imageData')
         target_day = data.get('targetDay')
         
-        if not image_data or not target_day:
+        if not image_data:
             return jsonify({
                 'success': False,
-                'error': 'Missing required parameters: imageData and targetDay'
+                'error': 'Missing required parameter: imageData'
             }), 400
         
-        print(f'[Cloud Run] Processing screenshot for day: {target_day}')
+        # Always weekly – deploy one mode only
+        is_weekly = True
+        print(f'[Cloud Run] Processing: mode=weekly (targetDay ignored: {target_day})')
         
         # Decode base64 image
         try:
@@ -96,19 +98,30 @@ def process_screenshot():
             temp_path = tmp_file.name
         
         try:
-            # Process the image
-            print(f'[Cloud Run] Calling graph_telemetry_service.process_day...')
-            result = service.process_day(temp_path, target_day)
-            print(f'[Cloud Run] Result: {result}')
-            
-            # Return result in expected format
-            return jsonify({
-                'success': True,
-                'day': result.get('day', target_day),
-                'minutes': result.get('minutes', 0),
-                'found': result.get('found', False),
-                'metadata': result.get('metadata', {})
-            })
+            if is_weekly:
+                print(f'[Cloud Run] Calling graph_telemetry_service.process_week...')
+                result = service.process_week(temp_path)
+                print(f'[Cloud Run] Result: {result}')
+                if result.get('error'):
+                    return jsonify({
+                        'success': False,
+                        'minutes': 0,
+                        'found': False,
+                        'minutes_per_day': {},
+                        'error': result['error']
+                    })
+                return jsonify({
+                    'success': True,
+                    'minutes': result.get('screen_time_minutes', 0),
+                    'found': bool(result.get('minutes_per_day')),
+                    'minutes_per_day': result.get('minutes_per_day', {}),
+                    'manual_review_required': result.get('manual_review_required', False),
+                    'metadata': {
+                        'scale_min_per_px': result.get('scale_factor', 0),
+                        'max_val_y': result.get('raw_max_value', 0)
+                    }
+                })
+            # Single-day mode removed – always weekly
         finally:
             # Clean up temporary file
             try:

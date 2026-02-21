@@ -230,7 +230,7 @@ export default function OnboardingSetupPage() {
   }, []);
 
   const handleNext = async () => {
-    if (step < 7) {
+    if (step < 6) {
       setStep(step + 1);
     } else {
       // Prevent multiple submissions
@@ -288,20 +288,14 @@ export default function OnboardingSetupPage() {
             deviceType: formData.deviceType as 'ios' | 'android',
           }, userId);
 
-          // Calculate start date (tomorrow at 00:00)
-          const today = new Date();
-          const startDate = new Date(today);
-          startDate.setDate(today.getDate() + 1);
-          startDate.setHours(0, 0, 0, 0);
-
           // Update challenge with new form data
+          // Note: startDate will be set by admin after consultation approval
           await updateChallenge(challengeId, {
             ...(motivationReason && { motivationReason }),
             selectedBudget: selectedBudget,
             dailyBudget: dailyBudget,
             dailyScreenTimeGoal: targetHours,
-            startDate: startDate.toISOString(),
-            isActive: true,
+            isActive: false, // Challenge is not active until consultation is approved
           });
         } else {
           // No active challenge - create new child and challenge
@@ -316,13 +310,8 @@ export default function OnboardingSetupPage() {
           deviceType: formData.deviceType as 'ios' | 'android',
         });
 
-        // Calculate start date (tomorrow at 00:00)
-        const today = new Date();
-        const startDate = new Date(today);
-        startDate.setDate(today.getDate() + 1);
-        startDate.setHours(0, 0, 0, 0);
-
         // Create challenge (weeklyBudget is calculated from selectedBudget, not saved to DB)
+        // Note: startDate will be set by admin after consultation approval
           challengeId = await createChallenge({
           parentId: userId,
           childId: childId,
@@ -332,9 +321,8 @@ export default function OnboardingSetupPage() {
           dailyScreenTimeGoal: targetHours,
           weekNumber: 1,
           totalWeeks: clientConfig.challenge.totalWeeks,
-          startDate: startDate.toISOString(),
           challengeDays: clientConfig.challenge.challengeDays,
-          isActive: true,
+          isActive: false, // Challenge is not active until consultation is approved
         });
 
         // Track challenge creation event
@@ -407,12 +395,10 @@ export default function OnboardingSetupPage() {
       case 3:
         return formData.age !== '';
       case 4:
-        return true; // Info step - always can proceed
-      case 5:
         return formData.deviceType !== '';
-      case 6:
+      case 5:
         return formData.targetScreenTime !== '';
-      case 7:
+      case 6:
         return formData.weeklyBudget !== '' && (formData.weeklyBudget !== 'custom' || formData.customBudget !== '');
       default:
         return false;
@@ -437,12 +423,12 @@ export default function OnboardingSetupPage() {
         {/* Progress indicator */}
         <div className="mb-6 mt-20">
           <div className="flex justify-between mb-2">
-            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 7</span>
+            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 6</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-[#273143] h-2 rounded-full transition-all"
-              style={{ width: `${(step / 7) * 100}%` }}
+              style={{ width: `${(step / 6) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -573,45 +559,6 @@ export default function OnboardingSetupPage() {
           {step === 4 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                רגע לפני שמתחילים
-              </h2>
-              <div className="space-y-4">
-                <div className="bg-[#E6F19A] bg-opacity-30 rounded-[18px] border-2 border-[#E6F19A] p-4">
-                  <p className="font-varela text-base text-[#262135] leading-relaxed mb-4">
-                    במידה ו{parentP.you} {parentP.continue} - האתגר יתחיל מחר בבוקר ואם {parentP.you} עוד לא {parentP.ready} אנחנו מחכים לך ש{parentP.do} את ההכנות עם <strong>{childDisplayName}</strong> ו{parentP.return} לכתובת הזו:
-                  </p>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const onboardingUrl = typeof window !== 'undefined' ? window.location.href : '';
-                        await navigator.clipboard.writeText(onboardingUrl);
-                        setCopied(true);
-                        setTimeout(() => {
-                          setCopied(false);
-                        }, 3000);
-                      } catch (error) {
-                        logger.error('Failed to copy URL:', error);
-                      }
-                    }}
-                    className={`w-full py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
-                      copied
-                        ? 'bg-[#E6F19A] text-[#273143]'
-                        : 'bg-[#273143] text-white hover:bg-opacity-90'
-                    }`}
-                  >
-                    {copied ? 'הועתק! ✓' : 'העתק כתובת'}
-                  </button>
-                  <p className="font-varela text-sm text-[#262135] mt-4 pt-3 border-t border-[#E6F19A]">
-                    כרגע ניתן להכניס רק אתגר אחד למערכת, אם אתם רוצים להכניס עוד מישהו מילדיכם אתם מוזמנים ליצור משתמש נוסף.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div>
-              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
                 איזה מכשיר יש ל{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}?
               </h2>
               <div className="space-y-3">
@@ -634,7 +581,7 @@ export default function OnboardingSetupPage() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 5 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
                 כמה זמן מסך ביום, טוב מבחינתך שיהיה ל{formData.name || 'הילד/ה'}?
@@ -652,7 +599,7 @@ export default function OnboardingSetupPage() {
             </div>
           )}
 
-          {step === 7 && (
+          {step === 6 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
                 תקציב שבועי לדמי כיס
@@ -757,7 +704,7 @@ export default function OnboardingSetupPage() {
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isSubmitting ? 'שומר...' : (step === 7 ? 'סיום' : 'המשך')}
+            {isSubmitting ? 'שומר...' : (step === 6 ? 'סיום' : 'המשך')}
             </button>
           </div>
       </div>

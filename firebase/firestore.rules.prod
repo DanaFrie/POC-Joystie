@@ -22,6 +22,16 @@ service cloud.firestore {
 
     }
 
+    // Helper function to check if user is admin
+    // Auth token email (same as app); fallback to users collection. Compare exact 'admin@joystie.com'.
+    function isAdmin() {
+      let authEmail = request.auth.token.email != null ? request.auth.token.email : '';
+      let userRes = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      let docEmail = userRes != null && userRes.data != null ? userRes.data.get('email', '') : '';
+      return isAuthenticated() &&
+        (authEmail == 'admin@joystie.com' || docEmail == 'admin@joystie.com');
+    }
+
     
 
     // Helper function to validate email format
@@ -172,6 +182,10 @@ service cloud.firestore {
     // PRODUCTION: Allow unauthenticated reads for child setup/upload pages (security via URL token)
 
     match /challenges/{challengeId} {
+
+      // Admin can read/write all challenges (for consultation approval)
+
+      allow read, write: if isAdmin();
 
       // Allow read for all (security handled by URL token validation in app code)
 

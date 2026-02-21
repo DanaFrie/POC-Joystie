@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { createSession, isLoggedIn } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
 import { getUser } from '@/lib/api/users';
-import { getActiveChallenge } from '@/lib/api/challenges';
+import { getLatestChallenge } from '@/lib/api/challenges';
 import { getErrorMessage } from '@/utils/errors';
 import { createContextLogger } from '@/utils/logger';
 
@@ -61,14 +61,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Check if user has an active challenge
-      const challenge = await getActiveChallenge(userId);
-      
+      // Transition to dashboard if user has any challenge (active or not, with or without startDate)
+      const challenge = await getLatestChallenge(userId);
       if (challenge) {
-        // User has active challenge, go to dashboard
         router.push('/dashboard');
       } else {
-        // No active challenge, go to onboarding/challenge setup
         router.push('/onboarding');
       }
     } catch (error) {
@@ -150,16 +147,11 @@ export default function LoginPage() {
       // Create session with Firebase Auth UID
       createSession(firebaseUser.uid);
 
-      // Check if user has an active challenge and redirect accordingly
-      const challenge = await getActiveChallenge(firebaseUser.uid);
-      
-      // Keep isSubmitting true during redirect to prevent multiple clicks
-      // It will be reset when component unmounts or on error
+      // Transition to dashboard if user has any challenge (active or not, with or without startDate)
+      const challenge = await getLatestChallenge(firebaseUser.uid);
       if (challenge) {
-        // User has active challenge, go to dashboard
         router.push('/dashboard');
       } else {
-        // No active challenge, go to onboarding/challenge setup
         router.push('/onboarding');
       }
     } catch (error) {
