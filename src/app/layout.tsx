@@ -1,18 +1,18 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Lato } from 'next/font/google'
+import { Heebo } from 'next/font/google'
 import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
 
-const lato = Lato({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-lato',
+const heebo = Heebo({
+  subsets: ['latin', 'hebrew'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-heebo',
 })
 
 export const metadata: Metadata = {
-  title: 'Joystie - Digital Balance for Kids',
+  title: 'Joystie - Digital Balance by Wallet',
   description: 'Creating financial incentives for balanced digital usage',
 }
 
@@ -22,9 +22,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={lato.variable} style={{ overflowX: 'hidden' }}>
+    <html lang="he" dir="rtl" className={heebo.variable} style={{ overflowX: 'hidden' }}>
       <body 
-        className="font-lato min-h-screen overflow-y-auto overflow-x-hidden" 
+        className="font-heebo min-h-screen overflow-y-auto overflow-x-hidden" 
         style={{ 
           backgroundImage: 'url(/background.png)',
           backgroundSize: 'cover',

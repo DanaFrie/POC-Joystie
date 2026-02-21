@@ -2,6 +2,7 @@
 
 import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { validateChildUrl } from '@/utils/url-validation';
 import type { ValidateChildUrlResult } from '@/utils/url-validation';
 import { generateChildUrl } from '@/utils/url-encoding';
@@ -33,7 +34,7 @@ function ChildPageContent() {
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <p className="font-varela text-base text-[#282743]">בודק כתובת...</p>
+            <p className="font-heebo text-base text-[#282743]">בודק כתובת...</p>
           </div>
         </div>
       </div>
@@ -45,13 +46,13 @@ function ChildPageContent() {
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+            <h1 className="font-heebo font-semibold text-2xl text-[#262135] mb-4">
               {result.mode === 'challenge_inactive' ? 'האתגר הושלם' : 'כתובת לא תקינה'}
             </h1>
-            <p className="font-varela text-base text-[#282743] mb-4">
+            <p className="font-heebo text-base text-[#282743] mb-4">
               {result.error || 'הכתובת ששותפה איתך לא תקינה או שהפדיון הושלם כבר.'}
             </p>
-            <p className="font-varela text-sm text-[#948DA9]">בדוק עם ההורה שלך לקבלת כתובת חדשה.</p>
+            <p className="font-heebo text-sm text-[#948DA9]">בדוק עם ההורה שלך לקבלת כתובת חדשה.</p>
           </div>
         </div>
       </div>
@@ -63,14 +64,14 @@ function ChildPageContent() {
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
+            <Image src="/icon-joystie.png" alt="" width={64} height={64} className="mx-auto mb-4" />
+            <h1 className="font-heebo font-semibold text-2xl text-[#262135] mb-4">
               הפדיון בוצע בהצלחה!
             </h1>
-            <p className="font-varela text-base text-[#282743] mb-4">
+            <p className="font-heebo text-base text-[#282743] mb-4">
               לשבוע הבא, ההורה ישלח לך כתובת חדשה.
             </p>
-            <p className="font-varela text-sm text-[#948DA9]">הכתובת הזו לא פעילה יותר</p>
+            <p className="font-heebo text-sm text-[#948DA9]">הכתובת הזו לא פעילה יותר</p>
           </div>
         </div>
       </div>

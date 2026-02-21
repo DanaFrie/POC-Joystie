@@ -197,21 +197,21 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
   // Determine if parent is mom or dad using gender from Firestore
   const getParentTitle = () => {
     const gender = dealData.parentGender || 'female';
-    return gender === 'female' ? '××ž×' : '××‘×';
+    return gender === 'female' ? 'אמא' : 'אבא';
   };
 
   const parentTitle = getParentTitle();
 
   // Nickname pool for random generation - fun nicknames for kids
   const nicknamePool = [
-    '×’×™×‘×•×¨', '×›×•×›×‘', '×œ×•×—×', '×ž×œ×š', '× ×¡×™×š', '×’×™×‘×•×¨ ×¢×œ', '×›×•×›×‘ ×¢×œ', '×œ×•×—× ×¢×œ', '×ž×œ×š ×¢×œ', '× ×¡×™×š ×¢×œ',
-    '×’×™×‘×•×¨×”', '×›×•×›×‘×ª', '×œ×•×—×ž×ª', '×ž×œ×›×”', '× ×¡×™×›×”', '×’×™×‘×•×¨×ª ×¢×œ', '×›×•×›×‘×ª ×¢×œ', '×œ×•×—×ž×ª ×¢×œ', '×ž×œ×›×ª ×¢×œ', '× ×¡×™×›×ª ×¢×œ',
-    '×’×™×‘×•×¨#×”×ž×’× ×™×‘', '×›×•×›×‘@×”×¡×•×¤×¨', '×œ×•×—×$×”×˜×•×‘', '×ž×œ×š&×”×ž× ×¦×—', '× ×¡×™×š#×”×’×™×‘×•×¨',
-    '×’×™×‘×•×¨×”@×”×¡×•×¤×¨', '×›×•×›×‘×ª$×”×˜×•×‘×”', '×œ×•×—×ž×ª&×”×ž× ×¦×—×ª', '×ž×œ×›×ª#×”×’×™×‘×•×¨×”', '× ×¡×™×›×ª@×”×¡×•×¤×¨',
-    '×’×™×‘×•×¨_×”×ž×’× ×™×‘', '×›×•×›×‘@×”×¡×•×¤×¨', '×œ×•×—×$×”×˜×•×‘', '×ž×œ×š&×”×ž× ×¦×—', '× ×¡×™×š#×”×’×™×‘×•×¨',
-    '×’×™×‘×•×¨×”_×”×¡×•×¤×¨', '×›×•×›×‘×ª@×”×˜×•×‘×”', '×œ×•×—×ž×ª$×”×ž× ×¦×—×ª', '×ž×œ×›×ª&×”×’×™×‘×•×¨×”', '× ×¡×™×›×ª#×”×¡×•×¤×¨',
-    '×’×™×‘×•×¨@×”×›×™@×˜×•×‘', '×›×•×›×‘#×”×›×™$×ž×’× ×™×‘', '×œ×•×—×&×”×›×™@×’×™×‘×•×¨', '×ž×œ×š$×”×›×™#×˜×•×‘', '× ×¡×™×š&×”×›×™@×ž×’× ×™×‘',
-    '×’×™×‘×•×¨×”@×”×›×™@×˜×•×‘×”', '×›×•×›×‘×ª#×”×›×™$×ž×’× ×™×‘×”', '×œ×•×—×ž×ª&×”×›×™@×’×™×‘×•×¨×”', '×ž×œ×›×ª$×”×›×™#×˜×•×‘×”', '× ×¡×™×›×ª&×”×›×™@×ž×’× ×™×‘×”'
+    'גיבור', 'כוכב', 'לוחם', 'מלך', 'נסיך', 'גיבור על', 'כוכב על', 'לוחם על', 'מלך על', 'נסיך על',
+    'גיבורה', 'כוכבת', 'לוחמת', 'מלכה', 'נסיכה', 'גיבורת על', 'כוכבת על', 'לוחמת על', 'מלכת על', 'נסיכת על',
+    'גיבור#המגניב', 'כוכב@הסופר', 'לוחם$הטוב', 'מלך&המנצח', 'נסיך#הגיבור',
+    'גיבורה@הסופר', 'כוכבת$הטובה', 'לוחמת&המנצחת', 'מלכת#הגיבורה', 'נסיכת@הסופר',
+    'גיבור_המגניב', 'כוכב@הסופר', 'לוחם$הטוב', 'מלך&המנצח', 'נסיך#הגיבור',
+    'גיבורה_הסופר', 'כוכבת@הטובה', 'לוחמת$המנצחת', 'מלכת&הגיבורה', 'נסיכת#הסופר',
+    'גיבור@הכי@טוב', 'כוכב#הכי$מגניב', 'לוחם&הכי@גיבור', 'מלך$הכי#טוב', 'נסיך&הכי@מגניב',
+    'גיבורה@הכי@טובה', 'כוכבת#הכי$מגניבה', 'לוחמת&הכי@גיבורה', 'מלכת$הכי#טובה', 'נסיכת&הכי@מגניבה'
   ];
 
   const generateRandomNickname = () => {
@@ -224,18 +224,18 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
   // Gift options for kids (translated to Hebrew)
   // Pre-shuffled order (randomized once and saved)
   const moneyGoalOptions = [
-    { id: 'pizza-friend', label: '×¤×™×¦×” ×¢× ×—×‘×¨/×”' },
-    { id: 'craft-kit', label: '×¢×¨×›×ª ×™×¦×™×¨×”' },
-    { id: 'escape-room', label: '×—×“×¨ ×‘×¨×™×—×”' },
-    { id: 'lego', label: '×œ×’×• (LEGO)' },
-    { id: 'icecream', label: '×’×œ×™×“×”' },
-    { id: 'football', label: '×›×“×•×¨×’×œ' },
-    { id: 'save-money', label: '×× ×™ ×¨×•×¦×” ×œ×—×¡×•×š!' },
-    { id: 'supergoal-cards', label: '×§×œ×¤×™ ×¡×•×¤×¨×’×•×œ' },
-    { id: 'slime', label: '×¡×œÖ·×™×™× (Slime)' },
-    { id: 'popcorn', label: '×¤×•×¤×§×•×¨×Ÿ (×œ×¡×¨×˜)' },
-    { id: 'playstation-game', label: '×ž×©×—×§ ×œ×¤×œ×™×™×¡×˜×™×™×©×Ÿ' },
-    { id: 'lol-doll', label: '×‘×•×‘×ª ×œ××‘×•×‘×•' }
+    { id: 'pizza-friend', label: 'פיצה עם חבר/ה' },
+    { id: 'craft-kit', label: 'ערכת יצירה' },
+    { id: 'escape-room', label: 'חדר בריחה' },
+    { id: 'lego', label: 'לגו (LEGO)' },
+    { id: 'icecream', label: 'גלידה' },
+    { id: 'football', label: 'כדורגל' },
+    { id: 'save-money', label: 'אני רוצה לחסוך!' },
+    { id: 'supergoal-cards', label: 'קלפי סופרגול' },
+    { id: 'slime', label: 'סליים (Slime)' },
+    { id: 'popcorn', label: 'פופקורן (לסרט)' },
+    { id: 'playstation-game', label: 'משחק לפלייסטיישן' },
+    { id: 'lol-doll', label: 'בובת לאבובו' }
   ];
 
   // Validate URL token on mount (skip when validationOverride from unified page)
@@ -245,7 +245,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
     const validateUrl = async () => {
       if (!token) {
         setUrlValid(false);
-        setUrlError('×›×ª×•×‘×ª ×œ× ×ª×§×™× ×” - ×—×¡×¨ ×˜×•×§×Ÿ');
+        setUrlError('כתובת לא תקינה - חסר טוקן');
         return;
       }
 
@@ -266,7 +266,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
           if (challenge && !challenge.isActive) {
             setUrlValid(false);
             setChallengeInactive(true);
-            setUrlError('×”××ª×’×¨ ×”×•×©×œ× ×›×‘×¨. ×”×¤×“×™×•×Ÿ ×‘×•×¦×¢ ×•×”××ª×’×¨ ×œ× ×¤×¢×™×œ ×™×•×ª×¨.');
+            setUrlError('האתגר הושלם כבר. הפדיון בוצע והאתגר לא פעיל יותר.');
             return;
           }
           
@@ -294,12 +294,12 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
           }
         } else {
           setUrlValid(false);
-          setUrlError(validation.error || '×›×ª×•×‘×ª ×œ× ×ª×§×™× ×”');
+          setUrlError(validation.error || 'כתובת לא תקינה');
         }
       } catch (error) {
         logger.error('Error validating URL:', error);
         setUrlValid(false);
-        setUrlError('×©×’×™××” ×‘×‘×“×™×§×ª ×”×›×ª×•×‘×ª');
+        setUrlError('שגיאה בבדיקת הכתובת');
       }
     };
 
@@ -355,7 +355,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
         setShowCompleteScreen(true);
       } catch (error) {
         logger.error('Error saving setup data:', error);
-        alert('×©×’×™××” ×‘×©×ž×™×¨×ª ×”× ×ª×•× ×™×. × ×¡×” ×©×•×‘.');
+        alert('שגיאה בשמירת הנתונים. נסה שוב.');
       } finally {
         setIsLoading(false);
       }
@@ -398,19 +398,19 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
-              ×”××ª×’×¨ ×”×•×©×œ×
+            <h1 className="font-heebo font-semibold text-2xl text-[#262135] mb-4">
+              האתגר הושלם
             </h1>
             <div className="bg-yellow-50 border-2 border-yellow-300 rounded-[12px] p-4 mb-4">
-              <p className="font-varela text-base text-[#262135] text-center leading-relaxed mb-2">
-                ×”××ª×’×¨ ×”×•×©×œ× ×•×”×¤×“×™×•×Ÿ ×‘×•×¦×¢.
+              <p className="font-heebo text-base text-[#262135] text-center leading-relaxed mb-2">
+                האתגר הושלם והפדיון בוצע.
               </p>
-              <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-                {parentTitle} ×¦×¨×™×š ×œ×™×¦×•×¨ ××ª×’×¨ ×—×“×© ×›×“×™ ×©×ª×•×›×œ ×œ×”×ª×—×™×œ.
+              <p className="font-heebo text-sm text-[#262135] text-center leading-relaxed">
+                {parentTitle} צריך ליצור אתגר חדש כדי שתוכל להתחיל.
               </p>
             </div>
-            <p className="font-varela text-sm text-[#948DA9]">
-              ×‘×“×•×§ ×¢× ×”×”×•×¨×” ×©×œ×š ×œ×§×‘×œ×ª ×›×ª×•×‘×ª ×—×“×©×”.
+            <p className="font-heebo text-sm text-[#948DA9]">
+              בדוק עם ההורה שלך לקבלת כתובת חדשה.
             </p>
           </div>
         </div>
@@ -424,11 +424,11 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <h1 className="font-varela font-semibold text-2xl text-[#262135] mb-4">
-              ×›×ª×•×‘×ª ×œ× ×ª×§×™× ×”
+            <h1 className="font-heebo font-semibold text-2xl text-[#262135] mb-4">
+              כתובת לא תקינה
             </h1>
-            <p className="font-varela text-base text-[#282743] mb-4">
-              ×›× ×¨××” ×©×›×‘×¨ ×¡×™×™×ž×ª ××ª ×”×©×œ×‘ ×”×–×”, ×ª×¤× ×” ×œ×”×•×¨×” ×©×œ×š ×œ×§×‘×œ ×›×ª×•×‘×ª ×¢×“×›× ×™×ª.
+            <p className="font-heebo text-base text-[#282743] mb-4">
+              כנראה שכבר סיימת את השלב הזה, תפנה להורה שלך לקבל כתובת עדכנית.
             </p>
           </div>
         </div>
@@ -442,7 +442,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <p className="font-varela text-base text-[#282743]">×‘×•×“×§ ×›×ª×•×‘×ª...</p>
+            <p className="font-heebo text-base text-[#282743]">בודק כתובת...</p>
           </div>
         </div>
       </div>
@@ -465,7 +465,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
   return (
     <div className="min-h-screen bg-transparent pb-24">
       <div className="max-w-md mx-auto px-4 py-8 relative">
-        {/* Piggy Bank - ×¤×™× ×” ×™×ž× ×™×ª ×¢×œ×™×•× ×” */}
+        {/* Piggy Bank - פינה ימנית עליונה */}
         <div className="absolute right-0 top-0 z-0 pointer-events-none">
           <Image
             src="/piggy-bank.png"
@@ -479,7 +479,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
         {/* Progress indicator */}
         <div className="mb-6 mt-20">
           <div className="flex justify-between mb-2">
-            <span className="font-varela text-sm text-[#948DA9]">×©×œ×‘ {step} ×ž×ª×•×š 3</span>
+            <span className="font-heebo text-sm text-[#948DA9]">שלב {step} מתוך 3</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
@@ -493,37 +493,37 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
           {step === 1 && (
             <div>
-              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                {childName ? `${childName}!` : '×”×™×™!'} {parentTitle} {parentTitle === '××ž×' ? '×”×—×œ×™×˜×”' : '×”×—×œ×™×˜'} ×œ×¢×©×•×ª ××™×ª×š ×“×™×œ... ×¨×•×¦×” ×œ×“×¢×ª ×ž×” ×”×•×?
+              <h2 className="font-heebo font-semibold text-xl text-[#262135] mb-4 text-center">
+                {childName ? `${childName}!` : 'היי!'} {parentTitle} {parentTitle === 'אמא' ? 'החליטה' : 'החליט'} לעשות איתך דיל... רוצה לדעת מה הוא?
               </h2>
-              <p className="font-varela text-base text-[#282743] mb-6 text-center leading-relaxed">
-                ×‘×•××• × ×ª×—×™×œ! ×‘×—×¨ ×›×™× ×•×™ ×ž×’× ×™×‘:
+              <p className="font-heebo text-base text-[#282743] mb-6 text-center leading-relaxed">
+                בואו נתחיל! בחר כינוי מגניב:
               </p>
               <div className="mb-4">
-                <label className="block font-varela font-semibold text-base text-[#262135] mb-3">
-                  ×›×™× ×•×™ (×©× ×ž×©×ª×ž×©)
+                <label className="block font-heebo font-semibold text-base text-[#262135] mb-3">
+                  כינוי (שם משתמש)
                 </label>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input
                     type="text"
                     value={selectedNickname}
                     readOnly
-                    placeholder="×œ×—×¥ ×¢×œ '×œ×”×’×¨×™×œ' ×›×“×™ ×œ×™×¦×•×¨ ×›×™× ×•×™"
-                    className={`flex-1 p-4 border-2 rounded-[18px] bg-gray-50 cursor-not-allowed font-varela text-base text-[#282743] ${
+                    placeholder="לחץ על 'להגריל' כדי ליצור כינוי"
+                    className={`flex-1 p-4 border-2 rounded-[18px] bg-gray-50 cursor-not-allowed font-heebo text-base text-[#282743] ${
                       selectedNickname ? 'border-[#273143]' : 'border-gray-200'
                     }`}
                   />
                   <button
                     type="button"
                     onClick={generateRandomNickname}
-                    className="w-full sm:w-auto px-4 sm:px-6 py-4 bg-[#E6F19A] hover:bg-[#E6F19A] hover:bg-opacity-80 border-2 border-[#E6F19A] rounded-[18px] font-varela font-semibold text-base text-[#262135] transition-all whitespace-nowrap"
+                    className="w-full sm:w-auto px-4 sm:px-6 py-4 bg-[#E6F19A] hover:bg-[#E6F19A] hover:bg-opacity-80 border-2 border-[#E6F19A] rounded-[18px] font-heebo font-semibold text-base text-[#262135] transition-all whitespace-nowrap"
                   >
-                    ×œ×”×’×¨×™×œ
+                    להגריל
                   </button>
                 </div>
                 {selectedNickname && (
-                  <p className="mt-2 text-sm text-[#948DA9] font-varela text-center">
-                    ×ž×¨×•×¦×” ×ž×”×›×™× ×•×™? ×œ×—×¥ ×¢×œ "×”×ž×©×š" ×›×“×™ ×œ×”×ž×©×™×š
+                  <p className="mt-2 text-sm text-[#948DA9] font-heebo text-center">
+                    מרוצה מהכינוי? לחץ על "המשך" כדי להמשיך
                   </p>
                 )}
               </div>
@@ -532,36 +532,36 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
 
           {step === 2 && (
             <div>
-              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                ×”×“×™×œ ×©×œ×š ×¢× {parentTitle}:
+              <h2 className="font-heebo font-semibold text-xl text-[#262135] mb-4 text-center">
+                הדיל שלך עם {parentTitle}:
               </h2>
               <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[18px] p-6 space-y-4">
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
-                  <p className="font-varela text-sm text-[#948DA9] mb-1">×™×¢×“ ×–×ž×Ÿ ×ž×¡×š ×™×•×ž×™:</p>
-                  <p className="font-varela font-bold text-2xl text-[#262135]">
-                    {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? '×“×§×”' : '×“×§×•×ª'}
+                  <p className="font-heebo text-sm text-[#948DA9] mb-1">יעד זמן מסך יומי:</p>
+                  <p className="font-heebo font-bold text-2xl text-[#262135]">
+                    {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}
                   </p>
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
-                  <p className="font-varela text-sm text-[#948DA9] mb-1">×ª×§×¦×™×‘ ×©×‘×•×¢×™:</p>
-                  <p className="font-varela font-bold text-2xl text-[#262135]">
-                    â‚ª{dealData.weeklyBudget}
+                  <p className="font-heebo text-sm text-[#948DA9] mb-1">תקציב שבועי:</p>
+                  <p className="font-heebo font-bold text-2xl text-[#262135]">
+                    ₪{dealData.weeklyBudget}
                   </p>
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
-                  <p className="font-varela text-sm text-[#948DA9] mb-1">×ª×§×¦×™×‘ ×™×•×ž×™:</p>
-                  <p className="font-varela font-bold text-2xl text-[#262135]">
-                    â‚ª{formatNumber(dealData.dailyBudget)}
+                  <p className="font-heebo text-sm text-[#948DA9] mb-1">תקציב יומי:</p>
+                  <p className="font-heebo font-bold text-2xl text-[#262135]">
+                    ₪{formatNumber(dealData.dailyBudget)}
                   </p>
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
-                  <p className="font-varela text-xs text-[#282743] text-center leading-relaxed">
-                    ×× {childName ? (childGender === 'girl' ? '×ª×¢×ž×“×™' : '×ª×¢×ž×•×“') : '×ª×¢×ž×•×“'} ×‘×™×¢×“ ×©×œ {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? '×“×§×”' : '×“×§×•×ª'} ×‘×™×•×, {childName ? (childGender === 'girl' ? '×ª×§×‘×œ×™' : '×ª×§×‘×œ') : '×ª×§×‘×œ'} ××ª ×›×œ ×”×ª×§×¦×™×‘ ×”×™×•×ž×™! ×× {childName ? (childGender === 'girl' ? '×ª×¢×‘×¨×™' : '×ª×¢×‘×•×¨') : '×ª×¢×‘×•×¨'} ××ª ×”×™×¢×“, ×”×ª×§×¦×™×‘ ×™×§×˜×Ÿ ×‘×”×ª××.
+                  <p className="font-heebo text-xs text-[#282743] text-center leading-relaxed">
+                    אם {childName ? (childGender === 'girl' ? 'תעמדי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
                   </p>
                 </div>
                 <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">
-                  <p className="font-varela text-xs text-[#262135] text-center leading-relaxed font-semibold">
-                    ×”××ª×’×¨ × ×ž×©×š 6 ×™×ž×™× ×•×™×•× ×”×¤×“×™×•×Ÿ ×”×•× ×”×™×•× ×”-7. ×‘×™×•× ×”×¤×“×™×•×Ÿ {childGender === 'girl' ? '×ª×•×›×œ×™' : '×ª×•×›×œ'} ×œ×¨××•×ª ×›×ž×” ×›×¡×£ ×¦×‘×¨×ª ×•×œ×¤×“×•×ª ××•×ª×•!
+                  <p className="font-heebo text-xs text-[#262135] text-center leading-relaxed font-semibold">
+                    האתגר נמשך 6 ימים ויום הפדיון הוא היום ה-7. ביום הפדיון {childGender === 'girl' ? 'תוכלי' : 'תוכל'} לראות כמה כסף צברת ולפדות אותו!
                   </p>
                 </div>
               </div>
@@ -570,11 +570,11 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
 
           {step === 3 && (
             <div>
-              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                ×ž×” ×ª×¨×¦×” ×œ×¢×©×•×ª ×¢× ×”×›×¡×£?
+              <h2 className="font-heebo font-semibold text-xl text-[#262135] mb-4 text-center">
+                מה תרצה לעשות עם הכסף?
               </h2>
-              <p className="font-varela text-sm text-[#948DA9] mb-4 text-center">
-                ×‘×—×¨ ×›×ž×” ×©{childGender === 'girl' ? '××ª' : '××ª×”'} ×¨×•×¦×” (× ×™×ª×Ÿ ×œ×‘×—×•×¨ ×™×•×ª×¨ ×ž××—×“)
+              <p className="font-heebo text-sm text-[#948DA9] mb-4 text-center">
+                בחר כמה ש{childGender === 'girl' ? 'את' : 'אתה'} רוצה (ניתן לבחור יותר מאחד)
               </p>
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {moneyGoalOptions.map((option, index) => {
@@ -596,11 +596,11 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
                         animationDelay: `${animationDelay}s`
                       }}
                     >
-                      <span className="font-varela font-semibold text-xs text-[#282743] block">
+                      <span className="font-heebo font-semibold text-xs text-[#282743] block">
                         {option.label}
                       </span>
                       {selectedMoneyGoals.includes(option.id) && (
-                        <span className="absolute top-1 right-1 text-[#273143] text-lg">âœ“</span>
+                        <span className="absolute top-1 right-1 text-[#273143] text-lg">✓</span>
                       )}
                     </button>
                   );
@@ -615,21 +615,21 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
           {step > 1 && (
             <button
               onClick={handleBack}
-              className="flex-1 py-4 px-6 rounded-[18px] border-2 border-gray-300 text-lg font-varela font-semibold text-[#282743] hover:bg-gray-50 transition-all"
+              className="flex-1 py-4 px-6 rounded-[18px] border-2 border-gray-300 text-lg font-heebo font-semibold text-[#282743] hover:bg-gray-50 transition-all"
             >
-              ×—×–×¨×”
+              חזרה
             </button>
           )}
           <button
             onClick={handleNext}
             disabled={!canProceed()}
-            className={`flex-1 py-4 px-6 rounded-[18px] text-lg font-varela font-semibold transition-all ${
+            className={`flex-1 py-4 px-6 rounded-[18px] text-lg font-heebo font-semibold transition-all ${
               canProceed()
                 ? 'bg-[#273143] text-white hover:bg-opacity-90'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {step === 3 ? '×¡×™×•×' : '×”×ž×©×š'}
+            {step === 3 ? 'סיום' : 'המשך'}
           </button>
         </div>
       </div>

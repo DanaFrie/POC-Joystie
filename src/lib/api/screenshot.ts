@@ -103,11 +103,7 @@ export async function processScreenshot(
       result: result.data
     });
 
-    // Check if the function call was successful
-    if (result.data.error) {
-      throw new Error(result.data.error);
-    }
-
+    // Backend may return error (e.g. "Failed to detect graph grid lines") – treat as no data, not a throw
     const minutes = result.data.minutes || 0;
     const response: ProcessScreenshotResponse = {
       day: result.data.day || targetDay,
@@ -115,7 +111,7 @@ export async function processScreenshot(
       time: minutes / 60,
       found: result.data.found || false,
       minutes_per_day: result.data.minutes_per_day,
-      manual_review_required: result.data.manual_review_required,
+      manual_review_required: result.data.manual_review_required ?? !!result.data.error,
       metadata: result.data.metadata || {
         scale_min_per_px: 0,
         max_val_y: 0,
@@ -123,8 +119,12 @@ export async function processScreenshot(
       error: result.data.error,
     };
 
-    logger.log('Processing result:', response);
-    
+    if (result.data.error) {
+      logger.log('Screenshot processing had no usable data (manual review may be needed):', result.data.error);
+    } else {
+      logger.log('Processing result:', response);
+    }
+
     return response;
   } catch (error: any) {
     logger.error('Firebase Function call failed:', error);

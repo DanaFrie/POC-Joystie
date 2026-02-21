@@ -201,53 +201,7 @@ service cloud.firestore {
 
     
 
-    // Daily uploads collection - users can read/write uploads for their challenges
-
-    // PRODUCTION: Allow unauthenticated reads/writes for child upload pages (security via URL token)
-
-    match /daily_uploads/{uploadId} {
-
-      // Allow read for all (security handled by URL token validation in app code)
-
-      allow read: if true;
-
-      
-
-      // Allow unauthenticated create for telemetry/upload data
-
-      // Security: Token validation in app code ensures only valid parent-child-challenge pairs can create
-
-      // PRODUCTION: Stricter validation - must have required fields with correct types
-
-      allow create: if !isAuthenticated() &&
-
-        resource == null &&
-
-        request.resource.data.keys().hasAll(['parentId', 'childId', 'challengeId', 'date', 'createdAt', 'updatedAt']) &&
-
-        // PRODUCTION: Validate field types
-
-        request.resource.data.parentId is string &&
-
-        request.resource.data.childId is string &&
-
-        request.resource.data.challengeId is string &&
-
-        request.resource.data.date is string;
-
-      
-
-      // Allow authenticated writes (create, update, delete) for owners
-
-      allow create: if isAuthenticated() && 
-
-        request.resource.data.parentId == request.auth.uid;
-
-      allow update, delete: if isAuthenticated() && 
-
-        resource.data.parentId == request.auth.uid;
-
-    }
+    // (daily_uploads removed – week data is stored in challenge.weekUploads)
 
     
 

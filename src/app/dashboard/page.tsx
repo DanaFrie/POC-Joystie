@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
-import WeeklyUploadReviewModal from '@/components/dashboard/WeeklyUploadReviewModal';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { WeeklyUpload } from '@/types/firestore';
 import { isLoggedIn, updateLastActivity, getCurrentUserId } from '@/utils/session';
 import { formatNumber } from '@/utils/formatting';
-import { getDashboardData } from '@/lib/api/dashboard';
+import { getDashboardData, mergeWeekWithWeeklyUpload } from '@/lib/api/dashboard';
 import { generateChildUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
@@ -248,8 +247,7 @@ export default function DashboardPage() {
   const [consultationCompleted, setConsultationCompleted] = useState<boolean | null>(null);
   const [noChallengeExists, setNoChallengeExists] = useState(false);
   
-  // Weekly upload state
-  const [showWeeklyReviewModal, setShowWeeklyReviewModal] = useState(false);
+  // Weekly upload state (approval is inline in WeeklyProgress, no modal)
   const [weeklyUpload, setWeeklyUpload] = useState<WeeklyUpload | null>(null);
   const [activeChallengeData, setActiveChallengeData] = useState<FirestoreChallenge | null>(null);
 
@@ -342,14 +340,7 @@ export default function DashboardPage() {
     };
   }, [dashboardData?.challenge]);
 
-  // Open weekly upload review modal
-  const handleOpenWeeklyReview = () => {
-    if (weeklyUpload) {
-      setShowWeeklyReviewModal(true);
-    }
-  };
-
-  // Handle weekly upload approval
+  // Handle weekly upload approval (called from inline review in WeeklyProgress)
   const handleApproveWeeklyUpload = async () => {
     try {
       const userId = await getCurrentUserIdAsync();
@@ -369,8 +360,6 @@ export default function DashboardPage() {
       if (updatedData) {
         setDashboardData(updatedData);
       }
-      
-      setShowWeeklyReviewModal(false);
       
       // Notify child redemption page
       if (typeof window !== 'undefined') {
@@ -402,8 +391,6 @@ export default function DashboardPage() {
       if (updatedData) {
         setDashboardData(updatedData);
       }
-      
-      setShowWeeklyReviewModal(false);
     } catch (error) {
       logger.error('Error rejecting weekly upload:', error);
       setError('שגיאה בדחיית ההעלאה. אנא רענן את הדף.');
@@ -461,8 +448,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Calculate values only when dashboardData is available
-  const totalWeeklyHours = calculateWeeklyScreenTime(dashboardData.week);
+  // When weeklyUpload has per-day data (from real-time listener), merge it into the week so the bar chart fills
+  const displayWeek =
+    dashboardData.week?.length && weeklyUpload?.processedData?.minutesPerDay && activeChallengeData
+      ? mergeWeekWithWeeklyUpload(dashboardData.week, weeklyUpload, activeChallengeData)
+      : dashboardData.week;
+  const totalWeeklyHours = calculateWeeklyScreenTime(displayWeek);
 
   return (
     <div className="min-h-screen bg-transparent pb-24">
@@ -499,7 +490,7 @@ export default function DashboardPage() {
               uploadUrl={uploadUrl}
               redemptionUrl={redemptionUrl}
               weeklyUpload={weeklyUpload}
-              onOpenWeeklyReview={handleOpenWeeklyReview}
+              onOpenWeeklyReview={undefined}
               childSetupCompleted={!!(dashboardData.child.nickname && dashboardData.child.moneyGoals && dashboardData.child.moneyGoals.length > 0)}
               consultationCompleted={consultationCompleted ?? undefined}
               noChallengeExists={noChallengeExists}
@@ -509,7 +500,7 @@ export default function DashboardPage() {
           {/* 2. סטטוס שבועי */}
           <div className="mb-6">
             <WeeklyProgress
-              week={dashboardData.week}
+              week={displayWeek}
               totals={dashboardData.weeklyTotals}
               childName={dashboardData.child.name}
               childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
@@ -517,21 +508,11 @@ export default function DashboardPage() {
               weeklyBudget={dashboardData.challenge.weeklyBudget}
               dailyBudget={dashboardData.challenge.dailyBudget}
               weeklyUpload={weeklyUpload}
-              onWeeklyUploadClick={handleOpenWeeklyReview}
-            />
-          </div>
-
-          {/* Weekly Upload Review Modal */}
-          {showWeeklyReviewModal && weeklyUpload && activeChallengeData && (
-            <WeeklyUploadReviewModal
-              weeklyUpload={weeklyUpload}
               challenge={activeChallengeData}
-              childName={dashboardData.child.name}
               onApprove={handleApproveWeeklyUpload}
               onReject={handleRejectWeeklyUpload}
-              onClose={() => setShowWeeklyReviewModal(false)}
             />
-          )}
+          </div>
 
            {/* Complete Content Modal - Show if consultation completed */}
           {showCompleteModal && dashboardData && (
@@ -658,7 +639,7 @@ export default function DashboardPage() {
                 uploadUrl={uploadUrl}
                 redemptionUrl={redemptionUrl}
                 weeklyUpload={weeklyUpload}
-                onOpenWeeklyReview={handleOpenWeeklyReview}
+                onOpenWeeklyReview={undefined}
                 childSetupCompleted={!!(dashboardData.child.nickname && dashboardData.child.moneyGoals && dashboardData.child.moneyGoals.length > 0)}
                 consultationCompleted={consultationCompleted ?? undefined}
                 noChallengeExists={noChallengeExists}
@@ -668,28 +649,18 @@ export default function DashboardPage() {
             {/* 2. סטטוס שבועי */}
             <div>
               <WeeklyProgress
-                week={dashboardData.week}
+                week={displayWeek}
                 totals={dashboardData.weeklyTotals}
                 childName={dashboardData.child.name}
                 totalWeeklyHours={totalWeeklyHours}
                 weeklyBudget={dashboardData.challenge.weeklyBudget}
                 dailyBudget={dashboardData.challenge.dailyBudget}
                 weeklyUpload={weeklyUpload}
-                onWeeklyUploadClick={handleOpenWeeklyReview}
-              />
-            </div>
-
-            {/* Weekly Upload Review Modal */}
-            {showWeeklyReviewModal && weeklyUpload && activeChallengeData && (
-              <WeeklyUploadReviewModal
-                weeklyUpload={weeklyUpload}
                 challenge={activeChallengeData}
-                childName={dashboardData.child.name}
                 onApprove={handleApproveWeeklyUpload}
                 onReject={handleRejectWeeklyUpload}
-                onClose={() => setShowWeeklyReviewModal(false)}
               />
-            )}
+            </div>
           </div>
 
           {/* Right column - Summary and Challenge Details */}

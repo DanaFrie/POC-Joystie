@@ -3,7 +3,7 @@
 
 export interface FirestoreUser {
   id: string;
-  username: string;
+  username?: string; // Optional - removed from signup (parent nickname)
   email: string;
   firstName: string;
   lastName: string;
@@ -30,6 +30,23 @@ export interface FirestoreChild {
   updatedAt: string;
 }
 
+export interface ChallengeDayUpload {
+  date: string;
+  dayName: string;
+  screenTimeUsed?: number;
+  screenTimeMinutes?: number;
+  screenTimeGoal?: number;
+  coinsEarned?: number;
+  coinsMaxPossible?: number;
+  success?: boolean;
+  screenshotUrl?: string;
+  requiresApproval?: boolean;
+  parentAction?: 'approved' | null;
+  uploadedAt?: string;
+  approvedAt?: string;
+  apps?: Array<{ name: string; timeUsed: number; icon?: string }>;
+}
+
 export interface FirestoreChallenge {
   id: string;
   parentId: string;
@@ -43,6 +60,7 @@ export interface FirestoreChallenge {
   startDate: string;
   challengeDays: number;
   isActive: boolean;
+  weekUploads?: ChallengeDayUpload[];
   redemptionAmount?: number;
   redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save';
   redeemedAt?: string;

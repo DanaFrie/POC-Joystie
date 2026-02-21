@@ -87,12 +87,8 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
   const parentGenderValue = parentGender || 'female';
   const parentVerb = parentGenderValue === 'female' ? 'תוכלי' : 'תוכל';
 
-  // Check if weekly upload needs approval
-  const weeklyUploadPendingApproval = weeklyUpload?.status === 'pending';
-  const weeklyUploadApproved = weeklyUpload?.status === 'approved';
-  const weeklyUploadRejected = weeklyUpload?.status === 'rejected';
-
-  const hasNotifications = noChallengeExists || consultationCompleted === false || (consultationCompleted === true && challengeNotStarted) || weeklyUploadPendingApproval;
+  // Weekly upload approval is shown only above the bar chart in WeeklyProgress, not here
+  const hasNotifications = noChallengeExists || consultationCompleted === false || (consultationCompleted === true && challengeNotStarted);
 
   const handleCopyUrl = async (url: string) => {
     if (!url) return;
@@ -185,67 +181,6 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
       
-      {/* Weekly upload pending approval */}
-      {weeklyUploadPendingApproval && (
-        <div 
-          className="mb-3 p-3 rounded-[12px] bg-[#BBE9FD] bg-opacity-30 border-2 border-[#BBE9FD] cursor-pointer hover:bg-opacity-40 transition-all flex items-center gap-3"
-          onClick={onOpenWeeklyReview}
-        >
-          <span className="text-2xl flex-shrink-0">⏳</span>
-          <div className="flex-1">
-            <p className="font-varela font-semibold text-sm text-[#282743]">
-              העלאה שבועית ממתינה לאישור
-            </p>
-            <p className="font-varela text-xs text-[#948DA9] mt-1">
-              לחץ לצפייה ואישור
-            </p>
-          </div>
-          {weeklyUpload?.childEstimate && (
-            <div className="text-left flex-shrink-0">
-              <p className="font-varela font-bold text-lg text-[#273143]">
-                ₪{weeklyUpload.childEstimate.estimatedEarnings}
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Weekly upload approved */}
-      {weeklyUploadApproved && (
-        <div 
-          className="mb-3 p-3 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A] cursor-pointer hover:bg-opacity-40 transition-all flex items-center gap-3"
-          onClick={onOpenWeeklyReview}
-        >
-          <span className="text-2xl flex-shrink-0">✅</span>
-          <div className="flex-1">
-            <p className="font-varela font-semibold text-sm text-[#282743]">
-              העלאה שבועית אושרה!
-            </p>
-            <p className="font-varela text-xs text-[#948DA9] mt-1">
-              לחץ לפרטים
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Weekly upload rejected */}
-      {weeklyUploadRejected && (
-        <div 
-          className="mb-3 p-3 rounded-[12px] bg-red-100 border-2 border-red-300 cursor-pointer hover:bg-red-50 transition-all flex items-center gap-3"
-          onClick={onOpenWeeklyReview}
-        >
-          <span className="text-2xl flex-shrink-0">❌</span>
-          <div className="flex-1">
-            <p className="font-varela font-semibold text-sm text-[#282743]">
-              העלאה נדחתה
-            </p>
-            <p className="font-varela text-xs text-[#948DA9] mt-1">
-              לחץ לפרטים
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Copy URL button - only when challenge is active with start date */}
       {showCopyButton && urlToCopy && !challengeNotStarted && (
         <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">

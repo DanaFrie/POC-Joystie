@@ -45,10 +45,11 @@ export default function WeeklyUploadReviewModal({
   const childEstimate = weeklyUpload.childEstimate;
   const processedData = weeklyUpload.processedData;
 
-  // Format time from minutes
+  // Format time from minutes (rounded to whole minutes)
   const formatTime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+    const totalMins = Math.round(minutes);
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
     if (hours > 0) {
       return `${hours} שעות ${mins > 0 ? `ו-${mins} דקות` : ''}`;
     }

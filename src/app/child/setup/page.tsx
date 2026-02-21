@@ -12,7 +12,7 @@ function RedirectToChild() {
     }
   }, [token]);
   return (
-    <div className="min-h-screen flex items-center justify-center font-varela text-[#282743]">
+    <div className="min-h-screen flex items-center justify-center font-heebo text-[#282743]">
       מעביר...
     </div>
   );

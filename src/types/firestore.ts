@@ -2,7 +2,7 @@
 
 export interface FirestoreUser {
   id: string; // Document ID (same as Firebase Auth UID)
-  username: string;
+  username?: string; // Optional - was removed from signup (parent nickname)
   email: string;
   firstName: string;
   lastName: string;
@@ -59,6 +59,24 @@ export interface WeeklyUpload {
   manualReviewRequired?: boolean;
 }
 
+/** One day's upload data – stored inside challenge.weekUploads (no separate collection) */
+export interface ChallengeDayUpload {
+  date: string; // DD/MM
+  dayName: string;
+  screenTimeUsed?: number;
+  screenTimeMinutes?: number;
+  screenTimeGoal?: number;
+  coinsEarned?: number;
+  coinsMaxPossible?: number;
+  success?: boolean;
+  screenshotUrl?: string;
+  requiresApproval?: boolean;
+  parentAction?: 'approved' | null;
+  uploadedAt?: string;
+  approvedAt?: string;
+  apps?: Array<{ name: string; timeUsed: number; icon?: string }>;
+}
+
 export interface FirestoreChallenge {
   id: string; // Document ID
   parentId: string; // Reference to users collection
@@ -73,6 +91,8 @@ export interface FirestoreChallenge {
   challengeDays: number; // מספר ימי האתגר (6 ימים)
   isActive: boolean;
   consultationCompleted?: boolean; // Whether consultation with advisor has been completed
+  /** כל נתוני ההעלאות היומיות של השבוע – בתוך המסמך (ללא אוסף daily_uploads) */
+  weekUploads?: ChallengeDayUpload[];
   // Weekly upload (single upload on redemption day)
   weeklyUpload?: WeeklyUpload;
   // Redemption data (set when redemption is completed)
@@ -120,7 +140,7 @@ export interface FirestoreNotification {
   read: boolean;
   dayDate?: string; // Format: "DD/MM"
   dayName?: string; // Hebrew day name
-  relatedUploadId?: string; // Reference to daily_uploads collection
+  relatedUploadId?: string; // Optional reference (legacy)
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }

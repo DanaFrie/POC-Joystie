@@ -13,7 +13,6 @@ const logger = createContextLogger('Signup');
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
     gender: '',
     firstName: '',
@@ -35,36 +34,6 @@ export default function SignupPage() {
     { value: 'other', label: 'אחר' }
   ];
 
-  // Username pool for random generation - funny usernames with special characters
-  const usernamePool = [
-    'אמא@של@כל@הדברים', 'אבא#המנצח', 'הורה&על', 'מלך$הבית', 'מלכת#המטבח',
-    'אבא_המגניב', 'אמא@הסופר', 'הורה#הטוב', 'מנהל$הבית', 'מנהלת&החיים',
-    'אבא#הגיבור', 'אמא@הסופרוומן', 'הורה$המושלם', 'מלך&הסלון', 'מלכת#הסדר',
-    'אבא_הכי@טוב', 'אמא#הכי$טובה', 'הורה&המוביל', 'מנהל$הכל', 'מנהלת@הכל',
-    'אבא#המקצועי', 'אמא_המקצועית', 'הורה$המוביל', 'מלך&הארגון', 'מלכת#הארגון',
-    'אבא@המנצח', 'אמא#המנצחת', 'הורה$המוביל', 'מנהל&הזמן', 'מנהלת@הזמן',
-    'אבא_המגניב', 'אמא#המגניבה', 'הורה$המוביל', 'מלך&הבית', 'מלכת@הבית',
-    'אבא#הטוב', 'אמא_הטובה', 'הורה$המוביל', 'מנהל&החיים', 'מנהלת#החיים',
-    'אבא@הסופר', 'אמא#הסופר', 'הורה$המוביל', 'מלך&הסדר', 'מלכת@הסדר',
-    'אבא#הגיבור', 'אמא_הגיבורה', 'הורה$המוביל', 'מנהל&הכל', 'מנהלת@הכל',
-    'אמא@של@הכל', 'אבא#הכי@טוב', 'הורה$המוביל', 'מלך&הכל', 'מלכת#הכל',
-    'אבא_הסופר', 'אמא@הגיבורה', 'הורה#המוביל', 'מנהל$הכל', 'מנהלת&הכל'
-  ];
-
-  const generateRandomUsername = () => {
-    const randomBase = usernamePool[Math.floor(Math.random() * usernamePool.length)];
-    setFormData(prev => ({ ...prev, username: randomBase }));
-    
-    // Clear username error if exists
-    if (errors.username) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.username;
-        return newErrors;
-      });
-    }
-  };
-
   // Load form data from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -75,7 +44,6 @@ export default function SignupPage() {
           // Don't restore passwords for security
           setFormData(prev => ({
             ...prev,
-            username: parsed.username || '',
             email: parsed.email || '',
             gender: parsed.gender || '',
             firstName: parsed.firstName || '',
@@ -108,7 +76,6 @@ export default function SignupPage() {
   useEffect(() => {
     if (typeof window !== 'undefined' && !isInitialLoad) {
       const dataToSave = {
-        username: formData.username,
         email: formData.email,
         gender: formData.gender,
         firstName: formData.firstName,
@@ -119,14 +86,11 @@ export default function SignupPage() {
       };
       localStorage.setItem('signupFormData', JSON.stringify(dataToSave));
     }
-  }, [formData.username, formData.email, formData.gender, formData.firstName, formData.lastName, formData.kidsAges, formData.termsAccepted, isInitialLoad]);
+  }, [formData.email, formData.gender, formData.firstName, formData.lastName, formData.kidsAges, formData.termsAccepted, isInitialLoad]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.username.trim()) {
-      newErrors.username = 'אנא הכנס שם משתמש';
-    }
     if (!formData.email.trim()) {
       newErrors.email = 'אנא הכנס כתובת אימייל';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
@@ -251,7 +215,6 @@ export default function SignupPage() {
       // Create user document in Firestore
       // notificationsEnabled is set to true by default - email notifications will be sent via Firebase Functions
       await createUser(user.uid, {
-        username: formData.username.toLowerCase(),
         email: formData.email.trim().toLowerCase(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
@@ -322,36 +285,6 @@ export default function SignupPage() {
 
         {/* Signup Form */}
         <form onSubmit={handleSubmit} className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
-          {/* Username */}
-          <div className="mb-6">
-            <label htmlFor="username" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
-              שם משתמש <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-2 sm:gap-3">
-              <input
-                type="text"
-                id="username"
-                name="username"
-                value={formData.username}
-                readOnly
-                placeholder="לחץ על 'להגריל' כדי ליצור כינוי"
-                className={`flex-1 min-w-0 p-3 sm:p-4 border-2 rounded-[18px] bg-gray-50 cursor-not-allowed font-varela text-sm sm:text-base text-[#282743] ${
-                  errors.username ? 'border-red-500' : 'border-gray-200'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={generateRandomUsername}
-                className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 bg-[#E6F19A] hover:bg-[#E6F19A] hover:bg-opacity-80 border-2 border-[#E6F19A] rounded-[18px] font-varela font-semibold text-sm sm:text-base text-[#262135] transition-all whitespace-nowrap flex-shrink-0"
-              >
-                להגריל
-              </button>
-            </div>
-            {errors.username && (
-              <p className="mt-2 text-sm text-red-500 font-varela">{errors.username}</p>
-            )}
-          </div>
-
           {/* Email */}
           <div className="mb-6">
             <label htmlFor="email" className="block font-varela font-semibold text-lg text-[#262135] mb-3">

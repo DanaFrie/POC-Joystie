@@ -1,8 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { WeekDay, WeeklyTotals } from '@/types/dashboard';
 import { formatNumber } from '@/utils/formatting';
-import type { WeeklyUpload } from '@/types/firestore';
+import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 
 interface WeeklyProgressProps {
   week: WeekDay[];
@@ -13,7 +14,21 @@ interface WeeklyProgressProps {
   weeklyBudget?: number; // תקציב שבועי
   dailyBudget?: number; // תקציב יומי
   weeklyUpload?: WeeklyUpload | null; // Weekly upload status
-  onWeeklyUploadClick?: () => void; // Click handler for weekly upload summary
+  onWeeklyUploadClick?: () => void; // Optional click (e.g. scroll to review)
+  challenge?: FirestoreChallenge | null; // For inline approval
+  onApprove?: () => void;
+  onReject?: (reason: string) => void;
+}
+
+/** Format minutes as hours + minutes (rounded to whole minutes). */
+function formatTime(minutes: number): string {
+  const totalMins = Math.round(minutes);
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours > 0) {
+    return `${hours} שעות ${mins > 0 ? `ו-${mins} דקות` : ''}`;
+  }
+  return `${mins} דקות`;
 }
 
 const statusConfig = {
@@ -96,7 +111,14 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
   );
 }
 
-export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, weeklyUpload, onWeeklyUploadClick }: WeeklyProgressProps) {
+export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, weeklyUpload, onWeeklyUploadClick, challenge, onApprove, onReject }: WeeklyProgressProps) {
+  const [showRejectInput, setShowRejectInput] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const showInlineReview = Boolean(weeklyUpload && challenge);
+  const displayName = childName || 'הילד/ה';
+
   // Gender pronouns for child
   const childPronouns = {
     boy: { was: 'היה', earned: 'הרוויח' },
@@ -211,44 +233,28 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
           </h2>
         )}
         
-        {/* Weekly Upload Status Banner */}
+        {/* Only place that shows weekly upload approval status – above the bar chart */}
         {weeklyUpload && (
           <div 
-            className={`mx-4 mb-4 p-4 rounded-[12px] cursor-pointer transition-all hover:opacity-90 ${
+            className={`mx-4 mb-4 py-3 px-4 rounded-[12px] transition-all ${
               weeklyUpload.status === 'pending' 
                 ? 'bg-[#BBE9FD] bg-opacity-30 border-2 border-[#BBE9FD]'
                 : weeklyUpload.status === 'approved'
                 ? 'bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]'
                 : 'bg-red-100 border-2 border-red-300'
             }`}
-            onClick={onWeeklyUploadClick}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">
-                  {weeklyUpload.status === 'pending' ? '⏳' : weeklyUpload.status === 'approved' ? '✅' : '❌'}
-                </span>
-                <div>
-                  <p className="font-varela font-semibold text-sm text-[#282743]">
-                    {weeklyUpload.status === 'pending' 
-                      ? 'העלאה ממתינה לאישור'
-                      : weeklyUpload.status === 'approved'
-                      ? 'העלאה אושרה'
-                      : 'העלאה נדחתה'}
-                  </p>
-                  <p className="font-varela text-xs text-[#948DA9]">
-                    לחץ לפרטים
-                  </p>
-                </div>
-              </div>
-              {weeklyUpload.childEstimate && (
-                <div className="text-left">
-                  <p className="font-varela text-xs text-[#948DA9]">הערכת הילד/ה</p>
-                  <p className="font-varela font-bold text-lg text-[#273143]">
-                    ₪{weeklyUpload.childEstimate.estimatedEarnings}
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center gap-3">
+              <span className="text-xl">
+                {weeklyUpload.status === 'pending' ? '⏳' : weeklyUpload.status === 'approved' ? '✅' : '❌'}
+              </span>
+              <p className="font-varela font-semibold text-sm text-[#282743]">
+                {weeklyUpload.status === 'pending' 
+                  ? 'העלאה ממתינה לאישור'
+                  : weeklyUpload.status === 'approved'
+                  ? 'ההעלאה השבועית אושרה'
+                  : 'העלאה נדחתה'}
+              </p>
             </div>
           </div>
         )}
@@ -337,6 +343,129 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
             </div>
           </div>
         </div>
+
+        {/* Inline weekly upload review (no popup) */}
+        {showInlineReview && weeklyUpload && challenge && (() => {
+          const processedData = weeklyUpload.processedData;
+          const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60 * (challenge.challengeDays || 6);
+          const actualMinutes = processedData?.screenTimeMinutes ?? 0;
+          const metGoal = actualMinutes <= goalMinutes;
+          const actualEarnings = processedData
+            ? (metGoal ? challenge.selectedBudget : Math.max(0, challenge.selectedBudget * (1 - (actualMinutes - goalMinutes) / goalMinutes)))
+            : 0;
+          const actualEarningsRounded = Math.round(actualEarnings * 10) / 10;
+
+          const handleApprove = async () => {
+            if (!onApprove) return;
+            setIsProcessing(true);
+            try {
+              await onApprove();
+            } finally {
+              setIsProcessing(false);
+            }
+          };
+          const handleReject = async () => {
+            if (!onReject || !rejectReason.trim()) return;
+            setIsProcessing(true);
+            try {
+              await onReject(rejectReason);
+              setShowRejectInput(false);
+              setRejectReason('');
+            } finally {
+              setIsProcessing(false);
+            }
+          };
+
+          return (
+            <div className="mx-4 mt-4 mb-4 p-4 rounded-[12px] bg-[#FFFCF8] border-2 border-[#273143] border-opacity-10">
+              <h3 className="font-varela font-semibold text-base text-[#273143] mb-3 text-right">סיכום שבועי - אישור העלאה</h3>
+
+              {weeklyUpload.screenshotUrl && (
+                <div className="mb-4">
+                  <p className="font-varela text-sm text-[#948DA9] mb-2">צילום מסך שהועלה:</p>
+                  <img
+                    src={weeklyUpload.screenshotUrl}
+                    alt="Screenshot"
+                    className="w-full max-h-48 object-cover rounded-[12px] border border-gray-200"
+                  />
+                </div>
+              )}
+
+              {processedData && (
+                <div className="bg-[#E6F19A] bg-opacity-30 rounded-[12px] p-3 mb-3">
+                  <h4 className="font-varela font-semibold text-sm text-[#273143] mb-2">תוצאות בפועל:</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[#282743]">זמן מסך:</span>
+                      <span className="font-varela font-semibold text-[#273143]">{formatTime(processedData.screenTimeMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#282743]">יעד שבועי:</span>
+                      <span className="font-varela font-semibold text-[#273143]">{formatTime(goalMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-[#273143] border-opacity-20 pt-2 mt-2">
+                      <span className="font-varela font-semibold text-[#282743]">רווח בפועל:</span>
+                      <span className="font-varela font-bold text-lg text-[#273143]">₪{actualEarningsRounded}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {weeklyUpload.status === 'pending' && onApprove && onReject && (
+                <>
+                  {!showRejectInput ? (
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowRejectInput(true)}
+                        disabled={isProcessing}
+                        className="flex-1 py-3 px-4 rounded-[18px] text-sm font-varela font-semibold border-2 border-red-400 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                      >
+                        דחה
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApprove}
+                        disabled={isProcessing}
+                        className="flex-1 py-3 px-4 rounded-[18px] text-sm font-varela font-semibold bg-[#E6F19A] text-[#273143] hover:bg-opacity-80 transition-all disabled:opacity-50"
+                      >
+                        {isProcessing ? 'מאשר...' : 'אשר'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <textarea
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        placeholder="סיבת הדחייה..."
+                        className="w-full p-3 rounded-[12px] border border-gray-300 font-varela text-sm resize-none"
+                        rows={2}
+                      />
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => { setShowRejectInput(false); setRejectReason(''); }}
+                          disabled={isProcessing}
+                          className="flex-1 py-3 px-4 rounded-[18px] text-sm font-varela font-semibold border-2 border-gray-300 text-gray-600 hover:bg-gray-50"
+                        >
+                          ביטול
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleReject}
+                          disabled={isProcessing || !rejectReason.trim()}
+                          className="flex-1 py-3 px-4 rounded-[18px] text-sm font-varela font-semibold bg-red-500 text-white hover:bg-red-600 disabled:bg-gray-300"
+                        >
+                          {isProcessing ? 'דוחה...' : 'אשר דחייה'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Separator line - between chart layout and summary layout */}
         {childName && (
