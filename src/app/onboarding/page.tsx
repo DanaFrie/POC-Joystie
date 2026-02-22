@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
+export const dynamic = 'force-dynamic';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { isLoggedIn, updateLastActivity } from '@/utils/session';

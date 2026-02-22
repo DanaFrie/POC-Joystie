@@ -27,7 +27,7 @@ export default function Home() {
     trackHomePageView();
   }, []);
 
-  // Intersection Observer for reveal animations
+  // Intersection Observer for reveal animations + fallback so sections never stay hidden
   useEffect(() => {
     const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
     const observer = new IntersectionObserver((entries) => {
@@ -42,7 +42,14 @@ export default function Home() {
       if (el) observer.observe(el);
     });
 
+    const fallback = setTimeout(() => {
+      revealRefs.current.forEach(el => {
+        if (el && !el.classList.contains('active')) el.classList.add('active');
+      });
+    }, 400);
+
     return () => {
+      clearTimeout(fallback);
       revealRefs.current.forEach(el => {
         if (el) observer.unobserve(el);
       });
@@ -86,10 +93,10 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="overflow-x-hidden text-right" style={{ fontFamily: "'Varela Round', sans-serif" }}>
+    <div className="landing-page overflow-x-hidden text-right" style={{ fontFamily: "'Varela Round', sans-serif" }}>
 
       {/* Navigation – גובה מוקטן ~10%, לינקים במרכז */}
-      <nav className="fixed w-full z-50 py-4 bg-white/80 backdrop-blur-sm overflow-x-hidden" dir="rtl">
+      <nav className="fixed w-full z-50 py-4 bg-white/80 backdrop-blur-sm overflow-visible" dir="rtl">
         <div className="max-w-7xl mx-auto px-4 relative w-full">
           <div className="flex items-center">
             {/* צד ימין (RTL): לוגו תמיד בימין */}
@@ -107,33 +114,36 @@ export default function Home() {
               </a>
             </div>
 
-            {/* מרכז: לינקים */}
+            {/* מרכז: לינקים (דסקטופ) */}
             <div className="hidden md:flex flex-1 justify-center gap-8 font-bold text-joystie-dark shrink-0">
               <a href="#how-it-works" className="hover:text-joystie-blue transition-colors font-brand">איך זה עובד?</a>
               <a href="#questions" className="hover:text-joystie-blue transition-colors font-brand">שאלות חשובות</a>
               <a href="#behind-idea" className="hover:text-joystie-blue transition-colors font-brand">מאחורי הרעיון</a>
             </div>
 
-            {/* צד שמאל (RTL): המבורגר במובייל תמיד בשמאל */}
-            <div className="flex-1 flex justify-end min-w-0">
-              <div className="flex md:hidden items-center">
-                <button
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className="p-2 rounded-md text-joystie-dark hover:bg-gray-100"
-                  aria-label="תפריט"
-                >
-                  {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                </button>
-              </div>
+            {/* המבורגר במובייל */}
+            <div className="flex md:hidden flex-1 justify-end min-w-0">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 rounded-md text-joystie-dark hover:bg-gray-100"
+                aria-label="תפריט"
+                type="button"
+              >
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
             </div>
           </div>
         </div>
 
+        {/* תפריט מובייל – מתחת לניו, full width, נראה תמיד כש-open */}
         {isMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-100 p-6 flex flex-col gap-6 font-bold text-joystie-dark shadow-xl">
-            <a href="#how-it-works" onClick={(e) => handleSectionClick(e, 'how-it-works')}>איך זה עובד?</a>
-            <a href="#questions" onClick={(e) => handleSectionClick(e, 'questions')}>שאלות חשובות</a>
-            <a href="#behind-idea" onClick={(e) => handleSectionClick(e, 'behind-idea')}>מאחורי הרעיון</a>
+          <div
+            className="md:hidden absolute left-0 right-0 top-full mt-0 bg-white border-t border-gray-200 p-6 flex flex-col gap-4 font-bold text-joystie-dark shadow-xl z-50"
+            role="menu"
+          >
+            <a href="#how-it-works" onClick={(e) => handleSectionClick(e, 'how-it-works')} className="block py-2 text-right text-lg font-brand">איך זה עובד?</a>
+            <a href="#questions" onClick={(e) => handleSectionClick(e, 'questions')} className="block py-2 text-right text-lg font-brand">שאלות חשובות</a>
+            <a href="#behind-idea" onClick={(e) => handleSectionClick(e, 'behind-idea')} className="block py-2 text-right text-lg font-brand">מאחורי הרעיון</a>
           </div>
         )}
       </nav>

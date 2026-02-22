@@ -22,18 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={heebo.variable} style={{ overflowX: 'hidden' }}>
-      <body 
-        className="font-heebo min-h-screen overflow-y-auto overflow-x-hidden" 
-        style={{ 
-          backgroundImage: 'url(/background.png)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
-          backgroundRepeat: 'no-repeat',
-          scrollBehavior: 'smooth'
-        }}
-      >
+    <html lang="he" dir="rtl" className={`layout-root ${heebo.variable}`}>
+      <body className="layout-root font-heebo min-h-screen overflow-y-auto overflow-x-hidden">
         <div className="relative min-h-screen">
           <ScrollToTop />
           <ConditionalNavigation />
