@@ -81,7 +81,7 @@ export default function Home() {
     
     const element = document.getElementById(sectionId);
     if (element) {
-      const navHeight = 80; // Height of fixed navigation
+      const navHeight = 106; // Height of fixed navigation (matches pt-28 clearance)
       const offset = 20; // Additional offset in pixels
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       const offsetPosition = elementPosition - navHeight - offset;
@@ -108,7 +108,7 @@ export default function Home() {
                   alt="Joystie"
                   width={81}
                   height={27}
-                  className="h-[21.6px] sm:h-[18px] w-auto"
+                  className="h-[20px] w-auto max-h-[27px]"
                   style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
                   priority
                 />
@@ -151,7 +151,7 @@ export default function Home() {
 
       {/* Hero Section - מובייל: טקסט למעלה, כותרת, ארנק (תופס את השאר). דסקטופ: כמו קודם */}
       <section 
-        className="min-h-0 md:min-h-screen flex flex-col md:flex-row md:items-center pt-16 pb-4 md:pt-20 md:pb-12 lg:pb-20 overflow-visible relative" 
+        className="min-h-0 md:min-h-screen flex flex-col md:flex-row md:items-center pt-28 pb-4 md:pt-28 md:pb-12 lg:pb-20 overflow-visible relative" 
         style={{ backgroundImage: 'url(/background.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 w-full flex flex-col md:grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6 lg:gap-8 md:items-center relative z-10 flex-1 min-h-0">
