@@ -59,27 +59,13 @@ service cloud.firestore {
 
       
 
-      // Allow create during signup (user is authenticated via Firebase Auth, but document doesn't exist yet)
-
-      // The userId in the path must match the authenticated user's UID
-
-      // This ensures users can only create their own user document
-
-      allow create: if isAuthenticated() 
-
+      // Allow create during signup (user is authenticated via Firebase Auth, document doesn't exist yet).
+      // Signup does not include username (optional field removed from signup flow).
+      allow create: if isAuthenticated()
         && request.auth.uid == userId
-
-        && request.resource.data.keys().hasAll(['username', 'email', 'firstName', 'lastName'])
-
+        && request.resource.data.keys().hasAll(['email', 'firstName', 'lastName', 'createdAt', 'updatedAt'])
         && isValidEmail(request.resource.data.email)
-
-        && request.resource.data.username is string
-
-        && request.resource.data.username.size() >= 3
-
-        && request.resource.data.username.size() <= 20
-
-        && request.resource.data.email == request.auth.token.email; // Email must match auth email
+        && request.resource.data.email == request.auth.token.email;
 
       
 
