@@ -94,9 +94,9 @@ export default function Navigation() {
                 <Image
                   src="/logo-joystie.png"
                   alt="Joystie"
-                  width={120}
-                  height={40}
-                  className="h-10 sm:h-8 w-auto"
+                  width={81}
+                  height={27}
+                  className="h-[22px] w-auto max-h-[30px]"
                   style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
                   priority
                   onError={() => setImageError(true)}
