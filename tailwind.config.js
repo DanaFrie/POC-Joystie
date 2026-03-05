@@ -22,6 +22,7 @@ module.exports = {
         'danger': '#dc3545',
       },
       fontFamily: {
+        'heebo': ['var(--font-heebo)', 'Heebo', 'sans-serif'],
         'montserrat': ['"Montserrat Alternates"', 'sans-serif'],
         'rubik': ['Rubik', 'sans-serif'],
         'varela': ['"Varela Round"', 'sans-serif'],

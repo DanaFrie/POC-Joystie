@@ -454,7 +454,11 @@ class SinglePromptGraphExtractor:
                 "    - **Order**: List these labels in the JSON array in strict visual order from **RIGHT-TO-LEFT** (starting with the rightmost label).\n"
                 "    - **Status**: For EACH label, state if a colored bar is above it ('true') or if the space is empty ('false').\n"
                 "\n"
-                "2.  **Y-Axis**: Identify the *highest* numerical label shown on the Y-axis. This value represents a quantity of **minutes**. Extract *only* the numerical value you see (e.g., '120', '1.5k', '80').\n"
+                "2.  **Y-Axis**: Identify the *highest* numerical label shown on the Y-axis.\n"
+                "    - **Conversion Rule**: You MUST convert this value into a total number of **minutes**.\n"
+                "    - If the label is in hours (e.g., '1h 30m', '1.5h', or '4h'), calculate the total minutes (e.g., '1h 30m' -> 90, '4h' -> 240).\n"
+                "    - If the label is already in minutes (e.g., '30m'), extract the number only.\n"
+                "    - **Format**: Return only the final calculated integer as a string.\n"
                 "\n"
                 "You MUST return *only* a single, valid JSON object in this exact format:\n"
                 "{\n"
@@ -462,25 +466,25 @@ class SinglePromptGraphExtractor:
                 "    {\"label\": \"שם_יום_עברי\", \"has_bar\": true/false}, \n"
                 "    ... \n"
                 "  ],\n"
-                "  \"Y-axisTopValue\": \"TopValue\"\n"
+                "  \"Y-axisTopValue\": \"TotalMinutesAsInteger\"\n"
                 "}\n"
                 "\n"
-                "Example 1: Graph visually shows 'א(yes), ב(no)' from right-to-left.\n"
+                "Example 1: Graph shows '1h 30m' on Y-axis and 'א(yes), ב(no)' right-to-left.\n"
                 "{\n"
                 "  \"X-axis\": [\n"
                 "    {\"label\": \"ראשון\", \"has_bar\": true},\n"
                 "    {\"label\": \"שני\", \"has_bar\": false}\n"
                 "  ],\n"
-                "  \"Y-axisTopValue\": \"120\"\n"
+                "  \"Y-axisTopValue\": \"90\"\n"
                 "}\n"
                 "\n"
-                "Example 2: Graph visually shows 'Sun(yes), Mon(no)' from left-to-right. Your output *must* be right-to-left.\n"
+                "Example 2: Graph shows '4h' on Y-axis and 'Sun(yes), Mon(no)' left-to-right.\n"
                 "{\n"
                 "  \"X-axis\": [\n"
                 "    {\"label\": \"שני\", \"has_bar\": false},\n"
                 "    {\"label\": \"ראשון\", \"has_bar\": true}\n"
                 "  ],\n"
-                "  \"Y-axisTopValue\": \"100\"\n"
+                "  \"Y-axisTopValue\": \"240\"\n"
                 "}\n"
                 "Do not add any text before or after the JSON object."
             )
@@ -794,6 +798,109 @@ def find_graph_area(img: np.ndarray) -> Optional[Dict[str, Any]]:
     }
 
 
+def calculate_minutes_per_day(image_path: str, google_api_key: str = None) -> Dict[str, Any]:
+    """
+    מחשב דקות שימוש לכל יום בשבוע מתוך צילום מסך של גרף (עיבוד אחד לכל השבוע).
+    מחזיר full_map: מיפוי שם יום -> {minutes, pixels}.
+    """
+    img = _load_image(image_path)
+    if img is None:
+        return {"error": "Image could not be loaded"}
+
+    image_height, image_width = img.shape[:2]
+    print(f"\n--- 🚀 Starting Analysis for Week ---", file=sys.stderr)
+
+    grid_info = find_graph_area(img)
+    if grid_info['y_bottom'] is None or grid_info['y_top'] is None:
+        return {"error": "Failed to detect graph grid lines"}
+
+    zero_line_y = int(grid_info['y_bottom'])
+    max_line_y = int(grid_info['y_top'])
+
+    crop_top = max(0, max_line_y - 50)
+    crop_bottom = min(image_height, zero_line_y + 100)
+    cropped_img = img[crop_top:crop_bottom, 0:image_width]
+
+    extractor = SinglePromptGraphExtractor(google_api_key)
+    semantic_data = extractor.extract_graph_data(cropped_img)
+
+    try:
+        raw_top_value = str(semantic_data.get('Y-axisTopValue', '0'))
+        clean_val = re.sub(r"[^\d\.]", "", raw_top_value)
+        max_value_minutes = float(clean_val) if clean_val else 0
+    except ValueError:
+        max_value_minutes = 0
+
+    pixel_span = zero_line_y - max_line_y
+    scale_minutes_per_px = max_value_minutes / pixel_span if pixel_span > 0 and max_value_minutes > 0 else 0
+    print(f"⚖️ Scale Factor: {scale_minutes_per_px:.4f} minutes/pixel", file=sys.stderr)
+
+    detected_bars_cropped, debug_img_cropped = detect_bars_positions(cropped_img)
+    bars_rtl = sorted(detected_bars_cropped, key=lambda b: b['center_x'], reverse=True)
+    print(f"👀 Vision: Detected {len(bars_rtl)} bars (sorted Right-to-Left)", file=sys.stderr)
+
+    day_value_map = {}
+    labels_rtl = semantic_data.get("X-axis", [])
+    bar_index = 0
+
+    for label_obj in labels_rtl:
+        day_name = label_obj.get('label')
+        has_bar = label_obj.get('has_bar')
+
+        calculated_minutes = 0.0
+        bar_pixel_height = 0
+
+        if has_bar:
+            if bar_index < len(bars_rtl):
+                current_bar = bars_rtl[bar_index]
+                bar_top_y_cropped = current_bar['y_top']
+                bar_top_y_normalized = bar_top_y_cropped + crop_top
+                bar_pixel_height = zero_line_y - bar_top_y_normalized
+                calculated_minutes = bar_pixel_height * scale_minutes_per_px
+                bar_index += 1
+            else:
+                print(f"⚠️ Mismatch: Label '{day_name}' expects a bar, but no more physical bars found.", file=sys.stderr)
+
+        day_value_map[day_name] = {
+            "minutes": round(calculated_minutes, 1),
+            "pixels": bar_pixel_height
+        }
+
+    # --- Manual review flags: signal front to require manual pass ---
+    labels_with_bar = sum(1 for obj in labels_rtl if obj.get('has_bar'))
+    more_labels_than_bars = labels_with_bar > len(bars_rtl)
+    more_bars_than_labels = bar_index < len(bars_rtl)
+    total_minutes = sum(d["minutes"] for d in day_value_map.values())
+    all_zero = total_minutes == 0
+
+    manual_review_reasons = []
+    if more_labels_than_bars:
+        manual_review_reasons.append("more_labels_than_bars")
+    if more_bars_than_labels:
+        manual_review_reasons.append("more_bars_than_labels")
+    if all_zero:
+        manual_review_reasons.append("all_zero")
+
+    manual_review_required = len(manual_review_reasons) > 0
+    if manual_review_required:
+        print(f"⚠️ Manual review required — reasons (logged only): {manual_review_reasons}", file=sys.stderr)
+
+    if debug_img_cropped is not None:
+        img[crop_top:crop_bottom, 0:image_width] = debug_img_cropped
+        final_debug_img = img
+    else:
+        final_debug_img = None
+
+    return {
+        "raw_max_value": max_value_minutes,
+        "zero_line_y_original": zero_line_y,
+        "scale_factor": scale_minutes_per_px,
+        "full_map": day_value_map,
+        "debug_image": final_debug_img,
+        "manual_review_required": manual_review_required,
+    }
+
+
 def calculate_minutes_for_day(image_path: str, target_day: str, google_api_key: str = None) -> Dict[str, Any]:
     """
     מחשב כמה דקות שימוש היו ביום ספציפי מתוך צילום מסך של גרף.
@@ -949,13 +1056,11 @@ class GraphTelemetryService:
     
     def process_day(self, image_input, target_day: str) -> Dict[str, Any]:
         """
-        Main entry point.
+        Main entry point for single-day processing.
         image_input: Can be a file path (str) or numpy array.
         """
         # Convert numpy array to file path if needed
         if isinstance(image_input, np.ndarray):
-            # For numpy arrays, we'll process directly
-            # Save to temp file or process in memory
             import tempfile
             with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
                 cv2.imwrite(tmp_file.name, image_input)
@@ -967,7 +1072,6 @@ class GraphTelemetryService:
             return result
         elif isinstance(image_input, str):
             result = calculate_minutes_for_day(image_input, target_day, self.google_api_key)
-            # Convert to old format for compatibility
             return {
                 "day": result.get("target_day", target_day),
                 "minutes": result.get("minutes", 0),
@@ -979,6 +1083,43 @@ class GraphTelemetryService:
             }
         else:
             return {"error": "Invalid image input"}
+
+    def process_week(self, image_input) -> Dict[str, Any]:
+        """
+        Process one screenshot and return screen minutes for all days in the challenge week.
+        Returns: full_map (day_name -> {minutes, pixels}), minutes_per_day (day_name -> minutes),
+                 screen_time_minutes (sum), and compatibility fields.
+        """
+        if isinstance(image_input, np.ndarray):
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_file:
+                cv2.imwrite(tmp_file.name, image_input)
+                temp_path = tmp_file.name
+            try:
+                result = calculate_minutes_per_day(temp_path, self.google_api_key)
+            finally:
+                os.unlink(temp_path)
+        elif isinstance(image_input, str):
+            result = calculate_minutes_per_day(image_input, self.google_api_key)
+        else:
+            return {"error": "Invalid image input"}
+
+        if "error" in result:
+            return result
+
+        full_map = result.get("full_map", {})
+        minutes_per_day = {day: data["minutes"] for day, data in full_map.items()}
+        screen_time_minutes = sum(minutes_per_day.values())
+
+        return {
+            "full_map": full_map,
+            "minutes_per_day": minutes_per_day,
+            "screen_time_minutes": round(screen_time_minutes, 1),
+            "scale_factor": result.get("scale_factor", 0),
+            "raw_max_value": result.get("raw_max_value", 0),
+            "debug_image": result.get("debug_image"),
+            "manual_review_required": result.get("manual_review_required", False),
+        }
 
 
 # ==========================================
@@ -1047,7 +1188,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Process screen time screenshot')
     parser.add_argument('image_path', help='Path to the screenshot image')
-    parser.add_argument('target_day', help='Target Hebrew day name (e.g., ראשון)')
+    parser.add_argument('target_day', nargs='?', default='weekly', help='Use "weekly" for full week (default), or Hebrew day name for single day')
     parser.add_argument('--api-key', help='Google API Key (optional, uses mock if empty)', default='')
     
     args = parser.parse_args()
@@ -1059,7 +1200,25 @@ if __name__ == "__main__":
     api_key = args.api_key or env_local.get("GOOGLE_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
     
     service = GraphTelemetryService(api_key)
-    result = service.process_day(args.image_path, args.target_day)
+    target_day = (args.target_day or '').strip().lower()
+    
+    if target_day == 'weekly':
+        week_result = service.process_week(args.image_path)
+        if week_result.get('error'):
+            result = {'error': week_result['error'], 'minutes': 0, 'day': 'weekly', 'found': False}
+        else:
+            result = {
+                'minutes': week_result.get('screen_time_minutes', 0),
+                'day': 'weekly',
+                'found': bool(week_result.get('minutes_per_day')),
+                'minutes_per_day': week_result.get('minutes_per_day', {}),
+                'metadata': {
+                    'scale_min_per_px': week_result.get('scale_factor', 0),
+                    'max_val_y': week_result.get('raw_max_value', 0),
+                },
+            }
+    else:
+        result = service.process_day(args.image_path, args.target_day)
     
     # Output JSON to stdout with UTF-8 encoding
     # Always write to stdout buffer to avoid Windows encoding issues

@@ -165,7 +165,7 @@ export async function sendFirstDayNotification(
   const childP = getChildPronouns(child.gender);
   const parentP = getParentPronouns(parent.gender);
   const combinedP = getCombinedPronouns(parent.gender, child.gender);
-  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
+  const title = [parent.firstName, parent.username].filter(Boolean).join(' - ') || 'הורה';
   const content = `
     <p><strong>היום הראשון לאתגר מ-ת-ח-י-ל-י-ם-!</strong></p>
     <p>${parentP.talk} עם ${child.name} כבר הבוקר ו${parentP.remind} ${childP.him} ש${parentP.you} יחד ${childP.with} ו${combinedP.together} ${combinedP.going} להצליח.</p>
@@ -191,7 +191,7 @@ export async function sendFirstUploadSuccessNotification(
   child: FirestoreChild,
   baseUrl: string
 ): Promise<void> {
-  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
+  const title = [parent.firstName, parent.username].filter(Boolean).join(' - ') || 'הורה';
   const content = `
     <p>וואו! ${child.name} העלה את הסטטוס היומי והתוצאה מפתיעה! רוצה לאשר את זה?</p>
   `;
@@ -229,7 +229,7 @@ export async function sendFirstUploadFailureNotification(
   const reportedDayName = upload.dayName || getHebrewDayName(reportedDate);
   
   const parentP = getParentPronouns(parent.gender);
-  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
+  const title = [parent.firstName, parent.username].filter(Boolean).join(' - ') || 'הורה';
   const content = `
     <p>${child.name} ${childP.uploaded} את הדיווח עבור ${reportedDayName} (${reportedDateStr}). זה טבעי שלילד יהיה קשה להניח את הטלפון. רוב הניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר איתו ולחשוב יחד איך מצליחים מחר?</p>
     <p><strong>טיפ:</strong> על פי איך ש${parentP.you} ${parentP.know} ${childP.himHer} - ${parentP.suggest} ל${child.name} רעיון למטרת החיסכון של הכסף.</p>
@@ -258,7 +258,7 @@ export async function sendTwoPendingApprovalsNotification(
 ): Promise<void> {
   const childP = getChildPronouns(child.gender);
   
-  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
+  const title = [parent.firstName, parent.username].filter(Boolean).join(' - ') || 'הורה';
   const content = `
     <p>שמנו לב של${child.name} נצברו כבר שני סטטוסים שממתינים לאישור שלך.</p>
     <p>עידוד קטן והתייחסות מצידך יכולים לגרום ${childP.him} לאמץ את ההרגל הזה.</p>
@@ -290,18 +290,18 @@ export async function sendMissingUploadNotification(
 ): Promise<void> {
   const childP = getChildPronouns(child.gender);
   
-  const title = parent.firstName ? `${parent.firstName} - ${parent.username}` : parent.username;
+  const title = [parent.firstName, parent.username].filter(Boolean).join(' - ') || 'הורה';
   let content = '';
   
   if (challengeDay === 3) {
     content = `
-      <p>היי ${parent.firstName || parent.username},</p>
+      <p>היי ${parent.firstName || parent.username || 'הורה'},</p>
       <p>שמנו לב שהיום לא התקבל דיווח מ${child.name}, טבעי שהמעבר יהיה צעד-צעד.</p>
       <p>מה אפשר לעשות? היום? - כלום, תני ${childP.him} את הזמן ומצאי זמן לדבר ${childP.with} כשיתאפשר.</p>
     `;
   } else if (challengeDay === 4) {
     content = `
-      <p>בוקר טוב ${parent.firstName || parent.username}!</p>
+      <p>בוקר טוב ${parent.firstName || parent.username || 'הורה'}!</p>
       <p>גם אתמול לא התקבל דיווח מ${child.name}. זה טבעי שלילד יהיה קשה להניח את הטלפון. סביר מאוד שהניסיונות הראשונים יהיו לא פשוטים, אולי שווה לדבר ${childP.with} ולחשוב יחד איך מצליחים מחר? מה קשה ${childP.him}?</p>
     `;
   } else if (challengeDay === 6) {
@@ -454,17 +454,37 @@ async function getChildById(childId: string): Promise<FirestoreChild | null> {
 }
 
 /**
- * Get uploads for challenge
+ * Get uploads for challenge – from challenge.weekUploads (no daily_uploads collection)
  */
 async function getUploadsForChallenge(challengeId: string): Promise<FirestoreDailyUpload[]> {
-  const uploadsRef = getDb().collection('daily_uploads');
-  const querySnapshot = await uploadsRef
-    .where('challengeId', '==', challengeId)
-    .get();
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
+  const challengeRef = getDb().collection('challenges').doc(challengeId);
+  const challengeSnap = await challengeRef.get();
+  if (!challengeSnap.exists) return [];
+  const data = challengeSnap.data();
+  const weekUploads = (data?.weekUploads ?? []) as import('./types').ChallengeDayUpload[];
+  const parentId = data?.parentId ?? '';
+  const childId = data?.childId ?? '';
+  return weekUploads.map((u: import('./types').ChallengeDayUpload) => ({
+    id: u.date,
+    challengeId,
+    parentId,
+    childId,
+    date: u.date,
+    dayName: u.dayName,
+    screenTimeUsed: u.screenTimeUsed ?? 0,
+    screenTimeMinutes: u.screenTimeMinutes,
+    screenTimeGoal: u.screenTimeGoal ?? 0,
+    coinsEarned: u.coinsEarned ?? 0,
+    coinsMaxPossible: u.coinsMaxPossible ?? 0,
+    success: u.success ?? false,
+    screenshotUrl: u.screenshotUrl,
+    requiresApproval: u.requiresApproval ?? false,
+    parentAction: u.parentAction ?? null,
+    uploadedAt: u.uploadedAt ?? '',
+    approvedAt: u.approvedAt,
+    apps: u.apps,
+    createdAt: u.uploadedAt ?? '',
+    updatedAt: u.uploadedAt ?? '',
   } as FirestoreDailyUpload));
 }
 

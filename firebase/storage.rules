@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Firebase Storage – גישה להעלאות שבועיות (עמוד הפדיון)
+// העלאות מ־weekly-uploads/ מותרות גם ללא התחברות (הילד מעלה דרך קישור עם טוקן).
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /weekly-uploads/{challengeId}/{fileName} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

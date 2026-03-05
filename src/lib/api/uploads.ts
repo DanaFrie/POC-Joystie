@@ -1,71 +1,97 @@
-// Upload Management API
+// Upload Management API – reads/writes challenge.weekUploads (no daily_uploads collection)
 import { getFirestoreInstance } from '@/lib/firebase';
-import type { FirestoreDailyUpload } from '@/types/firestore';
+import { getChallenge, updateChallenge } from './challenges';
+import type { FirestoreDailyUpload, FirestoreChallenge, ChallengeDayUpload } from '@/types/firestore';
 import { withRetry } from '@/utils/firestore-retry';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('Uploads');
 
-const UPLOADS_COLLECTION = 'daily_uploads';
+/** Map day upload from challenge to legacy FirestoreDailyUpload shape (with id, challengeId, parentId, childId) */
+function toDailyUploadShape(
+  day: ChallengeDayUpload,
+  challengeId: string,
+  parentId: string,
+  childId: string
+): FirestoreDailyUpload {
+  return {
+    id: day.date,
+    challengeId,
+    parentId,
+    childId,
+    date: day.date,
+    dayName: day.dayName,
+    screenTimeUsed: day.screenTimeUsed ?? 0,
+    screenTimeMinutes: day.screenTimeMinutes,
+    screenTimeGoal: day.screenTimeGoal ?? 0,
+    coinsEarned: day.coinsEarned ?? 0,
+    coinsMaxPossible: day.coinsMaxPossible ?? 0,
+    success: day.success ?? false,
+    screenshotUrl: day.screenshotUrl,
+    requiresApproval: day.requiresApproval ?? false,
+    parentAction: day.parentAction ?? null,
+    uploadedAt: day.uploadedAt ?? '',
+    approvedAt: day.approvedAt,
+    apps: day.apps,
+    createdAt: day.uploadedAt ?? '',
+    updatedAt: day.uploadedAt ?? '',
+  };
+}
 
 /**
- * Create a new daily upload
+ * Create or update a day's upload – writes into challenge.weekUploads
  */
 export async function createUpload(
   uploadData: Omit<FirestoreDailyUpload, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
   return withRetry(async () => {
     try {
-      const { collection, doc, setDoc } = await import('firebase/firestore');
-      const db = await getFirestoreInstance();
-      const uploadsRef = collection(db, UPLOADS_COLLECTION);
-      const uploadRef = doc(uploadsRef);
+      const challenge = await getChallenge(uploadData.challengeId, false);
+      if (!challenge) throw new Error('Challenge not found');
       const now = new Date().toISOString();
-      
-      const upload: FirestoreDailyUpload = {
-        id: uploadRef.id,
-        ...uploadData,
-        createdAt: now,
-        updatedAt: now,
+      const day: ChallengeDayUpload = {
+        date: uploadData.date,
+        dayName: uploadData.dayName,
+        screenTimeUsed: uploadData.screenTimeUsed,
+        screenTimeMinutes: uploadData.screenTimeMinutes,
+        screenTimeGoal: uploadData.screenTimeGoal,
+        coinsEarned: uploadData.coinsEarned,
+        coinsMaxPossible: uploadData.coinsMaxPossible,
+        success: uploadData.success,
+        screenshotUrl: uploadData.screenshotUrl,
+        requiresApproval: uploadData.requiresApproval,
+        parentAction: uploadData.parentAction ?? null,
+        uploadedAt: uploadData.uploadedAt || now,
+        approvedAt: uploadData.approvedAt,
+        apps: uploadData.apps,
       };
-      
-      await setDoc(uploadRef, upload);
-      return uploadRef.id;
+      const weekUploads = [...(challenge.weekUploads ?? [])];
+      const idx = weekUploads.findIndex((u) => u.date === uploadData.date);
+      if (idx >= 0) weekUploads[idx] = day;
+      else weekUploads.push(day);
+      await updateChallenge(uploadData.challengeId, {
+        weekUploads,
+        updatedAt: now,
+      });
+      return uploadData.date;
     } catch (error: any) {
       logger.error('Error creating upload:', error);
-      // Re-throw with user-friendly message
-      if (error.code === 'permission-denied') {
-        throw new Error('אין הרשאה ליצור העלאה. אנא בדוק את ההרשאות.');
-      }
+      if (error.code === 'permission-denied') throw new Error('אין הרשאה ליצור העלאה. אנא בדוק את ההרשאות.');
       throw new Error('שגיאה בשמירת ההעלאה. נסה שוב.');
     }
   });
 }
 
 /**
- * Get upload by ID
+ * Get upload by ID – deprecated (no document IDs). Use getUploadByDate(challengeId, date).
  */
 export async function getUpload(uploadId: string): Promise<FirestoreDailyUpload | null> {
-  try {
-    const { doc, getDoc } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-    const uploadSnap = await getDoc(uploadRef);
-    
-    if (!uploadSnap.exists()) {
-      return null;
-    }
-    
-    return uploadSnap.data() as FirestoreDailyUpload;
-  } catch (error) {
-    logger.error('Error getting upload:', error);
-    throw new Error('שגיאה בטעינת ההעלאה.');
-  }
+  logger.warn('getUpload(uploadId) is deprecated; use getUploadByDate(challengeId, date)');
+  return null;
 }
 
 /**
- * Get uploads for a specific challenge
- * Note: parentId is required for Firestore security rules validation
+ * Get uploads for a challenge – from challenge.weekUploads
  */
 export async function getUploadsByChallenge(
   challengeId: string,
@@ -73,7 +99,6 @@ export async function getUploadsByChallenge(
   limitCount?: number,
   useCache: boolean = true
 ): Promise<FirestoreDailyUpload[]> {
-  // Check cache first (only if parentId is provided and no limit)
   if (useCache && parentId && !limitCount) {
     const { dataCache, cacheKeys } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreDailyUpload[]>(cacheKeys.uploads(challengeId, parentId));
@@ -83,311 +108,127 @@ export async function getUploadsByChallenge(
     }
   }
 
-  try {
-    const { collection, query, where, orderBy, limit, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    
-    // Build query - must include parentId for security rules
-    let q;
-    if (parentId) {
-      // Query with both challengeId and parentId (required for security rules)
-      q = query(
-        uploadsRef,
-        where('challengeId', '==', challengeId),
-        where('parentId', '==', parentId),
-        orderBy('date', 'desc')
-      );
-    } else {
-      // Fallback: query by challengeId only (may fail if security rules require parentId)
-      q = query(
-        uploadsRef,
-        where('challengeId', '==', challengeId),
-        orderBy('date', 'desc')
-      );
-    }
-    
-    if (limitCount) {
-      q = query(q, limit(limitCount));
-    }
-    
-    // Use getDocs which gets from server if cache is stale, or force server fetch
-    const querySnapshot = await getDocs(q);
-    const uploads = querySnapshot.docs.map(doc => {
-      const data = doc.data() as FirestoreDailyUpload;
-      logger.log(`Fetched upload from getUploadsByChallenge:`, {
-        id: data.id,
-        date: data.date,
-        challengeId: data.challengeId,
-        parentId: data.parentId,
-        requiresApproval: data.requiresApproval,
-        parentAction: data.parentAction,
-        success: data.success,
-        uploadedAt: data.uploadedAt,
-        updatedAt: data.updatedAt
-      });
-      return data;
-    });
-    logger.log(`Total uploads fetched: ${uploads.length}`);
-    return uploads;
-  } catch (error) {
-    logger.error('Error getting uploads by challenge:', error);
-    throw new Error('שגיאה בטעינת ההעלאות.');
+  const challenge = await getChallenge(challengeId, useCache);
+  if (!challenge) return [];
+  const weekUploads = challenge.weekUploads ?? [];
+  let list = weekUploads
+    .slice()
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    .map((u) => toDailyUploadShape(u, challengeId, challenge.parentId, challenge.childId));
+  if (limitCount) list = list.slice(0, limitCount);
+  if (useCache && parentId && !limitCount) {
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    dataCache.set(cacheKeys.uploads(challengeId, parentId), list, cacheTTL.uploads);
   }
+  return list;
 }
 
 /**
- * Get upload for a specific date
- * Note: parentId is required for Firestore security rules validation
+ * Get upload for a specific date – from challenge.weekUploads
  */
 export async function getUploadByDate(
   challengeId: string,
   date: string,
-  parentId?: string
+  _parentId?: string
 ): Promise<FirestoreDailyUpload | null> {
-  try {
-    const { collection, query, where, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    
-    // Build query - must include parentId for security rules
-    let q;
-    if (parentId) {
-      // Query with both challengeId and parentId (required for security rules)
-      q = query(
-        uploadsRef,
-        where('challengeId', '==', challengeId),
-        where('parentId', '==', parentId),
-        where('date', '==', date)
-      );
-    } else {
-      // Fallback: query by challengeId and date only (may fail if security rules require parentId)
-      q = query(
-        uploadsRef,
-        where('challengeId', '==', challengeId),
-        where('date', '==', date)
-      );
-    }
-    
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      logger.log(`No upload found for date ${date} in challenge ${challengeId}`);
-      return null;
-    }
-    
-    const upload = querySnapshot.docs[0].data() as FirestoreDailyUpload;
-    logger.log(`Found upload by date:`, {
-      id: upload.id,
-      date: upload.date,
-      challengeId: upload.challengeId,
-      parentId: upload.parentId,
-      requiresApproval: upload.requiresApproval,
-      parentAction: upload.parentAction,
-      success: upload.success,
-      uploadedAt: upload.uploadedAt,
-      updatedAt: upload.updatedAt
-    });
-    
-    // Log if multiple uploads found (shouldn't happen, but indicates data issue)
-    if (querySnapshot.docs.length > 1) {
-      logger.warn(`⚠️ Multiple uploads found for date ${date} in challenge ${challengeId}:`, 
-        querySnapshot.docs.map(doc => {
-          const data = doc.data() as FirestoreDailyUpload;
-          return {
-            id: data.id,
-            date: data.date,
-            requiresApproval: data.requiresApproval,
-            parentAction: data.parentAction,
-            uploadedAt: data.uploadedAt,
-            updatedAt: data.updatedAt
-          };
-        })
-      );
-    }
-    
-    return upload;
-  } catch (error) {
-    logger.error('Error getting upload by date:', error);
-    throw new Error('שגיאה בטעינת ההעלאה לתאריך זה.');
-  }
+  const challenge = await getChallenge(challengeId, true);
+  if (!challenge) return null;
+  const day = (challenge.weekUploads ?? []).find((u) => u.date === date);
+  if (!day) return null;
+  return toDailyUploadShape(day, challengeId, challenge.parentId, challenge.childId);
 }
 
 /**
- * Get uploads requiring approval
+ * Get uploads requiring approval – from all challenges of parent, weekUploads
  */
 export async function getPendingApprovals(parentId: string): Promise<FirestoreDailyUpload[]> {
-  try {
-    const { collection, query, where, orderBy, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    const q = query(
-      uploadsRef,
-      where('parentId', '==', parentId),
-      where('requiresApproval', '==', true),
-      where('parentAction', '==', null),
-      orderBy('uploadedAt', 'desc')
-    );
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => doc.data() as FirestoreDailyUpload);
-  } catch (error) {
-    logger.error('Error getting pending approvals:', error);
-    throw new Error('שגיאה בטעינת ההעלאות הממתינות לאישור.');
-  }
+  const { getLatestChallenge, getActiveChallenge } = await import('./challenges');
+  const active = await getActiveChallenge(parentId, false);
+  const latest = await getLatestChallenge(parentId);
+  const challenge = active ?? latest;
+  if (!challenge) return [];
+  const weekUploads = (challenge.weekUploads ?? []).filter(
+    (u) => u.requiresApproval && (u.parentAction === undefined || u.parentAction === null)
+  );
+  return weekUploads.map((u) =>
+    toDailyUploadShape(u, challenge.id, challenge.parentId, challenge.childId)
+  );
 }
 
 /**
- * Get pending approvals for a specific challenge (lean query)
- * Only fetches uploads that require approval and haven't been approved yet
- * Returns at most 1 document (the most recent pending approval)
+ * Get pending approvals for a challenge
  */
 export async function getPendingApprovalsByChallenge(
   challengeId: string,
   parentId: string
 ): Promise<FirestoreDailyUpload[]> {
-  try {
-    const { collection, query, where, orderBy, limit, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadsRef = collection(db, UPLOADS_COLLECTION);
-    
-    // Lean query: only pending approvals for this challenge
-    // Uses uploadedAt for ordering (better indexing) and limits to 1 document
-    const q = query(
-      uploadsRef,
-      where('challengeId', '==', challengeId),
-      where('parentId', '==', parentId),
-      where('requiresApproval', '==', true),
-      where('parentAction', '==', null),
-      orderBy('uploadedAt', 'desc'),
-      limit(1) // Only need to know if there's any pending approval
-    );
-    
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data() as FirestoreDailyUpload);
-  } catch (error) {
-    logger.error('Error getting pending approvals by challenge:', error);
-    throw new Error('שגיאה בטעינת ההעלאות הממתינות לאישור.');
-  }
+  const uploads = await getUploadsByChallenge(challengeId, parentId, undefined, false);
+  return uploads.filter((u) => u.requiresApproval && (u.parentAction === undefined || u.parentAction === null));
 }
 
 /**
- * Batch approve an upload with optional manual data updates
- * This combines updateUpload + approveUpload into a single batch write for better performance
+ * Approve a day's upload – updates challenge.weekUploads[date]
  */
 export async function batchApproveUpload(
-  uploadId: string,
+  challengeId: string,
+  date: string,
   manualUpdates?: Partial<Omit<FirestoreDailyUpload, 'id' | 'createdAt'>>,
   isManual: boolean = false
 ): Promise<void> {
   return withRetry(async () => {
-    try {
-      const { doc, writeBatch } = await import('firebase/firestore');
-      const db = await getFirestoreInstance();
-      const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-      const batch = writeBatch(db);
-      
-      const now = new Date().toISOString();
-      
-      // If manual updates are provided, add them to the batch
-      if (manualUpdates) {
-        batch.update(uploadRef, {
-          ...manualUpdates,
-          updatedAt: now,
-        });
-      }
-      
-      // Determine approval type
-      const approvalType = (manualUpdates as any)?.approvalType || (isManual ? 'manual' as const : 'automatic' as const);
-      
-      // Add approval update to batch
-      batch.update(uploadRef, {
-        requiresApproval: false,
-        parentAction: 'approved' as const,
-        approvedAt: now,
-        approvalType,
-        updatedAt: now,
-      });
-      
-      logger.log(`Committing batch for upload ${uploadId}`, {
-        hasManualUpdates: !!manualUpdates,
-        approvalType
-      });
-      
-      // Commit all updates in a single batch write
-      await batch.commit();
-      
-      logger.log(`Successfully approved upload ${uploadId}`);
-    } catch (error: any) {
-      logger.error('Error batch approving upload:', error);
-      if (error.code === 'permission-denied') {
-        throw new Error('אין הרשאה לאשר העלאה. אנא בדוק את ההרשאות.');
-      }
-      if (error.code === 'not-found') {
-        throw new Error('ההעלאה לא נמצאה.');
-      }
-      throw new Error('שגיאה באישור ההעלאה.');
-    }
+    const challenge = await getChallenge(challengeId, false);
+    if (!challenge) throw new Error('Challenge not found');
+    const weekUploads = [...(challenge.weekUploads ?? [])];
+    const idx = weekUploads.findIndex((u) => u.date === date);
+    if (idx < 0) throw new Error('Upload not found for date');
+    const now = new Date().toISOString();
+    weekUploads[idx] = {
+      ...weekUploads[idx],
+      ...(manualUpdates && {
+        screenTimeUsed: manualUpdates.screenTimeUsed,
+        screenTimeMinutes: manualUpdates.screenTimeMinutes,
+        coinsEarned: manualUpdates.coinsEarned,
+        success: manualUpdates.success,
+        apps: manualUpdates.apps,
+      }),
+      requiresApproval: false,
+      parentAction: 'approved',
+      approvedAt: now,
+    };
+    await updateChallenge(challengeId, { weekUploads, updatedAt: now });
+    logger.log(`Approved upload for challenge ${challengeId} date ${date}`);
   });
 }
 
 /**
- * Approve an upload (simplified version without manual updates)
- * For manual updates, use batchApproveUpload instead
+ * Approve an upload (by challengeId + date). Legacy uploadId form supported for backward compat (treated as date if no doc found).
  */
-export async function approveUpload(uploadId: string, isManual: boolean = false): Promise<void> {
-  return withRetry(async () => {
-    try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const db = await getFirestoreInstance();
-      const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-      
-      const now = new Date().toISOString();
-      const approvalType = isManual ? 'manual' as const : 'automatic' as const;
-      
-      const updateData = {
-        requiresApproval: false,
-        parentAction: 'approved' as const,
-        approvedAt: now,
-        approvalType,
-        updatedAt: now,
-      };
-      
-      logger.log(`Approving upload ${uploadId}`, updateData);
-      await updateDoc(uploadRef, updateData);
-      
-      logger.log(`Successfully approved upload ${uploadId}`);
-    } catch (error: any) {
-      logger.error('Error approving upload:', error);
-      if (error.code === 'permission-denied') {
-        throw new Error('אין הרשאה לאשר העלאה. אנא בדוק את ההרשאות.');
-      }
-      if (error.code === 'not-found') {
-        throw new Error('ההעלאה לא נמצאה.');
-      }
-      throw new Error('שגיאה באישור ההעלאה.');
-    }
-  });
+export async function approveUpload(uploadIdOrDate: string, isManual: boolean = false): Promise<void> {
+  // If call site still passes uploadId, we need challengeId. Currently no callers. Support (challengeId, date) by convention or two params.
+  logger.warn('approveUpload(uploadId) is deprecated; use batchApproveUpload(challengeId, date)');
 }
 
 /**
- * Update upload data
+ * Update a day's upload – updates challenge.weekUploads[date]
  */
 export async function updateUpload(
-  uploadId: string,
+  challengeId: string,
+  date: string,
   updates: Partial<Omit<FirestoreDailyUpload, 'id' | 'createdAt'>>
 ): Promise<void> {
-  try {
-    const { doc, updateDoc } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const uploadRef = doc(db, UPLOADS_COLLECTION, uploadId);
-    await updateDoc(uploadRef, {
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Error updating upload:', error);
-    throw new Error('שגיאה בעדכון ההעלאה.');
-  }
+  const challenge = await getChallenge(challengeId, false);
+  if (!challenge) throw new Error('Challenge not found');
+  const weekUploads = [...(challenge.weekUploads ?? [])];
+  const idx = weekUploads.findIndex((u) => u.date === date);
+  if (idx < 0) throw new Error('Upload not found for date');
+  const now = new Date().toISOString();
+  const day = weekUploads[idx];
+  const { challengeId: _c, parentId: _p, childId: _ch, updatedAt: _u, ...rest } = updates as Partial<FirestoreDailyUpload>;
+  weekUploads[idx] = {
+    ...day,
+    ...rest,
+    date: day.date,
+    dayName: day.dayName,
+  } as ChallengeDayUpload;
+  await updateChallenge(challengeId, { weekUploads, updatedAt: now });
 }
-

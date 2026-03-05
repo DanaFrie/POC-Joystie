@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { Link2, Share2, Check } from 'lucide-react';
-import ReminderButton from './ReminderButton';
-import type { WeekDay } from '@/types/dashboard';
+import type { WeeklyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('NotificationsPanel');
@@ -15,16 +14,17 @@ interface NotificationsPanelProps {
   childGender?: 'boy' | 'girl';
   parentName?: string;
   parentGender?: 'male' | 'female'; // Parent gender from Firestore
-  missingDays?: WeekDay[];
   setupUrl?: string; // Setup URL to show when setup is not completed
   uploadUrl?: string;
-  redemptionUrl?: string; // Redemption URL to show when all days are approved
-  week?: WeekDay[];
-  onOpenSummary?: (days: WeekDay[]) => void;
+  redemptionUrl?: string; // Redemption URL to show on redemption day
+  weeklyUpload?: WeeklyUpload | null; // Weekly upload status
+  onOpenWeeklyReview?: () => void; // Handler to open weekly upload review modal
   childSetupCompleted?: boolean; // Whether child has completed setup (has nickname and moneyGoals)
+  consultationCompleted?: boolean; // Whether consultation with advisor has been completed
+  noChallengeExists?: boolean; // Whether user has no active challenge (new registration)
 }
 
-export default function NotificationsPanel({ challengeNotStarted, challengeStartDate, childName, childGender, parentName, parentGender, missingDays, setupUrl, uploadUrl, redemptionUrl, week, onOpenSummary, childSetupCompleted }: NotificationsPanelProps) {
+export default function NotificationsPanel({ challengeNotStarted, challengeStartDate, childName, childGender, parentName, parentGender, setupUrl, uploadUrl, redemptionUrl, weeklyUpload, onOpenWeeklyReview, childSetupCompleted, consultationCompleted, noChallengeExists }: NotificationsPanelProps) {
   const [copied, setCopied] = useState(false);
   const formatStartDate = (dateStr?: string): string => {
     if (!dateStr) return '';
@@ -36,44 +36,59 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
     return `ביום ${dayName}, ${day}/${month}`;
   };
 
+  // Calculate relative day text (e.g., "מחר", "שני הבא", "שבת הקרובה", "שלישי בעוד שבועיים")
+  const getRelativeDayText = (dateStr?: string): string => {
+    if (!dateStr) return '';
+    
+    const targetDate = new Date(dateStr);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const diffTime = targetDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    
+    const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const targetDayName = dayNames[targetDate.getDay()];
+    
+    // Today
+    if (diffDays === 0) {
+      return 'היום';
+    }
+    
+    // Tomorrow
+    if (diffDays === 1) {
+      return 'מחר';
+    }
+    
+    // Within this week (2-6 days)
+    if (diffDays >= 2 && diffDays <= 6) {
+      // Use "הקרוב/ה" for days this week
+      const suffix = targetDate.getDay() === 6 ? 'הקרובה' : 'הקרוב'; // שבת = feminine
+      return `${targetDayName} ${suffix}`;
+    }
+    
+    // Next week (7-13 days)
+    if (diffDays >= 7 && diffDays <= 13) {
+      return `${targetDayName} הבא`;
+    }
+    
+    // Two weeks from now (14-20 days)
+    if (diffDays >= 14 && diffDays <= 20) {
+      return `${targetDayName} בעוד שבועיים`;
+    }
+    
+    // More than 2 weeks - show "בעוד X ימים"
+    return `בעוד ${diffDays} ימים`;
+  };
+
   // Use parentGender from Firestore, fallback to 'female' if not provided
   const parentGenderValue = parentGender || 'female';
   const parentVerb = parentGenderValue === 'female' ? 'תוכלי' : 'תוכל';
 
-  // Filter days that need approval
-  // Only include days that actually need approval (not already approved)
-  const daysNeedingApproval = week?.filter(day => {
-    if (day.isRedemptionDay) return false;
-    // Include if status is awaiting_approval
-    if (day.status === 'awaiting_approval') return true;
-    // Include if requiresApproval is true AND parentAction is null (not yet approved)
-    if (day.requiresApproval && !day.parentAction) return true;
-    return false;
-  }) || [];
-  
-  // Only include days that are actually missing (not uploaded yet)
-  const daysMissingUpload = week?.filter(day => {
-    if (day.isRedemptionDay) return false;
-    // Only include if status is missing (not uploaded)
-    return day.status === 'missing';
-  }) || [];
-
-  const hasNotifications = challengeNotStarted || daysNeedingApproval.length > 0 || daysMissingUpload.length > 0;
-
-  const handleOpenSummary = (days: WeekDay[]) => {
-    if (onOpenSummary) {
-      onOpenSummary(days);
-    }
-  };
-
-  // Check if all non-redemption days are approved
-  const allDaysApproved = week && week.length > 0 && week
-    .filter(day => !day.isRedemptionDay)
-    .every(day => 
-      day.status === 'success' || 
-      day.status === 'warning' ||
-      day.parentAction === 'approved'
-    );
+  // Weekly upload approval is shown only above the bar chart in WeeklyProgress, not here
+  const hasNotifications = noChallengeExists || consultationCompleted === false || (consultationCompleted === true && challengeNotStarted);
 
   const handleCopyUrl = async (url: string) => {
     if (!url) return;
@@ -90,20 +105,17 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
     }
   };
 
-  // Determine which URL to show based on activity logic (same as URL validation):
+  // Determine which URL to show based on activity logic:
   // 1. If setup not completed → setup URL
-  // 2. If setup completed but not all days approved → upload URL
-  // 3. If all days approved → redemption URL
+  // 2. If setup completed and no weekly upload → redemption URL (on redemption day)
+  // 3. If weekly upload approved → redemption URL for next steps
   let urlToCopy: string | undefined;
   if (!childSetupCompleted && setupUrl) {
     // Setup not completed - show setup URL
     urlToCopy = setupUrl;
-  } else if (allDaysApproved && redemptionUrl) {
-    // All days approved - show redemption URL
+  } else if (redemptionUrl) {
+    // Show redemption URL for uploading or viewing results
     urlToCopy = redemptionUrl;
-  } else if (uploadUrl) {
-    // Setup completed but not all approved - show upload URL
-    urlToCopy = uploadUrl;
   }
   
   // Show button when:
@@ -114,7 +126,7 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
   const sendVerb = parentGenderValue === 'female' ? 'שלחי' : 'שלח';
   const childPossessive = childGender === 'girl' ? 'שלה' : 'שלו';
   // More explicit text about sharing/sending - makes it clear this is for sharing a link
-  const buttonText = `${copyVerb} קישור לעמוד של ${childName}`;
+  const buttonText = `קישור לעמוד של ${childName}`;
   // Text explaining how to share the link
   const subtitleText = `${sendVerb} את הקישור ל${childName} דרך וואטסאפ או הודעה`;
   const copiedSubtitleText = `הקישור הועתק! הדבקי אותו בהודעה ל${childName}`;
@@ -126,56 +138,69 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
           עדכונים
         </h2>
       </div>
-      {challengeNotStarted && challengeStartDate ? (
-        <div className="bg-gradient-to-br from-[#E6F19A] to-[#BBE9FD] rounded-[12px] p-4 border-2 border-[#E6F19A] mb-3">
-          <p className="font-varela text-sm text-[#262135] text-center leading-relaxed font-semibold mb-2">
-            האתגר יתחיל ממש בקרוב! {formatStartDate(challengeStartDate)}.
+
+      {/* No challenge exists - prompt to create one */}
+      {noChallengeExists && (
+        <div className="bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A] rounded-[12px] p-4 mb-3">
+          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
+            ברוכים הבאים! 👋
+          </h3>
+          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center mb-3">
+            כדי להתחיל, יש להגדיר אתגר ראשון עבור הילד שלכם.
           </p>
-          <p className="font-varela text-sm text-[#262135] text-center leading-relaxed">
-            בינתיים, {parentVerb} לדבר עם {childName || '[שם הילד/ה]'} ולהבין מה יעזור {childGender === 'girl' ? 'לה' : 'לו'} להצליח.
+          <a
+            href="/onboarding"
+            className="block w-full py-3 px-4 rounded-[12px] bg-[#273143] text-white font-varela font-semibold text-sm text-center hover:bg-opacity-90 transition-all"
+          >
+            התחל אתגר
+          </a>
+        </div>
+      )}
+
+      {/* Consultation status - Show different messages based on status */}
+      {consultationCompleted === false && !noChallengeExists && (
+        <div className="bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A] rounded-[12px] p-4 mb-3">
+          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
+            בקרוב ניפגש
+          </h3>
+          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center">
+            לאחר השיחה עם המומחה שלנו, תוכלו להתחיל באתגר.
           </p>
         </div>
-      ) : null}
+      )}
+
+      {/* Challenge starting soon - consultation completed but challenge hasn't started yet */}
+      {consultationCompleted === true && challengeNotStarted && challengeStartDate && (
+        <div className="bg-green-50 border-2 border-green-200 rounded-[12px] p-4 mb-3">
+          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
+            {getRelativeDayText(challengeStartDate)} האתגר מתחיל! 🎉
+          </h3>
+          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center">
+            התכוננו להתחלה מרגשת!
+          </p>
+        </div>
+      )}
       
-      {/* Days needing approval - grouped with hourglass icon */}
-      {daysNeedingApproval.length > 0 && (
-        <div 
-          className="mb-3 p-3 rounded-[12px] bg-[#BBE9FD] bg-opacity-30 border-2 border-[#BBE9FD] cursor-pointer hover:bg-opacity-40 transition-all flex items-center gap-3"
-          onClick={() => handleOpenSummary(daysNeedingApproval)}
-        >
-          <span className="text-2xl flex-shrink-0">⏳</span>
-          <div className="flex-1">
-            <p className="font-varela font-semibold text-sm text-[#282743]">
-              {daysNeedingApproval.length} {daysNeedingApproval.length === 1 ? 'יום דורש אישור' : 'ימים דורשים אישור'}
-            </p>
-            <p className="font-varela text-xs text-[#948DA9] mt-1">
-              לחץ לפרטים ולטיפול
-            </p>
-          </div>
+      {/* After parent approved weekly upload – invite to create new challenge (link inactive) */}
+      {weeklyUpload?.status === 'approved' && !challengeNotStarted && (
+        <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
+          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
+            מוכנים לאתגר הבא?
+          </h3>
+          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center mb-3">
+            הגדירו אתגר חדש עבור {childName} כדי להמשיך.
+          </p>
+          <a
+            href="/onboarding"
+            className="block w-full py-3 px-4 rounded-[12px] bg-[#273143] text-white font-varela font-semibold text-sm text-center hover:bg-opacity-90 transition-all"
+          >
+            בניית אתגר חדש
+          </a>
         </div>
       )}
 
-
-      {/* Days missing upload - grouped with warning icon */}
-      {daysMissingUpload.length > 0 && (
-        <div 
-          className="mb-3 p-3 rounded-[12px] bg-[#273143] bg-opacity-20 border-2 border-[#273143] cursor-pointer hover:bg-opacity-30 transition-all flex items-center gap-3"
-          onClick={() => handleOpenSummary(daysMissingUpload)}
-        >
-          <span className="text-2xl flex-shrink-0">⚠️</span>
-          <div className="flex-1">
-            <p className="font-varela font-semibold text-sm text-[#282743]">
-              {daysMissingUpload.length} {daysMissingUpload.length === 1 ? 'יום לא הועלה' : 'ימים לא הועלו'}
-            </p>
-            <p className="font-varela text-xs text-[#948DA9] mt-1">
-              לחץ לפרטים ולטיפול
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Copy URL button (upload or redemption) - improved UX with sharing context */}
-      {showCopyButton && urlToCopy && (
+      {/* Copy URL button – only when challenge is active and upload not yet approved (pending/rejected = link stays active for upload/re-upload) */}
+      {showCopyButton && urlToCopy && !challengeNotStarted && weeklyUpload?.status !== 'approved' && (
         <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
           <button
             onClick={() => urlToCopy && handleCopyUrl(urlToCopy)}
@@ -203,7 +228,7 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
 
-      {!hasNotifications && !showCopyButton && (
+      {!hasNotifications && !showCopyButton && weeklyUpload?.status !== 'approved' && (
         <p className="font-varela text-sm text-[#948DA9] text-center py-2">
           אין עדכונים חדשים
         </p>

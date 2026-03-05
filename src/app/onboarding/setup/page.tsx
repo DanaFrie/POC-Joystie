@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { formatNumber } from '@/utils/formatting';
+import { formatNumber, formatScreenTimeGoalHours } from '@/utils/formatting';
 import { getCurrentUserId } from '@/utils/auth';
 import { createChild, updateChild } from '@/lib/api/children';
 import { createChallenge, getActiveChallenge, updateChallenge } from '@/lib/api/challenges';
@@ -103,16 +103,14 @@ export default function OnboardingSetupPage() {
     });
   };
 
-  // Calculate budget explanation
+  // Calculate budget explanation (targetScreenTime is in hours)
   const getBudgetExplanation = () => {
     const selectedBudget = formData.weeklyBudget === 'custom' 
       ? parseFloat(formData.customBudget) 
       : parseFloat(formData.weeklyBudget) || 0;
-    // Convert minutes to hours for calculations
-    const targetMinutes = parseFloat(formData.targetScreenTime) || 0;
-    const targetHours = targetMinutes / 60;
+    const targetHours = parseFloat(formData.targetScreenTime) || 0;
 
-    if (selectedBudget === 0 || targetMinutes === 0) {
+    if (selectedBudget === 0 || targetHours === 0) {
       return null;
     }
 
@@ -128,7 +126,7 @@ export default function OnboardingSetupPage() {
       weeklyBudget,
       dailyBudget,
       hourlyRate,
-      targetHours: targetMinutes, // Return minutes for display
+      targetHours, // שעות לתצוגה
       weeklyHours
     };
   };
@@ -230,7 +228,7 @@ export default function OnboardingSetupPage() {
   }, []);
 
   const handleNext = async () => {
-    if (step < 7) {
+    if (step < 6) {
       setStep(step + 1);
     } else {
       // Prevent multiple submissions
@@ -259,9 +257,8 @@ export default function OnboardingSetupPage() {
         const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
         const dailyBudget = selectedBudget / clientConfig.challenge.budgetDivision;
 
-        // Convert minutes to hours for backend (keep calculation structure in hours)
-        const targetMinutes = parseFloat(formData.targetScreenTime) || 0;
-        const targetHours = targetMinutes > 0 ? targetMinutes / 60 : clientConfig.challenge.defaultDailyScreenTimeGoal;
+        // targetScreenTime is in hours (user enters hours); fallback to default if empty/0
+        const targetHours = parseFloat(formData.targetScreenTime) || clientConfig.challenge.defaultDailyScreenTimeGoal;
 
         // Get motivation reason from sessionStorage
         const motivationReason = typeof window !== 'undefined' 
@@ -288,20 +285,14 @@ export default function OnboardingSetupPage() {
             deviceType: formData.deviceType as 'ios' | 'android',
           }, userId);
 
-          // Calculate start date (tomorrow at 00:00)
-          const today = new Date();
-          const startDate = new Date(today);
-          startDate.setDate(today.getDate() + 1);
-          startDate.setHours(0, 0, 0, 0);
-
           // Update challenge with new form data
+          // Note: startDate will be set by admin after consultation approval
           await updateChallenge(challengeId, {
             ...(motivationReason && { motivationReason }),
             selectedBudget: selectedBudget,
             dailyBudget: dailyBudget,
             dailyScreenTimeGoal: targetHours,
-            startDate: startDate.toISOString(),
-            isActive: true,
+            isActive: false, // Challenge is not active until consultation is approved
           });
         } else {
           // No active challenge - create new child and challenge
@@ -316,13 +307,8 @@ export default function OnboardingSetupPage() {
           deviceType: formData.deviceType as 'ios' | 'android',
         });
 
-        // Calculate start date (tomorrow at 00:00)
-        const today = new Date();
-        const startDate = new Date(today);
-        startDate.setDate(today.getDate() + 1);
-        startDate.setHours(0, 0, 0, 0);
-
         // Create challenge (weeklyBudget is calculated from selectedBudget, not saved to DB)
+        // Note: startDate will be set by admin after consultation approval
           challengeId = await createChallenge({
           parentId: userId,
           childId: childId,
@@ -332,9 +318,8 @@ export default function OnboardingSetupPage() {
           dailyScreenTimeGoal: targetHours,
           weekNumber: 1,
           totalWeeks: clientConfig.challenge.totalWeeks,
-          startDate: startDate.toISOString(),
           challengeDays: clientConfig.challenge.challengeDays,
-          isActive: true,
+          isActive: false, // Challenge is not active until consultation is approved
         });
 
         // Track challenge creation event
@@ -407,12 +392,10 @@ export default function OnboardingSetupPage() {
       case 3:
         return formData.age !== '';
       case 4:
-        return true; // Info step - always can proceed
-      case 5:
         return formData.deviceType !== '';
-      case 6:
+      case 5:
         return formData.targetScreenTime !== '';
-      case 7:
+      case 6:
         return formData.weeklyBudget !== '' && (formData.weeklyBudget !== 'custom' || formData.customBudget !== '');
       default:
         return false;
@@ -437,12 +420,12 @@ export default function OnboardingSetupPage() {
         {/* Progress indicator */}
         <div className="mb-6 mt-20">
           <div className="flex justify-between mb-2">
-            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 7</span>
+            <span className="font-varela text-sm text-[#948DA9]">שלב {step} מתוך 6</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-[#273143] h-2 rounded-full transition-all"
-              style={{ width: `${(step / 7) * 100}%` }}
+              style={{ width: `${(step / 6) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -573,45 +556,6 @@ export default function OnboardingSetupPage() {
           {step === 4 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                רגע לפני שמתחילים
-              </h2>
-              <div className="space-y-4">
-                <div className="bg-[#E6F19A] bg-opacity-30 rounded-[18px] border-2 border-[#E6F19A] p-4">
-                  <p className="font-varela text-base text-[#262135] leading-relaxed mb-4">
-                    במידה ו{parentP.you} {parentP.continue} - האתגר יתחיל מחר בבוקר ואם {parentP.you} עוד לא {parentP.ready} אנחנו מחכים לך ש{parentP.do} את ההכנות עם <strong>{childDisplayName}</strong> ו{parentP.return} לכתובת הזו:
-                  </p>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const onboardingUrl = typeof window !== 'undefined' ? window.location.href : '';
-                        await navigator.clipboard.writeText(onboardingUrl);
-                        setCopied(true);
-                        setTimeout(() => {
-                          setCopied(false);
-                        }, 3000);
-                      } catch (error) {
-                        logger.error('Failed to copy URL:', error);
-                      }
-                    }}
-                    className={`w-full py-3 rounded-[12px] font-varela font-semibold text-sm transition-all ${
-                      copied
-                        ? 'bg-[#E6F19A] text-[#273143]'
-                        : 'bg-[#273143] text-white hover:bg-opacity-90'
-                    }`}
-                  >
-                    {copied ? 'הועתק! ✓' : 'העתק כתובת'}
-                  </button>
-                  <p className="font-varela text-sm text-[#262135] mt-4 pt-3 border-t border-[#E6F19A]">
-                    כרגע ניתן להכניס רק אתגר אחד למערכת, אם אתם רוצים להכניס עוד מישהו מילדיכם אתם מוזמנים ליצור משתמש נוסף.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {step === 5 && (
-            <div>
-              <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
                 איזה מכשיר יש ל{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}?
               </h2>
               <div className="space-y-3">
@@ -634,25 +578,25 @@ export default function OnboardingSetupPage() {
             </div>
           )}
 
-          {step === 6 && (
+          {step === 5 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                כמה זמן מסך ביום, טוב מבחינתך שיהיה ל{formData.name || 'הילד/ה'}?
+                כמה שעות זמן מסך ביום, טוב מבחינתך שיהיו ל{formData.name || 'הילד/ה'}?
               </h2>
               <input
                 type="number"
                 name="targetScreenTime"
                 value={formData.targetScreenTime}
                 onChange={handleChange}
-                placeholder="מספר דקות"
-                step="1"
+                placeholder="מספר שעות"
+                step="0.5"
                 min="0"
                 className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
               />
             </div>
           )}
 
-          {step === 7 && (
+          {step === 6 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
                 תקציב שבועי לדמי כיס
@@ -710,7 +654,7 @@ export default function OnboardingSetupPage() {
                       <div className="space-y-3 font-varela text-sm text-[#282743]">
                         <div className="bg-[#E6F19A] bg-opacity-50 rounded-[12px] p-4 border-2 border-[#E6F19A] shadow-sm">
                           <p className="font-varela text-base text-[#262135] leading-relaxed font-semibold">
-                            אם <strong className="text-[#273143]">{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}</strong> {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד של <strong className="text-[#273143]">{formatNumber(explanation.targetHours)}</strong> {explanation.targetHours === 1 ? 'דקה' : 'דקות'} זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong className="text-[#273143] text-lg">₪{formatNumber(explanation.weeklyBudget)}</strong> תקציב השבועי (₪{formatNumber(explanation.dailyBudget)} ליום).
+                            אם <strong className="text-[#273143]">{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}</strong> {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד של <strong className="text-[#273143]">{formatScreenTimeGoalHours(explanation.targetHours)}</strong> זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong className="text-[#273143] text-lg">₪{formatNumber(explanation.weeklyBudget)}</strong> תקציב שבועי (₪{formatNumber(explanation.dailyBudget)} ליום).
                           </p>
                         </div>
                         <p className="text-[#282743]">
@@ -720,7 +664,7 @@ export default function OnboardingSetupPage() {
                           במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / 6, 2)}</strong>.
                         </p>
                         <p className="mt-2">
-                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-90 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
+                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך בשעה וחצי התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
                         </p>
                         <p className="mt-2 pt-2 border-t border-[#E6F19A]">
                           כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} הגדרת.
@@ -757,7 +701,7 @@ export default function OnboardingSetupPage() {
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isSubmitting ? 'שומר...' : (step === 7 ? 'סיום' : 'המשך')}
+            {isSubmitting ? 'שומר...' : (step === 6 ? 'סיום' : 'המשך')}
             </button>
           </div>
       </div>

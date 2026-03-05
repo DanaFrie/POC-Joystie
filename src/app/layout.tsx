@@ -1,18 +1,18 @@
 import './globals.css'
 import type { Metadata } from 'next'
-import { Lato } from 'next/font/google'
+import { Heebo } from 'next/font/google'
 import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
 
-const lato = Lato({
-  subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-lato',
+const heebo = Heebo({
+  subsets: ['latin', 'hebrew'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-heebo',
 })
 
 export const metadata: Metadata = {
-  title: 'Joystie - Digital Balance for Kids',
+  title: 'Joystie - Digital Balance by Wallet',
   description: 'Creating financial incentives for balanced digital usage',
 }
 
@@ -22,23 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={lato.variable} style={{ overflowX: 'hidden' }}>
-      <body 
-        className="font-lato min-h-screen overflow-y-auto overflow-x-hidden" 
-        style={{ 
-          background: `
-            radial-gradient(at 0% 0%, rgba(45, 50, 60, 0.3) 0%, transparent 50%),
-            radial-gradient(at 100% 0%, rgba(135, 206, 250, 0.4) 0%, transparent 50%),
-            radial-gradient(at 0% 100%, rgba(154, 205, 50, 0.3) 0%, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(64, 224, 208, 0.3) 0%, transparent 50%),
-            linear-gradient(135deg, rgba(250, 245, 240, 0.8) 0%, rgba(240, 248, 255, 0.9) 100%),
-            #FFFCF8
-          `,
-          backgroundSize: 'cover',
-          backgroundAttachment: 'fixed',
-          scrollBehavior: 'smooth'
-        }}
-      >
+    <html lang="he" dir="rtl" className={`layout-root ${heebo.variable}`}>
+      <body className="layout-root font-heebo min-h-screen overflow-y-auto overflow-x-hidden">
         <div className="relative min-h-screen">
           <ScrollToTop />
           <ConditionalNavigation />

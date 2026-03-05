@@ -1,5 +1,5 @@
 // Dashboard Data API
-import { getActiveChallenge } from './challenges';
+import { getActiveChallenge, getLatestChallenge } from './challenges';
 import { getUploadsByChallenge, getPendingApprovals } from './uploads';
 import { getUser } from './users';
 import { getChild } from './children';
@@ -107,6 +107,11 @@ function generateWeek(
   challenge: FirestoreChallenge,
   uploads: FirestoreDailyUpload[]
 ): WeekDay[] {
+  if (!challenge.startDate) {
+    // Challenge not started yet - return empty week
+    return [];
+  }
+  
   const startDate = new Date(challenge.startDate);
   startDate.setHours(0, 0, 0, 0);
   const today = new Date();
@@ -164,15 +169,44 @@ function generateWeek(
       ? challenge.dailyBudget / challenge.dailyScreenTimeGoal 
       : 0;
     
-    const screenTimeUsed = upload?.screenTimeUsed || 0;
+    let screenTimeUsed = upload?.screenTimeUsed || 0;
     const screenTimeGoal = challenge.dailyScreenTimeGoal;
-    const coinsEarned = upload?.coinsEarned || 0;
-    
-    // If challenge hasn't started yet, all days should be 'future'
-    const challengeNotStarted = today < startDate;
-    const status = challengeNotStarted 
-      ? 'future' 
-      : getUploadStatus(upload, isFuture, isRedemptionDay);
+    let coinsEarned = upload?.coinsEarned || 0;
+    let requiresApproval = upload?.requiresApproval || false;
+
+    // Single source: when weeklyUpload has minutesPerDay, use it for this day (no weekUploads mix)
+    const weeklyUpload = challenge.weeklyUpload;
+    const minutesPerDay = weeklyUpload?.processedData?.minutesPerDay;
+    let status: WeekDay['status'];
+    const useWeeklyOnly = minutesPerDay && !isFuture && !isRedemptionDay;
+    if (useWeeklyOnly) {
+      const mins = minutesPerDay[dayName];
+      if (mins != null) {
+        screenTimeUsed = mins / 60;
+        const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60;
+        const success = mins <= goalMinutes;
+        const dailyBudget = challenge.dailyBudget ?? 0;
+        coinsEarned = success ? dailyBudget : Math.max(0, dailyBudget * (1 - (mins - goalMinutes) / goalMinutes));
+        if (weeklyUpload.status === 'approved') {
+          status = success ? 'success' : 'warning';
+          requiresApproval = false;
+        } else if (weeklyUpload.status === 'pending') {
+          status = 'awaiting_approval';
+          requiresApproval = true;
+        } else {
+          status = 'missing';
+          requiresApproval = false;
+        }
+      } else {
+        const challengeNotStarted = today < startDate;
+        status = challengeNotStarted ? 'future' : getUploadStatus(upload, isFuture, isRedemptionDay);
+      }
+    } else {
+      const challengeNotStarted = today < startDate;
+      status = challengeNotStarted 
+        ? 'future' 
+        : getUploadStatus(upload, isFuture, isRedemptionDay);
+    }
     
     week.push({
       dayName: dayAbbr,
@@ -182,11 +216,11 @@ function generateWeek(
       screenTimeUsed,
       screenTimeGoal,
       isRedemptionDay,
-      requiresApproval: upload?.requiresApproval || false,
+      requiresApproval,
       uploadedAt: upload?.uploadedAt,
-      parentAction: upload?.parentAction || null,
+      parentAction: upload?.parentAction ?? null,
       screenshotUrl: upload?.screenshotUrl,
-      screenTimeMinutes: (upload as any)?.screenTimeMinutes || (screenTimeUsed * 60),
+      screenTimeMinutes: (upload as any)?.screenTimeMinutes ?? (screenTimeUsed * 60),
       apps: (upload?.apps || []).filter((app): app is { name: string; timeUsed: number; icon: string } => app.icon !== undefined).map(app => ({ name: app.name, timeUsed: app.timeUsed, icon: app.icon! })),
       approvalType: (upload as any)?.approvalType
     });
@@ -317,6 +351,57 @@ function buildToday(
 }
 
 /**
+ * Merge weekly upload per-day data into the week array (for real-time updates).
+ * When the dashboard has stale week from cache but fresh weeklyUpload from listener, this fills the bars.
+ */
+export function mergeWeekWithWeeklyUpload(
+  week: WeekDay[],
+  weeklyUpload: { processedData?: { minutesPerDay?: Record<string, number> }; status: string },
+  challenge: FirestoreChallenge
+): WeekDay[] {
+  const minutesPerDay = weeklyUpload?.processedData?.minutesPerDay;
+  if (!minutesPerDay || week.length === 0) return week;
+
+  const dailyBudget = challenge.dailyBudget ?? 0;
+  const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60;
+
+  const hebrewToEn: Record<string, string> = {
+    ראשון: 'Sunday', שני: 'Monday', שלישי: 'Tuesday', רביעי: 'Wednesday',
+    חמישי: 'Thursday', שישי: 'Friday', שבת: 'Saturday',
+  };
+
+  return week.map((day) => {
+    if (day.isRedemptionDay) return day;
+    const date = parseDate(day.date);
+    const dayName = getHebrewDayName(date);
+    const mins = minutesPerDay[dayName] ?? minutesPerDay[hebrewToEn[dayName]];
+    if (mins == null) return day;
+
+    const screenTimeUsed = mins / 60;
+    const success = mins <= goalMinutes;
+    const coinsEarned = success
+      ? dailyBudget
+      : Math.max(0, dailyBudget * (1 - (mins - goalMinutes) / goalMinutes));
+    let status: WeekDay['status'] =
+      weeklyUpload.status === 'approved'
+        ? success
+          ? 'success'
+          : 'warning'
+        : weeklyUpload.status === 'pending'
+        ? 'awaiting_approval'
+        : 'missing';
+
+    return {
+      ...day,
+      screenTimeUsed,
+      coinsEarned,
+      status,
+      requiresApproval: weeklyUpload.status === 'pending',
+    };
+  });
+}
+
+/**
  * Get complete dashboard data for a user
  */
 export async function getDashboardData(parentId: string, useCache: boolean = true): Promise<DashboardState | null> {
@@ -340,14 +425,18 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     }
     logger.log('User found:', user.username);
 
-    // Get active challenge
-    const challenge = await getActiveChallenge(parentId);
+    // Get challenge from Firestore only (no cache) so we have latest weeklyUpload after child upload
+    let challenge = await getActiveChallenge(parentId, false);
     if (!challenge) {
-      // No active challenge - return null
-      logger.warn('No active challenge found for user:', parentId);
-      return null;
+      challenge = await getLatestChallenge(parentId);
+      if (!challenge) {
+        logger.warn('No challenge found for user:', parentId);
+        return null;
+      }
+      logger.log('Using latest (pending) challenge:', challenge.id);
+    } else {
+      logger.log('Active challenge found:', challenge.id);
     }
-    logger.log('Active challenge found:', challenge.id);
 
     // Get child data
     const child = await getChild(challenge.childId);
@@ -367,11 +456,13 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     })));
     
     // Check if challenge hasn't started yet
-    const startDate = new Date(challenge.startDate);
-    startDate.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const challengeNotStarted = today < startDate;
+    const challengeNotStarted = !challenge.startDate || (() => {
+      const startDate = new Date(challenge.startDate!);
+      startDate.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today < startDate;
+    })();
     
     // Generate week array (empty if challenge hasn't started)
     const week = challengeNotStarted ? [] : generateWeek(challenge, uploads);
@@ -407,11 +498,13 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       week,
       weeklyTotals,
       challengeNotStarted: challengeNotStarted,
-      challengeStartDate: challenge.startDate
+      challengeStartDate: challenge.startDate,
+      consultationCompleted: challenge.consultationCompleted ?? false,
+      activeChallengeId: challenge.id
     };
     
-    // Cache the result
-    if (useCache) {
+    // Cache the result (skip cache for pending challenges so we get fresh data after admin approval)
+    if (useCache && challenge.isActive) {
       const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
       dataCache.set(cacheKeys.dashboard(parentId), dashboardState, cacheTTL.dashboard);
     }

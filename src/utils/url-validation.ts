@@ -16,6 +16,29 @@ export type UrlValidationResult = {
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
   challengeIsActive?: boolean; // Add flag to indicate if challenge is active
+  weeklyUploadStatus?: 'none' | 'pending' | 'approved' | 'rejected'; // Weekly upload status
+  isRedemptionDay?: boolean; // Whether today is the redemption day
+};
+
+/** Result for unified /child URL: one address for setup and redemption */
+export type ChildUrlMode = 'setup' | 'redemption' | 'wait_redemption' | 'completed' | 'challenge_inactive' | 'error';
+
+export type ValidateChildUrlResult = {
+  mode: ChildUrlMode;
+  isValid: boolean;
+  error?: string;
+  parentId?: string;
+  childId?: string | null;
+  challengeId?: string;
+  challengeNotStarted?: boolean;
+  challengeStartDate?: string;
+  challengeIsActive?: boolean;
+  weeklyUploadStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  isRedemptionDay?: boolean;
+  /** For wait_redemption: days until redemption day */
+  daysRemaining?: number;
+  /** For wait_redemption / redemption: redemption date (day 7) */
+  redemptionDate?: string;
 };
 
 /**
@@ -111,6 +134,18 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
 
     // Check if challenge is active - but allow access if there are days that need upload/approval
     // We'll check this after checking the date range
+
+    // Check if challenge has startDate (set by admin after consultation approval)
+    if (!challenge.startDate) {
+      // Challenge not started yet - consultation not approved
+      return {
+        isValid: true, // Allow access to show message
+        parentId,
+        childId: challenge.childId,
+        challengeId: challenge.id,
+        challengeNotStarted: true,
+      };
+    }
 
     // Check if we're within the challenge week
     const today = new Date();
@@ -309,7 +344,8 @@ export async function validateUploadUrl(token: string): Promise<UrlValidationRes
 }
 
 /**
- * Validate redemption URL - one-time, once redeemed, session is over
+ * Validate redemption URL - available only on redemption day (day 7)
+ * Includes single weekly upload flow
  * Redemption is complete when challenge is no longer active or redemption has been processed
  */
 export async function validateRedemptionUrl(token: string): Promise<UrlValidationResult> {
@@ -357,24 +393,39 @@ export async function validateRedemptionUrl(token: string): Promise<UrlValidatio
     }
 
     // Check if we're at redemption day (day 7) or after
-    const today = new Date();
-    const startDate = new Date(challenge.startDate);
-    const redemptionDate = new Date(startDate);
-    redemptionDate.setDate(startDate.getDate() + challenge.challengeDays); // Day 7 (6 challenge days + 1 redemption day)
-    
-    if (today < redemptionDate) {
+    if (!challenge.startDate) {
       return {
         isValid: false,
-        error: 'עדיין לא הגיע יום הפדיון. המשך להעלות תמונות.',
+        error: 'האתגר עדיין לא התחיל. אנא המתן לאישור הייעוץ.',
         parentId,
         childId: challenge.childId,
         challengeId: challenge.id
       };
     }
-
-    // Check if redemption has been processed (challenge deactivated after redemption)
-    // We can also check if there's a redemption record, but for now we'll use challenge.isActive
-    // In a full implementation, you might have a separate redemption collection
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(challenge.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    const redemptionDate = new Date(startDate);
+    redemptionDate.setDate(startDate.getDate() + challenge.challengeDays); // Day 7 (6 challenge days + redemption day)
+    
+    // Check if today is before redemption day
+    if (today < redemptionDate) {
+      // Calculate days remaining
+      const daysRemaining = Math.ceil((redemptionDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        isValid: false,
+        error: `עדיין לא הגיע יום הפדיון. נותרו ${daysRemaining} ימים.`,
+        parentId,
+        childId: challenge.childId,
+        challengeId: challenge.id,
+        isRedemptionDay: false
+      };
+    }
+    
+    // Check if today is exactly redemption day
+    const isRedemptionDay = today.getTime() === redemptionDate.getTime();
 
     // Verify child matches challenge
     if (childId && challenge.childId !== childId) {
@@ -398,11 +449,21 @@ export async function validateRedemptionUrl(token: string): Promise<UrlValidatio
       };
     }
 
+    // Check weekly upload status
+    const weeklyUploadStatus = challenge.weeklyUpload?.status || 'none';
+    
+    // If upload already exists and approved, allow viewing results
+    // If upload exists and pending, show waiting for approval
+    // If upload exists and rejected, allow re-upload
+    // If no upload, allow uploading (only on redemption day)
+
     return {
       isValid: true,
       parentId,
       childId: challenge.childId,
-      challengeId: challenge.id
+      challengeId: challenge.id,
+      isRedemptionDay,
+      weeklyUploadStatus
     };
   } catch (error) {
     logger.error('Error validating redemption URL:', error);
@@ -428,6 +489,174 @@ export async function isRedemptionCompleted(parentId: string): Promise<boolean> 
   } catch (error) {
     logger.error('Error checking redemption status:', error);
     return false;
+  }
+}
+
+/**
+ * Validate unified /child URL and decide which flow to show:
+ * - setup: child has not completed setup (nickname + moneyGoals)
+ * - redemption: setup done and today is redemption day (or after) → show redemption funnel
+ * - wait_redemption: setup done but not yet redemption day → same link, explain that on day 7 they'll upload + redeem
+ * - completed: challenge not active (redemption already done)
+ * - challenge_inactive: challenge exists but not active (e.g. not started or already finished)
+ * - error: invalid token, no challenge, etc.
+ */
+export async function validateChildUrl(token: string): Promise<ValidateChildUrlResult> {
+  const decoded = decodeParentToken(token);
+
+  if (!decoded) {
+    return { mode: 'error', isValid: false, error: 'כתובת לא תקינה' };
+  }
+  if (decoded.isExpired) {
+    return { mode: 'error', isValid: false, error: 'הקישור פג תוקף. בקש קישור חדש מההורה שלך.' };
+  }
+
+  const { parentId, childId: tokenChildId, challengeId: tokenChallengeId } = decoded;
+
+  try {
+    const challenge = await getActiveChallenge(parentId);
+
+    if (!challenge) {
+      return {
+        mode: 'error',
+        isValid: false,
+        error: 'אין אתגר פעיל. בדוק עם ההורה שלך.',
+        parentId,
+        childId: tokenChildId
+      };
+    }
+
+    const challengeId = challenge.id;
+    const childIdToUse = tokenChildId || challenge.childId;
+
+    if (!challenge.isActive) {
+      return {
+        mode: 'completed',
+        isValid: true,
+        parentId,
+        childId: challenge.childId,
+        challengeId,
+        challengeIsActive: false
+      };
+    }
+
+    // Challenge is active – check if setup is complete
+    let setupComplete = false;
+    if (childIdToUse) {
+      try {
+        const child = await getChild(childIdToUse);
+        if (child && child.nickname && child.moneyGoals && child.moneyGoals.length > 0) {
+          setupComplete = true;
+        }
+      } catch (e) {
+        logger.error('Error checking child for setup:', e);
+      }
+    }
+
+    if (!setupComplete) {
+      // Show setup flow (same token valid for setup)
+      if (tokenChallengeId && tokenChallengeId !== challengeId) {
+        return {
+          mode: 'error',
+          isValid: false,
+          error: 'כתובת לא תקינה עבור אתגר זה',
+          parentId,
+          childId: childIdToUse,
+          challengeId
+        };
+      }
+      return {
+        mode: 'setup',
+        isValid: true,
+        parentId,
+        childId: childIdToUse || undefined,
+        challengeId,
+        challengeNotStarted: !challenge.startDate,
+        challengeStartDate: challenge.startDate,
+        challengeIsActive: true
+      };
+    }
+
+    // Setup complete – decide redemption vs wait_redemption
+    if (!challenge.startDate) {
+      return {
+        mode: 'wait_redemption',
+        isValid: true,
+        parentId,
+        childId: challenge.childId,
+        challengeId,
+        challengeNotStarted: true,
+        challengeIsActive: true
+      };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = new Date(challenge.startDate);
+    startDate.setHours(0, 0, 0, 0);
+    const redemptionDateObj = new Date(startDate);
+    redemptionDateObj.setDate(startDate.getDate() + challenge.challengeDays);
+    const redemptionDateStr = redemptionDateObj.toLocaleDateString('he-IL');
+
+    if (today.getTime() < redemptionDateObj.getTime()) {
+      const daysRemaining = Math.ceil((redemptionDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        mode: 'wait_redemption',
+        isValid: true,
+        parentId,
+        childId: challenge.childId,
+        challengeId,
+        challengeIsActive: true,
+        daysRemaining,
+        redemptionDate: redemptionDateStr
+      };
+    }
+
+    // Today is redemption day or after – show redemption funnel
+    const weeklyUploadStatus = challenge.weeklyUpload?.status || 'none';
+    const isRedemptionDay = today.getTime() === redemptionDateObj.getTime();
+
+    if (childIdToUse && challenge.childId !== childIdToUse) {
+      return {
+        mode: 'error',
+        isValid: false,
+        error: 'כתובת לא תקינה עבור ילד זה',
+        parentId,
+        childId: childIdToUse,
+        challengeId
+      };
+    }
+    if (tokenChallengeId && tokenChallengeId !== challengeId) {
+      return {
+        mode: 'error',
+        isValid: false,
+        error: 'כתובת לא תקינה עבור אתגר זה',
+        parentId,
+        childId: challenge.childId,
+        challengeId
+      };
+    }
+
+    return {
+      mode: 'redemption',
+      isValid: true,
+      parentId,
+      childId: challenge.childId,
+      challengeId,
+      challengeIsActive: true,
+      weeklyUploadStatus,
+      isRedemptionDay,
+      redemptionDate: redemptionDateStr
+    };
+  } catch (error) {
+    logger.error('Error in validateChildUrl:', error);
+    return {
+      mode: 'error',
+      isValid: false,
+      error: 'שגיאה בבדיקת הכתובת. נסה שוב.',
+      parentId,
+      childId: tokenChildId
+    };
   }
 }
 

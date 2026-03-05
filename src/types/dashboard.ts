@@ -22,8 +22,27 @@ export interface Challenge {
   dailyScreenTimeGoal: number;
   weekNumber: number;
   totalWeeks: number;
-  startDate: string;
+  startDate?: string; // Optional - set by admin after consultation approval
   isActive: boolean;
+}
+
+// Weekly upload summary for dashboard display
+export interface WeeklyUploadSummary {
+  status: 'waiting' | 'pending_approval' | 'approved' | 'rejected' | 'not_uploaded';
+  screenshotUrl?: string;
+  uploadedAt?: string;
+  uploadedBy?: 'parent' | 'child';
+  // Child's estimate
+  childEstimate?: {
+    metGoal: boolean;
+    estimatedEarnings: number;
+  };
+  // Actual results
+  actualScreenTimeMinutes?: number;
+  actualEarnings?: number;
+  metGoal?: boolean;
+  // Comparison
+  earningsDifference?: number; // actualEarnings - estimatedEarnings
 }
 
 export interface App {
@@ -76,8 +95,11 @@ export interface DashboardState {
   today: Today;
   week: WeekDay[];
   weeklyTotals: WeeklyTotals;
+  weeklyUpload?: WeeklyUploadSummary; // Weekly upload summary
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
+  consultationCompleted?: boolean; // Whether advisor consultation was approved (set by admin)
+  activeChallengeId?: string; // For "show complete modal once" per challenge
 }
 
 

@@ -15,3 +15,9 @@ export function formatNumber(num: number, decimals: number = 1): string {
   return formatted;
 }
 
+/** Format daily screen time goal (in hours) for display: "שעה" | "חצי שעה" | "X שעות" */
+export function formatScreenTimeGoalHours(hours: number): string {
+  if (hours === 1) return 'שעה';
+  if (hours === 0.5) return 'חצי שעה';
+  return `${formatNumber(hours)} שעות`;
+}

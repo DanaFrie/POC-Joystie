@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { WeekDay, WeeklyTotals } from '@/types/dashboard';
 import { formatNumber } from '@/utils/formatting';
+import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 
 interface WeeklyProgressProps {
   week: WeekDay[];
@@ -11,7 +13,22 @@ interface WeeklyProgressProps {
   totalWeeklyHours?: number;
   weeklyBudget?: number; // תקציב שבועי
   dailyBudget?: number; // תקציב יומי
-  onDayClick?: (day: WeekDay) => void;
+  weeklyUpload?: WeeklyUpload | null; // Weekly upload status
+  onWeeklyUploadClick?: () => void; // Optional click (e.g. scroll to review)
+  challenge?: FirestoreChallenge | null; // For inline approval
+  onApprove?: () => void;
+  onReject?: () => void;
+}
+
+/** Format minutes as hours + minutes (rounded to whole minutes). */
+function formatTime(minutes: number): string {
+  const totalMins = Math.round(minutes);
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  if (hours > 0) {
+    return `${hours} שעות ${mins > 0 ? `ו-${mins} דקות` : ''}`;
+  }
+  return `${mins} דקות`;
 }
 
 const statusConfig = {
@@ -94,13 +111,8 @@ function DayBar({ day, maxHours, onClick }: { day: WeekDay; maxHours: number; on
   );
 }
 
-export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, onDayClick }: WeeklyProgressProps) {
-  // Gender pronouns for child
-  const childPronouns = {
-    boy: { was: 'היה', earned: 'הרוויח' },
-    girl: { was: 'היתה', earned: 'הרוויחה' }
-  };
-  const childP = childPronouns[childGender] || childPronouns.boy;
+export default function WeeklyProgress({ week, totals, childName, childGender = 'boy', totalWeeklyHours, weeklyBudget, dailyBudget, weeklyUpload, onWeeklyUploadClick, challenge, onApprove, onReject }: WeeklyProgressProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Calculate max hours for scaling the bars - add padding to ensure goal line is visible
   const rawMaxHours = Math.max(
@@ -109,49 +121,6 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
   );
   // Add 10% padding or at least 0.5 hours to ensure goal line is visible
   const maxHours = Math.max(rawMaxHours * 1.1, rawMaxHours + 0.5);
-
-  // Calculate approved hours (only days with status 'success' or 'warning')
-  const approvedHours = week.reduce((sum, day) => {
-    if (day.status === 'success' || day.status === 'warning') {
-      return sum + (day.screenTimeUsed || 0);
-    }
-    return sum;
-  }, 0);
-
-  // Calculate approved coins accurately (only days with status 'success' or 'warning')
-  // Calculate from original data (before rounding) to avoid rounding errors
-  let accurateApprovedCoins = 0;
-  if (dailyBudget !== undefined) {
-    const approvedDays = week.filter(day => 
-      (day.status === 'success' || day.status === 'warning') && !day.isRedemptionDay
-    );
-    
-    for (const day of approvedDays) {
-      const screenTimeUsed = day.screenTimeUsed || 0;
-      const screenTimeGoal = day.screenTimeGoal || 0;
-      
-      // Calculate coins earned using the same formula as in upload page
-      // If goal met: full daily budget
-      // If not met: proportional reduction
-      const success = screenTimeUsed <= screenTimeGoal;
-      const coinsEarned = success 
-        ? dailyBudget 
-        : Math.max(0, dailyBudget * (1 - (screenTimeUsed - screenTimeGoal) / screenTimeGoal));
-      
-      accurateApprovedCoins += coinsEarned;
-    }
-  } else {
-    // Fallback: sum rounded daily values if dailyBudget is not available
-    accurateApprovedCoins = week.reduce((sum, day) => {
-      if (day.status === 'success' || day.status === 'warning') {
-        return sum + (day.coinsEarned || 0);
-      }
-      return sum;
-    }, 0);
-  }
-  
-  // Round the final total to 1 decimal place (not individual daily values)
-  const approvedCoins = Math.round(accurateApprovedCoins * 10) / 10;
 
   // Calculate goal line percent - use average of days with goals, excluding Saturday (redemption day)
   const daysWithGoals = week.filter(day => (day.screenTimeGoal || 0) > 0 && !day.isRedemptionDay);
@@ -180,6 +149,36 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
 
   const yAxisLabels = generateYAxisLabels();
 
+  // Inline review computed values (for "תוצאות בפועל" and approve/reject)
+  const showInlineReview = Boolean(weeklyUpload && challenge);
+  const processedData = showInlineReview && weeklyUpload ? weeklyUpload.processedData : null;
+  const goalMinutes = challenge && showInlineReview ? (challenge.dailyScreenTimeGoal || 0) * 60 * (challenge.challengeDays || 6) : 0;
+  const actualMinutes = processedData?.screenTimeMinutes ?? 0;
+  const metGoal = goalMinutes <= 0 || actualMinutes <= goalMinutes;
+  const actualEarnings = processedData && challenge
+    ? (metGoal ? challenge.selectedBudget : Math.max(0, goalMinutes > 0 ? challenge.selectedBudget * (1 - (actualMinutes - goalMinutes) / goalMinutes) : 0))
+    : 0;
+  const actualEarningsRounded = Math.round(actualEarnings * 10) / 10;
+
+  const handleApprove = async () => {
+    if (!onApprove) return;
+    setIsProcessing(true);
+    try {
+      await onApprove();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+  const handleReject = async () => {
+    if (!onReject) return;
+    setIsProcessing(true);
+    try {
+      await onReject();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   // If week is empty, show empty state
   if (week.length === 0) {
     return (
@@ -207,6 +206,47 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
           <h2 className="font-varela font-semibold text-base text-[#282743] mb-3 text-right p-4 pb-3">
             השבוע של {childName}
           </h2>
+        )}
+        
+        {/* Weekly upload status – above the bar chart; hidden when rejected (link stays active for re-upload) */}
+        {weeklyUpload && weeklyUpload.status !== 'rejected' && (
+          <div 
+            className={`mx-4 mb-4 py-3 px-4 rounded-[12px] transition-all ${
+              weeklyUpload.status === 'pending' 
+                ? 'bg-[#BBE9FD] bg-opacity-30 border-2 border-[#BBE9FD]'
+                : 'bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">
+                {weeklyUpload.status === 'pending' ? '⏳' : '✅'}
+              </span>
+              <p className="font-varela font-semibold text-sm text-[#282743]">
+                {weeklyUpload.status === 'pending' 
+                  ? 'העלאה ממתינה לאישור'
+                  : 'ההעלאה השבועית אושרה'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* תוצאות שבועיות – only when not rejected (hidden when rejected so child can re-upload) */}
+        {showInlineReview && processedData && weeklyUpload?.status !== 'rejected' && (
+          <div className="mx-4 mb-4">
+            <div className="bg-[#E6F19A] bg-opacity-30 rounded-[12px] p-3 mb-3">
+              <h4 className="font-varela font-semibold text-sm text-[#273143] mb-2">תוצאות שבועיות:</h4>
+              <div className="space-y-1 text-sm flex flex-col items-start">
+                <div className="flex gap-3 justify-start">
+                  <span className="text-[#282743]">זמן מסך:</span>
+                  <span className="font-varela font-semibold text-[#273143]">{formatTime(processedData.screenTimeMinutes)}</span>
+                </div>
+                <div className="flex gap-3 justify-start">
+                  <span className="text-[#282743]">רווח:</span>
+                  <span className="font-varela font-semibold text-[#273143]">₪{actualEarningsRounded}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
         
         {/* Chart layout - separate container for axes, bars, and labels */}
@@ -264,7 +304,6 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
                         key={index} 
                         day={day} 
                         maxHours={maxHours}
-                        onClick={onDayClick ? () => onDayClick(day) : undefined}
                       />
                     );
                   })}
@@ -295,17 +334,27 @@ export default function WeeklyProgress({ week, totals, childName, childGender = 
           </div>
         </div>
 
-        {/* Separator line - between chart layout and summary layout */}
-        {childName && (
-          <div className="border-t border-[#273143] opacity-20"></div>
-        )}
-
-        {/* Weekly summary layout - separate container */}
-        {childName && (
-          <div className="px-4 pt-4 pb-4">
-            <p className="font-varela font-normal text-[15px] leading-[24px] text-[#282743] text-right">
-              {childName} {childP.was} השבוע {formatNumber(approvedHours)} שעות במסך ו{childP.earned} {formatNumber(approvedCoins)} ש"ח מתוך תקציב שבועי של {weeklyBudget ? formatNumber(weeklyBudget) : formatNumber(totals.coinsMaxPossible)} ש"ח
-            </p>
+        {/* Approve/reject buttons below graph (when upload pending) */}
+        {showInlineReview && weeklyUpload?.status === 'pending' && onApprove && onReject && (
+          <div className="mx-4 mt-4 mb-4">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={isProcessing}
+                className="flex-1 py-3 px-4 rounded-[18px] text-sm font-varela font-semibold border-2 border-red-400 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+              >
+                דחה
+              </button>
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={isProcessing}
+                className="flex-1 py-3 px-4 rounded-[18px] text-sm font-varela font-semibold bg-[#E6F19A] text-[#273143] hover:bg-opacity-80 transition-all disabled:opacity-50"
+              >
+                {isProcessing ? 'מאשר...' : 'אשר'}
+              </button>
+            </div>
           </div>
         )}
       </div>

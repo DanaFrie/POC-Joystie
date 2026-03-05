@@ -4,14 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import WeeklyProgress from '@/components/dashboard/WeeklyProgress';
-import DayInfoModal from '@/components/dashboard/DayInfoModal';
 import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
-import DaysSummaryModal from '@/components/dashboard/DaysSummaryModal';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
+import type { WeeklyUpload } from '@/types/firestore';
 import { isLoggedIn, updateLastActivity, getCurrentUserId } from '@/utils/session';
-import { formatNumber } from '@/utils/formatting';
-import { getDashboardData } from '@/lib/api/dashboard';
-import { generateUploadUrl, generateRedemptionUrl, generateSetupUrl } from '@/utils/url-encoding';
+import { formatNumber, formatScreenTimeGoalHours } from '@/utils/formatting';
+import { getDashboardData, mergeWeekWithWeeklyUpload } from '@/lib/api/dashboard';
+import { generateChildUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
@@ -34,7 +33,8 @@ function transformChallengeWithId(firestoreChallenge: FirestoreChallenge): Dashb
     id: firestoreChallenge.id
   };
 }
-import { batchApproveUpload, getUploadByDate } from '@/lib/api/uploads';
+import { getFirestoreInstance } from '@/lib/firebase';
+import CompleteContent from '@/components/onboarding/CompleteContent';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange, isAuthenticated } from '@/utils/auth';
 import { clientConfig } from '@/config/client.config';
 
@@ -172,19 +172,54 @@ export default function DashboardPage() {
           logger.log('✅ Loaded data from Firestore:', data);
           setDashboardData(data);
           
+          // Consultation status is included in dashboard data (from active or latest pending challenge)
+          const isCompleted = data.consultationCompleted ?? false;
+          setConsultationCompleted(isCompleted);
+          const challengeId = data.activeChallengeId;
+          const seenKey = challengeId ? `joystie_complete_modal_seen_${challengeId}` : null;
+          if (isCompleted && seenKey && typeof window !== 'undefined' && !localStorage.getItem(seenKey)) {
+            setShowCompleteModal(true);
+          }
+          
           // Clean up temporary challengeData from localStorage after successful load
           if (typeof window !== 'undefined') {
             localStorage.removeItem('challengeData');
             logger.log('Cleaned up challengeData from localStorage');
           }
         } else {
-          // No active challenge - redirect to onboarding
-          // This is expected when coming from onboarding setup, so log as info instead of warn
-          logger.log('No active challenge found, redirecting to onboarding (this is expected after challenge setup)');
-          setError('לא נמצא אתגר פעיל. אנא צור אתגר חדש.');
-          setTimeout(() => {
-            router.push('/onboarding');
-          }, 2000);
+          // No active challenge - show dashboard with "create challenge" notification
+          // This is the new flow: after registration, user goes to dashboard and can set up challenge from there
+          logger.log('No active challenge found, showing dashboard with create challenge notification');
+          
+          // Get user data to show personalized dashboard
+          const { getUser } = await import('@/lib/api/users');
+          const user = await getUser(userId);
+          
+          if (user) {
+            // Create minimal dashboard state for users without a challenge
+            const minimalDashboardData: DashboardState = {
+              ...emptyDashboardState,
+              parent: {
+                name: user.firstName || user.username || 'הורה',
+                id: user.id,
+                googleAuth: {},
+                profilePicture: '',
+                gender: user.gender
+              },
+              child: {
+                name: '',
+                id: '',
+                profilePicture: '',
+                gender: 'boy'
+              }
+            };
+            setDashboardData(minimalDashboardData);
+            setNoChallengeExists(true);
+          } else {
+            // User not found - redirect to login
+            logger.warn('User not found, redirecting to login');
+            router.push('/login');
+          }
           return;
         }
       } catch (err: any) {
@@ -207,13 +242,16 @@ export default function DashboardPage() {
     loadDashboardData();
   }, [router]);
   const [isChallengeOpen, setIsChallengeOpen] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<WeekDay | null>(null);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [summaryDays, setSummaryDays] = useState<WeekDay[]>([]);
   const [setupUrl, setSetupUrl] = useState<string>('');
   const [uploadUrl, setUploadUrl] = useState<string>('');
   const [redemptionUrl, setRedemptionUrl] = useState<string>('');
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [consultationCompleted, setConsultationCompleted] = useState<boolean | null>(null);
+  const [noChallengeExists, setNoChallengeExists] = useState(false);
+  
+  // Weekly upload state (approval is inline in WeeklyProgress, no modal)
+  const [weeklyUpload, setWeeklyUpload] = useState<WeeklyUpload | null>(null);
+  const [activeChallengeData, setActiveChallengeData] = useState<FirestoreChallenge | null>(null);
 
   // Generate URLs with tokens
   useEffect(() => {
@@ -223,32 +261,28 @@ export default function DashboardPage() {
         if (userId) {
           const challenge = await getActiveChallenge(userId);
           if (challenge) {
-            const setup = generateSetupUrl(userId, challenge.childId, challenge.id);
-            const upload = generateUploadUrl(userId, challenge.childId, challenge.id);
-            const redemption = generateRedemptionUrl(userId, challenge.childId, challenge.id);
-            setSetupUrl(setup);
-            setUploadUrl(upload);
-            setRedemptionUrl(redemption);
+            const childUrl = generateChildUrl(userId, challenge.childId, challenge.id);
+            setSetupUrl(childUrl);
+            setUploadUrl(childUrl);
+            setRedemptionUrl(childUrl);
           } else {
-            // Fallback
-            const setup = generateSetupUrl(userId);
-            const upload = generateUploadUrl(userId);
-            const redemption = generateRedemptionUrl(userId);
-            setSetupUrl(setup);
-            setUploadUrl(upload);
-            setRedemptionUrl(redemption);
+            const childUrl = generateChildUrl(userId);
+            setSetupUrl(childUrl);
+            setUploadUrl(childUrl);
+            setRedemptionUrl(childUrl);
           }
         } else {
-          setSetupUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/setup` : '');
-          setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
-          setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
+          const base = typeof window !== 'undefined' ? window.location.origin : '';
+          setSetupUrl(`${base}/child`);
+          setUploadUrl(`${base}/child`);
+          setRedemptionUrl(`${base}/child`);
         }
       } catch (error) {
         logger.error('Error generating URLs:', error);
-        // Fallback
-        setSetupUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/setup` : '');
-        setUploadUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/upload` : '');
-        setRedemptionUrl(typeof window !== 'undefined' ? `${window.location.origin}/child/redemption` : '');
+        const base = typeof window !== 'undefined' ? window.location.origin : '';
+        setSetupUrl(`${base}/child`);
+        setUploadUrl(`${base}/child`);
+        setRedemptionUrl(`${base}/child`);
       }
     };
 
@@ -261,138 +295,107 @@ export default function DashboardPage() {
   // Note: Child uploads are now handled via Firestore real-time updates
   // No localStorage listeners needed - data comes from Firestore
 
-  const handleDayClick = (day: WeekDay) => {
-    // Don't open modal for redemption day
-    if (day.isRedemptionDay) {
-      return;
-    }
-    // All other days are clickable - open single day modal
-    setSelectedDay(day);
-    setShowApprovalModal(true);
-  };
-
-  const handleOpenSummary = (days: WeekDay[]) => {
-    setSummaryDays(days);
-    setShowSummaryModal(true);
-  };
-
-  const handleApprove = async (dayDate: string, manualScreenTimeMinutes?: number) => {
-    try {
-      const userId = await getCurrentUserIdAsync();
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
-
-      // Use cached challenge if available (from dashboardData)
-      type ChallengeWithId = DashboardState['challenge'] & { id?: string };
-      let challenge: ChallengeWithId | null = dashboardData?.challenge ? {
-        id: '', // Will be set from getActiveChallenge
-        ...dashboardData.challenge
-      } : null;
-      
-      // Only fetch if we don't have challenge data or need the ID
-      if (!challenge || !challenge.id) {
-        const firestoreChallenge = await getActiveChallenge(userId);
-        if (!firestoreChallenge) {
-          throw new Error('No active challenge found');
-        }
-        challenge = transformChallengeWithId(firestoreChallenge);
-      }
-
-      // Find the upload for this date
-      if (!challenge.id) {
-        throw new Error('Challenge ID is required');
-      }
-      logger.log(`Looking for upload:`, { challengeId: challenge.id, dayDate, userId });
-      const upload = await getUploadByDate(challenge.id, dayDate, userId);
-      if (!upload) {
-        throw new Error('Upload not found for this date');
-      }
-      logger.log(`Found upload before approval:`, {
-        id: upload.id,
-        date: upload.date,
-        challengeId: upload.challengeId,
-        requiresApproval: upload.requiresApproval,
-        parentAction: upload.parentAction,
-        success: upload.success,
-        uploadedAt: upload.uploadedAt,
-        updatedAt: upload.updatedAt
-      });
-
-      // Prepare manual updates if provided
-      let manualUpdates: Partial<Omit<FirestoreDailyUpload, 'id' | 'createdAt'>> | undefined;
-      if (manualScreenTimeMinutes !== undefined) {
-        const manualScreenTimeHours = manualScreenTimeMinutes / 60;
-        const goalMet = manualScreenTimeHours <= challenge.dailyScreenTimeGoal;
-        const coinsMaxPossible = challenge.dailyBudget;
-        const coinsEarned = goalMet 
-          ? coinsMaxPossible 
-          : Math.max(0, coinsMaxPossible * (1 - (manualScreenTimeHours - challenge.dailyScreenTimeGoal) / challenge.dailyScreenTimeGoal));
-        const coinsEarnedRounded = Math.round(coinsEarned * 10) / 10;
-
-        manualUpdates = {
-          screenTimeUsed: manualScreenTimeHours,
-          screenTimeMinutes: manualScreenTimeMinutes,
-          coinsEarned: coinsEarnedRounded,
-          success: goalMet
-        };
-      }
-
-      // Batch approve upload (combines update + approve in single write for better performance)
-      await batchApproveUpload(upload.id, manualUpdates, manualScreenTimeMinutes !== undefined);
-
-      // Invalidate uploads and dashboard cache since we just approved one
-      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
-      if (challenge.id) {
-        dataCache.invalidate(cacheKeys.uploads(challenge.id, userId));
-      }
-      dataCache.invalidate(cacheKeys.dashboard(userId));
-
-      // Reload dashboard data to get updated state from Firestore (skip cache)
-      const updatedData = await getDashboardData(userId, false);
-      if (updatedData) {
-        // Verify the approved day status was updated correctly
-        const approvedDay = updatedData.week.find(day => day.date === dayDate);
-        logger.log('Approved day status after reload:', {
-          date: dayDate,
-          status: approvedDay?.status,
-          requiresApproval: approvedDay?.requiresApproval,
-          parentAction: approvedDay?.parentAction
-        });
-        
-        setDashboardData(updatedData);
-        
-        // If last pending approval was approved, notify child redemption page (for cross-tab communication)
-        if (approvedDay && typeof window !== 'undefined') {
-          // Check if this was the last pending approval
-          const pendingDays = updatedData.week.filter(day => 
-            day.status === 'awaiting_approval' || 
-            (day.requiresApproval && !day.parentAction)
-          );
-          
-          // If no more pending approvals, this was the last one
-          if (pendingDays.length === 0) {
-            window.dispatchEvent(new Event('lastApproved'));
-          }
-        }
-      } else {
-        throw new Error('Failed to reload dashboard data after approval');
-      }
-    } catch (error) {
-      logger.error('Error approving upload:', error);
-      setError('שגיאה באישור ההעלאה. אנא רענן את הדף.');
-      // Reload data to get current state
+  // Load weekly upload data and listen for changes
+  useEffect(() => {
+    if (!dashboardData?.challenge) return;
+    
+    let unsubscribe: (() => void) | null = null;
+    
+    const setupWeeklyUploadListener = async () => {
       try {
         const userId = await getCurrentUserIdAsync();
-        if (userId) {
-          const refreshedData = await getDashboardData(userId);
-          if (refreshedData) {
-            setDashboardData(refreshedData);
-          }
+        if (!userId) return;
+        
+        const challenge = await getActiveChallenge(userId);
+        if (!challenge) return;
+        
+        setActiveChallengeData(challenge);
+        
+        // Set initial weekly upload state
+        if (challenge.weeklyUpload) {
+          setWeeklyUpload(challenge.weeklyUpload);
         }
-      } catch (refreshError) {
-        logger.error('Error refreshing dashboard:', refreshError);
+        
+        // Set up real-time listener
+        const { doc, onSnapshot } = await import('firebase/firestore');
+        const db = await getFirestoreInstance();
+        const challengeRef = doc(db, 'challenges', challenge.id);
+        
+        unsubscribe = onSnapshot(challengeRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data() as FirestoreChallenge;
+            if (data.weeklyUpload) {
+              setWeeklyUpload(data.weeklyUpload);
+              setActiveChallengeData(data);
+            }
+          }
+        });
+      } catch (error) {
+        logger.error('Error setting up weekly upload listener:', error);
       }
+    };
+    
+    setupWeeklyUploadListener();
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [dashboardData?.challenge]);
+
+  // Handle weekly upload approval (called from inline review in WeeklyProgress)
+  const handleApproveWeeklyUpload = async () => {
+    try {
+      const userId = await getCurrentUserIdAsync();
+      if (!userId) throw new Error('User ID not found');
+      
+      const challenge = await getActiveChallenge(userId);
+      if (!challenge) throw new Error('No active challenge found');
+      
+      const { approveWeeklyUpload } = await import('@/lib/api/challenges');
+      await approveWeeklyUpload(challenge.id);
+      
+      // Invalidate cache and reload
+      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+      dataCache.invalidate(cacheKeys.dashboard(userId));
+      
+      const updatedData = await getDashboardData(userId, false);
+      if (updatedData) {
+        setDashboardData(updatedData);
+      }
+      
+      // Notify child redemption page
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('weeklyUploadApproved'));
+      }
+    } catch (error) {
+      logger.error('Error approving weekly upload:', error);
+      setError('שגיאה באישור ההעלאה. אנא רענן את הדף.');
+    }
+  };
+
+  // Handle weekly upload rejection (no reason required)
+  const handleRejectWeeklyUpload = async () => {
+    try {
+      const userId = await getCurrentUserIdAsync();
+      if (!userId) throw new Error('User ID not found');
+      
+      const challenge = await getActiveChallenge(userId);
+      if (!challenge) throw new Error('No active challenge found');
+      
+      const { rejectWeeklyUpload } = await import('@/lib/api/challenges');
+      await rejectWeeklyUpload(challenge.id);
+      
+      // Invalidate cache and reload
+      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+      dataCache.invalidate(cacheKeys.dashboard(userId));
+      
+      const updatedData = await getDashboardData(userId, false);
+      if (updatedData) {
+        setDashboardData(updatedData);
+      }
+    } catch (error) {
+      logger.error('Error rejecting weekly upload:', error);
+      setError('שגיאה בדחיית ההעלאה. אנא רענן את הדף.');
     }
   };
 
@@ -447,8 +450,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Calculate values only when dashboardData is available
-  const totalWeeklyHours = calculateWeeklyScreenTime(dashboardData.week);
+  // When weeklyUpload has per-day data (from real-time listener), merge it into the week so the bar chart fills
+  const displayWeek =
+    dashboardData.week?.length && weeklyUpload?.processedData?.minutesPerDay && activeChallengeData
+      ? mergeWeekWithWeeklyUpload(dashboardData.week, weeklyUpload, activeChallengeData)
+      : dashboardData.week;
+  const totalWeeklyHours = calculateWeeklyScreenTime(displayWeek);
 
   return (
     <div className="min-h-screen bg-transparent pb-24">
@@ -481,81 +488,33 @@ export default function DashboardPage() {
               childGender={dashboardData.child.gender}
               parentName={dashboardData.parent.name}
               parentGender={dashboardData.parent.gender}
-              missingDays={dashboardData.week.filter(day => day.status === 'missing')}
               setupUrl={setupUrl}
               uploadUrl={uploadUrl}
               redemptionUrl={redemptionUrl}
-              week={dashboardData.week}
-              onOpenSummary={handleOpenSummary}
+              weeklyUpload={weeklyUpload}
+              onOpenWeeklyReview={undefined}
               childSetupCompleted={!!(dashboardData.child.nickname && dashboardData.child.moneyGoals && dashboardData.child.moneyGoals.length > 0)}
+              consultationCompleted={consultationCompleted ?? undefined}
+              noChallengeExists={noChallengeExists}
             />
           </div>
 
           {/* 2. סטטוס שבועי */}
           <div className="mb-6">
             <WeeklyProgress
-              week={dashboardData.week}
+              week={displayWeek}
               totals={dashboardData.weeklyTotals}
               childName={dashboardData.child.name}
               childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
               totalWeeklyHours={totalWeeklyHours}
               weeklyBudget={dashboardData.challenge.weeklyBudget}
               dailyBudget={dashboardData.challenge.dailyBudget}
-              onDayClick={handleDayClick}
-        />
-      </div>
-
-          {/* Day Info Modal - Single day */}
-          {showApprovalModal && selectedDay && (
-            <DayInfoModal
-              day={selectedDay}
-              childName={dashboardData.child.name}
-              childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
-              uploadUrl={uploadUrl}
-              dailyBudget={dashboardData.challenge.dailyBudget}
-              dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-              onApprove={handleApprove}
-              onClose={() => {
-                setShowApprovalModal(false);
-                setSelectedDay(null);
-              }}
+              weeklyUpload={weeklyUpload}
+              challenge={activeChallengeData}
+              onApprove={handleApproveWeeklyUpload}
+              onReject={handleRejectWeeklyUpload}
             />
-          )}
-
-            {/* Days Summary Modal - Multiple days */}
-            {showSummaryModal && summaryDays.length > 0 && (
-              <DaysSummaryModal
-                days={summaryDays}
-                childName={dashboardData.child.name}
-                childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
-                uploadUrl={uploadUrl}
-                dailyBudget={dashboardData.challenge.dailyBudget}
-                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-                onApprove={handleApprove}
-                onDaysUpdated={(updatedDays) => {
-                  setSummaryDays(updatedDays);
-                  // Reload dashboard data to get updated state
-                  const reloadData = async () => {
-                    try {
-                      const userId = await getCurrentUserIdAsync();
-                      if (userId) {
-                        const refreshedData = await getDashboardData(userId);
-                        if (refreshedData) {
-                          setDashboardData(refreshedData);
-                        }
-                      }
-                    } catch (error) {
-                      logger.error('Error refreshing dashboard:', error);
-                    }
-                  };
-                  reloadData();
-                }}
-                onClose={() => {
-                  setShowSummaryModal(false);
-                  setSummaryDays([]);
-                }}
-              />
-            )}
+          </div>
 
           {/* 6. תיבה עם פירוט נתוני האתגר - Collapsible */}
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card overflow-hidden mb-0" style={{ boxShadow: 'none' }}>
@@ -598,7 +557,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">יעד זמן מסך יומי</span>
-                        <span className="font-varela font-semibold text-base text-[#273143]">{formatNumber(challenge.dailyScreenTimeGoal * 60)} {challenge.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}</span>
+                        <span className="font-varela font-semibold text-base text-[#273143]">{formatScreenTimeGoalHours(challenge.dailyScreenTimeGoal)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">סה"כ שעות שבועיות</span>
@@ -658,80 +617,32 @@ export default function DashboardPage() {
                 childGender={dashboardData.child.gender}
                 parentName={dashboardData.parent.name}
                 parentGender={dashboardData.parent.gender}
-                missingDays={dashboardData.week.filter(day => day.status === 'missing')}
                 setupUrl={setupUrl}
                 uploadUrl={uploadUrl}
                 redemptionUrl={redemptionUrl}
-                week={dashboardData.week}
-                onOpenSummary={handleOpenSummary}
+                weeklyUpload={weeklyUpload}
+                onOpenWeeklyReview={undefined}
                 childSetupCompleted={!!(dashboardData.child.nickname && dashboardData.child.moneyGoals && dashboardData.child.moneyGoals.length > 0)}
+                consultationCompleted={consultationCompleted ?? undefined}
+                noChallengeExists={noChallengeExists}
               />
             </div>
 
             {/* 2. סטטוס שבועי */}
             <div>
-        <WeeklyProgress
-          week={dashboardData.week}
-          totals={dashboardData.weeklyTotals}
+              <WeeklyProgress
+                week={displayWeek}
+                totals={dashboardData.weeklyTotals}
                 childName={dashboardData.child.name}
                 totalWeeklyHours={totalWeeklyHours}
                 weeklyBudget={dashboardData.challenge.weeklyBudget}
                 dailyBudget={dashboardData.challenge.dailyBudget}
-                onDayClick={handleDayClick}
+                weeklyUpload={weeklyUpload}
+                challenge={activeChallengeData}
+                onApprove={handleApproveWeeklyUpload}
+                onReject={handleRejectWeeklyUpload}
               />
             </div>
-
-            {/* Day Info Modal - Single day */}
-            {showApprovalModal && selectedDay && (
-              <DayInfoModal
-                day={selectedDay}
-                childName={dashboardData.child.name}
-                childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
-                uploadUrl={uploadUrl}
-                dailyBudget={dashboardData.challenge.dailyBudget}
-                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-                onApprove={handleApprove}
-                onClose={() => {
-                  setShowApprovalModal(false);
-                  setSelectedDay(null);
-                }}
-              />
-            )}
-
-            {/* Days Summary Modal - Multiple days */}
-            {showSummaryModal && summaryDays.length > 0 && (
-              <DaysSummaryModal
-                days={summaryDays}
-                childName={dashboardData.child.name}
-                childGender={dashboardData.child.gender as 'boy' | 'girl' | undefined}
-                uploadUrl={uploadUrl}
-                dailyBudget={dashboardData.challenge.dailyBudget}
-                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-                onApprove={handleApprove}
-                onDaysUpdated={(updatedDays) => {
-                  setSummaryDays(updatedDays);
-                  // Reload dashboard data to get updated state
-                  const reloadData = async () => {
-                    try {
-                      const userId = await getCurrentUserIdAsync();
-                      if (userId) {
-                        const refreshedData = await getDashboardData(userId);
-                        if (refreshedData) {
-                          setDashboardData(refreshedData);
-                        }
-                      }
-                    } catch (error) {
-                      logger.error('Error refreshing dashboard:', error);
-                    }
-                  };
-                  reloadData();
-                }}
-                onClose={() => {
-                  setShowSummaryModal(false);
-                  setSummaryDays([]);
-                }}
-              />
-            )}
           </div>
 
           {/* Right column - Summary and Challenge Details */}
@@ -772,7 +683,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">יעד זמן מסך יומי</span>
-                        <span className="font-varela font-semibold text-base text-[#273143]">{formatNumber(challenge.dailyScreenTimeGoal * 60)} {challenge.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}</span>
+                        <span className="font-varela font-semibold text-base text-[#273143]">{formatScreenTimeGoalHours(challenge.dailyScreenTimeGoal)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">סה"כ שעות שבועיות</span>
@@ -800,6 +711,46 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Complete Content Modal - Show once per challenge when consultation completed (mobile + desktop) */}
+      {showCompleteModal && dashboardData && (() => {
+        const challengeId = dashboardData.activeChallengeId;
+        const handleClose = () => {
+          if (challengeId && typeof window !== 'undefined') {
+            localStorage.setItem(`joystie_complete_modal_seen_${challengeId}`, '1');
+          }
+          setShowCompleteModal(false);
+        };
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-[#FFFCF8]"
+            onClick={handleClose}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="bg-white rounded-[18px] max-w-2xl w-full max-h-[90vh] overflow-y-auto relative shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute top-4 left-4 text-[#273143] hover:text-[#262135] text-2xl font-bold z-10"
+                aria-label="סגור"
+              >
+                ×
+              </button>
+              <CompleteContent
+                childName={dashboardData.child.name}
+                childGender={dashboardData.child.gender || 'boy'}
+                childId={dashboardData.child.id}
+                onClose={handleClose}
+                isModal
+              />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

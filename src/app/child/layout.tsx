@@ -45,6 +45,17 @@ export default function ChildLayout({
         .logo-bounce {
           animation: logo-bounce 3s ease-in-out infinite;
         }
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+        .float-animation {
+          animation: float ease-in-out infinite;
+        }
       `}} />
     </>
   );
