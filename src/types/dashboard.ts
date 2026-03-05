@@ -99,6 +99,7 @@ export interface DashboardState {
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
   consultationCompleted?: boolean; // Whether advisor consultation was approved (set by admin)
+  activeChallengeId?: string; // For "show complete modal once" per challenge
 }
 
 

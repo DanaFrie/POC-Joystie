@@ -161,10 +161,10 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
       {consultationCompleted === false && !noChallengeExists && (
         <div className="bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A] rounded-[12px] p-4 mb-3">
           <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
-            בקרוב ניפגש ותוכלו להתחיל
+            בקרוב ניפגש
           </h3>
           <p className="font-varela text-xs text-[#282743] leading-relaxed text-center">
-            לאחר השיחה עם יועץ הקשב שלנו, תוכלו להתחיל באתגר.
+            לאחר השיחה עם המומחה שלנו, תוכלו להתחיל באתגר.
           </p>
         </div>
       )}
@@ -181,8 +181,26 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
       
-      {/* Copy URL button - only when challenge is active with start date */}
-      {showCopyButton && urlToCopy && !challengeNotStarted && (
+      {/* After parent approved weekly upload – invite to create new challenge (link inactive) */}
+      {weeklyUpload?.status === 'approved' && !challengeNotStarted && (
+        <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
+          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
+            מוכנים לאתגר הבא?
+          </h3>
+          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center mb-3">
+            הגדירו אתגר חדש עבור {childName} כדי להמשיך.
+          </p>
+          <a
+            href="/onboarding"
+            className="block w-full py-3 px-4 rounded-[12px] bg-[#273143] text-white font-varela font-semibold text-sm text-center hover:bg-opacity-90 transition-all"
+          >
+            בניית אתגר חדש
+          </a>
+        </div>
+      )}
+
+      {/* Copy URL button – only when challenge is active and upload not yet approved (pending/rejected = link stays active for upload/re-upload) */}
+      {showCopyButton && urlToCopy && !challengeNotStarted && weeklyUpload?.status !== 'approved' && (
         <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
           <button
             onClick={() => urlToCopy && handleCopyUrl(urlToCopy)}
@@ -210,7 +228,7 @@ export default function NotificationsPanel({ challengeNotStarted, challengeStart
         </div>
       )}
 
-      {!hasNotifications && !showCopyButton && (
+      {!hasNotifications && !showCopyButton && weeklyUpload?.status !== 'approved' && (
         <p className="font-varela text-sm text-[#948DA9] text-center py-2">
           אין עדכונים חדשים
         </p>

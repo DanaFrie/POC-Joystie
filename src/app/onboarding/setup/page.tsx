@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { formatNumber } from '@/utils/formatting';
+import { formatNumber, formatScreenTimeGoalHours } from '@/utils/formatting';
 import { getCurrentUserId } from '@/utils/auth';
 import { createChild, updateChild } from '@/lib/api/children';
 import { createChallenge, getActiveChallenge, updateChallenge } from '@/lib/api/challenges';
@@ -103,16 +103,14 @@ export default function OnboardingSetupPage() {
     });
   };
 
-  // Calculate budget explanation
+  // Calculate budget explanation (targetScreenTime is in hours)
   const getBudgetExplanation = () => {
     const selectedBudget = formData.weeklyBudget === 'custom' 
       ? parseFloat(formData.customBudget) 
       : parseFloat(formData.weeklyBudget) || 0;
-    // Convert minutes to hours for calculations
-    const targetMinutes = parseFloat(formData.targetScreenTime) || 0;
-    const targetHours = targetMinutes / 60;
+    const targetHours = parseFloat(formData.targetScreenTime) || 0;
 
-    if (selectedBudget === 0 || targetMinutes === 0) {
+    if (selectedBudget === 0 || targetHours === 0) {
       return null;
     }
 
@@ -128,7 +126,7 @@ export default function OnboardingSetupPage() {
       weeklyBudget,
       dailyBudget,
       hourlyRate,
-      targetHours: targetMinutes, // Return minutes for display
+      targetHours, // שעות לתצוגה
       weeklyHours
     };
   };
@@ -259,9 +257,8 @@ export default function OnboardingSetupPage() {
         const weeklyBudget = selectedBudget; // Weekly budget equals selected budget (calculated, not saved to DB)
         const dailyBudget = selectedBudget / clientConfig.challenge.budgetDivision;
 
-        // Convert minutes to hours for backend (keep calculation structure in hours)
-        const targetMinutes = parseFloat(formData.targetScreenTime) || 0;
-        const targetHours = targetMinutes > 0 ? targetMinutes / 60 : clientConfig.challenge.defaultDailyScreenTimeGoal;
+        // targetScreenTime is in hours (user enters hours); fallback to default if empty/0
+        const targetHours = parseFloat(formData.targetScreenTime) || clientConfig.challenge.defaultDailyScreenTimeGoal;
 
         // Get motivation reason from sessionStorage
         const motivationReason = typeof window !== 'undefined' 
@@ -584,15 +581,15 @@ export default function OnboardingSetupPage() {
           {step === 5 && (
             <div>
               <h2 className="font-varela font-semibold text-xl text-[#262135] mb-4 text-center">
-                כמה זמן מסך ביום, טוב מבחינתך שיהיה ל{formData.name || 'הילד/ה'}?
+                כמה שעות זמן מסך ביום, טוב מבחינתך שיהיו ל{formData.name || 'הילד/ה'}?
               </h2>
               <input
                 type="number"
                 name="targetScreenTime"
                 value={formData.targetScreenTime}
                 onChange={handleChange}
-                placeholder="מספר דקות"
-                step="1"
+                placeholder="מספר שעות"
+                step="0.5"
                 min="0"
                 className="w-full p-4 border-2 border-gray-200 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743]"
               />
@@ -657,7 +654,7 @@ export default function OnboardingSetupPage() {
                       <div className="space-y-3 font-varela text-sm text-[#282743]">
                         <div className="bg-[#E6F19A] bg-opacity-50 rounded-[12px] p-4 border-2 border-[#E6F19A] shadow-sm">
                           <p className="font-varela text-base text-[#262135] leading-relaxed font-semibold">
-                            אם <strong className="text-[#273143]">{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}</strong> {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד של <strong className="text-[#273143]">{formatNumber(explanation.targetHours)}</strong> {explanation.targetHours === 1 ? 'דקה' : 'דקות'} זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong className="text-[#273143] text-lg">₪{formatNumber(explanation.weeklyBudget)}</strong> תקציב השבועי (₪{formatNumber(explanation.dailyBudget)} ליום).
+                            אם <strong className="text-[#273143]">{formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')}</strong> {formData.gender === 'boy' ? 'יעמוד' : 'תעמוד'} ביעד של <strong className="text-[#273143]">{formatScreenTimeGoalHours(explanation.targetHours)}</strong> זמן מסך ביום, {formData.gender === 'boy' ? 'הוא יקבל' : 'היא תקבל'} <strong className="text-[#273143] text-lg">₪{formatNumber(explanation.weeklyBudget)}</strong> תקציב שבועי (₪{formatNumber(explanation.dailyBudget)} ליום).
                           </p>
                         </div>
                         <p className="text-[#282743]">
@@ -667,7 +664,7 @@ export default function OnboardingSetupPage() {
                           במקרה שלנו, אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-10 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(explanation.hourlyRate / 6, 2)}</strong>.
                         </p>
                         <p className="mt-2">
-                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך ב-90 דקות התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
+                          אם {formData.name || (formData.gender === 'boy' ? 'הילד' : 'הילדה')} {formData.gender === 'boy' ? 'יגדיל' : 'תגדיל'} את זמן המסך בשעה וחצי התקציב היומי יקטן ב<strong>₪{formatNumber(1.5 * explanation.hourlyRate)}</strong>.
                         </p>
                         <p className="mt-2 pt-2 border-t border-[#E6F19A]">
                           כל יום הוא יום חדש והזדמנות להרוויח את מלוא התקציב ש{parentP.you} הגדרת.

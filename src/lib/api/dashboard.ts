@@ -499,7 +499,8 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       weeklyTotals,
       challengeNotStarted: challengeNotStarted,
       challengeStartDate: challenge.startDate,
-      consultationCompleted: challenge.consultationCompleted ?? false
+      consultationCompleted: challenge.consultationCompleted ?? false,
+      activeChallengeId: challenge.id
     };
     
     // Cache the result (skip cache for pending challenges so we get fresh data after admin approval)

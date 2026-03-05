@@ -1,8 +1,7 @@
 /**
- * Simulation: משתמש שהגיע ליום הפדיון
+ * Simulation: משתמש שהגיע ליום הפדיון – העלאה עדיין לא בוצעה
  * כל השדות של ההורה והילד מלאים. האתגר התחיל לפני 6 ימים – היום יום הפדיון.
- * מקור נתונים אחד: challenge.weeklyUpload (עם processedData.minutesPerDay). אין weekUploads.
- * לוח הבקרה בונה את הגרף מהעלאה שבועית אחת (חלוקה לימים + אישור).
+ * אין weeklyUpload: הילד/הורה עדיין לא העלו צילום מסך, לוח הבקרה יציג "ממתין להעלאה" וכו'.
  *
  * Usage: node scripts/simulate-redemption-day.mjs
  *
@@ -81,8 +80,8 @@ function generateChildUrl(parentId, childId, challengeId, baseUrl = 'http://loca
 }
 
 async function main() {
-  console.log('🚀 סימולציה: משתמש ביום הפדיון\n');
-  console.log('תרחיש: הורה + ילד + אתגר ביום פדיון. נתוני השבוע ב-weeklyUpload (חלוקה לימים), ללא weekUploads.\n');
+  console.log('🚀 סימולציה: משתמש ביום הפדיון – העלאה עדיין לא בוצעה\n');
+  console.log('תרחיש: הורה + ילד + אתגר ביום פדיון. אין weeklyUpload – הילד עדיין לא העלה צילום מסך.\n');
   console.log('='.repeat(50));
 
   const required = ['apiKey', 'authDomain', 'projectId', 'messagingSenderId', 'appId'];
@@ -142,25 +141,13 @@ async function main() {
     await setDoc(childRef, childData);
     console.log('   ✅ ילד נוצר:', childData.name, 'כינוי:', childData.nickname, 'יעדים:', childData.moneyGoals.join(', '));
 
-    // 3. אתגר – התחיל לפני 6 ימים, היום = יום פדיון, פעיל ומוכן לפדיון
+    // 3. אתגר – התחיל לפני 6 ימים, היום = יום פדיון, פעיל – העלאה עדיין לא בוצעה
     const startDate = getChallengeStartDate();
     const selectedBudget = CLIENT_CONFIG.challenge.defaultSelectedBudget;
     const dailyBudget = selectedBudget / CLIENT_CONFIG.challenge.budgetDivision;
     const dailyScreenTimeGoal = CLIENT_CONFIG.challenge.defaultDailyScreenTimeGoal;
 
-    // דקות ליום (שם יום בעברית -> דקות) – 6 ימי אתגר בלבד, מגרף שבועי אחד
-    const minutesPerDay = {};
-    for (let i = 0; i < CLIENT_CONFIG.challenge.challengeDays; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
-      const dayName = getHebrewDayName(d);
-      // דוגמה: חלק עמדו ביעד (150 דק'), חלק חרגו
-      const goalMins = dailyScreenTimeGoal * 60;
-      minutesPerDay[dayName] = i < 3 ? Math.round(goalMins * 0.9) : Math.round(goalMins * 1.2);
-    }
-    const totalMinutes = Object.values(minutesPerDay).reduce((a, b) => a + b, 0);
-
-    console.log('\n🎯 יוצר אתגר (התחלה:', formatDate(startDate), getHebrewDayName(startDate), ') – היום יום פדיון...');
+    console.log('\n🎯 יוצר אתגר (התחלה:', formatDate(startDate), getHebrewDayName(startDate), ') – היום יום פדיון, ללא העלאה...');
     const challengeRef = doc(collection(db, 'challenges'));
     const challengeId = challengeRef.id;
     const challengeData = {
@@ -177,23 +164,12 @@ async function main() {
       startDate: startDate.toISOString(),
       isActive: true,
       consultationCompleted: true,
-      // מקור יחיד: weeklyUpload (כולל שימוש פר יום). אין weekUploads.
-      weeklyUpload: {
-        screenshotUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==',
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: 'child',
-        status: 'approved',
-        processedData: {
-          screenTimeMinutes: totalMinutes,
-          minutesPerDay,
-        },
-        approvedAt: new Date().toISOString(),
-      },
+      // אין weeklyUpload – העלאה עדיין לא בוצעה
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     await setDoc(challengeRef, challengeData);
-    console.log('   ✅ אתגר נוצר (פעיל, weeklyUpload עם חלוקה לימים, אושר)');
+    console.log('   ✅ אתגר נוצר (פעיל, ללא weeklyUpload – ממתין להעלאה)');
 
     const childUrl = generateChildUrl(userId, childId, challengeId);
     console.log('\n' + '='.repeat(50));

@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { Plus } from 'lucide-react';
 
-const scaleClass = 'relative origin-center transition-all duration-700 z-10 scale-[0.58] sm:scale-[0.6] md:scale-[0.51] lg:scale-[0.6] xl:scale-[0.67]';
+const scaleClass = 'relative origin-center transition-all duration-700 z-10 scale-[0.67] sm:scale-[0.69] md:scale-[0.59] lg:scale-[0.69] xl:scale-[0.77]';
 const phoneClass = 'w-[320px] h-[640px] md:w-[360px] md:h-[720px] lg:w-[380px] lg:h-[760px] bg-white rounded-[3rem] md:rounded-[4.5rem] p-2 md:p-3 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] relative border border-slate-200';
 
 type Props = { step: number };

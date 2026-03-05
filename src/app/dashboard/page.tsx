@@ -8,7 +8,7 @@ import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { WeeklyUpload } from '@/types/firestore';
 import { isLoggedIn, updateLastActivity, getCurrentUserId } from '@/utils/session';
-import { formatNumber } from '@/utils/formatting';
+import { formatNumber, formatScreenTimeGoalHours } from '@/utils/formatting';
 import { getDashboardData, mergeWeekWithWeeklyUpload } from '@/lib/api/dashboard';
 import { generateChildUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
@@ -175,7 +175,9 @@ export default function DashboardPage() {
           // Consultation status is included in dashboard data (from active or latest pending challenge)
           const isCompleted = data.consultationCompleted ?? false;
           setConsultationCompleted(isCompleted);
-          if (isCompleted) {
+          const challengeId = data.activeChallengeId;
+          const seenKey = challengeId ? `joystie_complete_modal_seen_${challengeId}` : null;
+          if (isCompleted && seenKey && typeof window !== 'undefined' && !localStorage.getItem(seenKey)) {
             setShowCompleteModal(true);
           }
           
@@ -371,8 +373,8 @@ export default function DashboardPage() {
     }
   };
 
-  // Handle weekly upload rejection
-  const handleRejectWeeklyUpload = async (reason: string) => {
+  // Handle weekly upload rejection (no reason required)
+  const handleRejectWeeklyUpload = async () => {
     try {
       const userId = await getCurrentUserIdAsync();
       if (!userId) throw new Error('User ID not found');
@@ -381,7 +383,7 @@ export default function DashboardPage() {
       if (!challenge) throw new Error('No active challenge found');
       
       const { rejectWeeklyUpload } = await import('@/lib/api/challenges');
-      await rejectWeeklyUpload(challenge.id, reason);
+      await rejectWeeklyUpload(challenge.id);
       
       // Invalidate cache and reload
       const { dataCache, cacheKeys } = await import('@/utils/data-cache');
@@ -514,26 +516,6 @@ export default function DashboardPage() {
             />
           </div>
 
-           {/* Complete Content Modal - Show if consultation completed */}
-          {showCompleteModal && dashboardData && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-              <div className="bg-white rounded-[18px] max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-                <button
-                  onClick={() => setShowCompleteModal(false)}
-                  className="absolute top-4 left-4 text-[#273143] hover:text-[#262135] text-2xl font-bold z-10"
-                >
-                  ×
-                </button>
-                <CompleteContent
-                  childName={dashboardData.child.name}
-                  childGender={dashboardData.child.gender || 'boy'}
-                  childId={dashboardData.child.id}
-                  onClose={() => setShowCompleteModal(false)}
-                />
-              </div>
-            </div>
-            )}
-
           {/* 6. תיבה עם פירוט נתוני האתגר - Collapsible */}
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card overflow-hidden mb-0" style={{ boxShadow: 'none' }}>
             <button
@@ -575,7 +557,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">יעד זמן מסך יומי</span>
-                        <span className="font-varela font-semibold text-base text-[#273143]">{formatNumber(challenge.dailyScreenTimeGoal * 60)} {challenge.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}</span>
+                        <span className="font-varela font-semibold text-base text-[#273143]">{formatScreenTimeGoalHours(challenge.dailyScreenTimeGoal)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">סה"כ שעות שבועיות</span>
@@ -701,7 +683,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">יעד זמן מסך יומי</span>
-                        <span className="font-varela font-semibold text-base text-[#273143]">{formatNumber(challenge.dailyScreenTimeGoal * 60)} {challenge.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}</span>
+                        <span className="font-varela font-semibold text-base text-[#273143]">{formatScreenTimeGoalHours(challenge.dailyScreenTimeGoal)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 px-3 bg-[#E4E4E4] bg-opacity-30 rounded-[12px]">
                         <span className="font-varela font-normal text-sm text-[#273143]">סה"כ שעות שבועיות</span>
@@ -729,6 +711,46 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Complete Content Modal - Show once per challenge when consultation completed (mobile + desktop) */}
+      {showCompleteModal && dashboardData && (() => {
+        const challengeId = dashboardData.activeChallengeId;
+        const handleClose = () => {
+          if (challengeId && typeof window !== 'undefined') {
+            localStorage.setItem(`joystie_complete_modal_seen_${challengeId}`, '1');
+          }
+          setShowCompleteModal(false);
+        };
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-[#FFFCF8]"
+            onClick={handleClose}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="bg-white rounded-[18px] max-w-2xl w-full max-h-[90vh] overflow-y-auto relative shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={handleClose}
+                className="absolute top-4 left-4 text-[#273143] hover:text-[#262135] text-2xl font-bold z-10"
+                aria-label="סגור"
+              >
+                ×
+              </button>
+              <CompleteContent
+                childName={dashboardData.child.name}
+                childGender={dashboardData.child.gender || 'boy'}
+                childId={dashboardData.child.id}
+                onClose={handleClose}
+                isModal
+              />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

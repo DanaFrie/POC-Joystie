@@ -9,7 +9,7 @@ interface WeeklyUploadReviewModalProps {
   challenge: FirestoreChallenge;
   childName: string;
   onApprove: () => void;
-  onReject: (reason: string) => void;
+  onReject: () => void;
   onClose: () => void;
 }
 
@@ -21,8 +21,6 @@ export default function WeeklyUploadReviewModal({
   onReject,
   onClose
 }: WeeklyUploadReviewModalProps) {
-  const [showRejectInput, setShowRejectInput] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [imageZoomed, setImageZoomed] = useState(false);
 
@@ -66,10 +64,9 @@ export default function WeeklyUploadReviewModal({
   };
 
   const handleReject = async () => {
-    if (!rejectReason.trim()) return;
     setIsProcessing(true);
     try {
-      await onReject(rejectReason);
+      await onReject();
     } finally {
       setIsProcessing(false);
     }
@@ -204,55 +201,22 @@ export default function WeeklyUploadReviewModal({
 
         {/* Actions */}
         {weeklyUpload.status === 'pending' && (
-          <>
-            {!showRejectInput ? (
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowRejectInput(true)}
-                  disabled={isProcessing}
-                  className="flex-1 py-3 px-6 rounded-[18px] text-base font-varela font-semibold border-2 border-red-400 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
-                >
-                  דחה
-                </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={isProcessing}
-                  className="flex-1 py-3 px-6 rounded-[18px] text-base font-varela font-semibold bg-[#E6F19A] text-[#273143] hover:bg-opacity-80 transition-all disabled:opacity-50"
-                >
-                  {isProcessing ? 'מאשר...' : 'אשר'}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  placeholder="סיבת הדחייה..."
-                  className="w-full p-3 rounded-[12px] border border-gray-300 font-varela text-sm resize-none"
-                  rows={3}
-                />
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowRejectInput(false);
-                      setRejectReason('');
-                    }}
-                    disabled={isProcessing}
-                    className="flex-1 py-3 px-6 rounded-[18px] text-base font-varela font-semibold border-2 border-gray-300 text-gray-600 hover:bg-gray-50 transition-all disabled:opacity-50"
-                  >
-                    ביטול
-                  </button>
-                  <button
-                    onClick={handleReject}
-                    disabled={isProcessing || !rejectReason.trim()}
-                    className="flex-1 py-3 px-6 rounded-[18px] text-base font-varela font-semibold bg-red-500 text-white hover:bg-red-600 transition-all disabled:opacity-50 disabled:bg-gray-300"
-                  >
-                    {isProcessing ? 'דוחה...' : 'אשר דחייה'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
+          <div className="flex gap-3">
+            <button
+              onClick={handleReject}
+              disabled={isProcessing}
+              className="flex-1 py-3 px-6 rounded-[18px] text-base font-varela font-semibold border-2 border-red-400 text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+            >
+              דחה
+            </button>
+            <button
+              onClick={handleApprove}
+              disabled={isProcessing}
+              className="flex-1 py-3 px-6 rounded-[18px] text-base font-varela font-semibold bg-[#E6F19A] text-[#273143] hover:bg-opacity-80 transition-all disabled:opacity-50"
+            >
+              {isProcessing ? 'מאשר...' : 'אשר'}
+            </button>
+          </div>
         )}
 
         {/* Status badge for approved/rejected */}
@@ -270,11 +234,6 @@ export default function WeeklyUploadReviewModal({
         {weeklyUpload.status === 'rejected' && (
           <div className="bg-red-100 rounded-[12px] p-4 text-center">
             <span className="font-varela font-semibold text-red-600">❌ נדחה</span>
-            {weeklyUpload.rejectionReason && (
-              <p className="font-varela text-sm text-red-500 mt-1">
-                {weeklyUpload.rejectionReason}
-              </p>
-            )}
           </div>
         )}
       </div>

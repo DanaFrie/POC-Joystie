@@ -3,7 +3,7 @@
 import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import { formatNumber } from '@/utils/formatting';
+import { formatNumber, formatScreenTimeGoalHours } from '@/utils/formatting';
 import { validateSetupUrl } from '@/utils/url-validation';
 import type { ValidateChildUrlResult } from '@/utils/url-validation';
 import { generateChildUrl } from '@/utils/url-encoding';
@@ -539,7 +539,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
                   <p className="font-heebo text-sm text-[#948DA9] mb-1">יעד זמן מסך יומי:</p>
                   <p className="font-heebo font-bold text-2xl text-[#262135]">
-                    {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'}
+                    {formatScreenTimeGoalHours(dealData.dailyScreenTimeGoal)}
                   </p>
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4">
@@ -556,7 +556,7 @@ export function ChildSetupContent({ validationOverride }: { validationOverride?:
                 </div>
                 <div className="bg-white bg-opacity-80 rounded-[12px] p-4 mb-3">
                   <p className="font-heebo text-xs text-[#282743] text-center leading-relaxed">
-                    אם {childName ? (childGender === 'girl' ? 'תעמדי' : 'תעמוד') : 'תעמוד'} ביעד של {formatNumber(dealData.dailyScreenTimeGoal * 60)} {dealData.dailyScreenTimeGoal * 60 === 1 ? 'דקה' : 'דקות'} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
+                    אם {childName ? (childGender === 'girl' ? 'תעמדי' : 'תעמוד') : 'תעמוד'} ביעד של {formatScreenTimeGoalHours(dealData.dailyScreenTimeGoal)} ביום, {childName ? (childGender === 'girl' ? 'תקבלי' : 'תקבל') : 'תקבל'} את כל התקציב היומי! אם {childName ? (childGender === 'girl' ? 'תעברי' : 'תעבור') : 'תעבור'} את היעד, התקציב יקטן בהתאם.
                   </p>
                 </div>
                 <div className="bg-[#E6F19A] bg-opacity-60 rounded-[12px] p-3 border-2 border-[#E6F19A]">

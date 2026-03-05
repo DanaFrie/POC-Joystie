@@ -459,7 +459,7 @@ export function ChildRedemptionContent({
         </div>
 
         <div className="text-center mb-6 mt-16">
-          <h1 className="font-heebo font-semibold text-2xl text-[#262135]">יום הפדיון! 🎉</h1>
+          <h1 className="font-heebo font-semibold text-2xl text-[#262135]">יום הפדיון!</h1>
           <p className="font-heebo text-sm text-[#948DA9] mt-1">{redemptionDate && `תאריך: ${redemptionDate}`}</p>
         </div>
 
@@ -680,7 +680,11 @@ export function ChildRedemptionContent({
                 <div className="mt-4 bg-white bg-opacity-60 rounded-[12px] p-3">
                   <p className="font-heebo text-sm text-[#282743]">
                     {childP.thought} ש{childP.earn} ₪{existingUpload.childEstimate.estimatedEarnings} -{' '}
-                    {actualEarnings >= existingUpload.childEstimate.estimatedEarnings ? 'הצלחת!' : 'קרוב!'}
+                    {actualEarnings > existingUpload.childEstimate.estimatedEarnings
+                      ? 'הצלחת יותר ממה שחשבת!'
+                      : actualEarnings === existingUpload.childEstimate.estimatedEarnings
+                        ? 'הצלחת!'
+                        : 'קרוב!'}
                   </p>
                 </div>
               )}
@@ -719,9 +723,6 @@ export function ChildRedemptionContent({
           </>
         )}
 
-        <div className="mt-6 bg-[#FFFCF8] rounded-[18px] shadow-card p-4 text-center">
-          <p className="font-heebo text-xs text-[#948DA9]">תאריך הפדיון: {redemptionDate || 'טוען...'}</p>
-        </div>
       </div>
     </div>
   );

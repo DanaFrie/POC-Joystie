@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { createSession, isLoggedIn } from '@/utils/session';
+import { createSession, isLoggedIn, clearSession } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
 import { getUser } from '@/lib/api/users';
 import { getLatestChallenge } from '@/lib/api/challenges';
@@ -39,13 +39,26 @@ export default function LoginPage() {
           // User is authenticated with Firebase Auth, check redirect
           await checkUserAndRedirect();
         } else {
-          // Has localStorage session but not Firebase Auth - clear session and stay on login
+          // Has localStorage session but not Firebase Auth (e.g. token 400 / stale refresh token) - clear and stay on login
           logger.warn('localStorage session exists but Firebase Auth not authenticated');
-          // Don't redirect - let user log in again
+          clearSession();
+          try {
+            const { signOutUser } = await import('@/utils/auth');
+            await signOutUser();
+          } catch (_) {
+            // Ignore sign-out errors
+          }
         }
       } catch (error) {
+        // Token refresh 400 or other auth errors - clear stale session and Firebase state so user can log in again
         logger.error('Error checking auth:', error);
-        // On error, stay on login page
+        clearSession();
+        try {
+          const { signOutUser } = await import('@/utils/auth');
+          await signOutUser();
+        } catch (_) {
+          // Ignore sign-out errors (e.g. no user)
+        }
       }
     };
     

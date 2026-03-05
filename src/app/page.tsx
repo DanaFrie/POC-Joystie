@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -96,7 +97,7 @@ export default function Home() {
     <div className="landing-page overflow-x-hidden text-right" style={{ fontFamily: "'Varela Round', sans-serif" }}>
 
       {/* Navigation – גובה מוקטן ~10%, לינקים במרכז */}
-      <nav className="fixed w-full z-50 py-4 bg-white/80 backdrop-blur-sm overflow-visible" dir="rtl">
+      <nav className="fixed w-full z-50 py-2 md:py-3 bg-white/80 backdrop-blur-sm overflow-visible" dir="rtl">
         <div className="max-w-7xl mx-auto px-4 relative w-full">
           <div className="flex items-center">
             {/* צד ימין (RTL): לוגו תמיד בימין */}
@@ -105,9 +106,9 @@ export default function Home() {
                 <Image
                   src="/logo-joystie.png"
                   alt="Joystie"
-                  width={120}
-                  height={40}
-                  className="h-8 sm:h-6 w-auto"
+                  width={81}
+                  height={27}
+                  className="h-[21.6px] sm:h-[18px] w-auto"
                   style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
                   priority
                 />
@@ -115,7 +116,7 @@ export default function Home() {
             </div>
 
             {/* מרכז: לינקים (דסקטופ) */}
-            <div className="hidden md:flex flex-1 justify-center gap-8 font-bold text-joystie-dark shrink-0">
+            <div className="hidden md:flex flex-1 justify-center gap-8 font-bold text-joystie-dark shrink-0 md:text-[1.1rem]">
               <a href="#how-it-works" className="hover:text-joystie-blue transition-colors font-brand">איך זה עובד?</a>
               <a href="#questions" className="hover:text-joystie-blue transition-colors font-brand">שאלות חשובות</a>
               <a href="#behind-idea" className="hover:text-joystie-blue transition-colors font-brand">מאחורי הרעיון</a>
@@ -150,31 +151,31 @@ export default function Home() {
 
       {/* Hero Section - מובייל: טקסט למעלה, כותרת, ארנק (תופס את השאר). דסקטופ: כמו קודם */}
       <section 
-        className="min-h-0 md:min-h-screen flex flex-col md:flex-row md:items-center pt-20 pb-4 md:pt-24 md:pb-12 lg:pb-20 overflow-hidden relative" 
+        className="min-h-0 md:min-h-screen flex flex-col md:flex-row md:items-center pt-16 pb-4 md:pt-20 md:pb-12 lg:pb-20 overflow-visible relative" 
         style={{ backgroundImage: 'url(/background.png)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 w-full flex flex-col md:grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-6 lg:gap-8 md:items-center relative z-10 flex-1 min-h-0">
           {/* עמודה שמאל: טקסט + כותרת. מובייל: טקסט למעלה (order-1) ואז כותרת (order-2) */}
-          <div className="flex flex-col gap-2 lg:gap-8 lg:justify-center lg:items-center order-1 md:order-1 shrink-0 self-center">
-            <div className="reveal active text-center order-1 lg:order-2">
-              <p className="text-[1.16rem] sm:text-[1.46rem] md:text-[1.63rem] lg:text-[1.95rem] text-joystie-dark/85 leading-relaxed mb-2 md:mb-6 lg:mb-10 max-w-xl font-medium mx-auto">
-                <span className="block text-[1.62rem] sm:text-inherit font-black text-joystie-dark drop-shadow-sm tracking-tight">המהפכה מתחילה!</span>
+          <div className="flex flex-col gap-2 lg:gap-8 lg:justify-center lg:items-center order-1 md:order-1 shrink-0 self-center min-h-0">
+            <div className="reveal active text-center order-1 lg:order-2 py-1">
+              <p className="text-[1.1rem] sm:text-[1.46rem] md:text-[1.63rem] lg:text-[1.95rem] text-joystie-dark/85 leading-relaxed mb-2 md:mb-6 lg:mb-10 max-w-xl font-medium mx-auto">
+                <span className="block text-[1.5rem] sm:text-inherit font-black text-joystie-dark drop-shadow-sm tracking-tight">המהפכה מתחילה!</span>
                 הארנק שמחבר דמי כיס לזמן מסך!<br />הילדים שלכם לומדים לבחור, לחסוך ולהוביל.
               </p>
               {/* כפתורים בדסקטופ – במובייל מופיעים מתחת לארנק */}
               <div className="hidden md:flex flex-col items-center gap-2 md:gap-5" id="register">
-                <button 
-                  onClick={handleSignup}
-                  className="btn-main bg-joystie-dark text-white px-14 py-6 text-2xl rounded-full font-black shadow-2xl"
+                <Link
+                  href="/signup"
+                  className="btn-main bg-joystie-dark text-white px-14 py-6 text-2xl rounded-full font-black shadow-2xl text-center"
                 >
                   התחילו ניסיון
-                </button>
-                <button 
-                  onClick={handleLogin}
-                  className="btn-main bg-transparent text-joystie-dark border-2 border-joystie-dark px-14 py-6 text-2xl rounded-full font-black shadow-lg hover:bg-joystie-dark/5 transition-all"
+                </Link>
+                <Link
+                  href="/login"
+                  className="btn-main bg-transparent text-joystie-dark border-2 border-joystie-dark px-14 py-6 text-2xl rounded-full font-black shadow-lg hover:bg-joystie-dark/5 transition-all text-center"
                 >
                   יש לי משתמש
-                </button>
+                </Link>
               </div>
             </div>
             <h1 ref={addRevealRef(0)} className="reveal active text-center order-2 lg:order-1 text-[2.25rem] sm:text-[3.25rem] md:text-[4.25rem] lg:text-[5.2rem] font-black text-joystie-dark mb-0 tracking-tight font-brand">
@@ -190,19 +191,19 @@ export default function Home() {
             <HeroWalletCard />
           </div>
           {/* מובייל בלבד: כפתורים בשורה אחת, תמיד ממורכזים */}
-          <div className="flex md:hidden flex-row items-stretch gap-2 sm:gap-3 shrink-0 order-3 pt-0 pb-4 -mt-4 mx-auto w-fit max-w-[min(100%,28rem)]" id="register-mobile">
-            <button 
-              onClick={handleSignup}
-              className="btn-main flex-1 min-w-0 bg-joystie-dark text-white px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-2xl whitespace-nowrap"
+          <div className="flex md:hidden flex-row items-stretch gap-2 sm:gap-3 shrink-0 order-3 pt-0 pb-4 mt-6 mx-auto w-fit max-w-[min(100%,28rem)]" id="register-mobile">
+            <Link
+              href="/signup"
+              className="btn-main flex-1 min-w-0 bg-joystie-dark text-white px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-2xl whitespace-nowrap text-center"
             >
               התחילו ניסיון
-            </button>
-            <button 
-              onClick={handleLogin}
-              className="btn-main flex-1 min-w-0 bg-transparent text-joystie-dark border-2 border-joystie-dark px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-lg hover:bg-joystie-dark/5 transition-all whitespace-nowrap"
+            </Link>
+            <Link
+              href="/login"
+              className="btn-main flex-1 min-w-0 bg-transparent text-joystie-dark border-2 border-joystie-dark px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-lg hover:bg-joystie-dark/5 transition-all whitespace-nowrap text-center"
             >
               יש לי משתמש
-            </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -227,7 +228,7 @@ export default function Home() {
             <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[260px]">
               <div className="w-12 h-12 md:w-[4.25rem] md:h-[4.25rem] bg-joystie-lime text-joystie-dark rounded-full flex items-center justify-center text-xl md:text-[1.4rem] font-black mb-4 md:mb-6 shadow-xl group-hover:scale-110 transition-transform">2</div>
               <h3 className="text-lg md:text-2xl font-black mb-2 md:mb-3 font-brand">הילד מקבל החלטות</h3>
-              <p className="text-gray-300 text-xs md:text-base leading-relaxed">כל שעת מסך שווה כסף שניתן לקנות ב-Joystie, בסוף השבוע הילד פודה את הכסף שהצליח לחסוך.</p>
+              <p className="text-gray-300 text-xs md:text-base leading-relaxed">כל שעת מסך שווה כסף שניתן לממש ב-Joystie. בסוף השבוע הילד פודה את הכסף שהצליח לחסוך ולומד שיש מחיר לזמן.</p>
             </div>
 
             <div className="flex-1 flex flex-col items-center text-center relative z-10 group max-w-[260px]">

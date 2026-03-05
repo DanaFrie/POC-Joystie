@@ -16,7 +16,7 @@ function OnboardingCompleteContent() {
           </h1>
           
           <p className="font-varela text-base text-[#282743] leading-relaxed mb-6 text-center">
-            אנחנו מזמינים אתכם לשיחה קצרה עם יועץ הקשב שלנו
+            אנחנו מזמינים אתכם לשיחה קצרה עם המומחה שלנו לשימוש מטיב במסך
           </p>
 
           {/* Google Calendar iframe */}
@@ -24,7 +24,7 @@ function OnboardingCompleteContent() {
             <iframe
               src="https://calendar.app.google/uZAZZk61eKmZtvmu8"
               style={{ width: '100%', height: '600px', border: 'none' }}
-              title="תאום פגישה עם יועץ קשב"
+              title="תאום פגישה עם המומחה שלנו לשימוש מטיב במסך"
               allow="calendar"
             />
           </div>

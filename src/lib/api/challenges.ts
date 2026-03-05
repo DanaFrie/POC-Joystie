@@ -416,12 +416,11 @@ export async function rejectWeeklyUpload(
       }
       
       const now = new Date().toISOString();
-      
       const updatedWeeklyUpload: WeeklyUpload = {
         ...challenge.weeklyUpload,
         status: 'rejected',
         rejectedAt: now,
-        rejectionReason: reason,
+        ...(reason != null && reason.trim() !== '' ? { rejectionReason: reason } : {}),
       };
       
       await updateChallenge(challengeId, {

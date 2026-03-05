@@ -115,9 +115,7 @@ export default function SignupPage() {
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'הסיסמאות לא תואמות';
     }
-    if (formData.kidsAges.length === 0 || formData.kidsAges.every(age => !age.trim())) {
-      newErrors.kidsAges = 'אנא הכנס את גילאי הילדים';
-    }
+    // גילאי הילדים – שדה אופציונלי
     if (!formData.termsAccepted) {
       newErrors.termsAccepted = 'אנא אשר את תנאי השימוש';
     }
@@ -421,7 +419,7 @@ export default function SignupPage() {
           {/* Kids Ages */}
           <div className="mb-6">
             <label className="block font-varela font-semibold text-lg text-[#262135] mb-3">
-              בני כמה הילדים שלך? <span className="text-red-500">*</span>
+              בני כמה הילדים שלך?
             </label>
             <div className="space-y-3">
               {(formData.kidsAges.length === 0 ? [''] : formData.kidsAges).map((age, index) => (

@@ -16,9 +16,11 @@ interface CompleteContentProps {
   childGender: 'boy' | 'girl';
   childId?: string;
   onClose?: () => void;
+  /** When true (e.g. in dashboard modal), hide the "סגור" button; close only via X or backdrop */
+  isModal?: boolean;
 }
 
-export default function CompleteContent({ childName, childGender, childId, onClose }: CompleteContentProps) {
+export default function CompleteContent({ childName, childGender, childId, onClose, isModal }: CompleteContentProps) {
   const [shareLink, setShareLink] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [editableMessage, setEditableMessage] = useState<string>('');
@@ -181,26 +183,15 @@ export default function CompleteContent({ childName, childGender, childId, onClo
           </p>
           
           <p className="font-varela text-base text-[#282743] leading-relaxed">
-             צאו מתפקיד השוטר- תנו אמון בילד ותקבלו בחזרה את השקט.
+            לאחר מכן, {parentP.you} {parentP.youVerb} את {displayName} בקישור אליו {pronouns.he === 'היא' ? 'תכנס' : 'יכנס'} מדי יום כדי לעדכן את הסטטוס {pronouns.his}.
           </p>
           
+          <p className="font-varela text-base text-[#262135] leading-relaxed mt-4">
+            <strong>חשוב לדעת:</strong>
+          </p>
           <p className="font-varela text-base text-[#282743] leading-relaxed">
-            לאחר מכן, {parentP.you} {parentP.youVerb} את {displayName} בקישור אליו {pronouns.he} {pronouns.he === 'היא' ? 'תכנס' : 'יכנס'} מדי יום כדי לעדכן את הסטטוס {pronouns.his}.
+            בסוף השבוע, אם {displayName} {pronouns.he === 'היא' ? 'עמדה' : 'עמד'} באתגר {pronouns.he === 'היא' ? 'והרוויחה' : 'והרוויח'} כסף, {pronouns.he === 'היא' ? 'היא תקבל' : 'הוא יקבל'} כמה חלופות לכסף כמו חסכון, פעילות ותרומה.
           </p>
-          
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-[12px] p-4 mt-4">
-            <p className="font-varela text-sm text-[#262135] leading-relaxed">
-              <strong>חשוב לדעת:</strong>
-            </p>
-            <ul className="font-varela text-sm text-[#262135] leading-relaxed mt-2 space-y-2 list-disc list-inside">
-              <li>
-                {parentP.youAre} ה{parentP.user} ה{parentP.only} ש{parentP.registered} למערכת, {displayName} רק מעלה את צילום זמן המסך {pronouns.his} ולנו אין גישה {pronouns.to}.
-              </li>
-              <li>
-                בסוף השבוע, אם {displayName} {pronouns.he === 'היא' ? 'עמדה' : 'עמד'} באתגר {pronouns.he === 'היא' ? 'והרוויחה' : 'והרוויח'} כסף, {pronouns.he === 'היא' ? 'היא תקבל' : 'הוא יקבל'} כמה חלופות לכסף כמו חסכון, פעילות ומתנה.
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
 
@@ -289,8 +280,8 @@ export default function CompleteContent({ childName, childGender, childId, onClo
         </div>
       </div>
 
-      {/* Close button if in modal */}
-      {onClose && (
+      {/* Close button only when not in modal (e.g. onboarding/complete page) */}
+      {onClose && !isModal && (
         <button
           onClick={onClose}
           className="w-full py-4 px-6 rounded-[18px] bg-[#273143] text-white text-lg font-varela font-semibold hover:bg-opacity-90 transition-all"
