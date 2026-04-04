@@ -8,6 +8,7 @@ import { createUser } from '@/lib/api/users';
 import { getErrorMessage } from '@/utils/errors';
 import { createSession } from '@/utils/session';
 import { createContextLogger } from '@/utils/logger';
+import { trackMetaCompleteRegistration } from '@/utils/meta-pixel';
 
 const logger = createContextLogger('Signup');
 
@@ -233,6 +234,8 @@ export default function SignupPage() {
         user_id: user.uid,
         email: formData.email.trim().toLowerCase(),
       });
+
+      trackMetaCompleteRegistration({ content_name: 'signup' });
 
       // Clear saved form data after successful submission
       if (typeof window !== 'undefined') {
