@@ -227,15 +227,21 @@ export default function SignupPage() {
       // Create session with Firebase Auth UID
       createSession(user.uid);
 
-      // Track signup event
-      const { logEvent, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
-      await setUserId(user.uid);
-      await logEvent(AnalyticsEvents.SIGNUP, {
-        user_id: user.uid,
-        email: formData.email.trim().toLowerCase(),
-      });
-
+      // Track Meta conversion immediately after successful account creation.
+      // Keep this independent from analytics so ad conversion isn't lost.
       trackMetaCompleteRegistration({ content_name: 'signup' });
+
+      // Track signup event (non-blocking for user flow)
+      try {
+        const { logEvent, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
+        await setUserId(user.uid);
+        await logEvent(AnalyticsEvents.SIGNUP, {
+          user_id: user.uid,
+          email: formData.email.trim().toLowerCase(),
+        });
+      } catch (analyticsError) {
+        logger.warn('Signup analytics failed:', analyticsError);
+      }
 
       // Clear saved form data after successful submission
       if (typeof window !== 'undefined') {
