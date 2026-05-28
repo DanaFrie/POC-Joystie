@@ -1,0 +1,85 @@
+---
+alwaysApply: true
+---
+
+# Joystie v0.3 — agent settings
+
+## Project
+
+- **Repo:** `POC-Joystie` (Next.js 13 App Router, Firebase, Cloud Run screenshot OCR)
+- **Work in repo root** — not the user home directory
+- **Integration branch:** `intgrV0.3`
+- **Language:** Hebrew for user-facing copy and auth errors
+
+## Git branches (do not mix scopes)
+
+| Branch | Scope |
+|--------|--------|
+| `feat/v03-bonding` | Google/Apple OAuth, WhatsApp `wa.me` share, **email** remind-later, `bonding_invites` |
+| `feat/v03-payment-gate` | **CardCom** only (not PayPlus) — trial checkout + webhook |
+| `feat/v03-design-tokens` | S0 tokens (stash: `s0-design-tokens-wip`) |
+| `feat/v03-ball-game` | RTDB ball game rooms + callables (`docs/BACKEND-GAME.md`) |
+
+`functions/src/index.ts` **differs per branch** — bonding exports vs CardCom exports. Merge both only on `intgrV0.3`. See `docs/V03-BACKEND-BRANCHES.md`.
+
+**Commits / push:** only when the user asks. Before commit/push: `npm run build` and `cd functions && npm run build`.
+
+## Firebase
+
+| Alias | Project |
+|-------|---------|
+| `intgr` | `joystie-poc` |
+| `prod` | `joystie-poc-prod` |
+
+## Bonding — product rules
+
+### Share modes
+
+| `shareMode` | When | Reminder |
+|-------------|------|----------|
+| `together_now` | Parent and child **together** | None — tap WhatsApp (`wa.me`) |
+| `remind_later` | **Not together** | **Email to parent only** at `remindAt` |
+
+- **Do not** encourage sending the child link remotely when apart.
+- Reminder email nudges the **parent**; CTA → `/bonding/share?inviteId=…` (WhatsApp when together).
+- **No push/FCM/SMS** for bonding reminders unless the user explicitly requests it.
+
+### WhatsApp
+
+- **No** WhatsApp Business API — only `https://wa.me/?text=…`
+- Templates: `src/constants/whatsapp.ts` ↔ `functions/src/bonding/whatsapp.ts` (keep in sync)
+
+### Backend (`feat/v03-bonding`)
+
+- Callables: `recordBondingInvite`, `markBondingWhatsAppShared`, `markBondingChildLinkOpened`
+- Scheduler: `scheduledBondingShareReminders` (every 30 min, `Asia/Jerusalem`)
+- Collection: `bonding_invites` — index `status` + `shareReminderAt`
+- Docs: `docs/BACKEND-BONDING.md`
+
+```ts
+// remind later
+recordBondingInvite({ shareMode: 'remind_later', remindAt: '<ISO future>' });
+```
+
+## Payment (`feat/v03-payment-gate`)
+
+- **CardCom** LowProfile v11 — webhook on Cloud Function URL, not Next.js
+- Docs: `docs/CARDCOM-SETUP.md`
+
+## UI / design
+
+- Figma MCP often unavailable (View seat) — wait for user links before pixel-perfect UI
+- **S4 restyle last:** landing, challenge setup, dashboard, screenshot upload, weekly review
+- **Keep** Cloud Run screenshot flow — restyle later, do not remove
+
+## Secrets (bonding deploy, intgr)
+
+`SERVICE_FUNCTION_BASE_URL`, `SERVICE_FUNCTION_EMAIL_USER`, `SERVICE_FUNCTION_EMAIL_PASSWORD`, `SERVICE_FUNCTION_EMAIL_FROM`, `CLOUD_RUN_SERVICE_URL`
+
+## Non-goals (unless user asks)
+
+- FCM / push / SMS for bonding
+- WhatsApp Business API
+- PayPlus
+- Merging bonding + CardCom exports in one feature branch’s `index.ts`
+- Proactive commits or unsolicited long docs

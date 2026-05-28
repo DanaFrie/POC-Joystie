@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "gameRooms": {
+      "$roomId": {
+        ".read": "auth != null && (auth.uid == data.child('parentId').val() || auth.uid == data.child('childUid').val())",
+        ".write": "auth != null && (!data.exists() || auth.uid == data.child('parentId').val() || auth.uid == data.child('childUid').val())",
+        "parentId": {
+          ".validate": "!data.exists() || newData.val() == data.val()"
+        },
+        "joinCode": {
+          ".validate": "newData.isString() && newData.val().length == 6"
+        },
+        "ball": {
+          "x": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+          "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+          "updatedBy": { ".validate": "newData.isString()" },
+          "updatedAt": { ".validate": "newData.isString()" }
+        }
+      }
+    }
+  }
+}

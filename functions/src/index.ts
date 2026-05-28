@@ -1,6 +1,9 @@
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
+import { createGameRoom, joinGameRoom } from './game/rooms';
+
+export { createGameRoom, joinGameRoom };
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -58,7 +61,7 @@ export const processScreenshot = functions.https.onCall(
     // Security is handled by URL token validation in the app code
     // If authentication is present, we can use it for additional validation, but it's not required
 
-    const { imageData, targetDay } = request.data as ProcessScreenshotRequest;
+    const { imageData } = request.data as ProcessScreenshotRequest;
 
     if (!imageData) {
       throw new functions.https.HttpsError(
@@ -134,23 +137,7 @@ export const processScreenshot = functions.https.onCall(
  * To re-enable: uncomment the imports and exports below
  */
 
-// Determine service account based on project ID
-// In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
-const getServiceAccount = (): string => {
-  const projectId = process.env.GCLOUD_PROJECT;
-  const serviceAccount = projectId === 'joystie-poc-prod'
-    ? 'firebase-adminsdk-fbsvc@joystie-poc-prod.iam.gserviceaccount.com'
-    : 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com';
-  
-  // Log for debugging - this will appear in Cloud Functions logs
-  console.log('[getServiceAccount] Project ID:', projectId);
-  console.log('[getServiceAccount] Selected service account:', serviceAccount);
-  console.log('[getServiceAccount] Environment variable:', {
-    GCLOUD_PROJECT: process.env.GCLOUD_PROJECT
-  });
-  
-  return serviceAccount;
-};
+// const getServiceAccount = (): string => { ... }; // used by commented schedulers below
 
 // Scheduled function for first day notification - NOT DEPLOYED
 // Runs daily at 7:08 AM (Asia/Jerusalem)
