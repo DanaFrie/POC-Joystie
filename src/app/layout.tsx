@@ -2,6 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Heebo } from 'next/font/google'
+import { simplerPro } from '@/lib/fonts'
 import { META_PIXEL_ID } from '@/constants/meta-pixel'
 import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
 import ScrollToTop from '@/components/ui/ScrollToTop'
@@ -24,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={`layout-root ${heebo.variable}`}>
+    <html lang="he" dir="rtl" className={`layout-root ${heebo.variable} ${simplerPro.variable}`}>
       <body className="layout-root font-heebo min-h-screen overflow-y-auto overflow-x-hidden">
         <Script id="meta-pixel-init" strategy="afterInteractive">
           {`

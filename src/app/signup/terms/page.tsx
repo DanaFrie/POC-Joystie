@@ -251,7 +251,7 @@ export default function TermsPage() {
         {/* Back Button */}
         <div className="text-center">
           <button
-            onClick={() => router.push('/signup')}
+            onClick={() => router.push('/onboarding')}
             className="px-6 py-3 bg-[#273143] text-white rounded-[18px] font-varela font-semibold text-base hover:bg-opacity-90 transition-all"
           >
             חזרה

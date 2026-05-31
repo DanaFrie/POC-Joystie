@@ -1,10 +1,70 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Montserrat+Alternates:wght@400;600;700;900&family=Rubik:wght@600;900&family=Varela+Round&display=swap');
+@import '../styles/tokens.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Scroll without visible scrollbar (onboarding child lists) */
+  .v03-scroll-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .v03-scroll-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  @keyframes v03-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Staggered reveal (+10% slower than 0.32s / 0.14s baseline) */
+  .v03-fade-in-seq-0 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out forwards;
+  }
+  .v03-fade-in-seq-1 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out 0.154s forwards;
+  }
+  .v03-fade-in-seq-2 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out 0.308s forwards;
+  }
+  .v03-fade-in-seq-3 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out 0.462s forwards;
+  }
+  .v03-fade-in-seq-4 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out 0.616s forwards;
+  }
+  .v03-fade-in-seq-5 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out 0.77s forwards;
+  }
+  .v03-fade-in-seq-6 {
+    opacity: 0;
+    animation: v03-fade-in 0.352s ease-out 0.924s forwards;
+  }
+
+  .v03-fade-in-quick {
+    animation: v03-fade-in 0.352s ease-out forwards;
+  }
+
+  .v03-above-blur-footer {
+    bottom: calc(95px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 :root {
+  /* v0.2 legacy */
   --primary-bg: #F6F6F6;
   --secondary-bg: #E6F19A;
   --card-bg: #FFFCF8;
@@ -20,7 +80,7 @@
   --shadow: rgba(0, 0, 0, 0.25);
 }
 
-/* Root layout body (background + scroll) */
+/* Root layout body (background + scroll) — v0.2 default */
 body.layout-root {
   background-image: url(/background.png);
   background-size: cover;
@@ -29,6 +89,46 @@ body.layout-root {
   background-repeat: no-repeat;
   scroll-behavior: smooth;
 }
+
+/* v0.3 onboarding funnel: full viewport from SSR (.v03-funnel-root in layout) */
+html.layout-root:has(.v03-funnel-root),
+body.layout-root:has(.v03-funnel-root) {
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background-color: var(--v03-green-900) !important;
+  background-image: none !important;
+}
+
+body.layout-root:has(.v03-funnel-root) > div.relative {
+  min-height: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.v03-funnel-root {
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+}
+
+.v03-funnel-root.v03-funnel-light {
+  background: var(--v03-funnel-light-gradient) !important;
+}
+
+.v03-funnel-surface-light {
+  background: var(--v03-funnel-light-gradient) !important;
+}
+
+html.layout-root:has(.v03-funnel-light),
+body.layout-root:has(.v03-funnel-light) {
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
 html.layout-root {
   overflow-x: hidden;
 }

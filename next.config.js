@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      {
+        source: '/signup',
+        destination: '/onboarding',
+        permanent: false,
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     // Fix for tesseract.js - it's a client-side only library
     if (!isServer) {

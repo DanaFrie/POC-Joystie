@@ -9,10 +9,15 @@ export default function ConditionalMainWrapper({
 }) {
   const pathname = usePathname();
   
-  // For home page, don't add the wrapper constraints
-  const isHomePage = pathname === '/';
-  
-  if (isHomePage) {
+  const isFullBleed =
+    pathname === '/' ||
+    pathname === '/onboarding' ||
+    pathname?.startsWith('/onboarding/') ||
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname?.startsWith('/signup/terms');
+
+  if (isFullBleed) {
     return <>{children}</>;
   }
   

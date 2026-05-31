@@ -248,8 +248,8 @@ export default function SignupPage() {
         localStorage.removeItem('signupFormData');
       }
 
-      // Redirect to dashboard - user will see "הגדר אתגר" notification there
-      router.push('/dashboard');
+      // Continue parent onboarding flow after signup
+      router.push('/challengeSetup');
     } catch (error) {
       logger.error('Signup error:', error);
       const errorMessage = getErrorMessage(error);
@@ -283,10 +283,10 @@ export default function SignupPage() {
             />
           </div>
           <p className="font-varela text-base text-[#282743] leading-relaxed text-center mb-3">
-            הרשמה קלילה ומהירה - רק הפרטים החשובים
+            הרשמה קצרה והתחלת תהליך ההיכרות
           </p>
           <p className="font-varela text-sm text-[#948DA9] leading-relaxed text-center">
-            נגיע בדיוק למה שאתם צריכים, בלי עיכובים מיותרים
+            ממלאים פרטים בסיסיים וממשיכים להגדרת האתגר
           </p>
         </div>
 
@@ -507,7 +507,7 @@ export default function SignupPage() {
                 : 'bg-[#273143] text-white hover:bg-opacity-90'
             }`}
           >
-            {isSubmitting ? 'שומר...' : 'המשך'}
+            {isSubmitting ? 'שומר...' : 'הרשמה והמשך'}
           </button>
           
           {/* Link to Login */}

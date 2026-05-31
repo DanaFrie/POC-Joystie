@@ -15,7 +15,7 @@ export default function Home() {
 
   // Prefetch routes on mount for faster navigation
   useEffect(() => {
-    router.prefetch('/signup');
+    router.prefetch('/onboarding');
     router.prefetch('/login');
   }, [router]);
 
@@ -59,7 +59,7 @@ export default function Home() {
 
   // Optimized handlers with useCallback
   const handleSignup = useCallback(() => {
-    router.push('/signup');
+    router.push('/onboarding');
   }, [router]);
 
   const handleLogin = useCallback(() => {
@@ -165,7 +165,7 @@ export default function Home() {
               {/* כפתורים בדסקטופ – במובייל מופיעים מתחת לארנק */}
               <div className="hidden md:flex flex-col items-center gap-2 md:gap-5" id="register">
                 <Link
-                  href="/signup"
+                  href="/onboarding"
                   className="btn-main bg-joystie-dark text-white px-14 py-6 text-2xl rounded-full font-black shadow-2xl text-center"
                 >
                   התחילו ניסיון
@@ -193,7 +193,7 @@ export default function Home() {
           {/* מובייל בלבד: כפתורים בשורה אחת, תמיד ממורכזים */}
           <div className="flex md:hidden flex-row items-stretch gap-2 sm:gap-3 shrink-0 order-3 pt-0 pb-4 mt-6 mx-auto w-fit max-w-[min(100%,28rem)]" id="register-mobile">
             <Link
-              href="/signup"
+              href="/onboarding"
               className="btn-main flex-1 min-w-0 bg-joystie-dark text-white px-4 py-3 text-[0.95rem] sm:text-[1.15rem] sm:px-7 sm:py-3.5 rounded-full font-black shadow-2xl whitespace-nowrap text-center"
             >
               התחילו ניסיון

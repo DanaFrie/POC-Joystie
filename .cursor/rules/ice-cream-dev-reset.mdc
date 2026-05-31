@@ -1,0 +1,33 @@
+---
+description: Codeword ICE CREAM — kill port 3000, production build, start dev server (POC-Joystie)
+alwaysApply: true
+---
+
+# ICE CREAM — dev server reset
+
+When the user message is **exactly** `ICE CREAM` or clearly asks to run **ICE CREAM** (case-insensitive), **do this immediately** in the repo root (`POC-Joystie`). Do not ask for confirmation.
+
+## Steps (in order)
+
+1. **Kill port 3000** (PowerShell):
+
+```powershell
+$p = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
+if ($p) { $p | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }
+```
+
+2. **`npm run build`** — wait until it finishes; if it fails, report the error and **do not** start dev.
+
+3. **`npm run dev`** — run in the **background** (`block_until_ms: 0`); confirm when ready at `http://localhost:3000`.
+
+## Reply
+
+One short line: port cleared, build pass/fail, dev URL. No long explanation unless something failed.
+
+## If webpack / `_next/static` 404 persists after reset
+
+Optionally delete `.next` before step 2, then rebuild and restart dev.
+
+## Not ICE CREAM
+
+Ignore this rule unless the user used the codeword.

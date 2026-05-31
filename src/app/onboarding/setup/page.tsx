@@ -379,7 +379,7 @@ export default function OnboardingSetupPage() {
     if (step > 1) {
       setStep(step - 1);
     } else {
-      router.push('/onboarding');
+      router.push('/challengeSetup');
     }
   };
 

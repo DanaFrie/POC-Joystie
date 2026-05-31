@@ -1,0 +1,101 @@
+/**
+ * Joystie v0.3 design tokens (from Figma DSM + onboarding 12703:42224)
+ * Replace Assistant with Simpler Pro woff2 in public/fonts/simpler-pro/ when available.
+ */
+
+:root {
+  /* Green scale */
+  --v03-green-900: #092125;
+  --v03-green-700: #243e35;
+  --v03-green-200: #b0c6bf;
+  --v03-green-100: #e3edea;
+  --v03-green-400: #7a8d87;
+  --v03-green-300: #90a79f;
+
+  /* Turquoise / accent */
+  --v03-turquoise-300: #1becae;
+  --v03-turquoise-950: #031d15;
+
+  /* Neutrals */
+  --v03-white: #ffffff;
+  --v03-bg-light: #f5f5f5;
+  --v03-text-on-light: #252b29;
+  --v03-accent-purple: #8c00ff;
+  --v03-funnel-light-gradient: linear-gradient(180deg, #fff 0%, #e1e1e1 100%);
+
+  /* Semantic aliases */
+  --v03-surface-dark: var(--v03-green-900);
+  --v03-text-on-dark: var(--v03-white);
+  --v03-text-muted-on-dark: var(--v03-green-200);
+  --v03-accent: var(--v03-turquoise-300);
+  --v03-accent-foreground: var(--v03-turquoise-950);
+
+  /* Ellipse 385 — bottom mint glow */
+  --v03-ellipse-385: #00d978;
+
+  /* Onboarding grid — Figma #FFFFFF0D, hori/verti gap from Dev Mode */
+  --v03-grid-line: #ffffff0d;
+  --v03-grid-gap-verti: 80.687px;
+  --v03-grid-gap-hori: 86.385px;
+  --v03-grid-offset-x: -64px;
+  --v03-grid-offset-y: -19px;
+
+  /* Figma preview chrome — not rendered; full 812px is design canvas */
+  --v03-figma-status-top: 44px;
+  --v03-figma-status-bottom: 32px;
+
+  /* Layout — mobile funnel */
+  --v03-screen-width: 375px;
+  --v03-screen-height: 812px;
+  --v03-content-width: 327px;
+  --v03-gutter: 24px;
+
+  /* Radii */
+  --v03-radius-button: 22px;
+
+  /* Shadows */
+  --v03-shadow-button: 2px 2px 20px rgba(109, 109, 109, 0.15);
+  --v03-shadow-display: 0 0 15px rgba(255, 255, 255, 0.2);
+
+  /* Typography scale */
+  --v03-text-eyebrow-size: 18px;
+  --v03-text-eyebrow-leading: 30px;
+  --v03-text-eyebrow-tracking: 3.78px;
+
+  --v03-text-display-size: 40px;
+  --v03-text-display-leading: 1.1;
+  --v03-text-display-tracking: -0.8px;
+
+  --v03-text-lead-size: 24px;
+  --v03-text-lead-leading: 30px;
+  --v03-text-lead-tracking: -0.36px;
+
+  --v03-text-body-size: 16px;
+  --v03-text-body-leading: 1.35;
+
+  --v03-text-button-size: 18px;
+}
+
+/* Simpler Pro webfonts — uncomment after adding files under public/fonts/simpler-pro/:
+@font-face {
+  font-family: 'Simpler Pro';
+  src: url('/fonts/simpler-pro/SimplerPro-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Simpler Pro';
+  src: url('/fonts/simpler-pro/SimplerPro-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Simpler Pro';
+  src: url('/fonts/simpler-pro/SimplerPro-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+*/
