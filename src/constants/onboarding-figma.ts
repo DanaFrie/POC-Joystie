@@ -21,6 +21,18 @@ const FILE =
   'https://www.figma.com/design/JzP4ygtXS3V7KSXiPro7hA/Joystie---Platform';
 
 export const onboardingFigmaLinks = {
+  /** Signup intro — שלב 1–3 */
+  signupIntroStep1: `${FILE}?node-id=12703-42217&m=dev`,
+  signupIntroStep2: `${FILE}?node-id=12703-42218&m=dev`,
+  signupIntroStep3: `${FILE}?node-id=12703-42219&m=dev`,
+  /** Pick first child — עם מי מתחילים? (Screen 28) */
+  pickFirstChild: `${FILE}?node-id=12703-42220&m=dev`,
+  /** Child invite intro — שנכניס את {child} לתמונה? (Screen 45) */
+  childInviteIntro: `${FILE}?node-id=12914-11767&m=dev`,
+  /** Child invite share — WhatsApp / copy (Screen 28) */
+  childInviteShare: `${FILE}?node-id=12703-42221&m=dev`,
+  /** Parent — ספרי לנו קצת על הילדים (Screen 38) */
+  childrenDetails: `${FILE}?node-id=12703-42228&m=dev`,
   screen: `${FILE}?node-id=12703-42224&m=dev`,
   kingdom: `${FILE}?node-id=12822-3495&m=dev`,
   grid: `${FILE}?node-id=12822-3496&m=dev`,
@@ -70,6 +82,29 @@ export const ONBOARDING_FAMILY_LINK_ICON =
 
 /** Signup hero — Frame 1430108703; public/signup-box-mountain.png */
 export const ONBOARDING_SIGNUP_HERO_IMAGE = '/signup-box-mountain.png' as const;
+
+/** Signup OAuth — export from Figma to public/ */
+export const SIGNUP_GOOGLE_ICON = '/signup-google-icon.png' as const;
+export const SIGNUP_APPLE_ICON = '/signup-apple-icon.png' as const;
+
+/** Signup journey visuals — export to public/ (Screen 25 / 26) */
+export const SIGNUP_JOURNEY_STEP2_IMAGE = '/signup-journey-ball-game.png' as const;
+export const SIGNUP_JOURNEY_STEP3_IMAGE = '/signup-journey-agreements.png' as const;
+
+/** Child invite hero — export from Figma 12914:11767 (image 291, 200×200) */
+export const SIGNUP_CHILD_INVITE_HERO_IMAGE =
+  '/signup-child-invite-hero.png' as const;
+
+/** WhatsApp icon on share CTA — export from Figma 12703:42221 */
+export const SIGNUP_INVITE_WHATSAPP_ICON = '/signup-invite-whatsapp.png' as const;
+
+/** Companion carousel — export from Figma Frame 1597882421 to public/ */
+export const SIGNUP_COMPANION_IMAGES = [
+  '/signup-companion-1.png',
+  '/signup-companion-2.png',
+  '/signup-companion-3.png',
+  '/signup-companion-4.png',
+] as const;
 
 /** Kingdom hero — exported from Figma node 12703:41505 (maps 12822:3495) */
 export const ONBOARDING_KINGDOM_SRC = '/onboarding-kingdom.png' as const;

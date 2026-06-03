@@ -1,0 +1,7 @@
+/** Pick first child — Figma 12703:42220 (Screen 28) */
+export const PICK_FIRST_CHILD_HEADER_TOP_PX = 97;
+export const PICK_FIRST_CHILD_CARDS_TOP_PX = 210;
+export const PICK_FIRST_CHILD_HEADER_GAP_PX = 10;
+export const PICK_FIRST_CHILD_CARDS_GAP_PX = 15;
+export const PICK_FIRST_CHILD_SECTION_GAP_PX = 25;
+export const PICK_FIRST_CHILD_FOOTNOTE_MAX_W_PX = 297;

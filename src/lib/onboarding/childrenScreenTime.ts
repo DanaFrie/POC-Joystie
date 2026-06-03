@@ -9,6 +9,8 @@ export const ONBOARDING_SCREEN_TIME_MIN = 0;
 export const ONBOARDING_SCREEN_TIME_MAX = 12;
 export const ONBOARDING_SCREEN_TIME_STEP = 0.5;
 
+import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
+
 const SCREEN_TIME_STORAGE_KEY = 'onboardingChildrenScreenTime';
 
 /** Short role labels — Figma (הבכור / הסנדוויצ׳ית / הקטנטנה). */
@@ -35,18 +37,14 @@ export function createScreenTimesFromChildren(
 }
 
 export function setOnboardingChildrenScreenTime(entries: OnboardingChildScreenTime[]) {
-  sessionStorage.setItem(SCREEN_TIME_STORAGE_KEY, JSON.stringify(entries));
+  writeOnboardingJson(SCREEN_TIME_STORAGE_KEY, entries);
 }
 
 export function getOnboardingChildrenScreenTime(): OnboardingChildScreenTime[] | null {
-  const raw = sessionStorage.getItem(SCREEN_TIME_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as OnboardingChildScreenTime[];
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
+  const parsed = readOnboardingJson<OnboardingChildScreenTime[]>(
+    SCREEN_TIME_STORAGE_KEY
+  );
+  return Array.isArray(parsed) ? parsed : null;
 }
 
 export function snapScreenTimeHours(hours: number): number {
@@ -66,4 +64,21 @@ export function formatScreenTimeHours(hours: number):
   if (hours === 1) return { kind: 'one' };
   if (hours === 0.5) return { kind: 'half' };
   return { kind: 'many', value: hours };
+}
+
+/** Pick-child card subtitle — Figma 12703:42220 */
+export function formatDailyScreenTimeSubtitle(hours: number): string {
+  if (hours === 0.5) return 'כחצי שעה זמן מסך יומי';
+  if (hours === 1) return 'כשעה זמן מסך יומי';
+  if (hours === 1.5) return 'כשעה וחצי זמן מסך יומי';
+  if (hours === 2) return 'כשעתיים זמן מסך יומי';
+  const label = Number.isInteger(hours)
+    ? `${hours}`
+    : formatNumber(hours);
+  return `כ-${label} שעות זמן מסך יומי`;
+}
+
+function formatNumber(num: number): string {
+  const formatted = num.toFixed(1);
+  return formatted.replace(/\.?0+$/, '');
 }

@@ -10,6 +10,8 @@ export const ONBOARDING_CHILD_AGE_MIN = 6;
 export const ONBOARDING_CHILD_AGE_MAX = 12;
 export const ONBOARDING_CHILD_DEFAULT_AGE = 8;
 
+import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
+
 const CHILDREN_STORAGE_KEY = 'onboardingChildrenDetails';
 
 /** Birth-order labels — middle slots (2+ kids) are always סנדוויץ׳/ית. */
@@ -34,19 +36,18 @@ export function createEmptyChildren(count: number): OnboardingChildDraft[] {
 }
 
 export function setOnboardingChildrenDetails(children: OnboardingChildDraft[]) {
-  sessionStorage.setItem(CHILDREN_STORAGE_KEY, JSON.stringify(children));
+  writeOnboardingJson(CHILDREN_STORAGE_KEY, children);
 }
 
 export function getOnboardingChildrenDetails(): OnboardingChildDraft[] | null {
-  const raw = sessionStorage.getItem(CHILDREN_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as OnboardingChildDraft[];
-    if (!Array.isArray(parsed)) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+  const parsed = readOnboardingJson<OnboardingChildDraft[]>(CHILDREN_STORAGE_KEY);
+  if (!Array.isArray(parsed)) return null;
+  return parsed;
+}
+
+export function hasOnboardingChildrenDetails(): boolean {
+  const children = getOnboardingChildrenDetails();
+  return Boolean(children?.length && childrenDetailsComplete(children));
 }
 
 export function childrenDetailsComplete(children: OnboardingChildDraft[]): boolean {

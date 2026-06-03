@@ -1,4 +1,12 @@
-export function GoogleIcon({ className = 'h-[15px] w-[15px]' }: { className?: string }) {
+'use client';
+
+import { useState } from 'react';
+import {
+  SIGNUP_APPLE_ICON,
+  SIGNUP_GOOGLE_ICON,
+} from '@/constants/onboarding-figma';
+
+function GoogleIconSvg({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 15 16" aria-hidden>
       <path
@@ -21,11 +29,53 @@ export function GoogleIcon({ className = 'h-[15px] w-[15px]' }: { className?: st
   );
 }
 
-export function AppleIcon({ className = 'h-[17px] w-[14px]' }: { className?: string }) {
+function AppleIconSvg({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 14 17" fill="white" aria-hidden>
       <path d="M11.6 8.9c-.02-2.12 1.73-3.13 1.81-3.18-1-.14-1.95-.58-2.5-1.18-.57-.6-.98-1.44-.95-2.28.03-.87.25-1.7 1.05-2.36.62-.52 1.62-.88 2.52-.9.05 1.05-.31 2.08-.93 2.86-.61.77-1.45 1.37-2.35 1.33-.1.9-.34 1.78-.98 2.5-.64.72-1.57 1.28-2.57 1.24-.98-.04-1.54-.42-2.15-.42-.64 0-1.35.41-2.2.43-1.12.02-2.16-.65-2.72-1.67C-.14 4.56.94 1.94 2.9.58 3.84-.1 5.05-.2 6.1.22c.68.27 1.27.7 1.8.7.54 0 1.1-.43 1.86-.37.79.03 1.54.46 2.05 1.18-1.8 1.05-1.51 3.78.3 4.48-.36 1.12-1.05 2.18-1.8 2.88-.4.38-.84.72-1.31 1.02Z" />
       <path d="M9.5 0c.05.78-.23 1.55-.7 2.14-.5.62-1.32 1.1-2.12 1.04-.06-.75.28-1.52.74-2.05.5-.57 1.35-1 2.08-1.13Z" />
     </svg>
+  );
+}
+
+/** Figma ~15×15.36 inside 18×18 slot */
+export function GoogleIcon({ className = 'h-[15px] w-[15px]' }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <GoogleIconSvg className={className} />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={SIGNUP_GOOGLE_ICON}
+      alt=""
+      width={15}
+      height={16}
+      className={`${className} object-contain`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/** Figma ~13.78×16.9 inside 18×18 slot */
+export function AppleIcon({ className = 'h-[17px] w-[14px]' }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <AppleIconSvg className={className} />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={SIGNUP_APPLE_ICON}
+      alt=""
+      width={14}
+      height={17}
+      className={`${className} object-contain`}
+      onError={() => setFailed(true)}
+    />
   );
 }

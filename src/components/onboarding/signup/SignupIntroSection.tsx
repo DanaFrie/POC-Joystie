@@ -21,12 +21,13 @@ function OAuthButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      dir="rtl"
       className={`${oauthButtonClass} ${disabled ? 'opacity-50' : 'hover:bg-white/5'}`}
     >
-      <span className="flex-1 text-right">{label}</span>
       <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">
         {icon}
       </span>
+      <span className="shrink-0 text-center">{label}</span>
     </button>
   );
 }

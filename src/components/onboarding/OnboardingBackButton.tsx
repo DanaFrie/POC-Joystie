@@ -5,13 +5,21 @@ const backClassName =
 
 type BackTone = 'dark' | 'light';
 
+/** Figma chevron — 6×12, 1.5px outline; RTL back points right. */
 function BackChevron({ tone }: { tone: BackTone }) {
-  const stroke = tone === 'light' ? 'var(--v03-green-900)' : 'white';
+  const stroke = tone === 'light' ? '#000000' : '#ffffff';
 
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+      className="overflow-hidden"
+    >
       <path
-        d="M10 8l5.5 4-5.5 4"
+        d="M9 6l6 6-6 6"
         stroke={stroke}
         strokeWidth="1.5"
         strokeLinecap="round"
@@ -21,7 +29,7 @@ function BackChevron({ tone }: { tone: BackTone }) {
   );
 }
 
-/** Back chevron — 24×24, top 82; `light` = green-900 on light funnel. */
+/** Back chevron — top 82; `light` = black on bright funnel, `dark` = white. */
 export function OnboardingBackButton({
   href,
   onClick,

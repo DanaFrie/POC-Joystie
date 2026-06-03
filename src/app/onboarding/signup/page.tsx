@@ -1,70 +1,55 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { OnboardingAccentFooter } from '@/components/onboarding/OnboardingAccentFooter';
 import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
-import { ONBOARDING_BLUR_FOOTER_HEIGHT_PX } from '@/components/onboarding/OnboardingBlurFooter';
+import {
+  ONBOARDING_BLUR_FOOTER_HEIGHT_PX,
+  OnboardingBlurFooter,
+} from '@/components/onboarding/OnboardingBlurFooter';
+import { OnboardingFooterCta } from '@/components/onboarding/OnboardingFooterCta';
+import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { PickFirstChildStep } from '@/components/onboarding/pick-child/PickFirstChildStep';
+import { SignupChildInviteIntroStep } from '@/components/onboarding/signup/SignupChildInviteIntroStep';
+import { SignupChildInviteRemindFooter } from '@/components/onboarding/signup/SignupChildInviteRemindFooter';
+import { SignupChildInviteShareStep } from '@/components/onboarding/signup/SignupChildInviteShareStep';
 import {
   OnboardingSignupForm,
   type SignupFormValues,
 } from '@/components/onboarding/signup/OnboardingSignupForm';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
+import { SignupHowItWorksPill } from '@/components/onboarding/signup/SignupHowItWorksPill';
+import { SignupIntroStep } from '@/components/onboarding/signup/SignupIntroStep';
 import { SIGNUP_CONTENT_PULL_UP_PX } from '@/constants/signup-layout';
 import {
-  getOnboardingParentRole,
-  parentRoleToGender,
-} from '@/lib/onboarding/parentRole';
-import { createUser } from '@/lib/api/users';
-import { signUp } from '@/utils/auth';
-import { getErrorMessage } from '@/utils/errors';
-import { createContextLogger } from '@/utils/logger';
-import { createSession } from '@/utils/session';
-import { trackMetaCompleteRegistration } from '@/utils/meta-pixel';
+  SIGNUP_JOURNEY_STAGE_COUNT,
+  type SignupJourneyStageIndex,
+} from '@/constants/signup-journey';
+import {
+  getSignupPickChildOptions,
+  setOnboardingFirstChildIndex,
+  type PickFirstChildOption,
+} from '@/lib/onboarding/pickFirstChild';
+import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 
 export const dynamic = 'force-dynamic';
 
-const logger = createContextLogger('OnboardingSignup');
+type SignupStep =
+  | 'form'
+  | 'intro'
+  | 'pickChild'
+  | 'childInviteIntro'
+  | 'childInviteShare';
 
-function splitFullName(fullName: string): { firstName: string; lastName: string } {
-  const trimmed = fullName.trim();
-  const space = trimmed.indexOf(' ');
-  if (space === -1) {
-    return { firstName: trimmed, lastName: '' };
-  }
-  return {
-    firstName: trimmed.slice(0, space),
-    lastName: trimmed.slice(space + 1).trim(),
-  };
-}
-
-function validate(values: SignupFormValues): Record<string, string> {
-  const errors: Record<string, string> = {};
-  if (!values.fullName.trim()) {
-    errors.fullName = 'אנא הכנס שם מלא';
-  }
-  if (!values.email.trim()) {
-    errors.email = 'אנא הכנס כתובת אימייל';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
-    errors.email = 'כתובת אימייל לא תקינה';
-  }
-  if (!values.password.trim()) {
-    errors.password = 'אנא הכנס סיסמה';
-  } else if (values.password.length < 6) {
-    errors.password = 'סיסמה חייבת להכיל לפחות 6 תווים';
-  }
-  if (!values.confirmPassword.trim()) {
-    errors.confirmPassword = 'אנא אשר את הסיסמה';
-  } else if (values.password !== values.confirmPassword) {
-    errors.confirmPassword = 'הסיסמאות לא תואמות';
-  }
-  return errors;
-}
-
-/** Dark funnel signup — after reveal; ellipse 385 + turquoise CTA. */
+/** /onboarding/signup — form → intro → pick child → invite intro → invite share. */
 export default function OnboardingSignupPage() {
   const router = useRouter();
+  const [step, setStep] = useState<SignupStep>('form');
+  const [journeyStage, setJourneyStage] = useState<SignupJourneyStageIndex>(0);
+  const [pickOptions, setPickOptions] = useState<PickFirstChildOption[]>([]);
+  const [selectedChildIndex, setSelectedChildIndex] = useState(0);
   const [values, setValues] = useState<SignupFormValues>({
     fullName: '',
     email: '',
@@ -72,7 +57,17 @@ export default function OnboardingSignupPage() {
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedChildName = useMemo(
+    () => pickOptions[selectedChildIndex]?.name?.trim() || 'יואב',
+    [pickOptions, selectedChildIndex]
+  );
+
+  useEffect(() => {
+    if (step !== 'pickChild') return;
+    setPickOptions(getSignupPickChildOptions());
+    setSelectedChildIndex(0);
+  }, [step]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -93,73 +88,137 @@ export default function OnboardingSignupPage() {
     }));
   };
 
-  const handleSubmit = async () => {
-    const nextErrors = validate(values);
-    if (Object.keys(nextErrors).length > 0) {
-      setErrors(nextErrors);
+  const handleBack = () => {
+    if (step === 'childInviteShare') {
+      setStep('childInviteIntro');
       return;
     }
-
-    setIsSubmitting(true);
-    setErrors({});
-
-    try {
-      const { firstName, lastName } = splitFullName(values.fullName);
-      const displayName = values.fullName.trim();
-      const user = await signUp(
-        values.email.trim(),
-        values.password,
-        displayName
-      );
-
-      const parentRole = getOnboardingParentRole();
-      const gender = parentRole ? parentRoleToGender(parentRole) : 'male';
-
-      await createUser(user.uid, {
-        email: values.email.trim().toLowerCase(),
-        firstName,
-        lastName,
-        gender,
-        kidsAges: [],
-        notificationsEnabled: true,
-        termsAccepted: false,
-        signupDate: new Date().toISOString(),
-      });
-
-      createSession(user.uid);
-      trackMetaCompleteRegistration({ content_name: 'onboarding_signup' });
-
-      try {
-        const { logEvent, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
-        await setUserId(user.uid);
-        await logEvent(AnalyticsEvents.SIGNUP, {
-          user_id: user.uid,
-          email: values.email.trim().toLowerCase(),
-        });
-      } catch (analyticsError) {
-        logger.warn('Signup analytics failed:', analyticsError);
-      }
-
-      router.push('/onboarding/setup');
-    } catch (error) {
-      logger.error('Signup error:', error);
-      const errorMessage = getErrorMessage(error);
-      if (errorMessage.includes('אימייל')) {
-        setErrors({ email: errorMessage });
-      } else if (errorMessage.includes('סיסמה')) {
-        setErrors({ password: errorMessage });
-      } else {
-        setErrors({ _general: errorMessage });
-      }
-    } finally {
-      setIsSubmitting(false);
+    if (step === 'childInviteIntro') {
+      setStep('pickChild');
+      return;
     }
+    if (step === 'pickChild') {
+      setStep('intro');
+      setJourneyStage(2);
+      return;
+    }
+    if (step === 'intro') {
+      if (journeyStage > 0) {
+        setJourneyStage((s) => (s - 1) as SignupJourneyStageIndex);
+        return;
+      }
+      setStep('form');
+      return;
+    }
+    router.back();
   };
+
+  const handleRegister = () => {
+    setJourneyStage(0);
+    setStep('intro');
+  };
+
+  const handleIntroContinue = () => {
+    if (journeyStage < SIGNUP_JOURNEY_STAGE_COUNT - 1) {
+      setJourneyStage((s) => (s + 1) as SignupJourneyStageIndex);
+      return;
+    }
+    setStep('pickChild');
+  };
+
+  const handlePickChildContinue = () => {
+    setOnboardingFirstChildIndex(selectedChildIndex);
+    setStep('childInviteIntro');
+  };
+
+  const handleInviteComplete = () => {
+    router.push('/onboarding/setup');
+  };
+
+  if (step === 'childInviteShare') {
+    return (
+      <>
+        <OnboardingMintGlow />
+        <OnboardingBackButton onClick={handleBack} />
+        <div
+          className="absolute inset-x-0 top-0 z-[10] overflow-hidden"
+          style={{ height: V03_SCREEN_HEIGHT }}
+        >
+          <SignupChildInviteShareStep childName={selectedChildName} />
+        </div>
+        <SignupChildInviteRemindFooter onRemindLater={handleInviteComplete} />
+      </>
+    );
+  }
+
+  if (step === 'childInviteIntro') {
+    return (
+      <>
+        <OnboardingMintGlow />
+        <OnboardingBackButton onClick={handleBack} />
+        <div
+          className="absolute inset-x-0 top-0 z-[10] overflow-hidden"
+          style={{ height: V03_SCREEN_HEIGHT }}
+        >
+          <SignupChildInviteIntroStep
+            childName={selectedChildName}
+            onTogetherNow={() => setStep('childInviteShare')}
+            onRemindLater={handleInviteComplete}
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (step === 'pickChild') {
+    return (
+      <>
+        <OnboardingMintGlow />
+        <OnboardingBackButton onClick={handleBack} />
+        <div
+          className="absolute inset-x-0 top-0 z-[10] overflow-hidden"
+          style={{ height: V03_SCREEN_HEIGHT }}
+        >
+          <PickFirstChildStep
+            options={pickOptions}
+            selectedIndex={selectedChildIndex}
+            onSelectIndex={setSelectedChildIndex}
+          />
+        </div>
+        <OnboardingFooterCta variant="secondary" onClick={handlePickChildContinue}>
+          המשך
+        </OnboardingFooterCta>
+      </>
+    );
+  }
+
+  if (step === 'intro') {
+    return (
+      <>
+        <OnboardingGrid />
+        <OnboardingMintGlow />
+        <OnboardingBackButton onClick={handleBack} />
+        <SignupHowItWorksPill />
+        <div
+          className="absolute inset-x-0 top-0 z-[10] overflow-hidden"
+          style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
+        >
+          <SignupIntroStep
+            stage={journeyStage}
+            onStageChange={setJourneyStage}
+          />
+        </div>
+        <OnboardingBlurFooter onClick={handleIntroContinue}>
+          המשך
+        </OnboardingBlurFooter>
+      </>
+    );
+  }
 
   return (
     <>
       <OnboardingMintGlow />
-      <OnboardingBackButton onClick={() => router.back()} />
+      <OnboardingBackButton onClick={handleBack} />
       <div
         dir="rtl"
         className="absolute inset-x-0 top-0 z-[10] overflow-y-auto overflow-x-hidden v03-scroll-hidden"
@@ -176,16 +235,12 @@ export default function OnboardingSignupPage() {
             onChange={handleChange}
             onOAuthGoogle={handleOAuthUnavailable}
             onOAuthApple={handleOAuthUnavailable}
-            oauthDisabled={isSubmitting}
+            oauthDisabled={false}
           />
         </div>
       </div>
-      <OnboardingAccentFooter
-        type="button"
-        onClick={handleSubmit}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? 'נרשם…' : 'הרשמה'}
+      <OnboardingAccentFooter type="button" onClick={handleRegister}>
+        הרשמה
       </OnboardingAccentFooter>
     </>
   );

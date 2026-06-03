@@ -69,8 +69,10 @@ export default function OnboardingParentPage() {
     }
     if (step === 'details') {
       if (!childrenDetailsComplete(children)) return;
+      const times = createScreenTimesFromChildren(children);
       setOnboardingChildrenDetails(children);
-      setScreenTimes(createScreenTimesFromChildren(children));
+      setScreenTimes(times);
+      setOnboardingChildrenScreenTime(times);
       setStep('screenTime');
       return;
     }
