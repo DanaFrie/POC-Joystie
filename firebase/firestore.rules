@@ -212,6 +212,12 @@ service cloud.firestore {
 
     }
 
+    match /bonding_invites/{inviteId} {
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.parentId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
   }
 
 }

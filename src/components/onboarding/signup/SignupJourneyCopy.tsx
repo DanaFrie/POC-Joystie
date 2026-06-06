@@ -22,7 +22,7 @@ export function SignupJourneyCopy({
       style={{ gap: SIGNUP_INTRO_COPY_INNER_GAP_PX }}
     >
       <div
-        className="flex w-full flex-col items-center px-[15px]"
+        className="v03-funnel-enter-0 flex w-full flex-col items-center px-[15px]"
         style={{ gap: SIGNUP_INTRO_EYEBROW_TITLE_GAP_PX }}
       >
         <p className="font-simpler text-[18px] font-normal leading-[30px] tracking-[3.78px] text-v03-green-200">
@@ -32,7 +32,7 @@ export function SignupJourneyCopy({
           {title}
         </h1>
       </div>
-      <p className="w-full font-simpler text-[20px] font-normal leading-[1.2] tracking-[-0.3px] text-white">
+      <p className="v03-funnel-enter-1 w-full font-simpler text-[20px] font-normal leading-[1.2] tracking-[-0.3px] text-white">
         {subtitle}
       </p>
     </section>

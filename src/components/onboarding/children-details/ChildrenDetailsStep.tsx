@@ -16,6 +16,7 @@ import {
 } from '@/constants/parent-onboarding-layout';
 import type { OnboardingChildDraft } from '@/lib/onboarding/childrenDetails';
 import { getChildNameLabels } from '@/lib/onboarding/childrenDetails';
+import { getOnboardingParentRole } from '@/lib/onboarding/parentRole';
 
 type ChildrenDetailsStepProps = {
   children: OnboardingChildDraft[];
@@ -29,6 +30,11 @@ export function ChildrenDetailsStep({
 }: ChildrenDetailsStepProps) {
   const [imageFailed, setImageFailed] = useState(false);
   const labels = getChildNameLabels(children.length);
+  const parentRole = getOnboardingParentRole();
+  const titleText =
+    parentRole === 'father'
+      ? 'ספר לנו קצת על הילדים:'
+      : 'ספרי לנו קצת על הילדים:';
 
   const updateChild = (index: number, child: OnboardingChildDraft) => {
     const next = [...children];
@@ -51,7 +57,7 @@ export function ChildrenDetailsStep({
         style={{ gap: PARENT_CHILDREN_DETAILS_COLUMN_GAP_PX }}
       >
         <div
-          className="flex w-full shrink-0 justify-end overflow-hidden"
+          className="flex w-full shrink-0 justify-start overflow-hidden v03-funnel-enter-0"
           style={{ height: PARENT_CHILDREN_DETAILS_HERO_CLIP_PX }}
         >
           <div
@@ -69,7 +75,7 @@ export function ChildrenDetailsStep({
                 className="pointer-events-none absolute max-w-none object-contain"
                 style={{
                   top: PARENT_CHILDREN_DETAILS_IMAGE_TOP_PX,
-                  left: `calc(50% - ${PARENT_CHILDREN_DETAILS_IMAGE_CENTER_OFFSET_PX}px)`,
+                  right: `calc(50% - ${PARENT_CHILDREN_DETAILS_IMAGE_CENTER_OFFSET_PX}px)`,
                   width: PARENT_CHILDREN_DETAILS_IMAGE_PX,
                   height: PARENT_CHILDREN_DETAILS_IMAGE_PX,
                 }}
@@ -83,8 +89,8 @@ export function ChildrenDetailsStep({
           className="flex min-h-0 w-full flex-1 flex-col items-end overflow-hidden"
           style={{ gap: PARENT_CHILDREN_DETAILS_TITLE_FORMS_GAP_PX }}
         >
-          <h1 className="w-full shrink-0 text-right font-simpler text-[30px] font-black leading-[1.15] tracking-[-0.6px] text-white">
-            ספרי לנו קצת על הילדים:
+          <h1 className="v03-funnel-enter-1 w-full shrink-0 text-right font-simpler text-[30px] font-black leading-[1.15] tracking-[-0.6px] text-white">
+            {titleText}
           </h1>
 
           <div className="v03-scroll-hidden min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">

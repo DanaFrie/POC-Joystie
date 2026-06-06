@@ -4,6 +4,7 @@ import type {
   AuthError
 } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
+import { getAuthErrorMessage } from '@/utils/auth-errors';
 
 /**
  * Sign up a new user with email and password
@@ -219,25 +220,5 @@ export async function confirmPasswordReset(oobCode: string, newPassword: string)
   }
 }
 
-/**
- * Get user-friendly error messages in Hebrew
- */
-function getAuthErrorMessage(code: string): string {
-  const errorMessages: Record<string, string> = {
-    'auth/email-already-in-use': 'כתובת האימייל כבר בשימוש',
-    'auth/invalid-email': 'כתובת אימייל לא תקינה',
-    'auth/operation-not-allowed': 'פעולה לא מורשית',
-    'auth/weak-password': 'סיסמה חלשה מדי. אנא השתמש בסיסמה חזקה יותר',
-    'auth/user-disabled': 'החשבון הושבת',
-    'auth/user-not-found': 'לא נמצא משתמש עם כתובת אימייל זו',
-    'auth/wrong-password': 'סיסמה לא נכונה',
-    'auth/too-many-requests': 'יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר',
-    'auth/network-request-failed': 'שגיאת רשת. אנא בדוק את החיבור לאינטרנט',
-    'auth/invalid-credential': 'פרטי התחברות לא נכונים',
-    'auth/expired-action-code': 'קישור פג תוקף. אנא בקש קישור חדש',
-    'auth/invalid-action-code': 'קישור לא תקין. אנא בקש קישור חדש',
-  };
-  
-  return errorMessages[code] || 'אירעה שגיאה בהתחברות. נסה שוב.';
-}
+export { getAuthErrorMessage } from '@/utils/auth-errors';
 

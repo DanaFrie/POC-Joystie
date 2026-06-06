@@ -34,20 +34,20 @@ export function ChildrenScreenTimeStep({
       aria-label="שעות מסך יומיות"
     >
       <div className="absolute bottom-0 right-v03-gutter top-0 flex w-v03-content flex-col items-center gap-[19px] overflow-hidden">
-        <div className="relative h-[180px] w-full shrink-0 overflow-hidden">
+        <div className="relative flex h-[180px] w-full shrink-0 items-center justify-center overflow-hidden">
           {!imageFailed && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={ONBOARDING_SCREEN_TIME_HERO_IMAGE}
               alt=""
-              className="pointer-events-none absolute left-[-25.8px] top-[27.56px] h-[176.6px] w-[176.6px] max-w-none origin-top-left -rotate-[15deg] object-contain"
+              className="v03-funnel-enter-0 pointer-events-none h-[176.6px] w-[176.6px] max-w-none rotate-[15deg] object-contain"
               onError={() => setImageFailed(true)}
             />
           )}
         </div>
 
         <div className="w-full shrink-0 px-[15px]">
-          <h1 className="w-full text-center font-simpler text-[30px] leading-[34.5px] text-white">
+          <h1 className="v03-funnel-enter-1 w-full text-center font-simpler text-[30px] leading-[34.5px] text-white">
             <span className="font-black">כמה שעות ביום </span>
             <span className="font-normal">(בערך) </span>
             <span className="font-black">הילדים במסך לדעתך?</span>

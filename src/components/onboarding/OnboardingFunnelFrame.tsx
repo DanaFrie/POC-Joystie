@@ -6,12 +6,8 @@ import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { FunnelViewport } from '@/components/ui/FunnelViewport';
 import { useFunnelDesktop } from '@/components/ui/FunnelViewportContext';
 
-const ROUTES_WITHOUT_GRID = [
-  '/onboarding/parent',
-  '/onboarding/reveal',
-  '/onboarding/signup',
-];
-const LIGHT_FUNNEL_ROUTES = ['/onboarding/reveal'];
+const ROUTES_WITHOUT_GRID = ['/onboarding/parent'];
+const LIGHT_FUNNEL_ROUTES: string[] = [];
 
 function OnboardingFunnelContent({ children }: { children: ReactNode }) {
   const isDesktop = useFunnelDesktop();

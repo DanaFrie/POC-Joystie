@@ -15,6 +15,14 @@
         { "fieldPath": "parentId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "bonding_invites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "shareReminderAt", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

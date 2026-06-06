@@ -1,6 +1,13 @@
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
+import { authOnUserCreated } from './auth/onUserCreate';
+import {
+  recordBondingInvite,
+  markBondingWhatsAppShared,
+  markBondingChildLinkOpened,
+} from './bonding/invites';
+import { scheduledBondingShareReminders } from './bonding/scheduler';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -15,6 +22,14 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   admin.initializeApp();
 }
+
+export {
+  authOnUserCreated,
+  recordBondingInvite,
+  markBondingWhatsAppShared,
+  markBondingChildLinkOpened,
+  scheduledBondingShareReminders,
+};
 
 // Define secret for Cloud Run service URL
 // This secret must be set using: firebase functions:secrets:set CLOUD_RUN_SERVICE_URL
@@ -58,7 +73,7 @@ export const processScreenshot = functions.https.onCall(
     // Security is handled by URL token validation in the app code
     // If authentication is present, we can use it for additional validation, but it's not required
 
-    const { imageData, targetDay } = request.data as ProcessScreenshotRequest;
+    const { imageData } = request.data as ProcessScreenshotRequest;
 
     if (!imageData) {
       throw new functions.https.HttpsError(
@@ -136,7 +151,7 @@ export const processScreenshot = functions.https.onCall(
 
 // Determine service account based on project ID
 // In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
-const getServiceAccount = (): string => {
+export function getServiceAccount(): string {
   const projectId = process.env.GCLOUD_PROJECT;
   const serviceAccount = projectId === 'joystie-poc-prod'
     ? 'firebase-adminsdk-fbsvc@joystie-poc-prod.iam.gserviceaccount.com'

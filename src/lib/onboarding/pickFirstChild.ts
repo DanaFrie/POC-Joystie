@@ -14,13 +14,14 @@ const FIRST_CHILD_INDEX_KEY = 'onboardingFirstChildIndex';
 export type PickFirstChildOption = {
   name: string;
   hours: number;
+  gender: 'boy' | 'girl';
 };
 
 /** Figma 12703:42220 placeholders when parent flow data is not in storage yet. */
 export const SIGNUP_PICK_CHILD_DEMO: PickFirstChildOption[] = [
-  { name: 'יואב', hours: 4 },
-  { name: 'שולמית', hours: 2 },
-  { name: 'דינה', hours: 1 },
+  { name: 'יואב', hours: 4, gender: 'boy' },
+  { name: 'שולמית', hours: 2, gender: 'girl' },
+  { name: 'דינה', hours: 1, gender: 'girl' },
 ];
 
 export function getSignupPickChildOptions(): PickFirstChildOption[] {
@@ -47,6 +48,7 @@ export function buildPickFirstChildOptions(): PickFirstChildOption[] | null {
   return children.map((child, index) => ({
     name: child.name.trim(),
     hours: times[index]?.hours ?? (index === 0 ? 1 : 2),
+    gender: child.gender,
   }));
 }
 

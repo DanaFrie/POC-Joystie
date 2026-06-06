@@ -93,6 +93,7 @@ export function GoodNewsPhoneMockup() {
         />
 
         <div
+          dir="ltr"
           className="absolute inline-flex items-center"
           style={{ left: 22.16, top: 35.25, gap: 10.58 }}
         >

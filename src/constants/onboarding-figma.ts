@@ -31,6 +31,10 @@ export const onboardingFigmaLinks = {
   childInviteIntro: `${FILE}?node-id=12914-11767&m=dev`,
   /** Child invite share — WhatsApp / copy (Screen 28) */
   childInviteShare: `${FILE}?node-id=12703-42221&m=dev`,
+  /** Child invite waiting — מחכים ש… יפתח את הלינק */
+  childInviteWaiting: `${FILE}?node-id=12703-42221&m=dev`,
+  /** Reveal step 4 — נתונים של משתמשים אמיתיים (Screen 45) */
+  revealRealData: `${FILE}?node-id=12910-9075&m=dev`,
   /** Parent — ספרי לנו קצת על הילדים (Screen 38) */
   childrenDetails: `${FILE}?node-id=12703-42228&m=dev`,
   screen: `${FILE}?node-id=12703-42224&m=dev`,
@@ -76,9 +80,9 @@ export const ONBOARDING_BAD_NEWS_HERO_IMAGE = '/onboarding-bad-news.png' as cons
 
 export const ONBOARDING_BAD_NEWS_HERO_FALLBACK = '/onboarding-news.png' as const;
 
-/** Real-data step — Family Link icon ~30×35 */
-export const ONBOARDING_FAMILY_LINK_ICON =
-  '/onboarding-family-link-icon.png' as const;
+/** Reveal real-data — Figma 12910:9075 comparison icons */
+export const ONBOARDING_JOYSTIE_ICON = '/icon-joystie.png' as const;
+export const ONBOARDING_FAMILY_LINK_ICON = '/icon-family-link.png' as const;
 
 /** Signup hero — Frame 1430108703; public/signup-box-mountain.png */
 export const ONBOARDING_SIGNUP_HERO_IMAGE = '/signup-box-mountain.png' as const;
@@ -97,6 +101,10 @@ export const SIGNUP_CHILD_INVITE_HERO_IMAGE =
 
 /** WhatsApp icon on share CTA — export from Figma 12703:42221 */
 export const SIGNUP_INVITE_WHATSAPP_ICON = '/signup-invite-whatsapp.png' as const;
+
+/** Waiting screen center gif (86.506×86.506) — `public/signup-child-invite-waiting-logo.gif` */
+export const SIGNUP_CHILD_INVITE_WAITING_LOGO =
+  '/signup-child-invite-waiting-logo.gif' as const;
 
 /** Companion carousel — export from Figma Frame 1597882421 to public/ */
 export const SIGNUP_COMPANION_IMAGES = [

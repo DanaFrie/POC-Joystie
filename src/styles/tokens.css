@@ -74,6 +74,21 @@
   --v03-text-body-leading: 1.35;
 
   --v03-text-button-size: 18px;
+
+  /* Onboarding funnel motion — tune in one place */
+  --v03-funnel-screen-duration: 320ms;
+  --v03-funnel-screen-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --v03-funnel-screen-offset-y: 8px;
+
+  --v03-funnel-enter-duration: 420ms;
+  --v03-funnel-enter-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --v03-funnel-enter-offset-y: 14px;
+  --v03-funnel-enter-stagger: 90ms;
+  --v03-funnel-enter-fast-stagger: 52ms;
+
+  /* Reveal flow — slower staggered entrance */
+  --v03-funnel-enter-reveal-duration: 720ms;
+  --v03-funnel-enter-reveal-stagger: 150ms;
 }
 
 /* Simpler Pro webfonts — uncomment after adding files under public/fonts/simpler-pro/:

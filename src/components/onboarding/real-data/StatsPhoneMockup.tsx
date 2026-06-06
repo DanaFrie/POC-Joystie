@@ -1,8 +1,8 @@
 import { JoystieHomeIconMark } from '@/components/onboarding/good-news/JoystieHomeIconMark';
 import { JoystieInstalledBadge } from '@/components/onboarding/real-data/JoystieInstalledBadge';
 
-const PHONE_SHADOW = '2.35px 2.35px 11.751px rgba(0, 0, 0, 0.10)';
-const TILE_SHADOW = '1.175px 1.175px 15px rgba(0, 0, 0, 0.10)';
+const PHONE_SHADOW = '2.35px 2.35px 5.876px rgba(0, 0, 0, 0.1)';
+const TILE_SHADOW = '1.175px 1.175px 15px rgba(0, 0, 0, 0.1)';
 
 function AppTile() {
   return (
@@ -36,7 +36,7 @@ function JoystieHomeIconWithBadge() {
   );
 }
 
-/** Phone with installed check — no bottom fade. */
+/** Phone with Joystie installed — Figma 12910:9075. */
 export function StatsPhoneMockup() {
   return (
     <div
@@ -61,6 +61,7 @@ export function StatsPhoneMockup() {
       />
 
       <div
+        dir="ltr"
         className="absolute inline-flex items-center"
         style={{ left: 22.16, top: 35.25, gap: 10.58 }}
       >
@@ -83,6 +84,19 @@ export function StatsPhoneMockup() {
       <div className="absolute" style={{ left: 22.16, top: 146.89 }}>
         <AppTileRow />
       </div>
+
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          left: -19.63,
+          top: 68.16,
+          width: 211.52,
+          height: 195.07,
+          background:
+            'linear-gradient(180deg, rgba(245,245,245,0) 0%, #f5f5f5 55%)',
+        }}
+        aria-hidden
+      />
     </div>
   );
 }

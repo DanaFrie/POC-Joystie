@@ -15,6 +15,131 @@
     display: none;
   }
 
+  /* Step-to-step screen transition */
+  @keyframes v03-funnel-screen {
+    from {
+      opacity: 0;
+      transform: translateY(var(--v03-funnel-screen-offset-y));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .v03-funnel-screen {
+    animation: v03-funnel-screen var(--v03-funnel-screen-duration)
+      var(--v03-funnel-screen-ease) forwards;
+    isolation: isolate;
+  }
+
+  /* Unified asset entrance — opacity + subtle rise */
+  @keyframes v03-funnel-enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--v03-funnel-enter-offset-y));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .v03-funnel-enter-0 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-funnel-enter-1 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) var(--v03-funnel-enter-stagger) forwards;
+  }
+  .v03-funnel-enter-2 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 2) forwards;
+  }
+  .v03-funnel-enter-3 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 3) forwards;
+  }
+  .v03-funnel-enter-4 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 4) forwards;
+  }
+  .v03-funnel-enter-5 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 5) forwards;
+  }
+  .v03-funnel-enter-6 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 6) forwards;
+  }
+
+  /* Good news — faster card stagger */
+  .v03-funnel-enter-fast-0 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-funnel-enter-fast-1 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) var(--v03-funnel-enter-fast-stagger) forwards;
+  }
+  .v03-funnel-enter-fast-2 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-fast-stagger) * 2) forwards;
+  }
+  .v03-funnel-enter-fast-3 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-fast-stagger) * 3) forwards;
+  }
+
+  /* Reveal funnel — slower show-up */
+  .v03-funnel-enter-reveal-0 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-funnel-enter-reveal-1 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) var(--v03-funnel-enter-reveal-stagger) forwards;
+  }
+  .v03-funnel-enter-reveal-2 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 2) forwards;
+  }
+  .v03-funnel-enter-reveal-3 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 3) forwards;
+  }
+  .v03-funnel-enter-reveal-4 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 4) forwards;
+  }
+  .v03-funnel-enter-reveal-5 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 5) forwards;
+  }
+  .v03-funnel-enter-reveal-6 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 6) forwards;
+  }
+
   @keyframes v03-fade-in {
     from {
       opacity: 0;
@@ -24,42 +149,32 @@
     }
   }
 
-  /* Staggered reveal (+10% slower than 0.32s / 0.14s baseline) */
-  .v03-fade-in-seq-0 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out forwards;
-  }
-  .v03-fade-in-seq-1 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out 0.154s forwards;
-  }
-  .v03-fade-in-seq-2 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out 0.308s forwards;
-  }
-  .v03-fade-in-seq-3 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out 0.462s forwards;
-  }
-  .v03-fade-in-seq-4 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out 0.616s forwards;
-  }
-  .v03-fade-in-seq-5 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out 0.77s forwards;
-  }
-  .v03-fade-in-seq-6 {
-    opacity: 0;
-    animation: v03-fade-in 0.352s ease-out 0.924s forwards;
-  }
-
   .v03-fade-in-quick {
     animation: v03-fade-in 0.352s ease-out forwards;
   }
 
   .v03-above-blur-footer {
     bottom: calc(95px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Waiting wordmark — right edge starts at screen right, shifts one half-strip */
+  @keyframes signup-waiting-marquee {
+    from {
+      transform: translate3d(var(--signup-waiting-marquee-start, 0px), 0, 0);
+    }
+    to {
+      transform: translate3d(
+        calc(var(--signup-waiting-marquee-start, 0px) - var(--signup-waiting-marquee-shift, 0px)),
+        0,
+        0
+      );
+    }
+  }
+
+  .signup-waiting-marquee-track {
+    animation: signup-waiting-marquee var(--signup-waiting-marquee-duration, 20s)
+      linear infinite;
+    will-change: transform;
   }
 }
 

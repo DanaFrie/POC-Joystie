@@ -3,7 +3,8 @@
 import { SignupIntroSection } from '@/components/onboarding/signup/SignupIntroSection';
 
 export type SignupFormValues = {
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -16,6 +17,7 @@ type OnboardingSignupFormProps = {
   onOAuthGoogle?: () => void;
   onOAuthApple?: () => void;
   oauthDisabled?: boolean;
+  oauthLoading?: 'google' | 'apple' | null;
 };
 
 const fieldWrapClass = 'flex w-full max-w-v03-content flex-col items-start gap-0.5';
@@ -24,13 +26,12 @@ const labelClass =
   'px-2.5 text-left font-simpler text-[16px] font-normal leading-[21.6px] text-white';
 
 const inputClass =
-  'h-[49px] w-full rounded-[18px] border border-white/20 bg-white/5 px-[15px] py-[14px] text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white outline-none placeholder:text-v03-green-400 focus:border-white/40';
+  'h-[49px] w-full rounded-[18px] border border-white/20 bg-white/5 px-[15px] py-[14px] text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white outline-none focus:border-white/40';
 
 function SignupField({
   id,
   label,
   type = 'text',
-  placeholder,
   value,
   error,
   onChange,
@@ -39,7 +40,6 @@ function SignupField({
   id: keyof SignupFormValues;
   label: string;
   type?: string;
-  placeholder?: string;
   value: string;
   error?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -56,7 +56,6 @@ function SignupField({
         type={type}
         value={value}
         onChange={onChange}
-        placeholder={placeholder}
         autoComplete={autoComplete}
         className={inputClass}
         dir={type === 'email' || type === 'password' ? 'ltr' : 'rtl'}
@@ -77,6 +76,7 @@ export function OnboardingSignupForm({
   onOAuthGoogle,
   onOAuthApple,
   oauthDisabled = false,
+  oauthLoading = null,
 }: OnboardingSignupFormProps) {
   return (
     <>
@@ -84,6 +84,7 @@ export function OnboardingSignupForm({
         onOAuthGoogle={onOAuthGoogle}
         onOAuthApple={onOAuthApple}
         oauthDisabled={oauthDisabled}
+        oauthLoading={oauthLoading}
       />
 
       <div className="flex w-full max-w-v03-content flex-col items-start gap-5">
@@ -98,18 +99,25 @@ export function OnboardingSignupForm({
         <div className="flex w-full flex-col gap-3">
           <div className="flex w-full flex-col gap-5">
             <SignupField
-              id="fullName"
-              label="שם מלא"
-              value={values.fullName}
-              error={errors.fullName}
+              id="firstName"
+              label="שם פרטי"
+              value={values.firstName}
+              error={errors.firstName}
               onChange={onChange}
-              autoComplete="name"
+              autoComplete="given-name"
+            />
+            <SignupField
+              id="lastName"
+              label="שם משפחה"
+              value={values.lastName}
+              error={errors.lastName}
+              onChange={onChange}
+              autoComplete="family-name"
             />
             <SignupField
               id="email"
               label="אימייל"
               type="email"
-              placeholder="Example@mail.com"
               value={values.email}
               error={errors.email}
               onChange={onChange}
@@ -119,7 +127,6 @@ export function OnboardingSignupForm({
               id="password"
               label="סיסמה"
               type="password"
-              placeholder="xxxxxxxxxx"
               value={values.password}
               error={errors.password}
               onChange={onChange}
@@ -129,7 +136,6 @@ export function OnboardingSignupForm({
               id="confirmPassword"
               label="אימות סיסמה"
               type="password"
-              placeholder="xxxxxxxxxx"
               value={values.confirmPassword}
               error={errors.confirmPassword}
               onChange={onChange}

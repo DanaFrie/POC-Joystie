@@ -1,7 +1,14 @@
-const GLOW_FILTER_ID = 'joystie-good-news-icon-glow';
+const DEFAULT_GLOW_FILTER_ID = 'joystie-good-news-icon-glow';
+
+type JoystieHomeIconMarkProps = {
+  /** Unique per mount when multiple SVG filters appear on one page. */
+  glowFilterId?: string;
+};
 
 /** Joystie wordmark + smile + mint glow — inside 59.93 home-screen tile. */
-export function JoystieHomeIconMark() {
+export function JoystieHomeIconMark({
+  glowFilterId = DEFAULT_GLOW_FILTER_ID,
+}: JoystieHomeIconMarkProps = {}) {
   return (
     <>
       <svg
@@ -14,12 +21,12 @@ export function JoystieHomeIconMark() {
         style={{ left: -6.12, top: -6.12 }}
         aria-hidden
       >
-        <g filter={`url(#${GLOW_FILTER_ID})`}>
+        <g filter={`url(#${glowFilterId})`}>
           <circle cx={35.791} cy={35.791} r={8.68998} fill="#00FFB3" fillOpacity={0.7} />
         </g>
         <defs>
           <filter
-            id={GLOW_FILTER_ID}
+            id={glowFilterId}
             x={0}
             y={0}
             width={71.5821}

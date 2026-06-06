@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { ScreenTimeProgressRing } from '@/components/onboarding/screen-time/ScreenTimeProgressRing';
 
-const PROGRESS_MS = 2800;
-const DOT_INTERVAL_MS = 450;
+const PROGRESS_MS = 3500;
+const DOT_INTERVAL_MS = 563;
 
 type ScreenTimeCalculatingStepProps = {
   onComplete: () => void;

@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { ONBOARDING_BACK_TOP_PX } from '@/constants/onboarding-funnel-motion';
 
 const backClassName =
-  'absolute right-v03-gutter top-[82px] z-[20] flex h-6 w-6 items-center justify-center';
+  'absolute right-v03-gutter z-[20] flex h-6 w-6 items-center justify-center';
 
 type BackTone = 'dark' | 'light';
 
@@ -29,7 +30,7 @@ function BackChevron({ tone }: { tone: BackTone }) {
   );
 }
 
-/** Back chevron — top 82; `light` = black on bright funnel, `dark` = white. */
+/** Back chevron — lifted toward top; `light` = black on bright funnel, `dark` = white. */
 export function OnboardingBackButton({
   href,
   onClick,
@@ -39,6 +40,8 @@ export function OnboardingBackButton({
   onClick?: () => void;
   tone?: BackTone;
 }) {
+  const style = { top: ONBOARDING_BACK_TOP_PX };
+
   if (onClick) {
     return (
       <button
@@ -46,6 +49,7 @@ export function OnboardingBackButton({
         onClick={onClick}
         aria-label="חזרה"
         className={backClassName}
+        style={style}
       >
         <BackChevron tone={tone} />
       </button>
@@ -53,7 +57,12 @@ export function OnboardingBackButton({
   }
 
   return (
-    <Link href={href ?? '/onboarding'} aria-label="חזרה" className={backClassName}>
+    <Link
+      href={href ?? '/onboarding'}
+      aria-label="חזרה"
+      className={backClassName}
+      style={style}
+    >
       <BackChevron tone={tone} />
     </Link>
   );

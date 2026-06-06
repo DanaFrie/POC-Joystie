@@ -44,32 +44,42 @@ export function SignupIntroStep({ stage, onStageChange }: SignupIntroStepProps) 
           gap: SIGNUP_JOURNEY_COPY_VISUAL_GAP_PX,
         }}
       >
-        <SignupJourneyCopy
-          eyebrow={copy.eyebrow}
-          title={copy.title}
-          subtitle={copy.subtitle}
-        />
-
-        {stage === 0 && (
-          <SignupCompanionCarousel
-            activeIndex={activeCompanion}
-            onSelect={setActiveCompanion}
+        <div
+          key={stage}
+          className="flex w-full flex-col items-center"
+          style={{ gap: SIGNUP_JOURNEY_COPY_VISUAL_GAP_PX }}
+        >
+          <SignupJourneyCopy
+            eyebrow={copy.eyebrow}
+            title={copy.title}
+            subtitle={copy.subtitle}
           />
-        )}
-        {stage === 1 && <SignupJourneyStep2Visual />}
-        {stage === 2 && <SignupJourneyStep3Visual />}
+
+          <div className="v03-funnel-enter-2 w-full">
+            {stage === 0 && (
+              <SignupCompanionCarousel
+                activeIndex={activeCompanion}
+                onSelect={setActiveCompanion}
+              />
+            )}
+            {stage === 1 && <SignupJourneyStep2Visual />}
+            {stage === 2 && <SignupJourneyStep3Visual />}
+          </div>
+        </div>
       </div>
 
       <div
-        className="absolute left-1/2 -translate-x-1/2"
+        className="absolute inset-x-0 flex justify-center"
         style={{ top: SIGNUP_INTRO_DOTS_TOP_PX }}
       >
-        <SignupStageDots
-          activeStage={stage}
-          onSelect={(index) =>
-            onStageChange(index as SignupJourneyStageIndex)
-          }
-        />
+        <div className="v03-funnel-enter-3">
+          <SignupStageDots
+            activeStage={stage}
+            onSelect={(index) =>
+              onStageChange(index as SignupJourneyStageIndex)
+            }
+          />
+        </div>
       </div>
     </div>
   );

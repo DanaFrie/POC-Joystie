@@ -12,6 +12,12 @@ export const SIGNUP_INTRO_TOP_PX =
 export const SIGNUP_CONTENT_PULL_UP_PX =
   SIGNUP_INTRO_TOP_PX - SIGNUP_HERO_HEIGHT_PX;
 
+/** Frame 1597882406 — lift account block 20% toward screen top */
+export const SIGNUP_ACCOUNT_FORM_LIFT_PX = Math.round(SIGNUP_INTRO_TOP_PX * 0.2);
+
+export const SIGNUP_FORM_CONTENT_MARGIN_TOP_PX =
+  SIGNUP_CONTENT_PULL_UP_PX - SIGNUP_ACCOUNT_FORM_LIFT_PX;
+
 /** Frame 1597882421 — companion picker carousel */
 export const SIGNUP_COMPANION_SIZE_PX = 161.82;
 export const SIGNUP_COMPANION_ACTIVE_SIZE_PX = 178;
@@ -34,19 +40,9 @@ export const SIGNUP_INTRO_EYEBROW_TITLE_GAP_PX = 4;
 export const SIGNUP_HOW_IT_WORKS_PILL_PX = 19;
 export const SIGNUP_HOW_IT_WORKS_PILL_PY = 10;
 
-/** שלב 2 visual — Figma 12703:42218 */
+/** שלב 2 visual — Figma 12703:42218; `public/signup-journey-ball-game.png` */
 export const SIGNUP_JOURNEY_STEP2_FRAME_H_PX = 254;
-export const SIGNUP_JOURNEY_STEP2_OUTER_RADIUS_PX = 29;
-export const SIGNUP_JOURNEY_STEP2_OUTER_PX = 15;
-export const SIGNUP_JOURNEY_STEP2_OUTER_PY = 12;
-export const SIGNUP_JOURNEY_STEP2_OUTER_GAP_PX = 10;
-export const SIGNUP_JOURNEY_STEP2_PHONE_W_PX = 174.38;
-export const SIGNUP_JOURNEY_STEP2_PHONE_H_PX = 226;
-export const SIGNUP_JOURNEY_STEP2_PHONE_RADIUS_PX = 26;
-export const SIGNUP_JOURNEY_STEP2_IMAGE_W_PX = 210.54;
-export const SIGNUP_JOURNEY_STEP2_IMAGE_H_PX = 368.5;
-export const SIGNUP_JOURNEY_STEP2_IMAGE_LEFT_PX = -10.23;
-export const SIGNUP_JOURNEY_STEP2_IMAGE_TOP_PX = -142.3;
+export const SIGNUP_JOURNEY_STEP2_IMAGE_W_PX = 200;
 
 /** שלב 3 visual — Figma 12703:42219; backdrop circle smaller than scroll art */
 export const SIGNUP_JOURNEY_STEP3_FRAME_W_PX = 212;

@@ -36,6 +36,7 @@ type SignupIntroSectionProps = {
   onOAuthGoogle?: () => void;
   onOAuthApple?: () => void;
   oauthDisabled?: boolean;
+  oauthLoading?: 'google' | 'apple' | null;
 };
 
 /** Title + OAuth — starts on ellipse 391 baseline (Figma gap 16 / 12). */
@@ -43,9 +44,10 @@ export function SignupIntroSection({
   onOAuthGoogle,
   onOAuthApple,
   oauthDisabled = false,
+  oauthLoading = null,
 }: SignupIntroSectionProps) {
   return (
-    <div className="flex w-full max-w-v03-content flex-col items-start gap-4">
+    <div className="flex w-full max-w-v03-content flex-col items-start gap-4 v03-funnel-enter-1">
       <div className="flex w-full flex-col items-end">
         <div className="flex w-full flex-col items-end gap-1 self-stretch">
           <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white">
@@ -59,16 +61,16 @@ export function SignupIntroSection({
 
       <div className="flex w-full flex-col items-start gap-3">
         <OAuthButton
-          label="המשך עם Google"
+          label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
           icon={<GoogleIcon />}
           onClick={onOAuthGoogle}
-          disabled={oauthDisabled}
+          disabled={oauthDisabled || oauthLoading !== null}
         />
         <OAuthButton
-          label="המשך עם Apple"
+          label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
           icon={<AppleIcon />}
           onClick={onOAuthApple}
-          disabled={oauthDisabled}
+          disabled={oauthDisabled || oauthLoading !== null}
         />
       </div>
     </div>

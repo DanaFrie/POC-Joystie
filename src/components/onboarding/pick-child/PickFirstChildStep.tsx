@@ -35,7 +35,7 @@ export function PickFirstChildStep({
       aria-label="בחירת ילד ראשון"
     >
       <header
-        className="absolute right-v03-gutter flex w-v03-content flex-col items-end justify-center px-[15px]"
+        className="v03-funnel-enter-0 absolute right-v03-gutter flex w-v03-content flex-col items-end justify-center px-[15px]"
         style={{
           top: PICK_FIRST_CHILD_HEADER_TOP_PX,
           gap: PICK_FIRST_CHILD_HEADER_GAP_PX,
@@ -50,7 +50,7 @@ export function PickFirstChildStep({
       </header>
 
       <div
-        className="absolute right-v03-gutter flex w-v03-content flex-col items-center"
+        className="v03-funnel-enter-1 absolute right-v03-gutter flex w-v03-content flex-col items-center"
         style={{
           top: PICK_FIRST_CHILD_CARDS_TOP_PX,
           gap: PICK_FIRST_CHILD_SECTION_GAP_PX,
@@ -72,7 +72,7 @@ export function PickFirstChildStep({
         </div>
 
         <p
-          className="text-center font-simpler text-lg font-normal leading-[22.5px] text-[#B0C6BF]"
+          className="v03-funnel-enter-2 text-center font-simpler text-lg font-normal leading-[22.5px] text-[#B0C6BF]"
           style={{ maxWidth: PICK_FIRST_CHILD_FOOTNOTE_MAX_W_PX }}
         >
           * כשתרגישו מוכנים, תוכלו לצרף בהדרגה גם את שאר הילדים.
