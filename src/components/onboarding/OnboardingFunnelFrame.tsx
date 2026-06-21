@@ -6,7 +6,8 @@ import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { FunnelViewport } from '@/components/ui/FunnelViewport';
 import { useFunnelDesktop } from '@/components/ui/FunnelViewportContext';
 
-const ROUTES_WITHOUT_GRID = ['/onboarding/parent'];
+/** Grid on landing is rendered in `OnboardingLanding`; parent flow adds per-step grid. */
+const ROUTES_WITHOUT_GRID = ['/onboarding', '/onboarding/child'];
 const LIGHT_FUNNEL_ROUTES: string[] = [];
 
 function OnboardingFunnelContent({ children }: { children: ReactNode }) {
@@ -20,7 +21,7 @@ function OnboardingFunnelContent({ children }: { children: ReactNode }) {
 }
 
 /**
- * /onboarding/* — mobile: full 375×812 layers.
+ * /onboarding/* — mobile: 375×812 contain scaling + letterbox bleed (parent + child).
  * Desktop (≥768px): green canvas + grid + «זמין במובייל בלבד» only.
  */
 export function OnboardingFunnelFrame({
@@ -39,7 +40,8 @@ export function OnboardingFunnelFrame({
   return (
     <FunnelViewport
       surface={surface}
-      scaleMode={surface === 'light' ? 'contain' : 'cover'}
+      scaleMode="contain"
+      ignoreSafeArea={false}
       className={`font-simpler text-v03-text-on-dark ${className}`}
     >
       <div className="relative h-full w-full">

@@ -1,48 +1,112 @@
+'use client';
+
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/Button';
+import { OnboardingLoginRow } from '@/components/onboarding/OnboardingLoginRow';
+import { ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX } from '@/constants/onboarding-footer';
+import { ONBOARDING_FUNNEL_CTA_TOP_PX } from '@/constants/onboarding-figma';
+
+type FooterLayout = 'stacked' | 'landing';
 
 type OnboardingFooterCtaProps = {
-  href?: string;
-  onClick?: () => void;
+  children: React.ReactNode;
+  onClick: () => void;
   disabled?: boolean;
+  /** White secondary CTA (parent funnel steps) vs primary purple (landing) */
   variant?: 'primary' | 'secondary';
-  children: ReactNode;
+  /** «יש לך חשבון? להתחברות» — landing layout only */
+  showLoginLink?: boolean;
+  /** `landing` = CTA at 661px + login at 738px (role screen); `stacked` = 690px shell */
+  layout?: FooterLayout;
 };
 
-const variantClasses = {
-  primary:
-    'bg-v03-accent text-v03-accent-foreground shadow-v03-button hover:brightness-105',
-  secondary:
-    'bg-white text-v03-turquoise-950 shadow-v03-button hover:brightness-95',
-};
-
-/** Bottom CTA bar — Figma footer ~top 690, 327×55 (no home indicator). */
-export function OnboardingFooterCta({
-  href,
-  onClick,
-  disabled = false,
-  variant = 'primary',
+function FooterCtaButton({
   children,
-}: OnboardingFooterCtaProps) {
-  const className = `inline-flex h-[55px] w-v03-content items-center justify-center gap-2 rounded-v03-button px-[15px] py-2 font-simpler text-[18px] font-bold transition ${variantClasses[variant]} ${
-    disabled ? 'pointer-events-none opacity-50' : ''
-  }`;
-
-  if (href && !disabled) {
+  onClick,
+  disabled,
+  variant,
+}: Pick<
+  OnboardingFooterCtaProps,
+  'children' | 'onClick' | 'disabled' | 'variant'
+>) {
+  if (variant === 'secondary') {
     return (
-      <div className="absolute left-0 right-0 top-[690px] z-[11] flex flex-col items-center gap-[15px] pt-5">
-        <Link href={href} className={className}>
-          {children}
-        </Link>
-      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="flex h-[55px] w-full items-center justify-center gap-2 rounded-v03-button bg-white px-[15px] py-2 text-center font-simpler text-[18px] font-bold text-v03-turquoise-950 shadow-v03-button transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {children}
+      </button>
     );
   }
 
   return (
-    <div className="absolute left-0 right-0 top-[690px] z-[11] flex flex-col items-center gap-[15px] pt-5">
-      <button type="button" onClick={onClick} disabled={disabled} className={className}>
+    <Button
+      type="button"
+      variant="primary"
+      size="lg"
+      className="w-full shadow-v03-cta"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </Button>
+  );
+}
+
+/**
+ * Parent funnel footer CTA — `layout="landing"` matches `/onboarding` + role screen
+ * (Figma 12703:41524 / 13160:501).
+ */
+export function OnboardingFooterCta({
+  children,
+  onClick,
+  disabled = false,
+  variant = 'secondary',
+  showLoginLink = false,
+  layout = 'stacked',
+}: OnboardingFooterCtaProps) {
+  if (layout === 'landing') {
+    return (
+      <>
+        <div
+          className="absolute left-v03-gutter z-[11] w-v03-content"
+          style={{ top: ONBOARDING_FUNNEL_CTA_TOP_PX }}
+        >
+          <FooterCtaButton
+            onClick={onClick}
+            disabled={disabled}
+            variant={variant}
+          >
+            {children}
+          </FooterCtaButton>
+        </div>
+        {showLoginLink ? <OnboardingLoginRow /> : null}
+      </>
+    );
+  }
+
+  return (
+    <div
+      className="absolute left-v03-gutter z-[11] flex w-v03-content flex-col gap-[15px] pt-5"
+      style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX }}
+    >
+      <FooterCtaButton onClick={onClick} disabled={disabled} variant={variant}>
         {children}
-      </button>
+      </FooterCtaButton>
+      {showLoginLink ? (
+        <p className="text-center font-v03-body text-v03-body text-v03-text-primary">
+          יש לך חשבון?{' '}
+          <Link
+            href="/login"
+            className="font-v03-button text-v03-text-primary underline decoration-solid underline-offset-2"
+          >
+            להתחברות
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

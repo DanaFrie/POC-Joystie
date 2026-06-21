@@ -13,19 +13,6 @@ import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboar
 
 const SCREEN_TIME_STORAGE_KEY = 'onboardingChildrenScreenTime';
 
-/** Short role labels — Figma (הבכור / הסנדוויצ׳ית / הקטנטנה). */
-export function getChildScreenTimeRoleLabels(childCount: number): string[] {
-  if (childCount <= 0) return [];
-  if (childCount === 1) return ['הבכור'];
-  if (childCount === 2) return ['הבכור', 'הקטנטנה'];
-
-  const labels = ['הבכור'];
-  for (let i = 0; i < childCount - 2; i += 1) {
-    labels.push('הסנדוויצ׳ית');
-  }
-  labels.push('הקטנטנה');
-  return labels;
-}
 
 export function createScreenTimesFromChildren(
   children: OnboardingChildDraft[]

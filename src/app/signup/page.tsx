@@ -212,14 +212,12 @@ export default function SignupPage() {
       const validAges = formData.kidsAges.filter(age => age.trim() !== '');
 
       // Create user document in Firestore
-      // notificationsEnabled is set to true by default - email notifications will be sent via Firebase Functions
       await createUser(user.uid, {
         email: formData.email.trim().toLowerCase(),
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         gender: formData.gender as 'male' | 'female',
-        kidsAges: validAges,
-        notificationsEnabled: true, // Email notifications enabled by default
+        kidsAges: validAges.map((age) => ({ age, dailyScreenTimeHours: 0 })),
         termsAccepted: formData.termsAccepted,
         signupDate: new Date().toISOString(),
       });
@@ -274,7 +272,7 @@ export default function SignupPage() {
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-8">
           <div className="flex items-center justify-center mb-4">
             <Image
-              src="/logo-joystie.png"
+              src="/brand/logo-joystie.png"
               alt="Joystie Logo"
               width={120}
               height={40}

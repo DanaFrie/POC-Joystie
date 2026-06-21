@@ -94,38 +94,3 @@ export async function updateUser(
   }
 }
 
-/**
- * Find user by username
- */
-export async function getUserByUsername(username: string): Promise<FirestoreUser | null> {
-  try {
-    const { collection, query, where, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const usersRef = collection(db, USERS_COLLECTION);
-    const q = query(usersRef, where('username', '==', username.toLowerCase()));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      return null;
-    }
-    
-    return querySnapshot.docs[0].data() as FirestoreUser;
-  } catch (error) {
-    logger.error('Error finding user by username:', error);
-    throw new Error('שגיאה בחיפוש משתמש.');
-  }
-}
-
-/**
- * Check if username is available
- */
-export async function isUsernameAvailable(username: string): Promise<boolean> {
-  try {
-    const user = await getUserByUsername(username);
-    return user === null;
-  } catch (error) {
-    logger.error('Error checking username availability:', error);
-    return false;
-  }
-}
-

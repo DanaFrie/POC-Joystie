@@ -1,4 +1,8 @@
 import type { SignupFormValues } from '@/components/onboarding/signup/OnboardingSignupForm';
+import {
+  isHebrewChildName,
+  ONBOARDING_HEBREW_ONLY_ERROR,
+} from '@/lib/onboarding/childrenDetails';
 
 export function validateOnboardingSignupForm(
   values: SignupFormValues
@@ -7,9 +11,13 @@ export function validateOnboardingSignupForm(
 
   if (!values.firstName.trim()) {
     errors.firstName = 'אנא הכנס שם פרטי';
+  } else if (!isHebrewChildName(values.firstName)) {
+    errors.firstName = ONBOARDING_HEBREW_ONLY_ERROR;
   }
   if (!values.lastName.trim()) {
     errors.lastName = 'אנא הכנס שם משפחה';
+  } else if (!isHebrewChildName(values.lastName)) {
+    errors.lastName = ONBOARDING_HEBREW_ONLY_ERROR;
   }
   if (!values.email.trim()) {
     errors.email = 'אנא הכנס כתובת אימייל';
@@ -23,9 +31,11 @@ export function validateOnboardingSignupForm(
   }
   if (!values.confirmPassword.trim()) {
     errors.confirmPassword = 'אנא אשר את הסיסמה';
-  } else if (values.password !== values.confirmPassword) {
+  } else   if (values.password !== values.confirmPassword) {
     errors.confirmPassword = 'הסיסמאות לא תואמות';
   }
-
+  if (!values.termsAccepted) {
+    errors.termsAccepted = 'אנא אשר את תנאי השימוש';
+  }
   return errors;
 }

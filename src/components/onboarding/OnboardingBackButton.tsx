@@ -1,8 +1,11 @@
-import Link from 'next/link';
-import { ONBOARDING_BACK_TOP_PX } from '@/constants/onboarding-funnel-motion';
+'use client';
 
-const backClassName =
-  'absolute right-v03-gutter z-[20] flex h-6 w-6 items-center justify-center';
+import Link from 'next/link';
+import {
+  ONBOARDING_BACK_HEIGHT_PX,
+  ONBOARDING_BACK_SCROLL_GAP_PX,
+  ONBOARDING_BACK_TOP_PX,
+} from '@/constants/onboarding-funnel-motion';
 
 type BackTone = 'dark' | 'light';
 
@@ -30,40 +33,69 @@ function BackChevron({ tone }: { tone: BackTone }) {
   );
 }
 
-/** Back chevron — lifted toward top; `light` = black on bright funnel, `dark` = white. */
+const hitTargetClass =
+  'absolute right-v03-gutter flex items-center justify-center';
+
+const controlStyle = {
+  top: ONBOARDING_BACK_TOP_PX,
+  width: ONBOARDING_BACK_HEIGHT_PX,
+  height: ONBOARDING_BACK_HEIGHT_PX,
+};
+
+type OnboardingBackButtonProps = {
+  href?: string;
+  onClick?: () => void;
+  tone?: BackTone;
+  /** In-flow inside scroll regions — moves with content. */
+  scrollWithContent?: boolean;
+};
+
+/**
+ * Back chevron — overlay on static steps; in-flow when `scrollWithContent` (inside scroll bodies).
+ * Always `right-v03-gutter` + top 41px — same slot as non-scroll steps.
+ */
 export function OnboardingBackButton({
   href,
   onClick,
   tone = 'dark',
-}: {
-  href?: string;
-  onClick?: () => void;
-  tone?: BackTone;
-}) {
-  const style = { top: ONBOARDING_BACK_TOP_PX };
-
-  if (onClick) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label="חזרה"
-        className={backClassName}
-        style={style}
-      >
-        <BackChevron tone={tone} />
-      </button>
-    );
-  }
-
-  return (
+  scrollWithContent = false,
+}: OnboardingBackButtonProps) {
+  const control = onClick ? (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="חזרה"
+      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[50]'}`}
+      style={controlStyle}
+    >
+      <BackChevron tone={tone} />
+    </button>
+  ) : (
     <Link
       href={href ?? '/onboarding'}
       aria-label="חזרה"
-      className={backClassName}
-      style={style}
+      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[50]'}`}
+      style={controlStyle}
     >
       <BackChevron tone={tone} />
     </Link>
   );
+
+  if (scrollWithContent) {
+    return (
+      <div
+        className="relative w-full shrink-0"
+        style={{
+          height:
+            ONBOARDING_BACK_TOP_PX +
+            ONBOARDING_BACK_HEIGHT_PX +
+            ONBOARDING_BACK_SCROLL_GAP_PX,
+        }}
+      >
+        {control}
+      </div>
+    );
+  }
+
+  return control;
 }

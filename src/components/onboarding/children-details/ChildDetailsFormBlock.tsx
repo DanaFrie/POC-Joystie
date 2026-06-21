@@ -8,6 +8,7 @@ type ChildDetailsFormBlockProps = {
   nameLabel: string;
   child: OnboardingChildDraft;
   onChange: (child: OnboardingChildDraft) => void;
+  nameError?: string;
   showDivider?: boolean;
 };
 
@@ -16,6 +17,7 @@ export function ChildDetailsFormBlock({
   nameLabel,
   child,
   onChange,
+  nameError,
   showDivider = true,
 }: ChildDetailsFormBlockProps) {
   return (
@@ -34,6 +36,11 @@ export function ChildDetailsFormBlock({
           placeholder="שם פרטי"
           className="flex h-[49px] w-full items-center justify-end rounded-[18px] bg-white/5 px-[15px] py-3.5 text-right font-simpler text-base font-normal leading-[21.6px] text-white outline outline-1 outline-white/20 outline-offset-[-1px] placeholder:text-v03-green-400 focus:outline-white/40"
         />
+        {nameError ? (
+          <p className="w-full px-2.5 text-right font-simpler text-sm text-red-300">
+            {nameError}
+          </p>
+        ) : null}
       </div>
 
       {/* LTR row: גיל left, מין right (screen coords) */}

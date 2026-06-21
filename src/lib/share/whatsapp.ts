@@ -1,34 +1,35 @@
 import {
   WHATSAPP_CHILD_INVITE_TEMPLATE_HE,
   WHATSAPP_SHARE_BASE_URL,
+  formatChildUrlForMessaging,
+  resolveWhatsAppInviteVerb,
 } from '@/constants/whatsapp';
 
 export interface WhatsAppChildInviteParams {
   childUrl: string;
   childName?: string;
   parentName?: string;
+  parentGender?: 'female' | 'male';
 }
 
-/**
- * Build Hebrew invite message from the constant template.
- */
+/** Build Hebrew invite message from the constant template. */
 export function buildWhatsAppChildInviteMessage(
   params: WhatsAppChildInviteParams | string,
   legacyChildUrl?: string
 ): string {
   if (typeof params === 'string') {
-    return WHATSAPP_CHILD_INVITE_TEMPLATE_HE.replace('{childNameGreeting}', params ? ` ${params}` : '')
-      .replace('{parentName}', 'ההורה שלך')
-      .replace('{childUrl}', legacyChildUrl ?? '');
+    return WHATSAPP_CHILD_INVITE_TEMPLATE_HE.replace(
+      '{inviteVerb}',
+      resolveWhatsAppInviteVerb('male')
+    )
+      .replace('{childUrl}', formatChildUrlForMessaging(legacyChildUrl ?? ''));
   }
 
-  const { childUrl, childName, parentName } = params;
-  const childNameGreeting = childName ? ` ${childName}` : '';
-  const parentLabel = parentName?.trim() || 'ההורה שלך';
-
-  return WHATSAPP_CHILD_INVITE_TEMPLATE_HE.replace('{childNameGreeting}', childNameGreeting)
-    .replace('{parentName}', parentLabel)
-    .replace('{childUrl}', childUrl);
+  const { childUrl, parentGender } = params;
+  return WHATSAPP_CHILD_INVITE_TEMPLATE_HE.replace(
+    '{inviteVerb}',
+    resolveWhatsAppInviteVerb(parentGender)
+  ).replace('{childUrl}', formatChildUrlForMessaging(childUrl));
 }
 
 export function buildWhatsAppShareUrl(params: WhatsAppChildInviteParams): string {

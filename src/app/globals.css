@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Montserrat+Alternates:wght@400;600;700;900&family=Rubik:wght@600;900&family=Varela+Round&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Montserrat+Alternates:wght@400;600;700;900&family=Rubik:wght@400;600;900&family=Varela+Round&display=swap');
 @import '../styles/tokens.css';
 
 @tailwind base;
@@ -31,6 +31,19 @@
     animation: v03-funnel-screen var(--v03-funnel-screen-duration)
       var(--v03-funnel-screen-ease) forwards;
     isolation: isolate;
+  }
+
+  @keyframes v03-oauth-terms-sheet {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .v03-oauth-terms-sheet {
+    animation: v03-oauth-terms-sheet 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
 
   /* Unified asset entrance — opacity + subtle rise */
@@ -140,6 +153,61 @@
       var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 6) forwards;
   }
 
+  /* revealIntro — slowest top → bottom reveal */
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-0 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: 0ms;
+  }
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-1 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: var(--v03-funnel-enter-reveal-intro-stagger);
+  }
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-2 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: calc(var(--v03-funnel-enter-reveal-intro-stagger) * 2);
+  }
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-3 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: calc(var(--v03-funnel-enter-reveal-intro-stagger) * 3);
+  }
+
+  .v03-funnel-enter-reveal-hero-intro {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-hero-intro-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+
+  /* realData — Joystie bars grow in after המשך footer (reveal-4) lands */
+  @keyframes v03-joystie-bar-enter {
+    from {
+      opacity: 0;
+      transform: scaleY(0);
+    }
+    to {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  .v03-real-data-step .v03-joystie-bar-enter {
+    transform-origin: bottom center;
+    opacity: 0;
+    animation: v03-joystie-bar-enter var(--v03-joystie-bar-duration)
+      var(--v03-funnel-enter-ease) forwards;
+    animation-delay: calc(
+      var(--v03-joystie-bar-start-delay) +
+        var(--v03-joystie-bar-index, 0) * var(--v03-joystie-bar-stagger)
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .v03-real-data-step .v03-joystie-bar-enter {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   @keyframes v03-fade-in {
     from {
       opacity: 0;
@@ -154,27 +222,37 @@
   }
 
   .v03-above-blur-footer {
-    bottom: calc(95px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
   }
+}
 
-  /* Waiting wordmark — right edge starts at screen right, shifts one half-strip */
-  @keyframes signup-waiting-marquee {
-    from {
-      transform: translate3d(var(--signup-waiting-marquee-start, 0px), 0, 0);
-    }
-    to {
-      transform: translate3d(
-        calc(var(--signup-waiting-marquee-start, 0px) - var(--signup-waiting-marquee-shift, 0px)),
-        0,
-        0
-      );
-    }
+/* Waiting wordmark — outside @layer so animation always applies */
+.signup-waiting-marquee-viewport {
+  position: relative;
+  container-type: inline-size;
+}
+
+/* First frame’s left edge starts at viewport right; slides left continuously */
+.signup-waiting-marquee-runner {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  animation: signup-waiting-marquee var(--signup-waiting-marquee-duration, 28.8s) linear
+    infinite;
+  will-change: transform;
+}
+
+@keyframes signup-waiting-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
   }
-
-  .signup-waiting-marquee-track {
-    animation: signup-waiting-marquee var(--signup-waiting-marquee-duration, 20s)
-      linear infinite;
-    will-change: transform;
+  to {
+    /* 4th wordmark’s right edge reaches viewport left — then loop restarts */
+    transform: translate3d(
+      calc(-100cqw - var(--signup-waiting-marquee-run-end-offset, 1976px)),
+      0,
+      0
+    );
   }
 }
 
@@ -230,6 +308,10 @@ body.layout-root:has(.v03-funnel-root) > div.relative {
   max-height: 100dvh;
 }
 
+.v03-funnel-root:not(.v03-funnel-light) {
+  background-color: var(--v03-green-900);
+}
+
 .v03-funnel-root.v03-funnel-light {
   background: var(--v03-funnel-light-gradient) !important;
 }
@@ -242,6 +324,17 @@ html.layout-root:has(.v03-funnel-light),
 body.layout-root:has(.v03-funnel-light) {
   background-color: #fff !important;
   background-image: none !important;
+}
+
+/* v0.3 marketing landing — no v0.2 background.png */
+html.layout-root:has(.v03-landing-root),
+body.layout-root:has(.v03-landing-root) {
+  background-color: var(--v03-green-900) !important;
+  background-image: none !important;
+}
+
+.v03-landing-root {
+  font-family: 'Simpler Pro', var(--font-simpler), 'Assistant', sans-serif;
 }
 
 html.layout-root {
@@ -296,6 +389,31 @@ html[dir="rtl"] {
     background-attachment: scroll;
     background-position: center top;
   }
+}
+
+/* Funnel grid — landing `.bg-grid` repeat, between green root and step content */
+.v03-funnel-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* Desktop funnel overlay — in-canvas repeat grid */
+.v03-onboarding-grid-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
 /* Grid background */

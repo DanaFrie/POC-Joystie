@@ -14,7 +14,7 @@ export default function ChildLayout({
         <div className="relative logo-bounce">
           <div className="absolute inset-0 bg-gradient-to-r from-[#E6F19A] via-[#BBE9FD] to-[#E6F19A] opacity-30 rounded-full blur-xl"></div>
           <Image
-            src="/logo-joystie.png"
+            src="/brand/logo-joystie.png"
             alt="Joystie"
             width={160}
             height={60}

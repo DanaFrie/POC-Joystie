@@ -66,7 +66,7 @@ export default function AdminConsultationsPage() {
           try {
             const parent = await getUser(challenge.parentId);
             if (parent) {
-              parentName = parent.firstName || parent.username || 'לא ידוע';
+              parentName = parent.firstName || 'לא ידוע';
             }
             
             const child = await getChild(challenge.childId);

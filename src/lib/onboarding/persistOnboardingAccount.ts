@@ -1,4 +1,3 @@
-import { createChild, getChildrenByParent } from '@/lib/api/children';
 import { createUser, getUser, updateUser } from '@/lib/api/users';
 import {
   createScreenTimesFromChildren,
@@ -9,19 +8,24 @@ import {
   getOnboardingChildrenDetails,
   type OnboardingChildDraft,
 } from '@/lib/onboarding/childrenDetails';
-import { writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
+import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
+import {
+  clearOnboardingTermsAccepted,
+  readOnboardingTermsAccepted,
+} from '@/lib/onboarding/oauthSession';
 import {
   getOnboardingParentRole,
   parentRoleToGender,
 } from '@/lib/onboarding/parentRole';
+import type { UserKidAgeScreenTime } from '@/types/firestore';
 import { createSession } from '@/utils/session';
 import { trackMetaCompleteRegistration } from '@/utils/meta-pixel';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('OnboardingSignupPersist');
 
-const CHILD_IDS_STORAGE_KEY = 'onboardingChildIds';
 const ACCOUNT_CREATED_KEY = 'onboardingAccountCreated';
+export const ONBOARDING_TERMS_KEY = 'onboardingTermsAccepted';
 
 export type OnboardingChildSnapshot = {
   id: string;
@@ -48,27 +52,68 @@ export function markOnboardingAccountCreated() {
   }
 }
 
+export function clearOnboardingAccountCreated() {
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem(ACCOUNT_CREATED_KEY);
+  }
+}
+
 export function isOnboardingAccountCreated(): boolean {
   if (typeof window === 'undefined') return false;
   return sessionStorage.getItem(ACCOUNT_CREATED_KEY) === '1';
 }
 
+/** Draft child ids from funnel session (no Firestore children until child opens their page). */
 export function getOnboardingChildIds(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = sessionStorage.getItem(CHILD_IDS_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((id): id is string => typeof id === 'string')
-      : [];
-  } catch {
-    return [];
-  }
+  const snapshots = readOnboardingJson<OnboardingChildSnapshot[]>('onboardingChildSnapshots');
+  return snapshots?.map((s) => s.id) ?? [];
 }
 
-function setOnboardingChildIds(ids: string[]) {
-  writeOnboardingJson(CHILD_IDS_STORAGE_KEY, ids);
+function buildKidsAgesFromFunnel(
+  children: OnboardingChildDraft[],
+  screenTimes: OnboardingChildScreenTime[]
+): UserKidAgeScreenTime[] {
+  return children.map((child, index) => ({
+    age: String(child.age),
+    dailyScreenTimeHours: screenTimes[index]?.hours ?? (index === 0 ? 1 : 2),
+  }));
+}
+
+/** Keep funnel child data in session/local storage only — no Firestore children yet. */
+function saveFunnelChildrenToSession(
+  children: OnboardingChildDraft[],
+  screenTimes: OnboardingChildScreenTime[]
+): OnboardingChildSnapshot[] {
+  const snapshots: OnboardingChildSnapshot[] = children.map((child, index) => ({
+    id: `draft-${index}`,
+    name: child.name.trim(),
+    age: String(child.age),
+    gender: child.gender,
+    dailyScreenTimeHours: screenTimes[index]?.hours ?? (index === 0 ? 1 : 2),
+  }));
+
+  writeOnboardingJson('onboardingChildSnapshots', snapshots);
+
+  if (typeof window !== 'undefined') {
+    const kidsAges = snapshots.map((s) => ({
+      age: s.age,
+      dailyScreenTimeHours: s.dailyScreenTimeHours,
+    }));
+    localStorage.setItem(
+      'parentData',
+      JSON.stringify({
+        kidsAges,
+        children: snapshots.map((s) => ({
+          name: s.name,
+          age: s.age,
+          gender: s.gender,
+          dailyScreenTimeHours: s.dailyScreenTimeHours,
+        })),
+      })
+    );
+  }
+
+  return snapshots;
 }
 
 function readOnboardingPayload(options: {
@@ -85,7 +130,7 @@ function readOnboardingPayload(options: {
 
   const role = getOnboardingParentRole();
   const gender = role ? parentRoleToGender(role) : ('female' as const);
-  const kidsAges = children.map((c) => String(c.age));
+  const kidsAges = buildKidsAgesFromFunnel(children, screenTimes);
 
   const fromSplit = splitDisplayName(options.displayName?.trim() ?? '');
   const firstName = options.firstName?.trim() || fromSplit.firstName;
@@ -94,68 +139,13 @@ function readOnboardingPayload(options: {
   return { children, screenTimes, gender, kidsAges, firstName, lastName };
 }
 
-async function syncChildrenToFirestore(
-  parentId: string,
-  children: OnboardingChildDraft[],
-  screenTimes: OnboardingChildScreenTime[]
-): Promise<OnboardingChildSnapshot[]> {
-  const existing = await getChildrenByParent(parentId);
-  if (existing.length >= children.length && existing.length > 0) {
-    const snapshots = existing.slice(0, children.length).map((doc, index) => ({
-      id: doc.id,
-      name: doc.name || children[index]?.name.trim() || '',
-      age: doc.age || String(children[index]?.age ?? ''),
-      gender: doc.gender,
-      dailyScreenTimeHours: screenTimes[index]?.hours ?? 1,
-    }));
-    setOnboardingChildIds(snapshots.map((s) => s.id));
-    return snapshots;
-  }
-
-  const snapshots: OnboardingChildSnapshot[] = [];
-
-  for (let index = 0; index < children.length; index += 1) {
-    const child = children[index]!;
-    const hours = screenTimes[index]?.hours ?? (index === 0 ? 1 : 2);
-    const childId = await createChild({
-      parentId,
-      name: child.name.trim(),
-      age: String(child.age),
-      gender: child.gender,
-      deviceType: 'ios',
-    });
-    snapshots.push({
-      id: childId,
-      name: child.name.trim(),
-      age: String(child.age),
-      gender: child.gender,
-      dailyScreenTimeHours: hours,
-    });
-  }
-
-  setOnboardingChildIds(snapshots.map((s) => s.id));
-  writeOnboardingJson('onboardingChildSnapshots', snapshots);
-
-  if (typeof window !== 'undefined') {
-    localStorage.setItem(
-      'parentData',
-      JSON.stringify({
-        kidsAges: snapshots.map((s) => s.age),
-        children: snapshots.map((s) => ({
-          name: s.name,
-          age: s.age,
-          gender: s.gender,
-          dailyScreenTimeHours: s.dailyScreenTimeHours,
-        })),
-      })
-    );
-  }
-
-  return snapshots;
+function resolveTermsAccepted(_termsAccepted?: boolean): boolean {
+  return true;
 }
 
 /**
- * After email or OAuth signup — persist parent profile + children from funnel data.
+ * After email or OAuth signup — persist parent profile from funnel data.
+ * Children stay in session storage until the child opens their page.
  */
 export async function persistOnboardingAccountAfterAuth(params: {
   uid: string;
@@ -163,7 +153,12 @@ export async function persistOnboardingAccountAfterAuth(params: {
   displayName?: string;
   firstName?: string;
   lastName?: string;
+  termsAccepted?: boolean;
 }): Promise<{ childSnapshots: OnboardingChildSnapshot[] }> {
+  if (!resolveTermsAccepted(params.termsAccepted)) {
+    throw new Error('יש לאשר את תנאי השימוש');
+  }
+
   const { uid, email } = params;
   const { children, screenTimes, gender, kidsAges, firstName, lastName } =
     readOnboardingPayload(params);
@@ -179,7 +174,6 @@ export async function persistOnboardingAccountAfterAuth(params: {
       lastName,
       gender,
       kidsAges,
-      notificationsEnabled: true,
       termsAccepted: true,
       signupDate: now,
     });
@@ -196,12 +190,10 @@ export async function persistOnboardingAccountAfterAuth(params: {
 
   let childSnapshots: OnboardingChildSnapshot[] = [];
   if (children.length) {
-    try {
-      childSnapshots = await syncChildrenToFirestore(uid, children, screenTimes);
-    } catch (error) {
-      logger.error('Failed to sync children:', error);
-    }
+    childSnapshots = saveFunnelChildrenToSession(children, screenTimes);
   }
+
+  clearOnboardingTermsAccepted();
 
   createSession(uid);
   markOnboardingAccountCreated();

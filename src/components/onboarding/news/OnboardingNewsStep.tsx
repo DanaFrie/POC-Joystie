@@ -26,7 +26,7 @@ export function OnboardingNewsStep() {
           alt=""
           width={201}
           height={201}
-          className="v03-funnel-enter-reveal-0 h-[201px] w-[201px] shrink-0 object-contain"
+          className="v03-funnel-enter-reveal-hero-intro h-[201px] w-[201px] shrink-0 object-contain"
           onError={() => {
             if (heroSrc !== ONBOARDING_NEWS_HERO_FALLBACK) {
               setHeroSrc(ONBOARDING_NEWS_HERO_FALLBACK);

@@ -8,7 +8,7 @@ export default function OnboardingRevealPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/onboarding/parent');
+    router.replace('/onboarding');
   }, [router]);
 
   return null;

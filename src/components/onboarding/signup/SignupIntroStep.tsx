@@ -1,16 +1,20 @@
 'use client';
 
-import { useState } from 'react';
-import { SignupCompanionCarousel } from '@/components/onboarding/signup/SignupCompanionCarousel';
+import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { SignupJourneyCopy } from '@/components/onboarding/signup/SignupJourneyCopy';
 import { SignupJourneyStep2Visual } from '@/components/onboarding/signup/SignupJourneyStep2Visual';
 import { SignupJourneyStep3Visual } from '@/components/onboarding/signup/SignupJourneyStep3Visual';
 import { SignupStageDots } from '@/components/onboarding/signup/SignupStageDots';
+import { SIGNUP_COMPANION_IMAGES } from '@/constants/onboarding-figma';
 import {
+  SIGNUP_COMPANION_ACTIVE_SIZE_PX,
   SIGNUP_INTRO_COPY_TOP_PX,
   SIGNUP_INTRO_COPY_WIDTH_PX,
   SIGNUP_INTRO_DOTS_TOP_PX,
   SIGNUP_JOURNEY_COPY_VISUAL_GAP_PX,
+  SIGNUP_JOURNEY_STEP3_BACKDROP_SIZE_PX,
+  SIGNUP_JOURNEY_STEP3_FRAME_H_PX,
+  SIGNUP_JOURNEY_STEP3_FRAME_W_PX,
 } from '@/constants/signup-layout';
 import {
   SIGNUP_JOURNEY_STEPS,
@@ -25,7 +29,6 @@ type SignupIntroStepProps = {
 
 /** Signup «איך זה עובד» — שלב 1–3 (Figma 42217 / 42218 / 42219). */
 export function SignupIntroStep({ stage, onStageChange }: SignupIntroStepProps) {
-  const [activeCompanion, setActiveCompanion] = useState(0);
   const copy = SIGNUP_JOURNEY_STEPS[stage];
 
   return (
@@ -57,10 +60,33 @@ export function SignupIntroStep({ stage, onStageChange }: SignupIntroStepProps) 
 
           <div className="v03-funnel-enter-2 w-full">
             {stage === 0 && (
-              <SignupCompanionCarousel
-                activeIndex={activeCompanion}
-                onSelect={setActiveCompanion}
-              />
+              <div
+                className="relative mx-auto flex shrink-0 items-center justify-center overflow-visible"
+                style={{
+                  width: SIGNUP_JOURNEY_STEP3_FRAME_W_PX,
+                  minHeight: SIGNUP_JOURNEY_STEP3_FRAME_H_PX,
+                }}
+              >
+                <div
+                  aria-hidden
+                  className="absolute left-1/2 top-[54%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20"
+                  style={{
+                    width: SIGNUP_JOURNEY_STEP3_BACKDROP_SIZE_PX,
+                    height: SIGNUP_JOURNEY_STEP3_BACKDROP_SIZE_PX,
+                  }}
+                />
+                <OnboardingLazyImage
+                  src={SIGNUP_COMPANION_IMAGES[0]}
+                  alt=""
+                  className="relative z-[1] object-contain"
+                  style={{
+                    width: SIGNUP_COMPANION_ACTIVE_SIZE_PX,
+                    height: SIGNUP_COMPANION_ACTIVE_SIZE_PX,
+                  }}
+                  draggable={false}
+                  priority
+                />
+              </div>
             )}
             {stage === 1 && <SignupJourneyStep2Visual />}
             {stage === 2 && <SignupJourneyStep3Visual />}

@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { ScreenTimeProgressRing } from '@/components/onboarding/screen-time/ScreenTimeProgressRing';
 
 const PROGRESS_MS = 3500;
-const DOT_INTERVAL_MS = 563;
 
 type ScreenTimeCalculatingStepProps = {
   onComplete: () => void;
@@ -16,7 +14,6 @@ export function ScreenTimeCalculatingStep({
   onComplete,
 }: ScreenTimeCalculatingStepProps) {
   const [percent, setPercent] = useState(0);
-  const [dotCount, setDotCount] = useState(0);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
@@ -39,22 +36,8 @@ export function ScreenTimeCalculatingStep({
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setDotCount((n) => (n + 1) % 4);
-    }, DOT_INTERVAL_MS);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const dots = '.'.repeat(dotCount);
-  const loadingLine = `מחשבים זמן מסך${dots}`;
-
   return (
     <>
-      <div className="pointer-events-none absolute inset-0 z-[1]">
-        <OnboardingGrid />
-      </div>
-
       <section
         className="absolute inset-0 z-[10] flex flex-col items-center justify-center gap-[39px] px-v03-gutter"
         aria-label="מחשבים זמן מסך"
@@ -67,7 +50,7 @@ export function ScreenTimeCalculatingStep({
             כמה רגעים
           </p>
           <p className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white [text-shadow:0_0_20px_rgba(255,255,255,0.5)]">
-            {loadingLine}
+            מחשבים זמן מסך...
           </p>
         </div>
       </section>

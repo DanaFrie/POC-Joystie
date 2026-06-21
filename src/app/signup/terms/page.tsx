@@ -15,7 +15,7 @@ export default function TermsPage() {
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
           <div className="flex items-center justify-center mb-4">
             <Image
-              src="/logo-joystie.png"
+              src="/brand/logo-joystie.png"
               alt="Joystie Logo"
               width={120}
               height={40}

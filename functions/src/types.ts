@@ -1,15 +1,18 @@
 // Firestore types for Firebase Functions
 // These match the types in src/types/firestore.ts
 
+export type UserKidAgeScreenTime = {
+  age: string;
+  dailyScreenTimeHours: number;
+};
+
 export interface FirestoreUser {
   id: string;
-  username?: string; // Optional - removed from signup (parent nickname)
   email: string;
   firstName: string;
   lastName: string;
   gender: 'male' | 'female';
-  kidsAges: string[];
-  notificationsEnabled: boolean;
+  kidsAges: UserKidAgeScreenTime[];
   termsAccepted: boolean;
   signupDate: string;
   createdAt: string;

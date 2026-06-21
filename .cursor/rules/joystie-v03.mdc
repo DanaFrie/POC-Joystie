@@ -75,16 +75,20 @@ recordBondingInvite({ shareMode: 'remind_later', remindAt: '<ISO future>' });
 
 ### Figma preview chrome — do not implement
 
-On **all** v0.3 screens, **ignore** iPhone status-bar layers from Figma. They exist only for design preview, not in the app.
+On **all** v0.3 screens, **ignore** device status-bar / system-chrome layers from Figma. They exist only for design preview, not in the app — **iPhone and Android**.
 
 | Layer | Figma (preview only) |
 |-------|----------------------|
-| Upper status bar (time, signal, battery) | `node-id=12822-3572` |
-| Lower home indicator bar | `node-id=12822-3639` |
+| iPhone upper status bar (time, signal, battery) | `node-id=12822-3572` |
+| iPhone lower home indicator | `node-id=12822-3639` |
+| Android upper status bar | `Android Phone`, `iPhone-status-bar(upper)` variants, `12697:38980` et al. |
+| Android lower navigation / home bar | Android lower system chrome in `get_design_context` |
 
-- Do **not** render `IPhoneStatusBarUpper`, `iPhone-status-bar(lower)`, or similar components from `get_design_context`.
-- Do **not** reserve top/bottom safe-area padding to match those frames unless the real screen design requires it.
-- Implement only the app content between them (375×812 mobile frame is fine; status chrome is omitted).
+- Do **not** render `IPhoneStatusBarUpper`, `iPhone-status-bar(lower)`, `Android Phone`, or similar components from `get_design_context`.
+- Do **not** reserve top/bottom padding to match those preview frames (no offset for 44px / 32px Figma chrome).
+- **Full-screen layout:** implement on the full **375×812** mobile artboard and let the funnel **fill the device viewport** (`FunnelViewport`, `fixed inset-0`). Spread heroes, video, and backgrounds edge-to-edge; do not shrink the canvas to sit “between” status bars.
+- `env(safe-area-inset-*)` is for real notches/home indicators on physical devices only — not for mimicking Figma preview chrome.
+- Figma absolute Y/X coordinates assume the **full 812px** height; use them as-is (no subtracting status-bar height).
 
 ## Secrets (bonding deploy, intgr)
 
@@ -97,4 +101,4 @@ On **all** v0.3 screens, **ignore** iPhone status-bar layers from Figma. They ex
 - PayPlus
 - Merging bonding + CardCom exports in one feature branch’s `index.ts`
 - Proactive commits or unsolicited long docs
-- iPhone upper/lower status bars from Figma (preview-only chrome)
+- iPhone / Android upper & lower status bars from Figma (preview-only chrome)

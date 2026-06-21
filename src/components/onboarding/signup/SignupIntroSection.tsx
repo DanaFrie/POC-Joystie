@@ -1,6 +1,10 @@
 'use client';
 
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
+import {
+  getOnboardingParentExternalUrl,
+  isRestrictedOAuthEnvironment,
+} from '@/utils/auth-oauth';
 
 const oauthButtonClass =
   'inline-flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-[18px] border border-white px-[15px] py-2 font-simpler text-[16px] font-bold leading-[21.6px] text-white shadow-v03-button';
@@ -46,8 +50,10 @@ export function SignupIntroSection({
   oauthDisabled = false,
   oauthLoading = null,
 }: SignupIntroSectionProps) {
+  const googleBlocked = isRestrictedOAuthEnvironment();
+
   return (
-    <div className="flex w-full max-w-v03-content flex-col items-start gap-4 v03-funnel-enter-1">
+    <div className="flex w-full flex-col items-stretch gap-4 v03-funnel-enter-1">
       <div className="flex w-full flex-col items-end">
         <div className="flex w-full flex-col items-end gap-1 self-stretch">
           <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white">
@@ -59,12 +65,26 @@ export function SignupIntroSection({
         </p>
       </div>
 
-      <div className="flex w-full flex-col items-start gap-3">
+      {googleBlocked ? (
+        <div className="w-full rounded-[18px] border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-center font-simpler text-sm leading-[1.4] text-amber-100">
+          <p>התחברות עם Google לא עובדת מתוך Cursor.</p>
+          <a
+            href={getOnboardingParentExternalUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block font-bold text-white underline"
+          >
+            פתחו ב-Chrome / Safari
+          </a>
+        </div>
+      ) : null}
+
+      <div className="flex w-full flex-col items-stretch gap-3">
         <OAuthButton
           label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
           icon={<GoogleIcon />}
           onClick={onOAuthGoogle}
-          disabled={oauthDisabled || oauthLoading !== null}
+          disabled={oauthDisabled || oauthLoading !== null || googleBlocked}
         />
         <OAuthButton
           label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}

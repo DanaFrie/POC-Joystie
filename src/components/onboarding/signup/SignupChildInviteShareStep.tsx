@@ -18,6 +18,13 @@ import {
   shareBondingViaWhatsApp,
 } from '@/lib/onboarding/bondingShare';
 import { getBondingChildUrl } from '@/lib/onboarding/bondingInvite';
+import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
+import { buildWhatsAppChildInviteMessage } from '@/lib/share/whatsapp';
+
+function getParentGenderForMessage(): 'female' | 'male' {
+  const role = getOnboardingParentRole();
+  return role ? parentRoleToGender(role) : 'male';
+}
 
 type SignupChildInviteShareStepProps = {
   childName: string;
@@ -44,7 +51,6 @@ export function SignupChildInviteShareStep({
     try {
       const result = await prepareBondingInvite({
         childName,
-        shareMode: 'together_now',
       });
       setChildUrl(result.childUrl);
       return result.childUrl;
@@ -61,11 +67,19 @@ export function SignupChildInviteShareStep({
   const handleWhatsApp = async () => {
     try {
       const url = await ensureInvite();
+      let advanced = false;
+      const advanceAfterReturn = () => {
+        if (advanced || document.visibilityState !== 'visible') return;
+        advanced = true;
+        document.removeEventListener('visibilitychange', advanceAfterReturn);
+        onShared?.();
+      };
+      document.addEventListener('visibilitychange', advanceAfterReturn);
       await shareBondingViaWhatsApp({
         childName,
         childUrl: url,
+        parentGender: getParentGenderForMessage(),
       });
-      onShared?.();
     } catch {
       // error surfaced via shareError
     }
@@ -74,13 +88,21 @@ export function SignupChildInviteShareStep({
   const handleCopy = async () => {
     try {
       const url = await ensureInvite();
-      await navigator.clipboard.writeText(url);
+      const message = buildWhatsAppChildInviteMessage({
+        childUrl: url,
+        parentGender: getParentGenderForMessage(),
+      });
+      await navigator.clipboard.writeText(message);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
       onShared?.();
     } catch {
       const url = childUrl || getBondingChildUrl();
-      window.prompt('העתיקו את הלינק:', url);
+      const message = buildWhatsAppChildInviteMessage({
+        childUrl: url,
+        parentGender: getParentGenderForMessage(),
+      });
+      window.prompt('העתיקו את ההודעה:', message);
       onShared?.();
     }
   };

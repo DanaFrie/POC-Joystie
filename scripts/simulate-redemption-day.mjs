@@ -112,8 +112,10 @@ async function main() {
       firstName: 'דנה',
       lastName: 'כהן',
       gender: 'female',
-      kidsAges: ['8', '11'],
-      notificationsEnabled: true,
+      kidsAges: [
+        { age: '8', dailyScreenTimeHours: 4 },
+        { age: '11', dailyScreenTimeHours: 2 },
+      ],
       termsAccepted: true,
       signupDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),

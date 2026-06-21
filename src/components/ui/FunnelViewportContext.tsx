@@ -1,18 +1,45 @@
 'use client';
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, type CSSProperties } from 'react';
+import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
-const FunnelViewportContext = createContext({ isDesktop: false });
+export type FunnelViewportMetrics = {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+};
+
+const DEFAULT_METRICS: FunnelViewportMetrics = {
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  viewportWidth: V03_SCREEN_WIDTH,
+  viewportHeight: 812,
+};
+
+type FunnelViewportContextValue = {
+  isDesktop: boolean;
+  metrics: FunnelViewportMetrics;
+};
+
+const FunnelViewportContext = createContext<FunnelViewportContextValue>({
+  isDesktop: false,
+  metrics: DEFAULT_METRICS,
+});
 
 export function FunnelViewportProvider({
   isDesktop,
+  metrics = DEFAULT_METRICS,
   children,
 }: {
   isDesktop: boolean;
+  metrics?: FunnelViewportMetrics;
   children: React.ReactNode;
 }) {
   return (
-    <FunnelViewportContext.Provider value={{ isDesktop }}>
+    <FunnelViewportContext.Provider value={{ isDesktop, metrics }}>
       {children}
     </FunnelViewportContext.Provider>
   );
@@ -21,4 +48,53 @@ export function FunnelViewportProvider({
 /** True when viewport ≥ desktop breakpoint (onboarding shows grid-only). */
 export function useFunnelDesktop() {
   return useContext(FunnelViewportContext).isDesktop;
+}
+
+export function useFunnelViewportMetrics() {
+  return useContext(FunnelViewportContext).metrics;
+}
+
+/**
+ * Expand a top hero into funnel letterbox gaps (contain scaling).
+ * Returns canvas-space absolute position + size covering viewport width and top bleed.
+ */
+export function useFunnelHeroBleed(baseHeightPx: number): CSSProperties {
+  const { bleedX, bleedY, width } = useFunnelHeroBleedInsets();
+
+  return {
+    position: 'absolute',
+    top: -bleedY,
+    left: -bleedX,
+    width,
+    height: baseHeightPx + bleedY,
+  };
+}
+
+/** Canvas-space letterbox insets for in-flow heroes that scroll with content. */
+export function useFunnelHeroBleedInsets() {
+  const { scale, offsetX, offsetY, viewportWidth } = useFunnelViewportMetrics();
+  const bleedX = offsetX / scale;
+  const bleedY = offsetY / scale;
+  const width = Math.max(viewportWidth / scale, V03_SCREEN_WIDTH);
+
+  return { bleedX, bleedY, width };
+}
+
+/** Fill letterbox gaps (contain scaling) — reveal light funnel background. */
+export function useFunnelFullBleed(): CSSProperties {
+  const { scale, offsetX, offsetY, viewportWidth, viewportHeight } =
+    useFunnelViewportMetrics();
+  const bleedX = offsetX / scale;
+  const bleedY = offsetY / scale;
+  const width = Math.max(viewportWidth / scale, V03_SCREEN_WIDTH);
+  const scaledH = V03_SCREEN_HEIGHT * scale;
+  const bottomBleed = Math.max(0, (viewportHeight - offsetY - scaledH) / scale);
+
+  return {
+    position: 'absolute',
+    top: -bleedY,
+    left: -bleedX,
+    width,
+    height: V03_SCREEN_HEIGHT + bleedY + bottomBleed,
+  };
 }

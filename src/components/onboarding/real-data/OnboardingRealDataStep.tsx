@@ -16,7 +16,7 @@ import {
 export function OnboardingRealDataStep() {
   return (
     <section
-      className={`absolute inset-0 z-[10] overflow-y-auto v03-scroll-hidden ${ONBOARDING_BLUR_FOOTER_RESERVE_CLASS}`}
+      className={`v03-real-data-step absolute inset-0 z-[10] overflow-y-auto v03-scroll-hidden ${ONBOARDING_BLUR_FOOTER_RESERVE_CLASS}`}
       aria-label="נתונים של משתמשים אמיתיים"
     >
       <div
@@ -43,7 +43,7 @@ export function OnboardingRealDataStep() {
           נתונים של משתמשים אמיתיים:
         </p>
         <div
-          className="v03-funnel-enter-reveal-2 w-full"
+          className="w-full"
           style={{ minHeight: REVEAL_REAL_DATA_CARDS_MIN_H_PX }}
         >
           <StatsComparisonCards />

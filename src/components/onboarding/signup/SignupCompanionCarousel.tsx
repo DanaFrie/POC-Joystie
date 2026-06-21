@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { SIGNUP_COMPANION_IMAGES } from '@/constants/onboarding-figma';
 import {
   SIGNUP_COMPANION_ACTIVE_SIZE_PX,
@@ -255,13 +256,13 @@ export function SignupCompanionCarousel({
               aria-pressed={isClone ? undefined : isActive}
               tabIndex={isClone ? -1 : undefined}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <OnboardingLazyImage
                 src={src}
                 alt=""
                 className="mx-auto object-contain"
                 style={{ width: imageSize, height: imageSize }}
                 draggable={false}
+                priority={isActive && !isClone}
               />
             </button>
           );

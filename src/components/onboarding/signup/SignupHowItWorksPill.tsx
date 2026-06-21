@@ -20,7 +20,7 @@ export function SignupHowItWorksPill() {
           paddingBottom: SIGNUP_HOW_IT_WORKS_PILL_PY,
         }}
       >
-        <span className="whitespace-nowrap text-center">איך זה עובד?</span>
+        <span className="whitespace-nowrap text-center">איך מתחילים?</span>
       </div>
     </div>
   );

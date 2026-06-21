@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { OnboardingCountStepper } from '@/components/onboarding/children-count/OnboardingCountStepper';
 import { ONBOARDING_CHILDREN_PHONE_IMAGE } from '@/constants/onboarding-figma';
 import {
@@ -27,8 +28,7 @@ export function ChildrenPhoneCountStep({
     >
       <div className="relative h-[180px] w-[180px] shrink-0">
         {!imageFailed && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <OnboardingLazyImage
             src={ONBOARDING_CHILDREN_PHONE_IMAGE}
             alt=""
             className="pointer-events-none absolute left-[-13px] top-[-18.5px] h-[205px] w-[205px] object-contain"

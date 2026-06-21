@@ -6,8 +6,6 @@ import type { FirestoreBondingInvite } from './types';
 
 const baseUrlSecret = defineSecret('SERVICE_FUNCTION_BASE_URL');
 const COLLECTION = 'bonding_invites';
-/** Default if parent picks "remind me later" without a time (same evening). */
-const DEFAULT_REMIND_LATER_HOURS = 4;
 
 function getDb() {
   return admin.firestore();
@@ -30,7 +28,7 @@ function buildChildPathUrl(
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
-  return `${getBaseUrl()}/child?token=${encoded}`;
+  return `${getBaseUrl()}/onboarding/child?token=${encoded}`;
 }
 
 export const recordBondingInvite = functions.https.onCall(
@@ -43,58 +41,32 @@ export const recordBondingInvite = functions.https.onCall(
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
     }
     const parentId = request.auth.uid;
-    const { childId, challengeId, childName, parentName, shareMode, remindAt } =
-      request.data as {
-        childId?: string;
-        challengeId?: string;
-        childName?: string;
-        parentName?: string;
-        /** together_now = share via WhatsApp while with child; remind_later = nudge parent only */
-        shareMode?: 'together_now' | 'remind_later';
-        /** ISO datetime when parent wants the reminder (remind_later) */
-        remindAt?: string;
-      };
-
-    const mode = shareMode === 'remind_later' ? 'remind_later' : 'together_now';
+    const { childId, challengeId, childName, parentName, parentGender } = request.data as {
+      childId?: string;
+      challengeId?: string;
+      childName?: string;
+      parentName?: string;
+      parentGender?: 'female' | 'male';
+    };
 
     const childUrl = buildChildPathUrl(parentId, childId, challengeId);
     const whatsappShareUrl = buildWhatsAppShareUrl({
       childUrl,
       childName,
       parentName,
+      parentGender,
     });
 
     const now = new Date();
-    let shareReminderAt: string | undefined;
-    let status: FirestoreBondingInvite['status'] =
-      mode === 'together_now' ? 'pending_share' : 'remind_scheduled';
-
-    if (mode === 'remind_later') {
-      const parsed = remindAt ? new Date(remindAt) : null;
-      const reminderAt =
-        parsed && !Number.isNaN(parsed.getTime())
-          ? parsed
-          : new Date(now.getTime() + DEFAULT_REMIND_LATER_HOURS * 60 * 60 * 1000);
-      if (reminderAt.getTime() <= now.getTime()) {
-        throw new functions.https.HttpsError(
-          'invalid-argument',
-          'remindAt must be in the future'
-        );
-      }
-      shareReminderAt = reminderAt.toISOString();
-    }
-
     const doc: Omit<FirestoreBondingInvite, 'id'> = {
       parentId,
       childId,
       challengeId,
       childUrl,
       whatsappShareUrl,
-      shareMode: mode,
-      status,
+      status: 'pending_share',
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      ...(shareReminderAt ? { shareReminderAt } : {}),
     };
 
     const ref = await getDb().collection(COLLECTION).add(doc);
@@ -102,7 +74,6 @@ export const recordBondingInvite = functions.https.onCall(
       inviteId: ref.id,
       childUrl,
       whatsappShareUrl,
-      shareReminderAt: doc.shareReminderAt,
     };
   }
 );
@@ -124,7 +95,6 @@ export const markBondingWhatsAppShared = functions.https.onCall(
       status: 'shared',
       whatsappSharedAt: now,
       updatedAt: now,
-      shareReminderSentAt: now,
     });
     return { ok: true };
   }

@@ -23,7 +23,6 @@ export const authOnUserCreated = functions.auth.user().onCreate(async (user) => 
     lastName: nameParts.slice(1).join(' ') || '',
     gender: 'male',
     kidsAges: [],
-    notificationsEnabled: true,
     termsAccepted: false,
     signupDate: now,
     createdAt: now,

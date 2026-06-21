@@ -2,19 +2,27 @@
  * WhatsApp share message template for child bonding link.
  * Keep in sync with `functions/src/bonding/whatsapp.ts`.
  */
-export const WHATSAPP_CHILD_INVITE_TEMPLATE_HE = `היי{childNameGreeting}! 👋
-{parentName} מזמין/ה אותך ל-Joystie — בואו נתחיל יחד את המסע.
+export const WHATSAPP_CHILD_INVITE_TEMPLATE_HE = `{inviteVerb} אותך לג׳ויסטי - האפליקציה שתעזור לנו להשקיע את הזמן שלנו בדברים כיפים (ופחות בפלאפון) וגם לחסוך כסף על הדרך
 
-לחצו על הקישור:
+מתחילים עכשיו:
+
 {childUrl}`;
+
+export const WHATSAPP_INVITE_VERB_FEMALE = 'אני מזמינה';
+export const WHATSAPP_INVITE_VERB_MALE = 'אני מזמין';
 
 /** wa.me base — opens WhatsApp with pre-filled text (mobile + desktop). */
 export const WHATSAPP_SHARE_BASE_URL = 'https://wa.me/';
 
-/** @deprecated Use buildWhatsAppChildInviteMessage from lib/share/whatsapp */
-export function buildWhatsAppChildInviteMessageLegacy(
-  childName: string,
-  childUrl: string
+export function resolveWhatsAppInviteVerb(
+  parentGender?: 'female' | 'male' | null
 ): string {
-  return `היי ${childName}! מזמינים אותך להצטרף למסע ב-Joystie 🌟\n${childUrl}`;
+  return parentGender === 'female'
+    ? WHATSAPP_INVITE_VERB_FEMALE
+    : WHATSAPP_INVITE_VERB_MALE;
+}
+
+/** Plain https URL on its own line — no bidi marks (WhatsApp ignores those for link detection). */
+export function formatChildUrlForMessaging(childUrl: string): string {
+  return childUrl.trim();
 }

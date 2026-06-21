@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 
 type ParentRoleCardProps = {
   label: string;
@@ -55,13 +56,13 @@ export function ParentRoleCard({
       <div className="relative z-[1] flex items-center justify-start pt-[29px] opacity-90">
         <div className="relative h-[147px] w-[147px] shrink-0">
           {!imageFailed ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <OnboardingLazyImage
               src={imageSrc}
               alt={imageAlt}
               width={147}
               height={147}
               className="h-[147px] w-[147px] object-contain object-bottom"
+              priority={selected}
               onError={() => setImageFailed(true)}
             />
           ) : (

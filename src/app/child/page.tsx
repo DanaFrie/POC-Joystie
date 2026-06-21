@@ -64,7 +64,7 @@ function ChildPageContent() {
       <div className="min-h-screen bg-transparent pb-24 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4 py-8">
           <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 text-center">
-            <Image src="/icon-joystie.png" alt="" width={64} height={64} className="mx-auto mb-4" />
+            <Image src="/brand/icon-joystie.png" alt="" width={64} height={64} className="mx-auto mb-4" />
             <h1 className="font-heebo font-semibold text-2xl text-[#262135] mb-4">
               הפדיון בוצע בהצלחה!
             </h1>

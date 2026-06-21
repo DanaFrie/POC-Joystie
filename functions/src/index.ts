@@ -7,7 +7,6 @@ import {
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
 } from './bonding/invites';
-import { scheduledBondingShareReminders } from './bonding/scheduler';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -28,7 +27,6 @@ export {
   recordBondingInvite,
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
-  scheduledBondingShareReminders,
 };
 
 // Define secret for Cloud Run service URL

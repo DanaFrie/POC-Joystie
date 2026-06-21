@@ -1,6 +1,8 @@
 'use client';
 
 import { SignupIntroSection } from '@/components/onboarding/signup/SignupIntroSection';
+import { SignupTermsConsent } from '@/components/onboarding/signup/SignupTermsConsent';
+import { getOnboardingParentExternalUrl } from '@/utils/auth-oauth';
 
 export type SignupFormValues = {
   firstName: string;
@@ -8,19 +10,22 @@ export type SignupFormValues = {
   email: string;
   password: string;
   confirmPassword: string;
+  termsAccepted: boolean;
 };
 
 type OnboardingSignupFormProps = {
   values: SignupFormValues;
   errors: Record<string, string>;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onTermsAcceptedChange: (accepted: boolean) => void;
   onOAuthGoogle?: () => void;
   onOAuthApple?: () => void;
   oauthDisabled?: boolean;
-  oauthLoading?: 'google' | 'apple' | null;
+  /** Google/Apple picker open — disable form, keep signup screen visible */
+  oauthPickerOpen?: 'google' | 'apple' | null;
 };
 
-const fieldWrapClass = 'flex w-full max-w-v03-content flex-col items-start gap-0.5';
+const fieldWrapClass = 'flex w-full flex-col items-start gap-0.5';
 
 const labelClass =
   'px-2.5 text-left font-simpler text-[16px] font-normal leading-[21.6px] text-white';
@@ -36,6 +41,7 @@ function SignupField({
   error,
   onChange,
   autoComplete,
+  disabled = false,
 }: {
   id: keyof SignupFormValues;
   label: string;
@@ -44,6 +50,7 @@ function SignupField({
   error?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   autoComplete?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className={fieldWrapClass}>
@@ -57,7 +64,8 @@ function SignupField({
         value={value}
         onChange={onChange}
         autoComplete={autoComplete}
-        className={inputClass}
+        disabled={disabled}
+        className={`${inputClass} ${disabled ? 'opacity-50' : ''}`}
         dir={type === 'email' || type === 'password' ? 'ltr' : 'rtl'}
         style={{ textAlign: 'right' }}
       />
@@ -73,21 +81,24 @@ export function OnboardingSignupForm({
   values,
   errors,
   onChange,
+  onTermsAcceptedChange,
   onOAuthGoogle,
   onOAuthApple,
   oauthDisabled = false,
-  oauthLoading = null,
+  oauthPickerOpen = null,
 }: OnboardingSignupFormProps) {
+  const formLocked = oauthPickerOpen !== null;
+
   return (
-    <>
+    <div className={formLocked ? 'pointer-events-none opacity-50' : undefined}>
       <SignupIntroSection
         onOAuthGoogle={onOAuthGoogle}
         onOAuthApple={onOAuthApple}
         oauthDisabled={oauthDisabled}
-        oauthLoading={oauthLoading}
+        oauthLoading={oauthPickerOpen}
       />
 
-      <div className="flex w-full max-w-v03-content flex-col items-start gap-5">
+      <div className="mt-5 flex w-full flex-col items-stretch gap-5">
         <div className="flex w-full items-center gap-5">
           <div className="h-0 flex-1 border-t-[0.7px] border-v03-green-300" />
           <span className="font-simpler text-[14px] font-normal uppercase leading-5 text-v03-green-300">
@@ -105,6 +116,7 @@ export function OnboardingSignupForm({
               error={errors.firstName}
               onChange={onChange}
               autoComplete="given-name"
+              disabled={formLocked}
             />
             <SignupField
               id="lastName"
@@ -113,6 +125,7 @@ export function OnboardingSignupForm({
               error={errors.lastName}
               onChange={onChange}
               autoComplete="family-name"
+              disabled={formLocked}
             />
             <SignupField
               id="email"
@@ -122,6 +135,7 @@ export function OnboardingSignupForm({
               error={errors.email}
               onChange={onChange}
               autoComplete="email"
+              disabled={formLocked}
             />
             <SignupField
               id="password"
@@ -131,6 +145,7 @@ export function OnboardingSignupForm({
               error={errors.password}
               onChange={onChange}
               autoComplete="new-password"
+              disabled={formLocked}
             />
             <SignupField
               id="confirmPassword"
@@ -140,15 +155,34 @@ export function OnboardingSignupForm({
               error={errors.confirmPassword}
               onChange={onChange}
               autoComplete="new-password"
+              disabled={formLocked}
+            />
+
+            <SignupTermsConsent
+              accepted={values.termsAccepted}
+              onAcceptedChange={onTermsAcceptedChange}
+              error={errors.termsAccepted}
+              disabled={formLocked}
             />
           </div>
+
           {errors._general ? (
-            <p className="w-full text-center font-simpler text-sm text-red-300">
-              {errors._general}
-            </p>
+            <div className="w-full text-center font-simpler text-sm text-red-300">
+              <p>{errors._general}</p>
+              {errors._general.includes('Google') || errors._general.includes('מוטמע') ? (
+                <a
+                  href={getOnboardingParentExternalUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block font-bold text-white underline"
+                >
+                  פתחו ב-Chrome / Safari
+                </a>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </div>
-    </>
+    </div>
   );
 }

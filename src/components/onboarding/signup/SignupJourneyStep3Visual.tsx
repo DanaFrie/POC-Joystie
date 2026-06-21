@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { SIGNUP_JOURNEY_STEP3_IMAGE } from '@/constants/onboarding-figma';
 import {
   SIGNUP_JOURNEY_STEP3_BACKDROP_SIZE_PX,
@@ -31,8 +32,7 @@ export function SignupJourneyStep3Visual() {
         }}
       />
       {!imageFailed && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <OnboardingLazyImage
           src={SIGNUP_JOURNEY_STEP3_IMAGE}
           alt=""
           className="relative z-[1] max-w-none object-contain"

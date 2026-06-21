@@ -92,7 +92,7 @@ export default function Navigation() {
             ) : (
               <div className="relative">
                 <Image
-                  src="/logo-joystie.png"
+                  src="/brand/logo-joystie.png"
                   alt="Joystie"
                   width={81}
                   height={27}

@@ -70,7 +70,7 @@ export function ChildWaitRedemptionContent({
 
         <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6 mt-20">
           <div className="text-center mb-6">
-            <Image src="/icon-joystie.png" alt="" width={64} height={64} className="mx-auto mb-4" />
+            <Image src="/brand/icon-joystie.png" alt="" width={64} height={64} className="mx-auto mb-4" />
             <h1 className="font-heebo font-semibold text-2xl text-[#262135] mb-2">
               כל הכבוד! יצאנו לדרך
             </h1>

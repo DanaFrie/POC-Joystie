@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <div className="flex justify-center items-center mb-8 pt-4">
           <Image
-            src="/logo-joystie.png"
+            src="/brand/logo-joystie.png"
             alt="Joystie Logo"
             width={200}
             height={67}

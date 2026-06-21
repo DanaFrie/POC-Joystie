@@ -24,7 +24,7 @@ export function OnboardingLogo() {
         aria-hidden
       >
         <Image
-          src="/logo-joystie.png"
+          src="/brand/logo-joystie.png"
           alt="Joystie"
           width={164}
           height={79}

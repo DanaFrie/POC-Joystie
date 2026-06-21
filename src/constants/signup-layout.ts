@@ -1,8 +1,14 @@
 /** Signup hero — Figma Frame 1430108703 */
 export const SIGNUP_HERO_HEIGHT_PX = 533;
+export const SIGNUP_HERO_FRAME_TOP_PX = -3;
+
+/** Figma mountain art inside frame 1430108703 */
+export const SIGNUP_HERO_IMAGE_HEIGHT_PX = 366;
+export const SIGNUP_HERO_IMAGE_WIDTH_PX = 487;
 
 /** Ellipse 391 — top glow above mountain */
 export const SIGNUP_ELLIPSE_391_TOP_PX = 74;
+export const SIGNUP_ELLIPSE_391_WIDTH_PX = 145;
 export const SIGNUP_ELLIPSE_391_HEIGHT_PX = 89.93;
 
 /** Intro copy starts on the lower line of ellipse 391 */

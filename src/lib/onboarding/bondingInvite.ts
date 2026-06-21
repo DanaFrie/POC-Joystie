@@ -17,7 +17,7 @@ export function getBondingChildUrl(): string {
   const stored = readOnboardingJson<string>(BONDING_CHILD_URL_KEY);
   if (stored && typeof stored === 'string') return stored;
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}/child`;
+    return `${window.location.origin}/onboarding/child`;
   }
   return '';
 }

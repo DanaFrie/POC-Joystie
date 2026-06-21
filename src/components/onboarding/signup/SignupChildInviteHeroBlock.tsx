@@ -3,17 +3,17 @@
 import { useState } from 'react';
 import {
   SIGNUP_CHILD_INVITE_HERO_BLOCK_W_PX,
+  SIGNUP_CHILD_INVITE_HERO_FADE_GRADIENT,
   SIGNUP_CHILD_INVITE_HERO_FADE_H_PX,
+  SIGNUP_CHILD_INVITE_HERO_FADE_LEFT_PX,
+  SIGNUP_CHILD_INVITE_HERO_FADE_RIGHT_LEFT_PX,
   SIGNUP_CHILD_INVITE_HERO_FADE_TOP_PX,
   SIGNUP_CHILD_INVITE_HERO_FADE_W_PX,
   SIGNUP_CHILD_INVITE_HERO_PX,
 } from '@/constants/signup-child-invite-layout';
 import { SIGNUP_CHILD_INVITE_HERO_IMAGE } from '@/constants/onboarding-figma';
 
-const HERO_FADE_GRADIENT =
-  'linear-gradient(95.81deg, rgba(9, 33, 37, 0) 20.98%, rgb(9, 33, 37) 86.28%)';
-
-/** Shared hero + headline — Figma image 291 / «שנכניס את {child} לתמונה?». */
+/** Shared hero + headline — Figma 12914 / image 291 (200×200 + side fades). */
 export function SignupChildInviteHeroBlock({ childName }: { childName: string }) {
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -23,7 +23,7 @@ export function SignupChildInviteHeroBlock({ childName }: { childName: string })
       style={{ maxWidth: SIGNUP_CHILD_INVITE_HERO_BLOCK_W_PX }}
     >
       <div
-        className="v03-funnel-enter-0 relative shrink-0 overflow-hidden"
+        className="v03-funnel-enter-0 relative mx-auto shrink-0"
         style={{
           width: SIGNUP_CHILD_INVITE_HERO_PX,
           height: SIGNUP_CHILD_INVITE_HERO_PX,
@@ -34,29 +34,33 @@ export function SignupChildInviteHeroBlock({ childName }: { childName: string })
           <img
             src={SIGNUP_CHILD_INVITE_HERO_IMAGE}
             alt=""
-            className="pointer-events-none size-full object-cover"
+            className="pointer-events-none absolute left-0 top-0 size-[200px] object-cover"
             onError={() => setImageFailed(true)}
           />
         )}
-        <div
-          className="pointer-events-none absolute left-0"
-          style={{
-            top: SIGNUP_CHILD_INVITE_HERO_FADE_TOP_PX,
-            width: SIGNUP_CHILD_INVITE_HERO_FADE_W_PX,
-            height: SIGNUP_CHILD_INVITE_HERO_FADE_H_PX,
-            backgroundImage: HERO_FADE_GRADIENT,
-          }}
-          aria-hidden
-        />
+        {/* Right fade — Figma left: 169, top: 66 */}
         <div
           className="pointer-events-none absolute"
           style={{
-            left: SIGNUP_CHILD_INVITE_HERO_PX - SIGNUP_CHILD_INVITE_HERO_FADE_W_PX,
-            top: SIGNUP_CHILD_INVITE_HERO_FADE_TOP_PX,
             width: SIGNUP_CHILD_INVITE_HERO_FADE_W_PX,
             height: SIGNUP_CHILD_INVITE_HERO_FADE_H_PX,
-            backgroundImage: HERO_FADE_GRADIENT,
-            transform: 'scaleY(-1) rotate(180deg)',
+            left: SIGNUP_CHILD_INVITE_HERO_FADE_RIGHT_LEFT_PX,
+            top: SIGNUP_CHILD_INVITE_HERO_FADE_TOP_PX,
+            background: SIGNUP_CHILD_INVITE_HERO_FADE_GRADIENT,
+          }}
+          aria-hidden
+        />
+        {/* Left fade — Figma left: 31, top: 200, rotate 180° */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            width: SIGNUP_CHILD_INVITE_HERO_FADE_W_PX,
+            height: SIGNUP_CHILD_INVITE_HERO_FADE_H_PX,
+            left: SIGNUP_CHILD_INVITE_HERO_FADE_LEFT_PX,
+            top: SIGNUP_CHILD_INVITE_HERO_PX,
+            transform: 'rotate(180deg)',
+            transformOrigin: 'top left',
+            background: SIGNUP_CHILD_INVITE_HERO_FADE_GRADIENT,
           }}
           aria-hidden
         />

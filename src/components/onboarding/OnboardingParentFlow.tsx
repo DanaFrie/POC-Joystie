@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChildrenPhoneCountStep } from '@/components/onboarding/children-count/ChildrenPhoneCountStep';
 import { ChildrenDetailsStep } from '@/components/onboarding/children-details/ChildrenDetailsStep';
 import { ChildrenScreenTimeStep } from '@/components/onboarding/screen-time/ChildrenScreenTimeStep';
@@ -13,9 +13,11 @@ import {
   OnboardingBlurFooter,
 } from '@/components/onboarding/OnboardingBlurFooter';
 import { OnboardingFooterCta } from '@/components/onboarding/OnboardingFooterCta';
+import { OnboardingFunnelScrollBody } from '@/components/onboarding/OnboardingFunnelScrollBody';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { OnboardingRevealBleedBackground } from '@/components/onboarding/OnboardingRevealBleedBackground';
 import { ParentRoleCard } from '@/components/onboarding/parent-role/ParentRoleCard';
 import { PickFirstChildStep } from '@/components/onboarding/pick-child/PickFirstChildStep';
 import {
@@ -24,7 +26,8 @@ import {
 } from '@/components/onboarding/OnboardingRevealStepContent';
 import { SignupChildInviteIntroStep } from '@/components/onboarding/signup/SignupChildInviteIntroStep';
 import { SignupChildInviteShareStep } from '@/components/onboarding/signup/SignupChildInviteShareStep';
-import { SignupChildInviteWaitingMarquee } from '@/components/onboarding/signup/SignupChildInviteWaitingMarquee';
+import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
+import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
 import { SignupChildInviteWaitingStep } from '@/components/onboarding/signup/SignupChildInviteWaitingStep';
 import {
   OnboardingSignupForm,
@@ -33,6 +36,7 @@ import {
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
 import { SignupHowItWorksPill } from '@/components/onboarding/signup/SignupHowItWorksPill';
 import { SignupIntroStep } from '@/components/onboarding/signup/SignupIntroStep';
+import { SignupOAuthTermsSheet } from '@/components/onboarding/signup/SignupOAuthTermsSheet';
 import { ONBOARDING_PARENT_IMAGES } from '@/constants/onboarding-figma';
 import { SIGNUP_FORM_CONTENT_MARGIN_TOP_PX } from '@/constants/signup-layout';
 import {
@@ -41,7 +45,6 @@ import {
 } from '@/constants/signup-journey';
 import {
   SIGNUP_CHILD_INVITE_WAITING_LINK_OPEN_MS,
-  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX,
 } from '@/constants/signup-child-invite-layout';
 import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
@@ -51,6 +54,9 @@ import {
 import {
   childrenDetailsComplete,
   createEmptyChildren,
+  getChildrenHebrewNameErrors,
+  isHebrewChildName,
+  ONBOARDING_HEBREW_ONLY_ERROR,
   setOnboardingChildrenDetails,
   type OnboardingChildDraft,
 } from '@/lib/onboarding/childrenDetails';
@@ -69,27 +75,86 @@ import {
   type OnboardingParentRole,
 } from '@/lib/onboarding/parentRole';
 import { useOnboardingLightFunnel } from '@/lib/onboarding/useOnboardingLightFunnel';
-import { prepareBondingInvite } from '@/lib/onboarding/bondingShare';
+import { openJoystieBondingCalendarReminder } from '@/lib/share/calendar';
 import {
+  clearOnboardingAccountCreated,
   isOnboardingAccountCreated,
   persistOnboardingAccountAfterAuth,
 } from '@/lib/onboarding/persistOnboardingAccount';
+import {
+  clearOAuthSessionFlags,
+  isFreshOAuthPending,
+  isOAuthRedirectRecoverable,
+  markOAuthRedirectPending,
+  markOnboardingTermsAccepted,
+  purgeStaleOAuthSessionFlags,
+  readOAuthPending,
+  readOAuthProvider,
+} from '@/lib/onboarding/oauthSession';
+import { recoverOAuthRedirectSignIn } from '@/lib/onboarding/oauthRedirectRecovery';
 import { validateOnboardingSignupForm } from '@/lib/onboarding/validateSignupForm';
+import { getAuthInstance } from '@/lib/firebase';
 import { signUp } from '@/utils/auth';
 import {
-  completeOAuthRedirectIfNeeded,
+  getRestrictedOAuthMessage,
+  isLikelyOAuthRedirectReturn,
+  isRestrictedOAuthEnvironment,
+  getOAuthUserEmail,
   signInWithApple,
   signInWithGoogle,
+  prefersOAuthRedirect,
+  userHasOAuthProvider,
+  userMatchesOAuthProvider,
 } from '@/utils/auth-oauth';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
+import { useScrollOverflow } from '@/hooks/useScrollOverflow';
+import {
+  FLOW_STEP_STORAGE_KEY,
+  clearOAuthSignupWelcomePending,
+  consumeFreshParentFlowStart,
+  markOAuthSignupWelcomePending,
+  shouldShowOAuthSignupWelcome,
+} from '@/lib/onboarding/parentFlowSession';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('OnboardingParentFlow');
 
-const FLOW_STEP_STORAGE_KEY = 'onboardingParentFlowStep';
-const OAUTH_PENDING_KEY = 'onboardingOAuthPending';
+function shouldAttemptOAuthRedirectRecovery(): boolean {
+  return (
+    isOAuthRedirectRecoverable() &&
+    (isFreshOAuthPending() || isLikelyOAuthRedirectReturn())
+  );
+}
+
+type ParentFlowStep =
+  | 'role'
+  | 'phoneCount'
+  | 'details'
+  | 'screenTime'
+  | 'calculating'
+  | 'revealIntro'
+  | 'badNews'
+  | 'goodNews'
+  | 'realData'
+  | 'signupForm'
+  | 'signupWelcome'
+  | 'signupIntro'
+  | 'pickChild'
+  | 'childInviteIntro'
+  | 'childInviteShare'
+  | 'childInviteWaiting'
+  | 'childInviteWaitingCompanion';
+
+/** Parent funnel screens that show the fixed grid (Figma). */
+const PARENT_FUNNEL_GRID_STEPS = new Set<ParentFlowStep>([
+  'signupIntro',
+  'calculating',
+  'childInviteWaiting',
+  'childInviteWaitingCompanion',
+]);
 
 const POST_SIGNUP_STEPS: ParentFlowStep[] = [
+  'signupWelcome',
   'signupIntro',
   'pickChild',
   'childInviteIntro',
@@ -109,24 +174,6 @@ function readStoredFlowStep(): ParentFlowStep | null {
   return raw as ParentFlowStep;
 }
 
-type ParentFlowStep =
-  | 'role'
-  | 'phoneCount'
-  | 'details'
-  | 'screenTime'
-  | 'calculating'
-  | 'revealIntro'
-  | 'badNews'
-  | 'goodNews'
-  | 'realData'
-  | 'signupForm'
-  | 'signupIntro'
-  | 'pickChild'
-  | 'childInviteIntro'
-  | 'childInviteShare'
-  | 'childInviteWaiting'
-  | 'childInviteWaitingCompanion';
-
 const REVEAL_STEPS: ParentFlowStep[] = [
   'revealIntro',
   'badNews',
@@ -134,28 +181,68 @@ const REVEAL_STEPS: ParentFlowStep[] = [
   'realData',
 ];
 
+const ALL_FLOW_STEPS: ParentFlowStep[] = [
+  'role',
+  'phoneCount',
+  'details',
+  'screenTime',
+  'calculating',
+  ...REVEAL_STEPS,
+  'signupForm',
+  ...POST_SIGNUP_STEPS,
+];
+
+function isValidFlowStep(value: string | null): value is ParentFlowStep {
+  return value != null && ALL_FLOW_STEPS.includes(value as ParentFlowStep);
+}
+
+function readInitialFlowStep(): ParentFlowStep {
+  if (typeof window === 'undefined') return 'role';
+  if (consumeFreshParentFlowStart()) return 'role';
+  if (isOnboardingAccountCreated()) {
+    const saved = readStoredFlowStep();
+    if (saved && isPostSignupStep(saved)) return saved;
+    if (shouldShowOAuthSignupWelcome()) return 'signupWelcome';
+    return 'signupIntro';
+  }
+  if (readOAuthPending()) {
+    return 'signupForm';
+  }
+  const saved = readStoredFlowStep();
+  if (saved && saved !== 'role' && isValidFlowStep(saved)) {
+    return saved;
+  }
+  return 'role';
+}
+
 function isRevealStep(step: ParentFlowStep) {
   return REVEAL_STEPS.includes(step);
 }
 
-/** Unified funnel — parent → reveal → signup on /onboarding/parent. */
+/** Unified funnel — parent → reveal → signup on `/onboarding`. */
 export function OnboardingParentFlow() {
   const router = useRouter();
-  const [step, setStep] = useState<ParentFlowStep>(() => {
-    if (typeof window === 'undefined') return 'role';
-    if (isOnboardingAccountCreated()) {
-      const saved = readStoredFlowStep();
-      if (saved && isPostSignupStep(saved)) return saved;
-      return 'signupIntro';
-    }
-    return 'role';
-  });
+  const [step, setStep] = useState<ParentFlowStep>(readInitialFlowStep);
   const [accountCreated, setAccountCreated] = useState(() =>
     isOnboardingAccountCreated()
   );
   const [isRegistering, setIsRegistering] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(
+  const oauthPopupInFlightRef = useRef(false);
+  const postSignupIntroNavigatedRef = useRef(false);
+  const funnelScrollRef = useRef<HTMLDivElement>(null);
+  const signupScrollRef = useRef<HTMLDivElement>(null);
+  const [signupScrollTop, setSignupScrollTop] = useState(0);
+  const [oauthDialogOpen, setOauthDialogOpen] = useState<'google' | 'apple' | null>(
     null
+  );
+  const [oauthFinishing, setOauthFinishing] = useState<'google' | 'apple' | null>(
+    () => {
+      if (typeof window === 'undefined') return null;
+      if (shouldAttemptOAuthRedirectRecovery()) {
+        return readOAuthProvider();
+      }
+      return null;
+    }
   );
   const [role, setRole] = useState<OnboardingParentRole | null>(null);
   const [count, setCount] = useState(ONBOARDING_CHILDREN_PHONE_MIN);
@@ -174,8 +261,22 @@ export function OnboardingParentFlow() {
     email: '',
     password: '',
     confirmPassword: '',
+    termsAccepted: false,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [oauthTermsAccepted, setOauthTermsAccepted] = useState(false);
+  const [oauthTermsError, setOauthTermsError] = useState('');
+  const [childNameErrors, setChildNameErrors] = useState<Record<number, string>>(
+    {}
+  );
+
+  const funnelScrollOverflows = useScrollOverflow(funnelScrollRef, [
+    step,
+    children,
+    screenTimes,
+    count,
+    pickOptions,
+  ]);
 
   const selectedChildName = useMemo(
     () => pickOptions[selectedChildIndex]?.name?.trim() || 'יואב',
@@ -189,9 +290,63 @@ export function OnboardingParentFlow() {
   useOnboardingLightFunnel(isRevealStep(step));
 
   useEffect(() => {
+    purgeStaleOAuthSessionFlags();
+    if (!shouldAttemptOAuthRedirectRecovery()) {
+      if (readOAuthPending()) {
+        clearOAuthSessionFlags();
+      }
+      setOauthFinishing(null);
+    }
+  }, []);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, step);
   }, [step]);
+
+  useEffect(() => {
+    if (step !== 'signupWelcome') return;
+    setOauthTermsAccepted(false);
+    setOauthTermsError('');
+  }, [step]);
+
+  const goToSignupWelcome = useCallback(() => {
+    setAccountCreated(true);
+    markOAuthSignupWelcomePending();
+    setStep('signupWelcome');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'signupWelcome');
+    }
+  }, []);
+
+  const goToSignupIntro = useCallback(() => {
+    if (postSignupIntroNavigatedRef.current) return;
+    postSignupIntroNavigatedRef.current = true;
+    setAccountCreated(true);
+    clearOAuthSignupWelcomePending();
+    setJourneyStage(0);
+    setStep('signupIntro');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'signupIntro');
+    }
+  }, []);
+
+  const handleWelcomeContinue = useCallback(() => {
+    if (!oauthTermsAccepted) {
+      setOauthTermsError('אנא אשר את תנאי השימוש');
+      return;
+    }
+    setOauthTermsError('');
+    markOnboardingTermsAccepted();
+    goToSignupIntro();
+  }, [goToSignupIntro, oauthTermsAccepted]);
+
+  const handleOAuthTermsAcceptedChange = useCallback((accepted: boolean) => {
+    setOauthTermsAccepted(accepted);
+    if (accepted) {
+      setOauthTermsError('');
+    }
+  }, []);
 
   const finishAccountSetup = useCallback(
     async (params: {
@@ -200,64 +355,185 @@ export function OnboardingParentFlow() {
       displayName?: string;
       firstName?: string;
       lastName?: string;
+      termsAccepted?: boolean;
+      oauthProvider?: 'google' | 'apple';
     }) => {
+      const auth = await getAuthInstance();
+      const authUid = auth.currentUser?.uid ?? null;
+      const projectId = auth.app.options.projectId ?? '';
+
+      if (isOnboardingAccountCreated()) {
+        if (authUid === params.uid) {
+          logger.log('Account setup skip — session + Firebase Auth match', {
+            uid: params.uid,
+            projectId,
+          });
+          clearOAuthSessionFlags();
+          if (params.oauthProvider) {
+            goToSignupWelcome();
+          } else {
+            goToSignupIntro();
+          }
+          return;
+        }
+        logger.warn('Stale onboardingAccountCreated — clearing', {
+          expectedUid: params.uid,
+          authUid,
+          projectId,
+        });
+        clearOnboardingAccountCreated();
+      }
+
+      if (authUid !== params.uid) {
+        logger.error('Firebase Auth user missing after OAuth', {
+          expectedUid: params.uid,
+          authUid,
+          projectId,
+        });
+        throw new Error('ההתחברות לא הושלמה. נסו שוב.');
+      }
+
+      await auth.currentUser!.getIdToken(true);
+      const providerIds = auth.currentUser!.providerData.map((p) => p.providerId);
+      if (params.oauthProvider) {
+        const expected =
+          params.oauthProvider === 'apple' ? 'apple.com' : 'google.com';
+        if (
+          !userHasOAuthProvider(auth.currentUser!) ||
+          !userMatchesOAuthProvider(auth.currentUser!, expected)
+        ) {
+          logger.error('OAuth signup rejected — not Google/Apple account', {
+            expected,
+            providerIds,
+            email: auth.currentUser!.email,
+          });
+          throw new Error(
+            'ההתחברות לא הושלמה עם Google/Apple. נסו שוב או השתמשו בדוא״ל וסיסמה.'
+          );
+        }
+      }
+      logger.log('Firebase Auth verified on server', {
+        uid: params.uid,
+        email: auth.currentUser!.email,
+        projectId,
+        authDomain: auth.app.options.authDomain,
+        providerIds,
+      });
+
+      clearOAuthSessionFlags();
       await persistOnboardingAccountAfterAuth(params);
-      setAccountCreated(true);
-      setJourneyStage(0);
-      setStep('signupIntro');
+      logger.log('Account setup complete', {
+        uid: params.uid,
+        projectId,
+        authDomain: auth.app.options.authDomain,
+      });
+      if (params.oauthProvider) {
+        goToSignupWelcome();
+      } else {
+        goToSignupIntro();
+      }
     },
-    []
+    [goToSignupIntro, goToSignupWelcome]
   );
 
   useEffect(() => {
-    let cancelled = false;
+    if (typeof window === 'undefined') return;
+    if (!isOnboardingAccountCreated()) return;
+
+    void (async () => {
+      const auth = await getAuthInstance();
+      if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        clearOnboardingAccountCreated();
+        return;
+      }
+      setAccountCreated(true);
+      const saved = readStoredFlowStep();
+      if (saved === 'role') {
+        return;
+      }
+      const targetStep =
+        saved && isPostSignupStep(saved)
+          ? saved
+          : shouldShowOAuthSignupWelcome()
+            ? ('signupWelcome' as const)
+            : ('signupIntro' as const);
+      if (targetStep === 'signupIntro' || targetStep === 'signupWelcome') {
+        if (targetStep === 'signupIntro') {
+          postSignupIntroNavigatedRef.current = true;
+        }
+      }
+      setStep(targetStep);
+    })();
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
     (async () => {
       if (typeof window === 'undefined') return;
-      if (sessionStorage.getItem(OAUTH_PENDING_KEY) !== '1') return;
+      if (!shouldAttemptOAuthRedirectRecovery()) {
+        if (readOAuthPending()) {
+          clearOAuthSessionFlags();
+        }
+        setOauthFinishing(null);
+        return;
+      }
 
-      const result = await completeOAuthRedirectIfNeeded();
-      sessionStorage.removeItem(OAUTH_PENDING_KEY);
+      setOauthFinishing(readOAuthProvider());
 
-      if (cancelled || !result) return;
-      if (!result.ok) {
-        setErrors({ _general: result.errorMessage });
+      logger.log('OAuth recovery start');
+      const outcome = await recoverOAuthRedirectSignIn();
+      logger.log('OAuth recovery outcome', { status: outcome.status });
+      if (!active || outcome.status === 'skipped') {
+        if (active && outcome.status === 'skipped') {
+          setOauthFinishing(null);
+        }
+        return;
+      }
+
+      if (outcome.status === 'error') {
+        clearOAuthSessionFlags();
+        setOauthFinishing(null);
         setStep('signupForm');
+        setErrors({ _general: outcome.message });
         return;
       }
 
       try {
-        setOauthLoading('google');
         await finishAccountSetup({
-          uid: result.user.uid,
-          email: result.user.email ?? '',
-          displayName: result.user.displayName ?? undefined,
+          uid: outcome.result.user.uid,
+          email: getOAuthUserEmail(outcome.result.user),
+          displayName: outcome.result.user.displayName ?? undefined,
+          termsAccepted: true,
+          oauthProvider: readOAuthProvider(),
         });
       } catch (error) {
         logger.error('OAuth redirect persist failed:', error);
+        setAccountCreated(false);
         setErrors({
           _general: getAuthErrorFromUnknown(error),
         });
         setStep('signupForm');
       } finally {
-        if (!cancelled) setOauthLoading(null);
+        if (active) setOauthFinishing(null);
       }
     })();
 
     return () => {
-      cancelled = true;
+      active = false;
     };
   }, [finishAccountSetup]);
-
-  useEffect(() => {
-    if (accountCreated && step === 'signupForm') {
-      setStep('signupIntro');
-    }
-  }, [accountCreated, step]);
 
   useEffect(() => {
     if (step !== 'pickChild') return;
     setPickOptions(getSignupPickChildOptions());
     setSelectedChildIndex(0);
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 'signupForm') return;
+    setSignupScrollTop(0);
+    signupScrollRef.current?.scrollTo(0, 0);
   }, [step]);
 
   useEffect(() => {
@@ -270,8 +546,27 @@ export function OnboardingParentFlow() {
   }, [step]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setValues((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+    setValues((prev) => ({
+      ...prev,
+      [name]: nextValue,
+    }));
+
+    if (name === 'firstName' || name === 'lastName') {
+      const trimmed = String(nextValue).trim();
+      setErrors((prev) => {
+        const next = { ...prev };
+        if (trimmed && !isHebrewChildName(trimmed)) {
+          next[name] = ONBOARDING_HEBREW_ONLY_ERROR;
+        } else {
+          delete next[name];
+        }
+        return next;
+      });
+      return;
+    }
+
     if (errors[name]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -281,40 +576,88 @@ export function OnboardingParentFlow() {
     }
   };
 
+  const handleTermsAcceptedChange = (accepted: boolean) => {
+    setValues((prev) => ({ ...prev, termsAccepted: accepted }));
+    if (accepted && errors.termsAccepted) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.termsAccepted;
+        return next;
+      });
+    }
+  };
+
   const handleOAuth = async (provider: 'google' | 'apple') => {
+    if (provider === 'google' && isRestrictedOAuthEnvironment()) {
+      logger.warn('OAuth blocked: restricted environment');
+      setErrors({ _general: getRestrictedOAuthMessage() });
+      return;
+    }
+    if (oauthPopupInFlightRef.current) return;
+
     setErrors({});
-    setOauthLoading(provider);
+    setOauthDialogOpen(provider);
+    oauthPopupInFlightRef.current = true;
+    const useRedirect = prefersOAuthRedirect();
+    logger.log('OAuth click', { provider, useRedirect });
+
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
       sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'signupForm');
+      clearOAuthSessionFlags();
     }
 
     try {
+      if (useRedirect) {
+        markOAuthRedirectPending(provider);
+      }
+
       const result =
         provider === 'google'
-          ? await signInWithGoogle()
-          : await signInWithApple();
+          ? await signInWithGoogle({ useRedirect })
+          : await signInWithApple({ useRedirect });
 
-      if (result.ok && 'redirecting' in result) return;
+      if (result.ok && 'redirecting' in result) {
+        logger.log('OAuth redirecting', { provider });
+        setOauthDialogOpen(null);
+        return;
+      }
 
       if (!result.ok) {
-        sessionStorage.removeItem(OAUTH_PENDING_KEY);
+        logger.warn('OAuth failed', {
+          provider,
+          code: result.errorCode,
+          message: result.errorMessage,
+        });
+        clearOAuthSessionFlags();
         setErrors({ _general: result.errorMessage });
         return;
       }
 
-      sessionStorage.removeItem(OAUTH_PENDING_KEY);
+      logger.log('OAuth popup success', {
+        provider,
+        uid: result.user.uid,
+        email: result.user.email,
+      });
+      clearOAuthSessionFlags();
+      setOauthDialogOpen(null);
+      setOauthFinishing(provider);
       await finishAccountSetup({
         uid: result.user.uid,
-        email: result.user.email ?? '',
+        email: getOAuthUserEmail(result.user),
         displayName: result.user.displayName ?? undefined,
+        termsAccepted: values.termsAccepted,
+        oauthProvider: provider,
       });
     } catch (error) {
-      sessionStorage.removeItem(OAUTH_PENDING_KEY);
+      clearOAuthSessionFlags();
       logger.error('OAuth signup failed:', error);
       setErrors({ _general: getAuthErrorFromUnknown(error) });
     } finally {
-      setOauthLoading(null);
+      oauthPopupInFlightRef.current = false;
+      setOauthDialogOpen(null);
+      if (!readOAuthPending()) {
+        setOauthFinishing(null);
+      }
     }
   };
 
@@ -343,6 +686,7 @@ export function OnboardingParentFlow() {
         email: values.email.trim(),
         firstName: values.firstName.trim(),
         lastName: values.lastName.trim(),
+        termsAccepted: values.termsAccepted,
       });
     } catch (error) {
       logger.error('Email signup failed:', error);
@@ -373,7 +717,13 @@ export function OnboardingParentFlow() {
       return;
     }
     if (step === 'details') {
+      const hebrewErrors = getChildrenHebrewNameErrors(children);
+      if (Object.keys(hebrewErrors).length > 0) {
+        setChildNameErrors(hebrewErrors);
+        return;
+      }
       if (!childrenDetailsComplete(children)) return;
+      setChildNameErrors({});
       const times = createScreenTimesFromChildren(children);
       setOnboardingChildrenDetails(children);
       setScreenTimes(times);
@@ -414,16 +764,8 @@ export function OnboardingParentFlow() {
     setStep('childInviteIntro');
   };
 
-  const handleInviteComplete = async () => {
-    try {
-      await prepareBondingInvite({
-        childName: selectedChildName,
-        shareMode: 'remind_later',
-      });
-    } catch (error) {
-      logger.warn('Remind-later bonding invite failed:', error);
-    }
-    router.push('/onboarding/setup');
+  const handleRemindLater = () => {
+    openJoystieBondingCalendarReminder();
   };
 
   const handleBack = () => {
@@ -460,6 +802,9 @@ export function OnboardingParentFlow() {
       if (!accountCreated) {
         setStep('signupForm');
       }
+      return;
+    }
+    if (step === 'signupWelcome') {
       return;
     }
     if (step === 'signupForm') {
@@ -507,38 +852,49 @@ export function OnboardingParentFlow() {
       : step === 'badNews'
         ? 'v03-funnel-enter-reveal-6'
         : step === 'goodNews'
-          ? 'v03-funnel-enter-reveal-3'
-          : 'v03-funnel-enter-reveal-3';
+          ? 'v03-funnel-enter-reveal-4'
+          : 'v03-funnel-enter-reveal-4';
 
   const showBackButton =
     !(accountCreated && step === 'signupForm') &&
+    !(accountCreated && step === 'signupWelcome') &&
     !(accountCreated && step === 'signupIntro' && journeyStage === 0);
+
+  const showParentFunnelGrid = PARENT_FUNNEL_GRID_STEPS.has(step);
+
+  /** After Google/Apple auth returns — waiting layout until account persist finishes. */
+  if (oauthFinishing !== null && !accountCreated && !isRegistering) {
+    return (
+      <>
+        <OnboardingGrid />
+        <OnboardingWaitingScreenShell zIndex={20} ariaBusy>
+          <OnboardingWaitingCenterContent
+            headline="מתחברים..."
+            ariaLabel="מתחברים לחשבון"
+          />
+        </OnboardingWaitingScreenShell>
+      </>
+    );
+  }
 
   if (step === 'childInviteWaiting' || step === 'childInviteWaitingCompanion') {
     return (
       <>
-        <OnboardingGrid />
-        <OnboardingMintGlow />
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
-        <div
-          key={step}
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-hidden"
-          style={{ height: V03_SCREEN_HEIGHT }}
+        {showParentFunnelGrid && <OnboardingGrid />}
+        <OnboardingWaitingScreenShell
+          showBackButton={
+            showBackButton ? <OnboardingBackButton onClick={handleBack} /> : undefined
+          }
         >
           <SignupChildInviteWaitingStep
+            key={step}
             childName={selectedChildName}
             childGender={selectedChildGender}
             variant={
               step === 'childInviteWaiting' ? 'linkOpen' : 'companionPick'
             }
           />
-          <div
-            className="pointer-events-none absolute inset-x-0 z-0"
-            style={{ bottom: SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX }}
-          >
-            <SignupChildInviteWaitingMarquee />
-          </div>
-        </div>
+        </OnboardingWaitingScreenShell>
       </>
     );
   }
@@ -575,7 +931,7 @@ export function OnboardingParentFlow() {
           <SignupChildInviteIntroStep
             childName={selectedChildName}
             onTogetherNow={() => setStep('childInviteShare')}
-            onRemindLater={handleInviteComplete}
+            onRemindLater={handleRemindLater}
           />
         </div>
       </>
@@ -586,21 +942,43 @@ export function OnboardingParentFlow() {
     return (
       <>
         <OnboardingMintGlow />
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
-        <div
-          key={step}
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-hidden"
-          style={{ height: V03_SCREEN_HEIGHT }}
-        >
+        <OnboardingFunnelScrollBody scrollRef={funnelScrollRef}>
+          {showBackButton && (
+            <OnboardingBackButton scrollWithContent onClick={handleBack} />
+          )}
           <PickFirstChildStep
             options={pickOptions}
             selectedIndex={selectedChildIndex}
             onSelectIndex={setSelectedChildIndex}
           />
-        </div>
-        <OnboardingFooterCta variant="secondary" onClick={handlePickChildContinue}>
+        </OnboardingFunnelScrollBody>
+        <OnboardingBlurFooter
+          blur={funnelScrollOverflows}
+          onClick={handlePickChildContinue}
+        >
           המשך
-        </OnboardingFooterCta>
+        </OnboardingBlurFooter>
+      </>
+    );
+  }
+
+  if (step === 'signupWelcome') {
+    return (
+      <>
+        <OnboardingMintGlow />
+        <div
+          key={step}
+          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-visible"
+          style={{ height: V03_SCREEN_HEIGHT }}
+        >
+          <SignupHeroFrame scrollTop={0} />
+          <SignupOAuthTermsSheet
+            termsAccepted={oauthTermsAccepted}
+            onTermsAcceptedChange={handleOAuthTermsAcceptedChange}
+            termsError={oauthTermsError}
+            onContinue={handleWelcomeContinue}
+          />
+        </div>
       </>
     );
   }
@@ -608,7 +986,7 @@ export function OnboardingParentFlow() {
   if (step === 'signupIntro') {
     return (
       <>
-        <OnboardingGrid />
+        {showParentFunnelGrid && <OnboardingGrid />}
         <OnboardingMintGlow />
         {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <SignupHowItWorksPill />
@@ -622,7 +1000,7 @@ export function OnboardingParentFlow() {
             onStageChange={setJourneyStage}
           />
         </div>
-        <OnboardingBlurFooter onClick={handleIntroContinue}>
+        <OnboardingBlurFooter blur={false} onClick={handleIntroContinue}>
           המשך
         </OnboardingBlurFooter>
       </>
@@ -633,35 +1011,45 @@ export function OnboardingParentFlow() {
     return (
       <>
         <OnboardingMintGlow />
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <div
           key={step}
           dir="rtl"
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-y-auto overflow-x-hidden v03-scroll-hidden"
+          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-visible"
           style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
         >
-          <div className="v03-funnel-enter-0">
-            <SignupHeroFrame />
-          </div>
           <div
-            className="relative z-[12] flex flex-col items-center gap-5 px-v03-gutter pb-8"
-            style={{ marginTop: SIGNUP_FORM_CONTENT_MARGIN_TOP_PX }}
+            ref={signupScrollRef}
+            className="absolute inset-0 isolate overflow-y-auto v03-scroll-hidden"
+            onScroll={() =>
+              setSignupScrollTop(signupScrollRef.current?.scrollTop ?? 0)
+            }
           >
-            <OnboardingSignupForm
-              values={values}
-              errors={errors}
-              onChange={handleChange}
-              onOAuthGoogle={() => handleOAuth('google')}
-              onOAuthApple={() => handleOAuth('apple')}
-              oauthDisabled={isRegistering}
-              oauthLoading={oauthLoading}
-            />
+            {showBackButton && (
+              <OnboardingBackButton scrollWithContent onClick={handleBack} />
+            )}
+            <SignupHeroFrame scrollTop={signupScrollTop} />
+            <div
+              className="relative z-[20] mx-auto flex w-v03-content flex-col items-stretch gap-5 pb-8"
+              style={{ marginTop: SIGNUP_FORM_CONTENT_MARGIN_TOP_PX }}
+            >
+              <OnboardingSignupForm
+                values={values}
+                errors={errors}
+                onChange={handleChange}
+                onTermsAcceptedChange={handleTermsAcceptedChange}
+                onOAuthGoogle={() => handleOAuth('google')}
+                onOAuthApple={() => handleOAuth('apple')}
+                oauthDisabled={isRegistering}
+                oauthPickerOpen={oauthDialogOpen}
+              />
+            </div>
           </div>
         </div>
         <OnboardingAccentFooter
           type="button"
           onClick={handleRegister}
-          disabled={isRegistering || oauthLoading !== null}
+          disabled={isRegistering || oauthDialogOpen !== null}
+          showLoginLink
         >
           {isRegistering ? 'נרשמים...' : 'הרשמה'}
         </OnboardingAccentFooter>
@@ -672,16 +1060,19 @@ export function OnboardingParentFlow() {
   if (isRevealStep(step)) {
     return (
       <>
-        <div
-          className="v03-funnel-surface-light pointer-events-none absolute inset-0 z-0"
-          aria-hidden
-        />
+        <OnboardingRevealBleedBackground />
         <OnboardingBackButton tone="light" onClick={handleBack} />
-        <OnboardingFunnelStepSlot stepKey={step}>
+        <OnboardingFunnelStepSlot
+          stepKey={step}
+          innerClassName={
+            step === 'revealIntro' ? 'v03-reveal-intro-scope' : ''
+          }
+        >
           <OnboardingRevealStepContent step={step as RevealFlowStep} />
         </OnboardingFunnelStepSlot>
         <OnboardingBlurFooter
           key={step}
+          blur={false}
           className={revealFooterFadeClass}
           onClick={handleRevealContinue}
         >
@@ -691,15 +1082,12 @@ export function OnboardingParentFlow() {
     );
   }
 
-  const useBlurFooter = step === 'details' || step === 'screenTime';
+  const scrollableParentStep = step === 'details' || step === 'screenTime';
+  const useBlurFooter = scrollableParentStep;
   const showChrome = step !== 'calculating';
 
-  return (
+  const parentStepContent = (
     <>
-      <OnboardingMintGlow />
-      {showChrome && <OnboardingBackButton onClick={handleBack} />}
-
-      <OnboardingFunnelStepSlot stepKey={step}>
       {step === 'role' && (
         <section
           className="absolute right-v03-gutter top-[97px] z-[10] flex w-v03-content flex-col items-end gap-[35px]"
@@ -738,11 +1126,19 @@ export function OnboardingParentFlow() {
       )}
 
       {step === 'details' && (
-        <ChildrenDetailsStep children={children} onChildrenChange={setChildren} />
+        <ChildrenDetailsStep
+          children={children}
+          nameErrors={childNameErrors}
+          onChildrenChange={(next) => {
+            setChildren(next);
+            setChildNameErrors(getChildrenHebrewNameErrors(next));
+          }}
+        />
       )}
 
       {step === 'screenTime' && (
         <ChildrenScreenTimeStep
+          children={children}
           entries={screenTimes}
           onEntriesChange={setScreenTimes}
         />
@@ -751,11 +1147,34 @@ export function OnboardingParentFlow() {
       {step === 'calculating' && (
         <ScreenTimeCalculatingStep onComplete={() => setStep('revealIntro')} />
       )}
-      </OnboardingFunnelStepSlot>
+    </>
+  );
+
+  return (
+    <>
+      {showParentFunnelGrid && <OnboardingGrid />}
+      <OnboardingMintGlow />
+
+      {scrollableParentStep ? (
+        <OnboardingFunnelScrollBody scrollRef={funnelScrollRef}>
+          {showChrome && (
+            <OnboardingBackButton scrollWithContent onClick={handleBack} />
+          )}
+          {parentStepContent}
+        </OnboardingFunnelScrollBody>
+      ) : (
+        <>
+          {showChrome && <OnboardingBackButton onClick={handleBack} />}
+          <OnboardingFunnelStepSlot stepKey={step}>
+            {parentStepContent}
+          </OnboardingFunnelStepSlot>
+        </>
+      )}
 
       {showChrome &&
         (useBlurFooter ? (
           <OnboardingBlurFooter
+            blur={funnelScrollOverflows}
             disabled={step === 'details' && !childrenDetailsComplete(children)}
             onClick={handleParentContinue}
           >
@@ -764,7 +1183,9 @@ export function OnboardingParentFlow() {
         ) : (
           <OnboardingFooterCta
             variant="secondary"
+            layout={step === 'role' ? 'landing' : 'stacked'}
             disabled={step === 'role' && !role}
+            showLoginLink={step === 'role'}
             onClick={handleParentContinue}
           >
             המשך

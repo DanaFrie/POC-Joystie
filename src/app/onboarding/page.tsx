@@ -1,26 +1,33 @@
 'use client';
 
-import { OnboardingCopy } from '@/components/onboarding/OnboardingCopy';
-import { OnboardingCta } from '@/components/onboarding/OnboardingCta';
-import { OnboardingLoginRow } from '@/components/onboarding/OnboardingLoginRow';
-import { OnboardingEllipses } from '@/components/onboarding/OnboardingEllipses';
-import { OnboardingKingdom } from '@/components/onboarding/OnboardingKingdom';
-import { OnboardingLogo } from '@/components/onboarding/OnboardingLogo';
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import '@/lib/onboarding/oauthRedirectPrime';
+import { useCallback, useState } from 'react';
+import { OnboardingLanding } from '@/components/onboarding/OnboardingLanding';
+import { OnboardingParentFlow } from '@/components/onboarding/OnboardingParentFlow';
+import {
+  hasParentFlowStarted,
+  resetOnboardingParentFlowStart,
+} from '@/lib/onboarding/parentFlowSession';
 
 export const dynamic = 'force-dynamic';
 
-/** Step 1 — mobile layers only (grid + desktop banner from layout). */
+function readInitialPhase(): 'landing' | 'parent' {
+  if (typeof window === 'undefined') return 'landing';
+  return hasParentFlowStarted() ? 'parent' : 'landing';
+}
+
+/** `/onboarding` — landing; התחלה continues parent funnel on the same route. */
 export default function OnboardingPage() {
-  return (
-    <>
-      <OnboardingKingdom />
-      <OnboardingEllipses />
-      <OnboardingLogo />
-      <OnboardingMintGlow />
-      <OnboardingCopy />
-      <OnboardingCta />
-      <OnboardingLoginRow />
-    </>
-  );
+  const [phase, setPhase] = useState<'landing' | 'parent'>(readInitialPhase);
+
+  const handleStart = useCallback(() => {
+    resetOnboardingParentFlowStart();
+    setPhase('parent');
+  }, []);
+
+  if (phase === 'parent') {
+    return <OnboardingParentFlow />;
+  }
+
+  return <OnboardingLanding onStart={handleStart} />;
 }

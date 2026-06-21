@@ -25,13 +25,11 @@ function BlurEllipse({
 export function OnboardingEllipses() {
   return (
     <>
-      {/* Ellipse 388 */}
       <BlurEllipse
         className="pointer-events-none absolute left-[140px] top-[267px] z-[3] h-[248px] w-[265px]"
         fill="#092125"
         blurPx={45}
       />
-      {/* Ellipse 387 */}
       <BlurEllipse
         className="pointer-events-none absolute left-[-24px] top-[284px] z-[3] h-[236px] w-[253px]"
         fill="#092125"

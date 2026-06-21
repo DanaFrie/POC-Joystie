@@ -200,7 +200,7 @@ export default function DashboardPage() {
             const minimalDashboardData: DashboardState = {
               ...emptyDashboardState,
               parent: {
-                name: user.firstName || user.username || 'הורה',
+                name: user.firstName || 'הורה',
                 id: user.id,
                 googleAuth: {},
                 profilePicture: '',

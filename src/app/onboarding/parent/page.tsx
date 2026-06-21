@@ -1,10 +1,17 @@
 'use client';
 
-import { OnboardingParentFlow } from '@/components/onboarding/OnboardingParentFlow';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-/** /onboarding/parent — full funnel: parent → reveal → signup. */
+/** Legacy route — parent funnel lives on `/onboarding`. */
 export default function OnboardingParentPage() {
-  return <OnboardingParentFlow />;
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/onboarding');
+  }, [router]);
+
+  return null;
 }

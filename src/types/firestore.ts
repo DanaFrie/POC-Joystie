@@ -1,14 +1,18 @@
 // Firestore data types - matching the database schema
 
+/** Age + daily screen time from parent onboarding (no children collection yet). */
+export type UserKidAgeScreenTime = {
+  age: string;
+  dailyScreenTimeHours: number;
+};
+
 export interface FirestoreUser {
   id: string; // Document ID (same as Firebase Auth UID)
-  username?: string; // Optional - was removed from signup (parent nickname)
   email: string;
   firstName: string;
   lastName: string;
   gender: 'male' | 'female';
-  kidsAges: string[];
-  notificationsEnabled: boolean;
+  kidsAges: UserKidAgeScreenTime[];
   termsAccepted: boolean;
   signupDate: string; // ISO timestamp
   createdAt: string; // ISO timestamp
@@ -154,4 +158,3 @@ export interface FirestoreSession {
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
-

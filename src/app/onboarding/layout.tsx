@@ -1,9 +1,15 @@
 import type { Metadata } from 'next';
 import { OnboardingFunnelFrame } from '@/components/onboarding/OnboardingFunnelFrame';
+import { OnboardingFunnelRoot } from '@/components/onboarding/OnboardingFunnelRoot';
 
 /** Onboarding funnel — full viewport from first paint (SSR-safe) */
 export const metadata: Metadata = {
   themeColor: '#092125',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  },
 };
 
 export default function OnboardingLayout({
@@ -12,12 +18,8 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      dir="rtl"
-      data-v03-funnel
-      className="v03-funnel-root fixed inset-0 z-40 overflow-visible bg-v03-green-900"
-    >
+    <OnboardingFunnelRoot>
       <OnboardingFunnelFrame>{children}</OnboardingFunnelFrame>
-    </div>
+    </OnboardingFunnelRoot>
   );
 }

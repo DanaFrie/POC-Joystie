@@ -4,7 +4,8 @@
 import { getFunctionsInstance } from '@/lib/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { buildWhatsAppShareUrl } from '@/lib/share/whatsapp';
-import { generateChildUrl } from '@/utils/url-encoding';
+import { getBondingShareBaseUrl } from '@/lib/share/bondingBaseUrl';
+import { generateOnboardingChildUrl } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('BondingAPI');
@@ -14,18 +15,14 @@ export interface RecordBondingInviteInput {
   challengeId?: string;
   childName?: string;
   parentName?: string;
+  parentGender?: 'female' | 'male';
   baseUrl?: string;
-  /** Default: together_now — open WhatsApp while with child */
-  shareMode?: 'together_now' | 'remind_later';
-  /** ISO datetime — required for remind_later (parent picks when they expect to be together) */
-  remindAt?: string;
 }
 
 export interface RecordBondingInviteResult {
   inviteId: string;
   childUrl: string;
   whatsappShareUrl: string;
-  shareReminderAt: string;
 }
 
 /**
@@ -37,18 +34,20 @@ export function getWhatsAppShareUrlForChild(params: {
   challengeId?: string;
   childName?: string;
   parentName?: string;
+  parentGender?: 'female' | 'male';
   baseUrl?: string;
 }): { childUrl: string; whatsappShareUrl: string } {
-  const childUrl = generateChildUrl(
+  const childUrl = generateOnboardingChildUrl(
     params.parentId,
     params.childId,
     params.challengeId,
-    params.baseUrl
+    params.baseUrl ?? getBondingShareBaseUrl()
   );
   const whatsappShareUrl = buildWhatsAppShareUrl({
     childUrl,
     childName: params.childName,
     parentName: params.parentName,
+    parentGender: params.parentGender,
   });
   return { childUrl, whatsappShareUrl };
 }

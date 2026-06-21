@@ -1,24 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { ChildScreenTimeCard } from '@/components/onboarding/screen-time/ChildScreenTimeCard';
-import { ONBOARDING_BLUR_FOOTER_HEIGHT_PX } from '@/components/onboarding/OnboardingBlurFooter';
 import { ONBOARDING_SCREEN_TIME_HERO_IMAGE } from '@/constants/onboarding-figma';
+import type { OnboardingChildDraft } from '@/lib/onboarding/childrenDetails';
+import { getChildScreenTimeRoleLabel } from '@/lib/onboarding/childrenDetails';
 import type { OnboardingChildScreenTime } from '@/lib/onboarding/childrenScreenTime';
-import { getChildScreenTimeRoleLabels } from '@/lib/onboarding/childrenScreenTime';
 
 type ChildrenScreenTimeStepProps = {
+  children: OnboardingChildDraft[];
   entries: OnboardingChildScreenTime[];
   onEntriesChange: (entries: OnboardingChildScreenTime[]) => void;
 };
 
-/** Figma 1430108711 — fixed hero + title; scroll children only (1430108636). */
+/** Figma 1430108711 — full column scrolls inside funnel scroll region. */
 export function ChildrenScreenTimeStep({
+  children,
   entries,
   onEntriesChange,
 }: ChildrenScreenTimeStepProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const roleLabels = getChildScreenTimeRoleLabels(entries.length);
 
   const updateEntry = (index: number, hours: number) => {
     const next = [...entries];
@@ -29,15 +31,13 @@ export function ChildrenScreenTimeStep({
   return (
     <div
       dir="rtl"
-      className="absolute inset-x-0 top-[82px] z-[10] overflow-hidden"
-      style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
+      className="flex w-full flex-col items-center px-v03-gutter pb-6 pt-0"
       aria-label="שעות מסך יומיות"
     >
-      <div className="absolute bottom-0 right-v03-gutter top-0 flex w-v03-content flex-col items-center gap-[19px] overflow-hidden">
+      <div className="flex w-v03-content flex-col items-center gap-[19px]">
         <div className="relative flex h-[180px] w-full shrink-0 items-center justify-center overflow-hidden">
           {!imageFailed && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <OnboardingLazyImage
               src={ONBOARDING_SCREEN_TIME_HERO_IMAGE}
               alt=""
               className="v03-funnel-enter-0 pointer-events-none h-[176.6px] w-[176.6px] max-w-none rotate-[15deg] object-contain"
@@ -54,18 +54,22 @@ export function ChildrenScreenTimeStep({
           </h1>
         </div>
 
-        <div className="v03-scroll-hidden min-h-0 w-full flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="flex w-full flex-col items-end gap-[35px] pb-4">
-            {entries.map((entry, index) => (
-              <ChildScreenTimeCard
-                key={`${entry.name}-${index}`}
-                roleLabel={roleLabels[index] ?? `ילד/ה ${index + 1}`}
-                name={entry.name}
-                hours={entry.hours}
-                onHoursChange={(hours) => updateEntry(index, hours)}
-              />
-            ))}
-          </div>
+        <div className="flex w-full flex-col items-end gap-[35px] pb-4">
+          {entries.map((entry, index) => (
+            <ChildScreenTimeCard
+              key={`${entry.name}-${index}`}
+              roleLabel={
+                getChildScreenTimeRoleLabel(
+                  index,
+                  children.length,
+                  children[index]?.gender ?? 'girl'
+                ) || `ילד/ה ${index + 1}`
+              }
+              name={entry.name}
+              hours={entry.hours}
+              onHoursChange={(hours) => updateEntry(index, hours)}
+            />
+          ))}
         </div>
       </div>
     </div>

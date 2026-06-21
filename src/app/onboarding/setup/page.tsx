@@ -7,6 +7,7 @@ import { formatNumber, formatScreenTimeGoalHours } from '@/utils/formatting';
 import { getCurrentUserId } from '@/utils/auth';
 import { createChild, updateChild } from '@/lib/api/children';
 import { createChallenge, getActiveChallenge, updateChallenge } from '@/lib/api/challenges';
+import { extractKidAgeStrings } from '@/lib/users/kidsAges';
 import { getUser } from '@/lib/api/users';
 import { clientConfig } from '@/config/client.config';
 import { createContextLogger } from '@/utils/logger';
@@ -180,8 +181,8 @@ export default function OnboardingSetupPage() {
           const userId = await getCurrentUserId();
           if (userId) {
             const userData = await getUser(userId);
-            if (userData && userData.kidsAges && Array.isArray(userData.kidsAges)) {
-              const validAges = userData.kidsAges.filter((age: string) => age && age.trim() !== '');
+            if (userData?.kidsAges) {
+              const validAges = extractKidAgeStrings(userData.kidsAges);
               if (validAges.length > 0) {
                 setAvailableAges(validAges);
                 return;
@@ -197,8 +198,8 @@ export default function OnboardingSetupPage() {
         const parentDataStr = localStorage.getItem('parentData');
         if (parentDataStr) {
           const parsed = JSON.parse(parentDataStr);
-          if (parsed.kidsAges && Array.isArray(parsed.kidsAges)) {
-            const validAges = parsed.kidsAges.filter((age: string) => age && age.trim() !== '');
+          if (parsed.kidsAges) {
+            const validAges = extractKidAgeStrings(parsed.kidsAges);
             if (validAges.length > 0) {
               setAvailableAges(validAges);
               return;
@@ -210,8 +211,8 @@ export default function OnboardingSetupPage() {
         const signupDataStr = localStorage.getItem('signupFormData');
         if (signupDataStr) {
           const parsed = JSON.parse(signupDataStr);
-          if (parsed.kidsAges && Array.isArray(parsed.kidsAges)) {
-            const validAges = parsed.kidsAges.filter((age: string) => age && age.trim() !== '');
+          if (parsed.kidsAges) {
+            const validAges = extractKidAgeStrings(parsed.kidsAges);
             if (validAges.length > 0) {
               setAvailableAges(validAges);
               return;

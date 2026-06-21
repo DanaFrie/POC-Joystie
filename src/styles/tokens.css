@@ -50,6 +50,10 @@
   --v03-content-width: 327px;
   --v03-gutter: 24px;
 
+  /* Safe area — read by FunnelViewport for mobile inset scaling */
+  --v03-safe-top: env(safe-area-inset-top, 0px);
+  --v03-safe-bottom: env(safe-area-inset-bottom, 0px);
+
   /* Radii */
   --v03-radius-button: 22px;
 
@@ -86,9 +90,20 @@
   --v03-funnel-enter-stagger: 90ms;
   --v03-funnel-enter-fast-stagger: 52ms;
 
-  /* Reveal flow — slower staggered entrance */
-  --v03-funnel-enter-reveal-duration: 720ms;
-  --v03-funnel-enter-reveal-stagger: 150ms;
+  /* Reveal flow — slower staggered entrance (top → bottom) */
+  --v03-funnel-enter-reveal-duration: 1040ms;
+  --v03-funnel-enter-reveal-stagger: 440ms;
+  /* revealIntro — even slower */
+  --v03-funnel-enter-reveal-intro-duration: 1200ms;
+  --v03-funnel-enter-reveal-intro-stagger: 560ms;
+  --v03-funnel-enter-reveal-hero-intro-duration: 1600ms;
+
+  /* Joystie chart bars — after reveal footer (stagger × 4) finishes entering */
+  --v03-joystie-bar-duration: 520ms;
+  --v03-joystie-bar-stagger: 140ms;
+  --v03-joystie-bar-start-delay: calc(
+    var(--v03-funnel-enter-reveal-stagger) * 4 + var(--v03-funnel-enter-reveal-duration)
+  );
 }
 
 /* Simpler Pro webfonts — uncomment after adding files under public/fonts/simpler-pro/:

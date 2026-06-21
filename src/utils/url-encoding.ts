@@ -98,6 +98,21 @@ export function decodeParentToken(token: string): {
 /** Base path for unified child flow (setup + redemption same URL) */
 const CHILD_PATH = '/child';
 
+/** v0.3 onboarding funnel — child invite from parent bonding share */
+const ONBOARDING_CHILD_PATH = '/onboarding/child';
+
+function buildChildTokenUrl(
+  parentId: string,
+  childId: string | undefined,
+  challengeId: string | undefined,
+  baseUrl: string | undefined,
+  path: string
+): string {
+  const token = encodeParentToken(parentId, childId, challengeId);
+  const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}${path}?token=${token}`;
+}
+
 /**
  * Generate the single child URL (setup and redemption use the same link).
  * After setup the child keeps this link; on redemption day it shows the redemption funnel.
@@ -108,7 +123,15 @@ export function generateChildUrl(
   challengeId?: string,
   baseUrl?: string
 ): string {
-  const token = encodeParentToken(parentId, childId, challengeId);
-  const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}${CHILD_PATH}?token=${token}`;
+  return buildChildTokenUrl(parentId, childId, challengeId, baseUrl, CHILD_PATH);
+}
+
+/** Child invite URL for parent onboarding bonding share (`/onboarding/child`). */
+export function generateOnboardingChildUrl(
+  parentId: string,
+  childId?: string,
+  challengeId?: string,
+  baseUrl?: string
+): string {
+  return buildChildTokenUrl(parentId, childId, challengeId, baseUrl, ONBOARDING_CHILD_PATH);
 }

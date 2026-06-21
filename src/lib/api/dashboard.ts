@@ -423,7 +423,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       logger.warn('User not found in Firestore:', parentId);
       return null;
     }
-    logger.log('User found:', user.username);
+    logger.log('User found:', user.email);
 
     // Get challenge from Firestore only (no cache) so we have latest weeklyUpload after child upload
     let challenge = await getActiveChallenge(parentId, false);
@@ -479,7 +479,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     // Build dashboard state
     const dashboardState: DashboardState = {
       parent: {
-        name: user.firstName || user.username || 'הורה',
+        name: user.firstName || 'הורה',
         id: user.id,
         googleAuth: {}, // TODO: Add if needed
         profilePicture: '', // TODO: Add if available
