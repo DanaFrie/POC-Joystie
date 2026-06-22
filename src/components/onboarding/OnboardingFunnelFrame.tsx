@@ -21,7 +21,7 @@ function OnboardingFunnelContent({ children }: { children: ReactNode }) {
 }
 
 /**
- * /onboarding/* — mobile: 375×812 contain scaling + letterbox bleed (parent + child).
+ * /onboarding/* — mobile: 375×812 width-fill scaling (no side letterbox).
  * Desktop (≥768px): green canvas + grid + «זמין במובייל בלבד» only.
  */
 export function OnboardingFunnelFrame({
@@ -40,7 +40,7 @@ export function OnboardingFunnelFrame({
   return (
     <FunnelViewport
       surface={surface}
-      scaleMode="contain"
+      scaleMode="width"
       ignoreSafeArea={false}
       className={`font-simpler text-v03-text-on-dark ${className}`}
     >

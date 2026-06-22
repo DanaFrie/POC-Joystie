@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { OAuthEarlyCapture } from '@/components/onboarding/OAuthEarlyCapture';
 import { OnboardingFunnelFrame } from '@/components/onboarding/OnboardingFunnelFrame';
 import { OnboardingFunnelRoot } from '@/components/onboarding/OnboardingFunnelRoot';
 
@@ -19,6 +20,7 @@ export default function OnboardingLayout({
 }) {
   return (
     <OnboardingFunnelRoot>
+      <OAuthEarlyCapture />
       <OnboardingFunnelFrame>{children}</OnboardingFunnelFrame>
     </OnboardingFunnelRoot>
   );

@@ -217,6 +217,13 @@ async function initializeFirebase(): Promise<void> {
 
       // Initialize services
       authInstance = getAuth(app);
+
+      // Capture OAuth redirect before Firestore/Functions — order matters on Safari/App Hosting.
+      if (typeof window !== 'undefined') {
+        const { primeOAuthRedirectCaptureWithAuth } = await import('@/utils/auth-oauth');
+        primeOAuthRedirectCaptureWithAuth(authInstance);
+      }
+
       dbInstance = getFirestore(app);
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
       

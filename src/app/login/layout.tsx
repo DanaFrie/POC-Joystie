@@ -16,7 +16,7 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
     <OnboardingFunnelRoot>
       <FunnelViewport
         surface="dark"
-        scaleMode="contain"
+        scaleMode="width"
         className="font-simpler text-v03-text-on-dark"
       >
         <div className="relative h-full w-full">{children}</div>

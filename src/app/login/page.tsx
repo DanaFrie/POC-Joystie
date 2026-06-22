@@ -1,5 +1,7 @@
 'use client';
 
+import '@/lib/onboarding/oauthRedirectPrime';
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoginScreen } from '@/components/login/LoginScreen';

@@ -17,6 +17,7 @@ import {
   resolveOAuthSignInAfterRedirect,
   type OAuthSignInResult,
 } from '@/utils/auth-oauth';
+import { isFirebaseAppHostingOrigin } from '@/utils/is-firebase-app-hosting';
 import { createContextLogger } from '@/utils/logger';
 
 const oauthLog = createContextLogger('OAuthRecovery');
@@ -88,7 +89,9 @@ export function recoverOAuthRedirectSignIn(): Promise<OAuthRedirectRecoveryOutco
           clearOAuthRedirectCapture();
           return {
             status: 'error',
-            message: 'לא הצלחנו להשלים את ההתחברות. נסו שוב.',
+            message: isFirebaseAppHostingOrigin()
+              ? 'לא הצלחנו להשלים את ההתחברות. ודאו שהדומיין של App Hosting מאושר ב-Firebase Authentication, ונסו שוב.'
+              : 'לא הצלחנו להשלים את ההתחברות. נסו שוב.',
           };
         }
         if (!result.ok) {

@@ -15,13 +15,13 @@ import {
 
 export type FunnelSurface = 'dark' | 'light';
 
-export type FunnelScaleMode = 'cover' | 'contain';
+export type FunnelScaleMode = 'cover' | 'contain' | 'width';
 
 type FunnelViewportProps = {
   children: ReactNode;
   className?: string;
   surface?: FunnelSurface;
-  /** `contain` keeps full 812px visible (fixes footer clip on Galaxy S8+). */
+  /** `width` fills viewport width (no side letterbox). `contain` fits full 812px. `cover` fills viewport. */
   scaleMode?: FunnelScaleMode;
   /** Skip safe-area inset math — full-bleed funnel (e.g. `/onboarding/child`). */
   ignoreSafeArea?: boolean;
@@ -67,22 +67,68 @@ function measureViewport(
 
   const scaleX = width / V03_SCREEN_WIDTH;
   const scaleY = usableHeight / V03_SCREEN_HEIGHT;
-  const scale =
-    scaleMode === 'contain' ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY);
+  const scale = resolveScale(scaleMode, scaleX, scaleY);
   const scaledW = V03_SCREEN_WIDTH * scale;
   const scaledH = V03_SCREEN_HEIGHT * scale;
 
-  const anchorTop = ignoreSafeArea && scaleMode === 'cover';
-
   return {
     scale,
-    offsetX: (width - scaledW) / 2,
-    offsetY: anchorTop
-      ? 0
-      : ignoreSafeArea
-        ? (height - scaledH) / 2
-        : safeTop + (usableHeight - scaledH) / 2,
+    offsetX: resolveOffsetX(scaleMode, width, scaledW),
+    offsetY: resolveOffsetY(
+      scaleMode,
+      ignoreSafeArea,
+      safeTop,
+      usableHeight,
+      height,
+      scaledH
+    ),
   };
+}
+
+function resolveScale(
+  scaleMode: FunnelScaleMode,
+  scaleX: number,
+  scaleY: number
+): number {
+  switch (scaleMode) {
+    case 'contain':
+      return Math.min(scaleX, scaleY);
+    case 'width':
+      return scaleX;
+    default:
+      return Math.max(scaleX, scaleY);
+  }
+}
+
+function resolveOffsetX(
+  scaleMode: FunnelScaleMode,
+  width: number,
+  scaledW: number
+): number {
+  if (scaleMode === 'width') {
+    return 0;
+  }
+  return (width - scaledW) / 2;
+}
+
+function resolveOffsetY(
+  scaleMode: FunnelScaleMode,
+  ignoreSafeArea: boolean,
+  safeTop: number,
+  usableHeight: number,
+  height: number,
+  scaledH: number
+): number {
+  if (ignoreSafeArea && scaleMode === 'cover') {
+    return 0;
+  }
+  if (scaleMode === 'width') {
+    return safeTop;
+  }
+  if (ignoreSafeArea) {
+    return (height - scaledH) / 2;
+  }
+  return safeTop + (usableHeight - scaledH) / 2;
 }
 
 /** Scales 375×812 children to cover the viewport (inside .v03-funnel-root). */

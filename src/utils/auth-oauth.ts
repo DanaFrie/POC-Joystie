@@ -1,7 +1,9 @@
-import type { AuthError, User, UserCredential } from 'firebase/auth';
+import type { Auth, AuthError, User, UserCredential } from 'firebase/auth';
+import { getAdditionalUserInfo, getRedirectResult } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
 import { isOAuthRedirectRecoverable } from '@/lib/onboarding/oauthSession';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
+import { isFirebaseAppHostingOrigin } from '@/utils/is-firebase-app-hosting';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
 
@@ -45,15 +47,22 @@ export function getOnboardingParentExternalUrl(): string {
   return `${window.location.origin}/onboarding`;
 }
 
-export function prefersOAuthRedirect(): boolean {
+function isMobileOrSafariBrowser(): boolean {
   if (typeof window === 'undefined') return false;
-  // Redirect OAuth is unreliable on localhost (incl. mobile viewport / DevTools).
-  if (isLocalDevHost()) return false;
   const ua = navigator.userAgent;
   const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
   const isSafari =
     /Safari/i.test(ua) && !/Chrome|CriOS|FxiOS/i.test(ua);
   return isMobile || isSafari || window.innerWidth < 768;
+}
+
+export function prefersOAuthRedirect(): boolean {
+  if (typeof window === 'undefined') return false;
+  // Redirect OAuth is unreliable on localhost (incl. mobile viewport / DevTools).
+  if (isLocalDevHost()) return false;
+  // Desktop App Hosting: popup avoids cross-site redirect storage issues.
+  if (isFirebaseAppHostingOrigin() && !isMobileOrSafariBrowser()) return false;
+  return isMobileOrSafariBrowser();
 }
 
 /** True when the browser likely just returned from Google/Apple/Firebase auth handler. */
@@ -68,9 +77,54 @@ export function isLikelyOAuthRedirectReturn(): boolean {
 }
 
 async function resolveIsNewUser(credential: UserCredential): Promise<boolean> {
-  const { getAdditionalUserInfo } = await import('firebase/auth');
   const info = getAdditionalUserInfo(credential);
   return info?.isNewUser ?? false;
+}
+
+function readUrlSearchParams(source: string): URLSearchParams {
+  const query = source.includes('?') ? source.split('?').slice(1).join('?') : source;
+  return new URLSearchParams(query);
+}
+
+/** Firebase/Google may surface auth errors in the return URL after a failed redirect. */
+function parseOAuthRedirectUrlError(): OAuthSignInResult | null {
+  if (typeof window === 'undefined') return null;
+
+  const search = new URLSearchParams(window.location.search);
+  const hashBody = window.location.hash.replace(/^#/, '');
+  const hash = hashBody ? readUrlSearchParams(hashBody) : new URLSearchParams();
+
+  const rawCode =
+    search.get('errorCode') ||
+    hash.get('errorCode') ||
+    search.get('error') ||
+    hash.get('error') ||
+    '';
+  if (!rawCode) return null;
+
+  const normalizedCode = rawCode.startsWith('auth/')
+    ? rawCode
+    : rawCode.includes('unauthorized')
+      ? 'auth/unauthorized-domain'
+      : `auth/${rawCode}`;
+
+  oauthLog.warn('redirect:url-error', {
+    code: normalizedCode,
+    href: window.location.href,
+    referrer: document.referrer,
+  });
+
+  return {
+    ok: false,
+    errorCode: normalizedCode,
+    errorMessage: getAuthErrorFromUnknown({ code: normalizedCode }),
+  };
+}
+
+function redirectWaitMs(auth: Auth): number {
+  if (!isOAuthRedirectRecoverable()) return 0;
+  const base = auth.currentUser ? 8000 : 3000;
+  return isFirebaseAppHostingOrigin() ? Math.max(base, auth.currentUser ? 12000 : 6000) : base;
 }
 
 async function signInWithProviderPopup(providerId: OAuthProviderId): Promise<OAuthSignInResult> {
@@ -318,10 +372,14 @@ export async function resolveOAuthPendingUser(
   return { ok: true, user, isNewUser: true };
 }
 
-async function completeOAuthRedirectOnce(): Promise<OAuthSignInResult | null> {
+async function completeOAuthRedirectOnce(
+  authOverride?: Auth
+): Promise<OAuthSignInResult | null> {
   try {
-    const { getRedirectResult, getAdditionalUserInfo } = await import('firebase/auth');
-    const auth = await getAuthInstance();
+    const urlError = parseOAuthRedirectUrlError();
+    if (urlError) return urlError;
+
+    const auth = authOverride ?? (await getAuthInstance());
     // Must run immediately after Auth init — waiting for auth state first loses redirect on Safari.
     const credential = await getRedirectResult(auth);
     if (credential?.user) {
@@ -340,10 +398,8 @@ async function completeOAuthRedirectOnce(): Promise<OAuthSignInResult | null> {
     }
 
     // Redirect may hydrate currentUser shortly after getRedirectResult returns null.
-    const recoverable = isOAuthRedirectRecoverable();
-    const waitMs = recoverable ? (auth.currentUser ? 8000 : 3000) : 0;
-    const user =
-      waitMs > 0 ? await waitForOAuthUser(waitMs) : null;
+    const waitMs = redirectWaitMs(auth);
+    const user = waitMs > 0 ? await waitForOAuthUser(waitMs) : null;
     if (user) {
       oauthLog.log('redirect:currentUser-fallback', {
         uid: user.uid,
@@ -355,10 +411,15 @@ async function completeOAuthRedirectOnce(): Promise<OAuthSignInResult | null> {
 
     if (isOAuthRedirectRecoverable()) {
       oauthLog.warn('redirect:result-empty', {
+        origin: window.location.origin,
+        href: window.location.href,
+        referrer: document.referrer,
+        appHosting: isFirebaseAppHostingOrigin(),
         hasCurrentUser: Boolean(auth.currentUser),
         isAnonymous: auth.currentUser?.isAnonymous ?? false,
         currentEmail: auth.currentUser?.email ?? null,
         providerIds: auth.currentUser?.providerData.map((p) => p.providerId) ?? [],
+        authDomain: auth.app.options.authDomain,
       });
     }
     return null;
@@ -400,6 +461,22 @@ export async function completeOAuthRedirectIfNeeded(): Promise<OAuthSignInResult
 export function primeOAuthRedirectCapture(): void {
   if (typeof window === 'undefined') return;
   void getRedirectResultPromise();
+}
+
+/**
+ * Capture redirect result immediately after `getAuth()` — before Firestore/Functions init.
+ * Called from `firebase.ts` during Auth bootstrap.
+ */
+export function primeOAuthRedirectCaptureWithAuth(auth: Auth): void {
+  if (typeof window === 'undefined') return;
+
+  const globalWindow = window as typeof window & {
+    [REDIRECT_PROMISE_KEY]?: Promise<OAuthSignInResult | null>;
+  };
+
+  if (!globalWindow[REDIRECT_PROMISE_KEY]) {
+    globalWindow[REDIRECT_PROMISE_KEY] = completeOAuthRedirectOnce(auth);
+  }
 }
 
 /** Reset redirect capture singleton so a retry can call getRedirectResult again (HMR / failed recovery). */
