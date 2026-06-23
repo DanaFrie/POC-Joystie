@@ -22,7 +22,7 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
       />
       <FunnelViewport
         surface="dark"
-        scaleMode="width"
+        scaleMode="scroll"
         className="font-simpler text-v03-text-on-dark"
       >
         <div className="relative h-full w-full">{children}</div>

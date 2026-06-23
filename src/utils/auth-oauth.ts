@@ -1,7 +1,10 @@
 import type { Auth, AuthError, User, UserCredential } from 'firebase/auth';
 import { getAdditionalUserInfo, getRedirectResult } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
-import { isOAuthRedirectRecoverable } from '@/lib/onboarding/oauthSession';
+import {
+  isOAuthRedirectRecoverable,
+  markOAuthRedirectPendingForProviderId,
+} from '@/lib/onboarding/oauthSession';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
 import { isFirebaseAppHostingOrigin } from '@/utils/is-firebase-app-hosting';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
@@ -60,8 +63,8 @@ export function prefersOAuthRedirect(): boolean {
   if (typeof window === 'undefined') return false;
   // Redirect OAuth is unreliable on localhost (incl. mobile viewport / DevTools).
   if (isLocalDevHost()) return false;
-  // Desktop App Hosting: popup avoids cross-site redirect storage issues.
-  if (isFirebaseAppHostingOrigin() && !isMobileOrSafariBrowser()) return false;
+  // App Hosting: redirect loses getRedirectResult state on *.hosted.app — always popup.
+  if (isFirebaseAppHostingOrigin()) return false;
   return isMobileOrSafariBrowser();
 }
 
@@ -175,6 +178,7 @@ async function signInWithProviderRedirect(providerId: OAuthProviderId): Promise<
   const { signInWithRedirect, GoogleAuthProvider, OAuthProvider } = await import('firebase/auth');
   const auth = await getAuthInstance();
   await prepareAuthForOAuthSignIn();
+  markOAuthRedirectPendingForProviderId(providerId);
   const provider =
     providerId === 'google.com'
       ? new GoogleAuthProvider()

@@ -6,7 +6,7 @@ import {
   clearOAuthSessionFlags,
   isFreshOAuthPending,
   isOAuthRedirectRecoverable,
-  readOAuthProvider,
+  readOAuthProviderId,
 } from '@/lib/onboarding/oauthSession';
 import { getAuthInstance } from '@/lib/firebase';
 import {
@@ -80,8 +80,8 @@ export function recoverOAuthRedirectSignIn(): Promise<OAuthRedirectRecoveryOutco
           return { status: 'error', message: getRestrictedOAuthMessage() };
         }
 
-        const pendingProvider = readOAuthProvider();
-        oauthLog.log('start', { provider: pendingProvider });
+        const pendingProviderId = readOAuthProviderId();
+        oauthLog.log('start', { providerId: pendingProviderId });
         const result = await resolveOAuthSignInAfterRedirect();
         if (!result) {
           oauthLog.warn('failed:no-result');
@@ -104,11 +104,9 @@ export function recoverOAuthRedirectSignIn(): Promise<OAuthRedirectRecoveryOutco
           return { status: 'error', message: result.errorMessage };
         }
         const providerIds = result.user.providerData.map((p) => p.providerId);
-        const oauthProviderId =
-          pendingProvider === 'apple' ? 'apple.com' : 'google.com';
-        if (!providerIds.includes(oauthProviderId)) {
+        if (!providerIds.includes(pendingProviderId)) {
           oauthLog.warn('failed:wrong-provider', {
-            expected: oauthProviderId,
+            expected: pendingProviderId,
             providerIds,
             email: result.user.email,
           });

@@ -1,16 +1,11 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { BRAND_LOGO_SRC } from '@/constants/brand-assets';
 import { ButtonLink } from '@/components/ui/Button';
-
-type LandingNavProps = {
-  isMenuOpen: boolean;
-  onToggleMenu: () => void;
-  onSectionClick: (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => void;
-};
 
 const NAV_LINKS = [
   { href: '#how-it-works', label: 'איך זה עובד?' },
@@ -18,7 +13,30 @@ const NAV_LINKS = [
   { href: '#behind-idea', label: 'מאחורי הרעיון' },
 ] as const;
 
-export function LandingNav({ isMenuOpen, onToggleMenu, onSectionClick }: LandingNavProps) {
+export function LandingNav() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleSectionClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, sectionId: string) => {
+      e.preventDefault();
+      setIsMenuOpen(false);
+
+      const element = document.getElementById(sectionId);
+      if (element) {
+        const navHeight = 72;
+        const offset = 20;
+        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+        const offsetPosition = elementPosition - navHeight - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth',
+        });
+      }
+    },
+    [],
+  );
+
   return (
     <nav
       className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-v03-green-900/90 backdrop-blur-md"
@@ -62,7 +80,7 @@ export function LandingNav({ isMenuOpen, onToggleMenu, onSectionClick }: Landing
 
         <button
           type="button"
-          onClick={onToggleMenu}
+          onClick={() => setIsMenuOpen((open) => !open)}
           className="mr-auto rounded-v03-button p-2 text-v03-text-on-dark hover:bg-white/10 md:hidden"
           aria-label="תפריט"
         >
@@ -80,7 +98,7 @@ export function LandingNav({ isMenuOpen, onToggleMenu, onSectionClick }: Landing
               <a
                 key={href}
                 href={href}
-                onClick={(e) => onSectionClick(e, href.slice(1))}
+                onClick={(e) => handleSectionClick(e, href.slice(1))}
                 className="font-simpler text-lg font-bold text-v03-text-on-dark"
               >
                 {label}

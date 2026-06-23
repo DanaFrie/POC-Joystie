@@ -8,6 +8,7 @@ export type OnboardingChildScreenTime = {
 export const ONBOARDING_SCREEN_TIME_MIN = 0;
 export const ONBOARDING_SCREEN_TIME_MAX = 12;
 export const ONBOARDING_SCREEN_TIME_STEP = 0.5;
+export const DEFAULT_ONBOARDING_SCREEN_TIME_HOURS = 1;
 
 import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
 
@@ -17,9 +18,9 @@ const SCREEN_TIME_STORAGE_KEY = 'onboardingChildrenScreenTime';
 export function createScreenTimesFromChildren(
   children: OnboardingChildDraft[]
 ): OnboardingChildScreenTime[] {
-  return children.map((child, index) => ({
+  return children.map((child) => ({
     name: child.name.trim(),
-    hours: index === 0 ? 1 : 2,
+    hours: DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   }));
 }
 

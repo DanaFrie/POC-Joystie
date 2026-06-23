@@ -11,6 +11,8 @@ export type FunnelViewportMetrics = {
   designWidth: number;
   viewportWidth: number;
   viewportHeight: number;
+  /** `scroll` mode — canvas taller than usable viewport (enable page scroll). */
+  needsVerticalScroll: boolean;
 };
 
 const DEFAULT_METRICS: FunnelViewportMetrics = {
@@ -20,29 +22,35 @@ const DEFAULT_METRICS: FunnelViewportMetrics = {
   designWidth: V03_SCREEN_WIDTH,
   viewportWidth: V03_SCREEN_WIDTH,
   viewportHeight: 812,
+  needsVerticalScroll: false,
 };
 
 type FunnelViewportContextValue = {
   isDesktop: boolean;
   metrics: FunnelViewportMetrics;
+  /** False until first `useLayoutEffect` viewport measure — avoids scale flash on mount. */
+  layoutReady: boolean;
 };
 
 const FunnelViewportContext = createContext<FunnelViewportContextValue>({
   isDesktop: false,
   metrics: DEFAULT_METRICS,
+  layoutReady: false,
 });
 
 export function FunnelViewportProvider({
   isDesktop,
   metrics = DEFAULT_METRICS,
+  layoutReady = false,
   children,
 }: {
   isDesktop: boolean;
   metrics?: FunnelViewportMetrics;
+  layoutReady?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <FunnelViewportContext.Provider value={{ isDesktop, metrics }}>
+    <FunnelViewportContext.Provider value={{ isDesktop, metrics, layoutReady }}>
       {children}
     </FunnelViewportContext.Provider>
   );
@@ -55,6 +63,11 @@ export function useFunnelDesktop() {
 
 export function useFunnelViewportMetrics() {
   return useContext(FunnelViewportContext).metrics;
+}
+
+/** True after the first viewport measure — gate portaled layers that use funnel metrics. */
+export function useFunnelLayoutReady() {
+  return useContext(FunnelViewportContext).layoutReady;
 }
 
 /**

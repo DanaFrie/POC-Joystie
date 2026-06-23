@@ -7,7 +7,7 @@ import {
   SIGNUP_JOURNEY_STEP2_IMAGE_W_PX,
 } from '@/constants/signup-layout';
 
-/** שלב 2 — Figma 12703:42218; main art is `signup-journey-ball-game.png`. */
+/** שלב 2 — Figma 12703:42218; main art is `signup/journey/ball-game.webp`. */
 export function SignupJourneyStep2Visual() {
   const [imageFailed, setImageFailed] = useState(false);
 

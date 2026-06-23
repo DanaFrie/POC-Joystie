@@ -1,6 +1,7 @@
 import { createUser, getUser, updateUser } from '@/lib/api/users';
 import {
   createScreenTimesFromChildren,
+  DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   getOnboardingChildrenScreenTime,
   type OnboardingChildScreenTime,
 } from '@/lib/onboarding/childrenScreenTime';
@@ -75,7 +76,7 @@ function buildKidsAgesFromFunnel(
 ): UserKidAgeScreenTime[] {
   return children.map((child, index) => ({
     age: String(child.age),
-    dailyScreenTimeHours: screenTimes[index]?.hours ?? (index === 0 ? 1 : 2),
+    dailyScreenTimeHours: screenTimes[index]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   }));
 }
 
@@ -89,7 +90,7 @@ function saveFunnelChildrenToSession(
     name: child.name.trim(),
     age: String(child.age),
     gender: child.gender,
-    dailyScreenTimeHours: screenTimes[index]?.hours ?? (index === 0 ? 1 : 2),
+    dailyScreenTimeHours: screenTimes[index]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   }));
 
   writeOnboardingJson('onboardingChildSnapshots', snapshots);

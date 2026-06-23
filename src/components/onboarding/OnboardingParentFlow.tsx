@@ -86,7 +86,6 @@ import {
   clearOAuthSessionFlags,
   isFreshOAuthPending,
   isOAuthRedirectRecoverable,
-  markOAuthRedirectPending,
   markOnboardingTermsAccepted,
   purgeStaleOAuthSessionFlags,
   readOAuthPending,
@@ -616,10 +615,6 @@ export function OnboardingParentFlow({
     }
 
     try {
-      if (useRedirect) {
-        markOAuthRedirectPending(provider);
-      }
-
       const result =
         provider === 'google'
           ? await signInWithGoogle({ useRedirect })

@@ -1,5 +1,3 @@
-'use client';
-
 import Image from 'next/image';
 
 type LandingToolsProps = {
@@ -51,6 +49,7 @@ export function LandingTools({ titleRevealRef, cardsRevealRef }: LandingToolsPro
                       width={80}
                       height={80}
                       className="h-full w-full object-contain"
+                      loading="lazy"
                     />
                   </div>
                   <h3 className="mb-3 font-simpler text-xl font-black text-v03-text-on-light md:text-2xl">

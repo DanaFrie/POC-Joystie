@@ -131,11 +131,11 @@ export async function shareBondingViaWhatsApp(params: {
   });
 
   const inviteId = getOnboardingBondingInviteId();
-  if (inviteId) {
-    try {
-      await markBondingWhatsAppShared(inviteId);
-    } catch (error) {
-      logger.warn('markBondingWhatsAppShared failed:', error);
-    }
+  if (!inviteId) return;
+
+  try {
+    await markBondingWhatsAppShared(inviteId);
+  } catch (error) {
+    logger.warn('markBondingWhatsAppShared failed:', error);
   }
 }

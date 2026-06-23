@@ -1,17 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SignupChildInviteHeroBlock } from '@/components/onboarding/signup/SignupChildInviteHeroBlock';
 import {
   SignupCopyLinkIcon,
   SignupWhatsAppIcon,
 } from '@/components/onboarding/signup/SignupChildInviteIcons';
 import {
+  SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS,
   SIGNUP_CHILD_INVITE_BUTTONS_GAP_PX,
   SIGNUP_CHILD_INVITE_FOOTNOTE_MAX_W_PX,
   SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX,
   SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX,
-  SIGNUP_CHILD_INVITE_SHARE_W_PX,
 } from '@/constants/signup-child-invite-layout';
 import {
   prepareBondingInvite,
@@ -31,10 +31,7 @@ type SignupChildInviteShareStepProps = {
   onShared?: () => void;
 };
 
-const actionBtnClass =
-  'inline-flex h-[55px] w-full items-center justify-center gap-2 rounded-[22px] px-[15px] py-2 font-simpler text-[18px] font-bold shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition';
-
-/** Figma 12703:42221 — hero, WhatsApp / copy link, footnote (vertically centered). */
+/** Figma 12703:42221 — hero, WhatsApp / copy link, footnote. */
 export function SignupChildInviteShareStep({
   childName,
   onShared,
@@ -44,7 +41,7 @@ export function SignupChildInviteShareStep({
   const [shareError, setShareError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
 
-  const ensureInvite = async () => {
+  const ensureInvite = async (): Promise<string> => {
     if (childUrl && childUrl.includes('token=')) return childUrl;
     setPreparing(true);
     setShareError(null);
@@ -64,9 +61,17 @@ export function SignupChildInviteShareStep({
     }
   };
 
-  const handleWhatsApp = async () => {
-    try {
-      const url = await ensureInvite();
+  useEffect(() => {
+    if (childUrl?.includes('token=')) return;
+    void ensureInvite().catch(() => {
+      // shareError set inside ensureInvite
+    });
+    // Preload invite so WhatsApp opens in the same user-gesture (Safari/iOS).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per child
+  }, [childName]);
+
+  const handleWhatsApp = () => {
+    const launchWhatsApp = (url: string) => {
       let advanced = false;
       const advanceAfterReturn = () => {
         if (advanced || document.visibilityState !== 'visible') return;
@@ -75,14 +80,23 @@ export function SignupChildInviteShareStep({
         onShared?.();
       };
       document.addEventListener('visibilitychange', advanceAfterReturn);
-      await shareBondingViaWhatsApp({
+      void shareBondingViaWhatsApp({
         childName,
         childUrl: url,
         parentGender: getParentGenderForMessage(),
       });
-    } catch {
-      // error surfaced via shareError
+    };
+
+    if (childUrl?.includes('token=')) {
+      launchWhatsApp(childUrl);
+      return;
     }
+
+    void ensureInvite()
+      .then(launchWhatsApp)
+      .catch(() => {
+        // error surfaced via shareError
+      });
   };
 
   const handleCopy = async () => {
@@ -110,11 +124,8 @@ export function SignupChildInviteShareStep({
   return (
     <div
       dir="rtl"
-      className="absolute left-1/2 top-1/2 z-[10] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center"
-      style={{
-        width: SIGNUP_CHILD_INVITE_SHARE_W_PX,
-        gap: SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX,
-      }}
+      className="absolute left-v03-gutter top-1/2 z-[10] flex w-v03-content -translate-y-1/2 flex-col items-stretch"
+      style={{ gap: SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX }}
       aria-label="שיתוף הזמנה לילד"
     >
       <div
@@ -131,9 +142,9 @@ export function SignupChildInviteShareStep({
             type="button"
             onClick={handleWhatsApp}
             disabled={preparing}
-            className={`${actionBtnClass} bg-v03-turquoise-300 text-[#031d15] hover:brightness-105 disabled:opacity-60`}
+            className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} bg-v03-turquoise-300 text-v03-turquoise-950 hover:brightness-105 disabled:opacity-60`}
           >
-            <span className="whitespace-nowrap text-right">
+            <span className="whitespace-nowrap text-center">
               {preparing ? 'מכינים לינק...' : 'שיתוף בוואטסאפ'}
             </span>
             <SignupWhatsAppIcon />
@@ -143,9 +154,9 @@ export function SignupChildInviteShareStep({
             type="button"
             onClick={handleCopy}
             disabled={preparing}
-            className={`${actionBtnClass} border border-solid border-white text-white hover:bg-white/5 disabled:opacity-60`}
+            className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} border border-solid border-white text-white hover:bg-white/5 disabled:opacity-60`}
           >
-            <span className="whitespace-nowrap text-right">
+            <span className="whitespace-nowrap text-center">
               {copied ? 'הלינק הועתק' : 'העתקת לינק'}
             </span>
             <SignupCopyLinkIcon />

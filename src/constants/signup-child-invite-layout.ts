@@ -1,8 +1,9 @@
 /** Child invite intro — Figma 12914:11767 */
 export const SIGNUP_CHILD_INVITE_INTRO_TOP_PX = 110;
-export const SIGNUP_CHILD_INVITE_INTRO_W_PX = 327;
 export const SIGNUP_CHILD_INVITE_INTRO_COLUMN_GAP_PX = 55;
-export const SIGNUP_CHILD_INVITE_HERO_BLOCK_W_PX = 332;
+/** Shared funnel CTA — matches `OnboardingFooterCta` / `OnboardingBlurFooter` */
+export const SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS =
+  'flex h-[55px] w-full items-center justify-center gap-2 rounded-v03-button px-[15px] py-2 font-simpler text-[18px] font-bold shadow-v03-button transition';
 export const SIGNUP_CHILD_INVITE_HERO_PX = 200;
 /** Side fades — Figma 31×134 */
 export const SIGNUP_CHILD_INVITE_HERO_FADE_W_PX = 31;
@@ -21,8 +22,7 @@ export const SIGNUP_CHILD_INVITE_INTRO_BUTTONS_GAP_PX = 12;
 export const SIGNUP_CHILD_INVITE_INTRO_ACTIONS_PT_PX = 20;
 export const SIGNUP_CHILD_INVITE_INTRO_ACTIONS_GAP_PX = 15;
 
-/** Child invite share — Figma 12703:42221 (centered column) */
-export const SIGNUP_CHILD_INVITE_SHARE_W_PX = 327;
+/** Child invite share — Figma 12703:42221 */
 export const SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX = 20;
 export const SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX = 29;
 export const SIGNUP_CHILD_INVITE_BUTTONS_GAP_PX = 15;

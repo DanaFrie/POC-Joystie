@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ChildScreenTimeSlider } from '@/components/onboarding/screen-time/ChildScreenTimeSlider';
 import { formatScreenTimeHours } from '@/lib/onboarding/childrenScreenTime';
 
@@ -17,7 +18,9 @@ export function ChildScreenTimeCard({
   hours,
   onHoursChange,
 }: ChildScreenTimeCardProps) {
-  const display = formatScreenTimeHours(hours);
+  const [previewHours, setPreviewHours] = useState<number | null>(null);
+  const displayHours = previewHours ?? hours;
+  const display = formatScreenTimeHours(displayHours);
 
   return (
     <div className="flex w-full flex-col items-end gap-0.5">
@@ -60,7 +63,12 @@ export function ChildScreenTimeCard({
         </div>
 
         <div className="flex w-full justify-end">
-          <ChildScreenTimeSlider value={hours} onChange={onHoursChange} />
+          <ChildScreenTimeSlider
+            value={hours}
+            onChange={onHoursChange}
+            onDragChange={setPreviewHours}
+            onDragEnd={() => setPreviewHours(null)}
+          />
         </div>
       </div>
     </div>

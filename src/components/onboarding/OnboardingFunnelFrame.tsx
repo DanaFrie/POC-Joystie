@@ -21,7 +21,7 @@ function OnboardingFunnelContent({ children }: { children: ReactNode }) {
 }
 
 /**
- * /onboarding/* — mobile: uniform fit (375×812 scales together; bleed fills letterbox).
+ * /onboarding/* — mobile: width-fit 375×812; short viewports scroll instead of shrinking.
  * Desktop (≥768px): green canvas + grid + «זמין במובייל בלבד» only.
  */
 export function OnboardingFunnelFrame({
@@ -40,7 +40,7 @@ export function OnboardingFunnelFrame({
   return (
     <FunnelViewport
       surface={surface}
-      scaleMode="width"
+      scaleMode="scroll"
       ignoreSafeArea={false}
       className={`font-simpler text-v03-text-on-dark ${className}`}
     >

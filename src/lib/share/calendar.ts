@@ -7,6 +7,17 @@ const EVENT_DURATION_MS = 30 * 60 * 1000;
 
 export const JOYSTIE_BONDING_CALENDAR_TITLE = "מצטרפים לג'ויסטי";
 
+/** Shown in the calendar event body when parent taps «תזכירו לי מאוחר יותר». */
+export const JOYSTIE_BONDING_CALENDAR_ONBOARDING_URL =
+  'https://joystie.com/onboarding';
+
+export const JOYSTIE_BONDING_CALENDAR_DESCRIPTION = [
+  `תזכורת להמשיך את תהליך הצירוף לג'ויסטי כשאתם יחד.`,
+  '',
+  `<a href="${JOYSTIE_BONDING_CALENDAR_ONBOARDING_URL}">להמשיך בג'ויסטי</a>`,
+  JOYSTIE_BONDING_CALENDAR_ONBOARDING_URL,
+].join('\n');
+
 function localTimeInZoneToUtc(
   year: number,
   month: number,
@@ -119,6 +130,8 @@ export function buildJoystieBondingGoogleCalendarUrl(
     action: 'TEMPLATE',
     text: title,
     dates: `${formatIsraelLocalDateTime(start)}/${formatIsraelLocalDateTime(end)}`,
+    details: JOYSTIE_BONDING_CALENDAR_DESCRIPTION,
+    location: JOYSTIE_BONDING_CALENDAR_ONBOARDING_URL,
     ctz: ISRAEL_TZ,
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;

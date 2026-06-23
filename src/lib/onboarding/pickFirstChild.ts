@@ -1,5 +1,6 @@
 import {
   createScreenTimesFromChildren,
+  DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   getOnboardingChildrenScreenTime,
   setOnboardingChildrenScreenTime,
 } from '@/lib/onboarding/childrenScreenTime';
@@ -47,7 +48,7 @@ export function buildPickFirstChildOptions(): PickFirstChildOption[] | null {
 
   return children.map((child, index) => ({
     name: child.name.trim(),
-    hours: times[index]?.hours ?? (index === 0 ? 1 : 2),
+    hours: times[index]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
     gender: child.gender,
   }));
 }

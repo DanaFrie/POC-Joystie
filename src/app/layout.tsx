@@ -10,8 +10,9 @@ import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
 
 const heebo = Heebo({
   subsets: ['latin', 'hebrew'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '700'],
   variable: '--font-heebo',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {

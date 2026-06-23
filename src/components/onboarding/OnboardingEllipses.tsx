@@ -5,7 +5,6 @@ import {
   ONBOARDING_ELLIPSE_388,
 } from '@/constants/onboarding-figma';
 import { GreenBlurEllipse } from '@/components/ui/GreenBlurEllipses387388';
-import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
 import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 
 const ELLIPSE_LAYER_HEIGHT_PX = Math.max(
@@ -13,79 +12,62 @@ const ELLIPSE_LAYER_HEIGHT_PX = Math.max(
   ONBOARDING_ELLIPSE_388.top + ONBOARDING_ELLIPSE_388.height
 );
 
+const ELLIPSE_MIN_LEFT_PX = Math.min(
+  ONBOARDING_ELLIPSE_387.left,
+  ONBOARDING_ELLIPSE_388.left
+);
+
+const ELLIPSE_MAX_RIGHT_PX = Math.max(
+  ONBOARDING_ELLIPSE_387.left + ONBOARDING_ELLIPSE_387.width,
+  ONBOARDING_ELLIPSE_388.left + ONBOARDING_ELLIPSE_388.width
+);
+
 /**
  * Kingdom transition ellipses 387 + 388 — Figma 375×812.
  *
- * Portaled to `[data-v03-funnel]` so blur bleeds to viewport edges (not clipped by
- * the scaled canvas `overflow-hidden`). Same model as signup `SignupHeroFrame` ellipses.
+ * In-canvas at z-[3] (above kingdom z-[2], below logo) so glow shows over the hero.
+ * Layer width extends past the artboard for Figma negative/right bleed on all viewports.
  */
 export function OnboardingEllipses() {
-  const { scale, offsetX, offsetY, designWidth, viewportWidth } =
-    useFunnelViewportMetrics();
+  const { designWidth } = useFunnelViewportMetrics();
 
-  const layerTopPx = offsetY;
-  const layerHeightPx = ELLIPSE_LAYER_HEIGHT_PX * scale;
+  const layerLeft = ELLIPSE_MIN_LEFT_PX;
+  const layerWidth = Math.max(designWidth, ELLIPSE_MAX_RIGHT_PX) - layerLeft;
 
   return (
-    <FunnelRootPortal>
+    <div
+      className="pointer-events-none absolute top-0 z-[3] overflow-visible"
+      style={{
+        left: layerLeft,
+        width: layerWidth,
+        height: ELLIPSE_LAYER_HEIGHT_PX,
+      }}
+      aria-hidden
+    >
       <div
-        className="pointer-events-none overflow-visible"
+        className="pointer-events-none absolute overflow-visible"
         style={{
-          position: 'fixed',
-          left: 0,
-          top: layerTopPx,
-          width: viewportWidth,
-          height: layerHeightPx,
-          zIndex: 3,
+          top: ONBOARDING_ELLIPSE_388.top,
+          left: ONBOARDING_ELLIPSE_388.left - layerLeft,
+          width: ONBOARDING_ELLIPSE_388.width,
+          height: ONBOARDING_ELLIPSE_388.height,
+          borderRadius: ONBOARDING_ELLIPSE_388.borderRadius,
+          background: ONBOARDING_ELLIPSE_388.fill,
+          filter: `blur(${ONBOARDING_ELLIPSE_388.blurPx}px)`,
         }}
-        aria-hidden
-      >
-        <div
-          className="pointer-events-none overflow-visible"
-          style={{
-            position: 'absolute',
-            left: offsetX,
-            top: 0,
-            width: designWidth * scale,
-            height: layerHeightPx,
-          }}
-        >
-          <div
-            className="relative overflow-visible"
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: 'top left',
-              width: designWidth,
-              height: ELLIPSE_LAYER_HEIGHT_PX,
-            }}
-          >
-            <div
-              className="pointer-events-none absolute overflow-visible"
-              style={{
-                top: ONBOARDING_ELLIPSE_388.top,
-                left: ONBOARDING_ELLIPSE_388.left,
-                width: ONBOARDING_ELLIPSE_388.width,
-                height: ONBOARDING_ELLIPSE_388.height,
-                borderRadius: ONBOARDING_ELLIPSE_388.borderRadius,
-                background: ONBOARDING_ELLIPSE_388.fill,
-                filter: `blur(${ONBOARDING_ELLIPSE_388.blurPx}px)`,
-              }}
-            />
+      />
 
-            <GreenBlurEllipse
-              className="absolute overflow-visible"
-              style={{
-                top: ONBOARDING_ELLIPSE_387.top,
-                left: ONBOARDING_ELLIPSE_387.left,
-              }}
-              width={ONBOARDING_ELLIPSE_387.width}
-              height={ONBOARDING_ELLIPSE_387.height}
-              blurPx={ONBOARDING_ELLIPSE_387.blurPx}
-              fill={ONBOARDING_ELLIPSE_387.fill}
-            />
-          </div>
-        </div>
-      </div>
-    </FunnelRootPortal>
+      <GreenBlurEllipse
+        className="absolute overflow-visible"
+        style={{
+          top: ONBOARDING_ELLIPSE_387.top,
+          left: ONBOARDING_ELLIPSE_387.left - layerLeft,
+        }}
+        width={ONBOARDING_ELLIPSE_387.width}
+        height={ONBOARDING_ELLIPSE_387.height}
+        blurPx={ONBOARDING_ELLIPSE_387.blurPx}
+        fill={ONBOARDING_ELLIPSE_387.fill}
+      />
+    </div>
   );
 }

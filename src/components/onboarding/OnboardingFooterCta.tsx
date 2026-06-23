@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import {
   ONBOARDING_FUNNEL_CTA_TOP_PX,
-  ONBOARDING_FUNNEL_LOGIN_LEFT_PX,
   ONBOARDING_FUNNEL_LOGIN_TOP_PX,
 } from '@/constants/onboarding-figma';
 import {
@@ -66,7 +65,7 @@ function FooterCtaButton({
 function LoginLinkRow({ className = '' }: { className?: string }) {
   return (
     <p
-      className={`text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white ${className}`}
+      className={`w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white ${className}`}
     >
       <span>יש לך חשבון? </span>
       <Link
@@ -100,21 +99,12 @@ export function OnboardingFooterCta({
           </FooterCtaButton>
         </div>
         {showLoginLink ? (
-          <p
-            className="absolute z-[11] w-[158px] text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white"
-            style={{
-              top: ONBOARDING_FUNNEL_LOGIN_TOP_PX,
-              left: ONBOARDING_FUNNEL_LOGIN_LEFT_PX,
-            }}
+          <div
+            className="absolute left-v03-gutter z-[11] w-v03-content"
+            style={{ top: ONBOARDING_FUNNEL_LOGIN_TOP_PX }}
           >
-            <span>יש לך חשבון? </span>
-            <Link
-              href="/login"
-              className="font-normal text-white underline decoration-white decoration-solid"
-            >
-              להתחברות
-            </Link>
-          </p>
+            <LoginLinkRow />
+          </div>
         ) : null}
       </>
     );
@@ -122,7 +112,7 @@ export function OnboardingFooterCta({
 
   return (
     <div
-      className="absolute left-v03-gutter z-[45] flex w-v03-content flex-col gap-[15px] pt-5"
+      className="absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[15px] pt-5"
       style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX }}
     >
       <FooterCtaButton onClick={onClick} disabled={disabled} variant={variant}>

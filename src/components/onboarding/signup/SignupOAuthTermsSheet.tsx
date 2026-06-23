@@ -53,9 +53,8 @@ function TermsToggle({
           className="underline decoration-solid underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
-          תנאי השימוש מדיניות הפרטיות
-        </Link>{' '}
-        ושימוש ב-Cookies
+          תנאי השימוש, מדיניות הפרטיות
+        </Link>
       </span>
     </button>
   );

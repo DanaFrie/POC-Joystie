@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import {
-  SIGNUP_CHILD_INVITE_HERO_BLOCK_W_PX,
   SIGNUP_CHILD_INVITE_HERO_FADE_GRADIENT,
   SIGNUP_CHILD_INVITE_HERO_FADE_H_PX,
   SIGNUP_CHILD_INVITE_HERO_FADE_LEFT_PX,
@@ -18,10 +17,7 @@ export function SignupChildInviteHeroBlock({ childName }: { childName: string })
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
-    <div
-      className="flex w-full flex-col items-center"
-      style={{ maxWidth: SIGNUP_CHILD_INVITE_HERO_BLOCK_W_PX }}
-    >
+    <div className="flex w-full flex-col items-center">
       <div
         className="v03-funnel-enter-0 relative mx-auto shrink-0"
         style={{

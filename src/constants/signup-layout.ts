@@ -46,7 +46,7 @@ export const SIGNUP_INTRO_EYEBROW_TITLE_GAP_PX = 4;
 export const SIGNUP_HOW_IT_WORKS_PILL_PX = 19;
 export const SIGNUP_HOW_IT_WORKS_PILL_PY = 10;
 
-/** שלב 2 visual — Figma 12703:42218; `public/signup-journey-ball-game.png` */
+/** שלב 2 visual — Figma 12703:42218; `public/signup/journey/ball-game.webp` */
 export const SIGNUP_JOURNEY_STEP2_FRAME_H_PX = 254;
 export const SIGNUP_JOURNEY_STEP2_IMAGE_W_PX = 200;
 

@@ -15,8 +15,11 @@ import {
 
 export type FunnelSurface = 'dark' | 'light';
 
-/** `width` = fit height + grow artboard width on wider screens (always fills viewport width). */
-export type FunnelScaleMode = 'cover' | 'contain' | 'width';
+/**
+ * `width` = fit height + grow artboard width on wider screens (always fills viewport width).
+ * `scroll` = fit width only; short viewports scroll instead of shrinking (see v03-small-viewports rule).
+ */
+export type FunnelScaleMode = 'cover' | 'contain' | 'width' | 'scroll';
 
 type FunnelViewportProps = {
   children: ReactNode;
@@ -46,6 +49,7 @@ const SSR_FUNNEL_METRICS: FunnelViewportMetrics = {
   designWidth: V03_SCREEN_WIDTH,
   viewportWidth: V03_SCREEN_WIDTH,
   viewportHeight: V03_SCREEN_HEIGHT,
+  needsVerticalScroll: false,
 };
 
 const V03_CONTENT_GUTTER_TOTAL = 48;
@@ -94,6 +98,8 @@ function measureViewport(
     designWidth,
     viewportWidth: width,
     viewportHeight: height,
+    needsVerticalScroll:
+      scaleMode === 'scroll' && scaledH > usableHeight + 1,
   };
 }
 
@@ -102,7 +108,7 @@ function resolveDesignWidth(
   viewportWidth: number,
   scale: number
 ): number {
-  if (scaleMode === 'width') {
+  if (scaleMode === 'width' || scaleMode === 'scroll') {
     return viewportWidth / scale;
   }
   return V03_SCREEN_WIDTH;
@@ -118,6 +124,16 @@ function resolveScale(
       return Math.min(scaleX, scaleY);
     case 'width':
       return scaleY;
+    case 'scroll':
+      // Short viewport: width-fit at ≥1:1 on 375px-wide phones — scroll, don't height-shrink.
+      // Tall viewport: when width-fit would overflow height, height-fit slightly to avoid bounce scroll.
+      if (scaleY < scaleX) {
+        if (scaleY < 1) {
+          return scaleX >= 1 ? Math.max(scaleX, 1) : scaleX;
+        }
+        return scaleY;
+      }
+      return scaleX;
     default:
       return Math.max(scaleX, scaleY);
   }
@@ -128,7 +144,7 @@ function resolveOffsetX(
   width: number,
   scaledW: number
 ): number {
-  if (scaleMode === 'width') {
+  if (scaleMode === 'width' || scaleMode === 'scroll') {
     return 0;
   }
   return (width - scaledW) / 2;
@@ -145,7 +161,7 @@ function resolveOffsetY(
   if (ignoreSafeArea && scaleMode === 'cover') {
     return 0;
   }
-  if (scaleMode === 'width') {
+  if (scaleMode === 'width' || scaleMode === 'scroll') {
     return safeTop;
   }
   if (ignoreSafeArea) {
@@ -162,6 +178,7 @@ export function FunnelViewport({
   scaleMode = 'cover',
   ignoreSafeArea = false,
 }: FunnelViewportProps) {
+  const [layoutReady, setLayoutReady] = useState(false);
   const [layout, setLayout] = useState<FunnelLayout>({
     metrics: SSR_FUNNEL_METRICS,
     isDesktop: false,
@@ -183,69 +200,125 @@ export function FunnelViewport({
   const activeSurface: FunnelSurface = isLightFunnel ? 'light' : surface;
   const surfaceClass = funnelSurfaceClass(activeSurface);
 
-  const updateLayout = useCallback(() => {
-    const metrics = measureViewport(scaleMode, ignoreSafeArea);
-    const funnelRoot = document.querySelector('[data-v03-funnel]');
+  const applyLayout = useCallback(
+    (metrics: FunnelViewportMetrics) => {
+      const funnelRoot = document.querySelector('[data-v03-funnel]');
 
-    if (funnelRoot instanceof HTMLElement) {
-      funnelRoot.style.setProperty(
-        '--v03-screen-width',
-        `${metrics.designWidth}px`
-      );
-      funnelRoot.style.setProperty(
-        '--v03-content-width',
-        `${Math.max(metrics.designWidth - V03_CONTENT_GUTTER_TOTAL, 0)}px`
-      );
-    }
+      if (funnelRoot instanceof HTMLElement) {
+        funnelRoot.style.setProperty(
+          '--v03-screen-width',
+          `${metrics.designWidth}px`
+        );
+        funnelRoot.style.setProperty(
+          '--v03-content-width',
+          `${Math.max(metrics.designWidth - V03_CONTENT_GUTTER_TOTAL, 0)}px`
+        );
+      }
 
-    setLayout({
-      metrics,
-      isDesktop: window.innerWidth >= V03_DESKTOP_MIN_WIDTH,
-    });
-  }, [scaleMode, ignoreSafeArea]);
+      setLayout({
+        metrics,
+        isDesktop: window.innerWidth >= V03_DESKTOP_MIN_WIDTH,
+      });
+    },
+    []
+  );
+
+  const measureAndApply = useCallback(() => {
+    applyLayout(measureViewport(scaleMode, ignoreSafeArea));
+  }, [applyLayout, scaleMode, ignoreSafeArea]);
 
   useLayoutEffect(() => {
-    updateLayout();
-    window.addEventListener('resize', updateLayout);
-    window.addEventListener('orientationchange', updateLayout);
-    window.visualViewport?.addEventListener('resize', updateLayout);
-    window.visualViewport?.addEventListener('scroll', updateLayout);
+    measureAndApply();
+    setLayoutReady(true);
+
+    window.addEventListener('resize', measureAndApply);
+    window.addEventListener('orientationchange', measureAndApply);
+    window.visualViewport?.addEventListener('resize', measureAndApply);
+    window.visualViewport?.addEventListener('scroll', measureAndApply);
     return () => {
-      window.removeEventListener('resize', updateLayout);
-      window.removeEventListener('orientationchange', updateLayout);
-      window.visualViewport?.removeEventListener('resize', updateLayout);
-      window.visualViewport?.removeEventListener('scroll', updateLayout);
+      window.removeEventListener('resize', measureAndApply);
+      window.removeEventListener('orientationchange', measureAndApply);
+      window.visualViewport?.removeEventListener('resize', measureAndApply);
+      window.visualViewport?.removeEventListener('scroll', measureAndApply);
     };
-  }, [updateLayout]);
+  }, [measureAndApply]);
 
   const { metrics, isDesktop } = layout;
+  const isScrollMode = scaleMode === 'scroll';
+  const viewportOverflowClass = isScrollMode
+    ? metrics.needsVerticalScroll
+      ? 'overflow-x-hidden overflow-y-auto v03-scroll-hidden'
+      : 'overflow-x-hidden overflow-y-hidden'
+    : 'overflow-visible';
+  const scaledVisualWidth = metrics.designWidth * metrics.scale;
+  const scaledVisualHeight = V03_SCREEN_HEIGHT * metrics.scale;
+  const scrollSafePadding = isScrollMode && !ignoreSafeArea
+    ? {
+        paddingTop: metrics.offsetY,
+        paddingBottom: 'var(--v03-safe-bottom)',
+      }
+    : undefined;
+
+  const canvasStyle = {
+    width: metrics.designWidth,
+    height: V03_SCREEN_HEIGHT,
+    transform: `scale(${metrics.scale})`,
+    transformOrigin: 'top left',
+  } as const;
 
   return (
-    <FunnelViewportProvider isDesktop={isDesktop} metrics={metrics}>
-      <div className={`relative h-full w-full overflow-hidden ${className}`}>
+    <FunnelViewportProvider
+      isDesktop={isDesktop}
+      metrics={metrics}
+      layoutReady={layoutReady}
+    >
+      <div
+        className={`relative h-full w-full ${viewportOverflowClass} ${className} ${
+          layoutReady ? 'v03-funnel-viewport-ready' : 'v03-funnel-viewport-pending'
+        }`}
+        style={scrollSafePadding}
+      >
         {isLightFunnel ? (
           <div
             className="pointer-events-none absolute inset-0 v03-funnel-surface-light"
             aria-hidden
           />
         ) : null}
-        <div
-          className={`absolute overflow-visible ${
-            isLightFunnel ? surfaceClass : 'bg-transparent'
-          }`}
-          style={{
-            left: metrics.offsetX,
-            top: metrics.offsetY,
-            width: metrics.designWidth,
-            height: V03_SCREEN_HEIGHT,
-            transform: `scale(${metrics.scale})`,
-            transformOrigin: 'top left',
-          }}
-        >
-          {children}
-        </div>
+        {layoutReady ? (
+          isScrollMode ? (
+            <div
+              className="relative shrink-0"
+              style={{
+                width: scaledVisualWidth,
+                height: scaledVisualHeight,
+              }}
+            >
+              <div
+                className={`absolute left-0 top-0 overflow-visible ${
+                  isLightFunnel ? surfaceClass : 'bg-transparent'
+                }`}
+                style={canvasStyle}
+              >
+                {children}
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`absolute overflow-visible ${
+                isLightFunnel ? surfaceClass : 'bg-transparent'
+              }`}
+              style={{
+                left: metrics.offsetX,
+                top: metrics.offsetY,
+                ...canvasStyle,
+              }}
+            >
+              {children}
+            </div>
+          )
+        ) : null}
 
-        {isDesktop ? <FunnelDesktopOverlay /> : null}
+        {isDesktop && layoutReady ? <FunnelDesktopOverlay /> : null}
       </div>
     </FunnelViewportProvider>
   );

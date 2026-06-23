@@ -1,5 +1,3 @@
-'use client';
-
 import Image from 'next/image';
 
 type LandingFoundersProps = {
@@ -66,6 +64,7 @@ export function LandingFounders({ titleRevealRef, founderRevealRef }: LandingFou
                     width={128}
                     height={128}
                     className="h-full w-full object-cover"
+                    loading="lazy"
                   />
                 </div>
                 <div className="font-simpler text-base font-black text-v03-text-on-light md:text-lg">

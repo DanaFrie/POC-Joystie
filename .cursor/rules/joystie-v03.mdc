@@ -89,6 +89,7 @@ On **all** v0.3 screens, **ignore** device status-bar / system-chrome layers fro
 - **Full-screen layout:** implement on the full **375×812** mobile artboard and let the funnel **fill the device viewport** (`FunnelViewport`, `fixed inset-0`). Spread heroes, video, and backgrounds edge-to-edge; do not shrink the canvas to sit “between” status bars.
 - `env(safe-area-inset-*)` is for real notches/home indicators on physical devices only — not for mimicking Figma preview chrome.
 - Figma absolute Y/X coordinates assume the **full 812px** height; use them as-is (no subtracting status-bar height).
+- **Short viewports:** do not height-shrink the funnel to fit — use `scaleMode="scroll"` and vertical scroll. See `.cursor/rules/v03-small-viewports.mdc`.
 
 ## Secrets (bonding deploy, intgr)
 

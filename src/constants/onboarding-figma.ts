@@ -59,11 +59,11 @@ export const ONBOARDING_SCREEN_TIME_HERO_IMAGE =
   '/onboarding/parent/screen-time.webp' as const;
 
 /** Reveal flow heroes */
-export const ONBOARDING_NEWS_HERO_IMAGE = '/onboarding/reveal/news.png' as const;
+export const ONBOARDING_NEWS_HERO_IMAGE = '/onboarding/reveal/news.webp' as const;
 export const ONBOARDING_NEWS_HERO_FALLBACK = '/time-coin.png' as const;
 export const ONBOARDING_BAD_NEWS_HERO_IMAGE =
-  '/onboarding/reveal/bad-news.png' as const;
-export const ONBOARDING_BAD_NEWS_HERO_FALLBACK = '/onboarding/reveal/news.png' as const;
+  '/onboarding/reveal/bad-news.webp' as const;
+export const ONBOARDING_BAD_NEWS_HERO_FALLBACK = '/onboarding/reveal/news.webp' as const;
 
 export const ONBOARDING_JOYSTIE_ICON = BRAND_ICON_SRC;
 export const ONBOARDING_FAMILY_LINK_ICON = BRAND_FAMILY_LINK_ICON_SRC;
@@ -75,11 +75,11 @@ export const SIGNUP_GOOGLE_ICON = '/signup/oauth/google-icon.png' as const;
 export const SIGNUP_APPLE_ICON = '/signup/oauth/apple-icon.png' as const;
 
 /** Post-signup «איך זה עובד» journey */
-export const SIGNUP_JOURNEY_STEP2_IMAGE = '/signup/journey/ball-game.png' as const;
+export const SIGNUP_JOURNEY_STEP2_IMAGE = '/signup/journey/ball-game.webp' as const;
 export const SIGNUP_JOURNEY_STEP3_IMAGE = '/signup/journey/agreements.webp' as const;
 
 export const SIGNUP_CHILD_INVITE_HERO_IMAGE =
-  '/signup/child-invite/hero.png' as const;
+  '/signup/child-invite/hero.webp' as const;
 
 export const SIGNUP_INVITE_WHATSAPP_ICON =
   '/signup/child-invite/whatsapp.png' as const;
@@ -88,10 +88,10 @@ export const SIGNUP_CHILD_INVITE_WAITING_LOGO =
   '/signup/child-invite/waiting-logo.gif' as const;
 
 export const SIGNUP_COMPANION_IMAGES = [
-  '/signup/journey/companion-1.png',
-  '/signup/journey/companion-2.png',
-  '/signup/journey/companion-3.png',
-  '/signup/journey/companion-4.png',
+  '/signup/journey/companion-1.webp',
+  '/signup/journey/companion-2.webp',
+  '/signup/journey/companion-3.webp',
+  '/signup/journey/companion-4.webp',
 ] as const;
 
 /** Landing kingdom transition — Figma 13411 ellipses on 375×812 */

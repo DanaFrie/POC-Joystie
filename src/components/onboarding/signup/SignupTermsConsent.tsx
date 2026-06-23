@@ -53,8 +53,7 @@ export function SignupTermsConsent({
               onClick={(e) => e.stopPropagation()}
             >
               תנאי השימוש, מדיניות הפרטיות
-            </Link>{' '}
-            ושימוש ב-Cookies
+            </Link>
           </span>
         </button>
 

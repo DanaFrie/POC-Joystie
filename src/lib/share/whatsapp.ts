@@ -34,22 +34,44 @@ export function buildWhatsAppChildInviteMessage(
 
 export function buildWhatsAppShareUrl(params: WhatsAppChildInviteParams): string {
   const text = buildWhatsAppChildInviteMessage(params);
-  const query = new URLSearchParams({ text });
-  return `${WHATSAPP_SHARE_BASE_URL}?${query.toString()}`;
+  return `${WHATSAPP_SHARE_BASE_URL}?text=${encodeURIComponent(text)}`;
+}
+
+/** Mobile browsers — same-tab handoff opens native WhatsApp after user consent. */
+function prefersNativeWhatsAppHandoff(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+/**
+ * Open wa.me with pre-filled text.
+ * Mobile/Safari: same-document navigation (not `_blank`) so the OS offers the native app.
+ * Desktop: new tab, with same-tab fallback if popups are blocked.
+ */
+export function openWhatsAppShareUrl(url: string): void {
+  if (typeof window === 'undefined') return;
+
+  if (prefersNativeWhatsAppHandoff()) {
+    window.location.assign(url);
+    return;
+  }
+
+  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    window.location.assign(url);
+  }
 }
 
 export function openWhatsAppChildInvite(
   params: WhatsAppChildInviteParams | string,
   legacyChildUrl?: string
 ): void {
-  if (typeof window === 'undefined') return;
-
   const url =
     typeof params === 'string'
-      ? `${WHATSAPP_SHARE_BASE_URL}?${new URLSearchParams({
-          text: buildWhatsAppChildInviteMessage(params, legacyChildUrl),
-        }).toString()}`
+      ? `${WHATSAPP_SHARE_BASE_URL}?text=${encodeURIComponent(
+          buildWhatsAppChildInviteMessage(params, legacyChildUrl)
+        )}`
       : buildWhatsAppShareUrl(params);
 
-  window.open(url, '_blank', 'noopener,noreferrer');
+  openWhatsAppShareUrl(url);
 }

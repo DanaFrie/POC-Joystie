@@ -3,6 +3,7 @@
 import { SignupChildInviteHeroBlock } from '@/components/onboarding/signup/SignupChildInviteHeroBlock';
 import { SignupAlarmIcon, SignupChildInviteAlertIcon } from '@/components/onboarding/signup/SignupChildInviteIcons';
 import {
+  SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS,
   SIGNUP_CHILD_INVITE_ALERT_BOX_RADIUS_PX,
   SIGNUP_CHILD_INVITE_ALERT_INNER_GAP_PX,
   SIGNUP_CHILD_INVITE_ALERT_PAD_X_PX,
@@ -13,7 +14,6 @@ import {
   SIGNUP_CHILD_INVITE_INTRO_BUTTONS_GAP_PX,
   SIGNUP_CHILD_INVITE_INTRO_COLUMN_GAP_PX,
   SIGNUP_CHILD_INVITE_INTRO_TOP_PX,
-  SIGNUP_CHILD_INVITE_INTRO_W_PX,
 } from '@/constants/signup-child-invite-layout';
 
 type SignupChildInviteIntroStepProps = {
@@ -21,9 +21,6 @@ type SignupChildInviteIntroStepProps = {
   onTogetherNow: () => void;
   onRemindLater: () => void;
 };
-
-const actionBtnClass =
-  'inline-flex h-[55px] w-full items-center justify-center gap-2 rounded-[22px] px-[15px] py-2 font-simpler text-[18px] font-bold shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition';
 
 /** Figma 12914:11767 — hero + «שנכניס את {child} לתמונה?» + together / remind. */
 export function SignupChildInviteIntroStep({
@@ -34,10 +31,9 @@ export function SignupChildInviteIntroStep({
   return (
     <div
       dir="rtl"
-      className="absolute right-v03-gutter top-0 z-[10] flex flex-col items-center"
+      className="absolute left-v03-gutter z-[10] flex w-v03-content flex-col items-stretch"
       style={{
         top: SIGNUP_CHILD_INVITE_INTRO_TOP_PX,
-        width: SIGNUP_CHILD_INVITE_INTRO_W_PX,
         gap: SIGNUP_CHILD_INVITE_INTRO_COLUMN_GAP_PX,
       }}
       aria-label="הצטרפות ילד — התחלה"
@@ -70,7 +66,7 @@ export function SignupChildInviteIntroStep({
       </div>
 
       <div
-        className="v03-funnel-enter-3 flex w-full flex-col items-center justify-end"
+        className="v03-funnel-enter-3 flex w-full flex-col items-stretch justify-end"
         style={{
           paddingTop: SIGNUP_CHILD_INVITE_INTRO_ACTIONS_PT_PX,
           gap: SIGNUP_CHILD_INVITE_INTRO_ACTIONS_GAP_PX,
@@ -83,9 +79,9 @@ export function SignupChildInviteIntroStep({
           <button
             type="button"
             onClick={onTogetherNow}
-            className={`${actionBtnClass} bg-white text-[#031d15] hover:brightness-95`}
+            className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} bg-white text-v03-turquoise-950 hover:brightness-95`}
           >
-            <span className="whitespace-nowrap text-right">
+            <span className="whitespace-nowrap text-center">
               {childName} לידי, בואו נתחיל
             </span>
           </button>
@@ -93,9 +89,9 @@ export function SignupChildInviteIntroStep({
           <button
             type="button"
             onClick={onRemindLater}
-            className={`${actionBtnClass} border border-solid border-white text-white hover:bg-white/5`}
+            className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} border border-solid border-white text-white hover:bg-white/5`}
           >
-            <span className="whitespace-nowrap text-right">תזכירו לי מאוחר יותר</span>
+            <span className="whitespace-nowrap text-center">תזכירו לי מאוחר יותר</span>
             <SignupAlarmIcon />
           </button>
         </div>

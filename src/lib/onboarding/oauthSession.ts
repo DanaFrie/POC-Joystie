@@ -47,10 +47,22 @@ export function readOAuthPending(): boolean {
   return sessionStorage.getItem(OAUTH_PENDING_KEY) === '1';
 }
 
+export type OAuthProviderId = 'google.com' | 'apple.com';
+
+function normalizeOAuthProviderId(value: string | null): OAuthProviderId {
+  if (value === 'apple' || value === 'apple.com') return 'apple.com';
+  return 'google.com';
+}
+
+/** Firebase provider id stored for redirect recovery (google.com / apple.com). */
+export function readOAuthProviderId(): OAuthProviderId {
+  if (typeof window === 'undefined') return 'google.com';
+  return normalizeOAuthProviderId(sessionStorage.getItem(OAUTH_PROVIDER_KEY));
+}
+
+/** UI shorthand for loading spinners (google / apple). */
 export function readOAuthProvider(): 'google' | 'apple' {
-  if (typeof window === 'undefined') return 'google';
-  const value = sessionStorage.getItem(OAUTH_PROVIDER_KEY);
-  return value === 'apple' ? 'apple' : 'google';
+  return readOAuthProviderId() === 'apple.com' ? 'apple' : 'google';
 }
 
 /** Milliseconds since markOAuthRedirectPending, or null if unknown. */
@@ -81,9 +93,15 @@ export function clearOnboardingTermsAccepted() {
 
 /** Session-only — survives Google redirect in the same tab, not stale reloads. */
 export function markOAuthRedirectPending(provider: 'google' | 'apple') {
+  markOAuthRedirectPendingForProviderId(
+    provider === 'apple' ? 'apple.com' : 'google.com'
+  );
+}
+
+export function markOAuthRedirectPendingForProviderId(providerId: OAuthProviderId) {
   if (typeof window === 'undefined') return;
   sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
-  sessionStorage.setItem(OAUTH_PROVIDER_KEY, provider);
+  sessionStorage.setItem(OAUTH_PROVIDER_KEY, providerId);
   sessionStorage.setItem(OAUTH_PENDING_AT_KEY, String(Date.now()));
 }
 
