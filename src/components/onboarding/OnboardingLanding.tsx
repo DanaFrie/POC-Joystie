@@ -1,13 +1,13 @@
 'use client';
 
 import { OnboardingCopy } from '@/components/onboarding/OnboardingCopy';
-import { OnboardingCta } from '@/components/onboarding/OnboardingCta';
-import { OnboardingLoginRow } from '@/components/onboarding/OnboardingLoginRow';
 import { OnboardingEllipses } from '@/components/onboarding/OnboardingEllipses';
+import { OnboardingFooterCta } from '@/components/onboarding/OnboardingFooterCta';
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingKingdom } from '@/components/onboarding/OnboardingKingdom';
 import { OnboardingLogo } from '@/components/onboarding/OnboardingLogo';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { resetOnboardingParentFlowStart } from '@/lib/onboarding/parentFlowSession';
 
 type OnboardingLandingProps = {
   onStart: () => void;
@@ -15,6 +15,11 @@ type OnboardingLandingProps = {
 
 /** Step 1 — landing only (`/onboarding`). */
 export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
+  const handleStart = () => {
+    resetOnboardingParentFlowStart();
+    onStart();
+  };
+
   return (
     <>
       <OnboardingGrid />
@@ -23,8 +28,14 @@ export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
       <OnboardingLogo />
       <OnboardingMintGlow />
       <OnboardingCopy />
-      <OnboardingCta onStart={onStart} />
-      <OnboardingLoginRow />
+      <OnboardingFooterCta
+        layout="landing"
+        variant="primary"
+        showLoginLink
+        onClick={handleStart}
+      >
+        התחלה
+      </OnboardingFooterCta>
     </>
   );
 }
