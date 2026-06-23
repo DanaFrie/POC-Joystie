@@ -14,6 +14,12 @@ export const metadata: Metadata = {
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingFunnelRoot>
+      <link
+        rel="preload"
+        href="/signup/hero/box-mountain.webp"
+        as="image"
+        type="image/webp"
+      />
       <FunnelViewport
         surface="dark"
         scaleMode="width"

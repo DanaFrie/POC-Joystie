@@ -75,7 +75,8 @@ type SignupHeroFrameProps = {
  * Portaled below funnel content (wrapper z-10).
  */
 export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
-  const { scale, offsetX, offsetY, viewportWidth } = useFunnelViewportMetrics();
+  const { scale, offsetX, offsetY, viewportWidth, designWidth } =
+    useFunnelViewportMetrics();
   const { bleedY } = useFunnelHeroBleedInsets();
   const [imageFailed, setImageFailed] = useState(false);
 
@@ -83,8 +84,12 @@ export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
   const heroTopPx = offsetY + (frameTopCanvas - scrollTop) * scale;
   const heroHeightPx = (SIGNUP_HERO_IMAGE_HEIGHT_PX + bleedY) * scale;
   const ellipseTopPx = offsetY + (SIGNUP_HERO_FRAME_TOP_PX - scrollTop) * scale;
-  const ellipseWidthPx = V03_SCREEN_WIDTH * scale;
+  const ellipseWidthPx = designWidth * scale;
   const ellipseHeightPx = SIGNUP_HERO_HEIGHT_PX * scale;
+  const ellipse391CanvasStyle: CSSProperties = {
+    ...ellipse391Style,
+    left: (designWidth - SIGNUP_ELLIPSE_391_WIDTH_PX) / 2,
+  };
 
   return (
     <>
@@ -132,11 +137,11 @@ export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
             style={{
               transform: `scale(${scale})`,
               transformOrigin: 'top left',
-              width: V03_SCREEN_WIDTH,
+              width: designWidth,
               height: SIGNUP_HERO_HEIGHT_PX,
             }}
           >
-            <div className="absolute" style={ellipse391Style} />
+            <div className="absolute" style={ellipse391CanvasStyle} />
             <div className="absolute" style={ellipse388Style} />
             <div className="absolute" style={ellipse389Style} />
             <div className="absolute" style={ellipse390Style} />

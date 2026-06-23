@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { ONBOARDING_KINGDOM_SRC } from '@/constants/onboarding-figma';
 import { useFunnelHeroBleed } from '@/components/ui/FunnelViewportContext';
 
@@ -17,17 +18,23 @@ export function OnboardingKingdom() {
 
   return (
     <div
-      className="pointer-events-none relative z-[2] overflow-hidden"
+      className="pointer-events-none relative z-[2] overflow-visible"
       style={bleedStyle}
       aria-hidden
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={ONBOARDING_KINGDOM_SRC}
-        alt=""
-        className="absolute left-1/2 top-0 min-h-full min-w-[115%] -translate-x-1/2 object-cover object-top"
-        draggable={false}
-      />
+      <div className="absolute left-1/2 top-0 h-full w-[115%] -translate-x-1/2">
+        <div className="relative h-full w-full">
+          <Image
+            src={ONBOARDING_KINGDOM_SRC}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-top"
+            draggable={false}
+          />
+        </div>
+      </div>
       <div
         className="absolute inset-0"
         style={{ background: KINGDOM_GRADIENT }}

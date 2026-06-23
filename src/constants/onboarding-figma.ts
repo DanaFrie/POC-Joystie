@@ -94,6 +94,26 @@ export const SIGNUP_COMPANION_IMAGES = [
   '/signup/journey/companion-4.png',
 ] as const;
 
+/** Landing kingdom transition — Figma 13411 ellipses on 375×812 */
+export const ONBOARDING_ELLIPSE_387 = {
+  top: 284,
+  left: -24,
+  width: 253,
+  height: 236,
+  fill: '#092125',
+  blurPx: 45,
+} as const;
+
+export const ONBOARDING_ELLIPSE_388 = {
+  top: 267,
+  left: 140,
+  width: 265,
+  height: 248,
+  borderRadius: 265,
+  fill: '#092125',
+  blurPx: 45,
+} as const;
+
 /** `/onboarding` landing kingdom */
 export const ONBOARDING_KINGDOM_SRC = '/onboarding/landing/kingdom.webp' as const;
 

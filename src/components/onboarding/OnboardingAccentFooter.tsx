@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
+import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBackdrop';
+import { ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX } from '@/constants/onboarding-footer';
 
 type OnboardingAccentFooterProps = {
   onClick?: () => void;
@@ -13,7 +14,7 @@ type OnboardingAccentFooterProps = {
   showLoginLink?: boolean;
 };
 
-/** Bottom CTA — turquoise primary (Figma accent), portaled to full viewport width. */
+/** Bottom CTA — turquoise primary (Figma accent), in-canvas stacked footer slot. */
 export function OnboardingAccentFooter({
   onClick,
   disabled = false,
@@ -22,33 +23,36 @@ export function OnboardingAccentFooter({
   type = 'button',
   showLoginLink = false,
 }: OnboardingAccentFooterProps) {
-  const footer = (
-    <div
-      className={`absolute inset-x-0 bottom-0 z-[45] flex w-full flex-col items-center justify-end gap-[15px] overflow-hidden bg-white/10 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] backdrop-blur-[5px] ${className}`}
-    >
-      <button
-        type={type}
-        onClick={onClick}
-        disabled={disabled}
-        className={`inline-flex h-[55px] w-v03-content max-w-[calc(100vw-48px)] items-center justify-center gap-2 overflow-hidden rounded-v03-button bg-v03-accent px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-normal text-[#031D15] shadow-v03-button transition hover:brightness-105 ${
-          disabled ? 'pointer-events-none opacity-50' : ''
-        }`}
-      >
-        {children}
-      </button>
-      {showLoginLink ? (
-        <p className="w-v03-content max-w-[calc(100vw-48px)] text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-          <span>יש לך חשבון? </span>
-          <Link
-            href="/login"
-            className="font-normal text-white underline decoration-solid underline-offset-2"
-          >
-            להתחברות
-          </Link>
-        </p>
-      ) : null}
-    </div>
-  );
+  return (
+    <>
+      <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
 
-  return <FunnelRootPortal>{footer}</FunnelRootPortal>;
+      <div
+        className={`absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[15px] pt-5 ${className}`}
+        style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX }}
+      >
+        <button
+          type={type}
+          onClick={onClick}
+          disabled={disabled}
+          className={`inline-flex h-[55px] w-full items-center justify-center gap-2 overflow-hidden rounded-v03-button bg-v03-accent px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-normal text-[#031D15] shadow-v03-button transition hover:brightness-105 ${
+            disabled ? 'pointer-events-none opacity-50' : ''
+          }`}
+        >
+          {children}
+        </button>
+        {showLoginLink ? (
+          <p className="w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
+            <span>יש לך חשבון? </span>
+            <Link
+              href="/login"
+              className="font-normal text-white underline decoration-solid underline-offset-2"
+            >
+              להתחברות
+            </Link>
+          </p>
+        ) : null}
+      </div>
+    </>
+  );
 }

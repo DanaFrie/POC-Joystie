@@ -1,9 +1,12 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
-import { ONBOARDING_STACKED_FOOTER_RESERVE_PX } from '@/constants/onboarding-footer';
-import { useOnboardingStackedFooterLayout } from '@/hooks/useOnboardingStackedFooterLayout';
+import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBackdrop';
+import {
+  ONBOARDING_STACKED_FOOTER_BUTTON_TOP_PX,
+  ONBOARDING_STACKED_FOOTER_RESERVE_PX,
+  ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX,
+} from '@/constants/onboarding-footer';
 
 type OnboardingBlurFooterProps = {
   onClick?: () => void;
@@ -14,9 +17,7 @@ type OnboardingBlurFooterProps = {
   children: ReactNode;
 };
 
-/**
- * Portaled footer — Figma Y when canvas fits; viewport bottom when width-fill overflows (e.g. iPhone mini).
- */
+/** In-canvas stacked footer — CTA scales with funnel; blur bleeds full viewport. */
 export function OnboardingBlurFooter({
   onClick,
   disabled = false,
@@ -24,73 +25,25 @@ export function OnboardingBlurFooter({
   blur = true,
   children,
 }: OnboardingBlurFooterProps) {
-  const layout = useOnboardingStackedFooterLayout();
-  const {
-    pinToViewportBottom,
-    shellTopPx,
-    shellHeightPx,
-    buttonTopPx,
-    buttonBottomPx,
-    buttonLeftPx,
-    buttonWidthPx,
-    buttonHeightPx,
-    viewportWidth,
-    safeBottomPx,
-  } = layout;
-
-  const blurStyle = pinToViewportBottom
-    ? {
-        bottom: 0,
-        left: 0,
-        width: viewportWidth,
-        height: shellHeightPx + safeBottomPx,
-      }
-    : {
-        top: shellTopPx,
-        left: 0,
-        width: viewportWidth,
-        bottom: 0,
-      };
-
-  const buttonStyle = pinToViewportBottom
-    ? {
-        bottom: buttonBottomPx,
-        left: buttonLeftPx,
-        width: buttonWidthPx,
-        height: buttonHeightPx,
-      }
-    : {
-        top: buttonTopPx,
-        left: buttonLeftPx,
-        width: buttonWidthPx,
-        height: buttonHeightPx,
-      };
-
-  const footer = (
+  return (
     <>
       {blur ? (
-        <div
-          className="pointer-events-none fixed z-[44] bg-white/10 backdrop-blur-[5px]"
-          style={blurStyle}
-          aria-hidden
-        />
+        <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
       ) : null}
 
       <button
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className={`fixed z-[45] flex items-center justify-center gap-2 rounded-v03-button bg-white px-[15px] py-2 text-center font-simpler text-[18px] font-bold text-v03-turquoise-950 shadow-v03-button transition hover:brightness-95 ${
+        className={`absolute left-v03-gutter z-[45] flex h-[55px] w-v03-content items-center justify-center gap-2 rounded-v03-button bg-white px-[15px] py-2 text-center font-simpler text-[18px] font-bold text-v03-turquoise-950 shadow-v03-button transition hover:brightness-95 ${
           disabled ? 'pointer-events-none opacity-50' : ''
         } ${className}`}
-        style={buttonStyle}
+        style={{ top: ONBOARDING_STACKED_FOOTER_BUTTON_TOP_PX }}
       >
         {children}
       </button>
     </>
   );
-
-  return <FunnelRootPortal>{footer}</FunnelRootPortal>;
 }
 
 /** Reserve scroll space from button top to canvas bottom (matches stacked footer). */

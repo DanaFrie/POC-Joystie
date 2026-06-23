@@ -20,6 +20,18 @@ export default function OnboardingLayout({
 }) {
   return (
     <OnboardingFunnelRoot>
+      <link
+        rel="preload"
+        href="/onboarding/landing/kingdom.webp"
+        as="image"
+        type="image/webp"
+      />
+      <link
+        rel="preload"
+        href="/brand/logo-joystie.png"
+        as="image"
+        type="image/png"
+      />
       <OAuthEarlyCapture />
       <OnboardingFunnelFrame>{children}</OnboardingFunnelFrame>
     </OnboardingFunnelRoot>

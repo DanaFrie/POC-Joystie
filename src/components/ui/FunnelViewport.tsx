@@ -15,13 +15,14 @@ import {
 
 export type FunnelSurface = 'dark' | 'light';
 
+/** `width` = fit height + grow artboard width on wider screens (always fills viewport width). */
 export type FunnelScaleMode = 'cover' | 'contain' | 'width';
 
 type FunnelViewportProps = {
   children: ReactNode;
   className?: string;
   surface?: FunnelSurface;
-  /** `width` fills viewport width (no side letterbox). `contain` fits full 812px. `cover` fills viewport. */
+  /** `width` = height-fit + wider artboard on wide screens. `contain` = fit + vertical center. */
   scaleMode?: FunnelScaleMode;
   /** Skip safe-area inset math — full-bleed funnel (e.g. `/onboarding/child`). */
   ignoreSafeArea?: boolean;
@@ -31,21 +32,28 @@ function funnelSurfaceClass(surface: FunnelSurface): string {
   return surface === 'light' ? 'v03-funnel-surface-light' : 'bg-v03-green-900';
 }
 
-type ViewportMetrics = {
-  scale: number;
-  offsetX: number;
-  offsetY: number;
-};
+type ViewportMetrics = FunnelViewportMetrics;
 
 type FunnelLayout = {
   metrics: ViewportMetrics;
   isDesktop: boolean;
 };
 
+const SSR_FUNNEL_METRICS: FunnelViewportMetrics = {
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+  designWidth: V03_SCREEN_WIDTH,
+  viewportWidth: V03_SCREEN_WIDTH,
+  viewportHeight: V03_SCREEN_HEIGHT,
+};
+
+const V03_CONTENT_GUTTER_TOTAL = 48;
+
 function measureViewport(
   scaleMode: FunnelScaleMode,
   ignoreSafeArea: boolean
-): ViewportMetrics {
+): FunnelViewportMetrics {
   const vv = typeof window !== 'undefined' ? window.visualViewport : null;
   const width = Math.max(vv?.width ?? 0, document.documentElement.clientWidth, window.innerWidth);
   const height = Math.max(vv?.height ?? 0, document.documentElement.clientHeight, window.innerHeight);
@@ -68,7 +76,8 @@ function measureViewport(
   const scaleX = width / V03_SCREEN_WIDTH;
   const scaleY = usableHeight / V03_SCREEN_HEIGHT;
   const scale = resolveScale(scaleMode, scaleX, scaleY);
-  const scaledW = V03_SCREEN_WIDTH * scale;
+  const designWidth = resolveDesignWidth(scaleMode, width, scale);
+  const scaledW = designWidth * scale;
   const scaledH = V03_SCREEN_HEIGHT * scale;
 
   return {
@@ -82,7 +91,21 @@ function measureViewport(
       height,
       scaledH
     ),
+    designWidth,
+    viewportWidth: width,
+    viewportHeight: height,
   };
+}
+
+function resolveDesignWidth(
+  scaleMode: FunnelScaleMode,
+  viewportWidth: number,
+  scale: number
+): number {
+  if (scaleMode === 'width') {
+    return viewportWidth / scale;
+  }
+  return V03_SCREEN_WIDTH;
 }
 
 function resolveScale(
@@ -94,7 +117,7 @@ function resolveScale(
     case 'contain':
       return Math.min(scaleX, scaleY);
     case 'width':
-      return scaleX;
+      return scaleY;
     default:
       return Math.max(scaleX, scaleY);
   }
@@ -139,7 +162,10 @@ export function FunnelViewport({
   scaleMode = 'cover',
   ignoreSafeArea = false,
 }: FunnelViewportProps) {
-  const [layout, setLayout] = useState<FunnelLayout | null>(null);
+  const [layout, setLayout] = useState<FunnelLayout>({
+    metrics: SSR_FUNNEL_METRICS,
+    isDesktop: false,
+  });
   const [isLightFunnel, setIsLightFunnel] = useState(false);
 
   useLayoutEffect(() => {
@@ -158,8 +184,22 @@ export function FunnelViewport({
   const surfaceClass = funnelSurfaceClass(activeSurface);
 
   const updateLayout = useCallback(() => {
+    const metrics = measureViewport(scaleMode, ignoreSafeArea);
+    const funnelRoot = document.querySelector('[data-v03-funnel]');
+
+    if (funnelRoot instanceof HTMLElement) {
+      funnelRoot.style.setProperty(
+        '--v03-screen-width',
+        `${metrics.designWidth}px`
+      );
+      funnelRoot.style.setProperty(
+        '--v03-content-width',
+        `${Math.max(metrics.designWidth - V03_CONTENT_GUTTER_TOTAL, 0)}px`
+      );
+    }
+
     setLayout({
-      metrics: measureViewport(scaleMode, ignoreSafeArea),
+      metrics,
       isDesktop: window.innerWidth >= V03_DESKTOP_MIN_WIDTH,
     });
   }, [scaleMode, ignoreSafeArea]);
@@ -178,46 +218,11 @@ export function FunnelViewport({
     };
   }, [updateLayout]);
 
-  if (!layout) {
-    return (
-      <FunnelViewportProvider isDesktop={false}>
-        <div
-          className={`relative h-full w-full ${className}`}
-          suppressHydrationWarning
-        />
-      </FunnelViewportProvider>
-    );
-  }
-
   const { metrics, isDesktop } = layout;
-  const viewportWidth =
-    typeof window !== 'undefined'
-      ? Math.max(
-          window.visualViewport?.width ?? 0,
-          document.documentElement.clientWidth,
-          window.innerWidth
-        )
-      : V03_SCREEN_WIDTH;
-  const viewportHeight =
-    typeof window !== 'undefined'
-      ? Math.max(
-          window.visualViewport?.height ?? 0,
-          document.documentElement.clientHeight,
-          window.innerHeight
-        )
-      : V03_SCREEN_HEIGHT;
-
-  const viewportMetrics: FunnelViewportMetrics = {
-    scale: metrics.scale,
-    offsetX: metrics.offsetX,
-    offsetY: metrics.offsetY,
-    viewportWidth,
-    viewportHeight,
-  };
 
   return (
-    <FunnelViewportProvider isDesktop={isDesktop} metrics={viewportMetrics}>
-      <div className={`relative h-full w-full ${className}`}>
+    <FunnelViewportProvider isDesktop={isDesktop} metrics={metrics}>
+      <div className={`relative h-full w-full overflow-hidden ${className}`}>
         {isLightFunnel ? (
           <div
             className="pointer-events-none absolute inset-0 v03-funnel-surface-light"
@@ -231,7 +236,7 @@ export function FunnelViewport({
           style={{
             left: metrics.offsetX,
             top: metrics.offsetY,
-            width: V03_SCREEN_WIDTH,
+            width: metrics.designWidth,
             height: V03_SCREEN_HEIGHT,
             transform: `scale(${metrics.scale})`,
             transformOrigin: 'top left',

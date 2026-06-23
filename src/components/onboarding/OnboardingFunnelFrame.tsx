@@ -21,7 +21,7 @@ function OnboardingFunnelContent({ children }: { children: ReactNode }) {
 }
 
 /**
- * /onboarding/* — mobile: 375×812 width-fill scaling (no side letterbox).
+ * /onboarding/* — mobile: uniform fit (375×812 scales together; bleed fills letterbox).
  * Desktop (≥768px): green canvas + grid + «זמין במובייל בלבד» only.
  */
 export function OnboardingFunnelFrame({

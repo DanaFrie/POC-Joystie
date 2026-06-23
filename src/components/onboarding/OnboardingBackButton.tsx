@@ -34,7 +34,7 @@ function BackChevron({ tone }: { tone: BackTone }) {
 }
 
 const hitTargetClass =
-  'absolute right-v03-gutter flex items-center justify-center';
+  'absolute right-v03-gutter flex items-center justify-center z-[60]';
 
 const controlStyle = {
   top: ONBOARDING_BACK_TOP_PX,
@@ -65,7 +65,7 @@ export function OnboardingBackButton({
       type="button"
       onClick={onClick}
       aria-label="חזרה"
-      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[50]'}`}
+      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[60]'}`}
       style={controlStyle}
     >
       <BackChevron tone={tone} />
@@ -74,7 +74,7 @@ export function OnboardingBackButton({
     <Link
       href={href ?? '/onboarding'}
       aria-label="חזרה"
-      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[50]'}`}
+      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[60]'}`}
       style={controlStyle}
     >
       <BackChevron tone={tone} />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { flushSync } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChildrenPhoneCountStep } from '@/components/onboarding/children-count/ChildrenPhoneCountStep';
 import { ChildrenDetailsStep } from '@/components/onboarding/children-details/ChildrenDetailsStep';
@@ -110,7 +111,9 @@ import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
 import { useScrollOverflow } from '@/hooks/useScrollOverflow';
 import {
   FLOW_STEP_STORAGE_KEY,
+  LANDING_ACTIVE_KEY,
   clearOAuthSignupWelcomePending,
+  clearParentFlowSession,
   consumeFreshParentFlowStart,
   markOAuthSignupWelcomePending,
   shouldShowOAuthSignupWelcome,
@@ -220,8 +223,13 @@ function isRevealStep(step: ParentFlowStep) {
 }
 
 /** Unified funnel — parent → reveal → signup on `/onboarding`. */
-export function OnboardingParentFlow() {
+export function OnboardingParentFlow({
+  onBackToLanding,
+}: {
+  onBackToLanding?: () => void;
+} = {}) {
   const router = useRouter();
+  const exitingToLandingRef = useRef(false);
   const [step, setStep] = useState<ParentFlowStep>(readInitialFlowStep);
   const [accountCreated, setAccountCreated] = useState(() =>
     isOnboardingAccountCreated()
@@ -300,7 +308,8 @@ export function OnboardingParentFlow() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || exitingToLandingRef.current) return;
+    if (sessionStorage.getItem(LANDING_ACTIVE_KEY) === '1') return;
     sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, step);
   }, [step]);
 
@@ -843,6 +852,16 @@ export function OnboardingParentFlow() {
       setStep('role');
       return;
     }
+    if (step === 'role') {
+      exitingToLandingRef.current = true;
+      clearParentFlowSession();
+      if (onBackToLanding) {
+        flushSync(() => onBackToLanding());
+      } else {
+        router.replace('/onboarding');
+      }
+      return;
+    }
     router.push('/onboarding');
   };
 
@@ -1164,10 +1183,10 @@ export function OnboardingParentFlow() {
         </OnboardingFunnelScrollBody>
       ) : (
         <>
-          {showChrome && <OnboardingBackButton onClick={handleBack} />}
           <OnboardingFunnelStepSlot stepKey={step}>
             {parentStepContent}
           </OnboardingFunnelStepSlot>
+          {showChrome && <OnboardingBackButton onClick={handleBack} />}
         </>
       )}
 

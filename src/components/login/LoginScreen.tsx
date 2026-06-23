@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
 import { JoystieCompactMark } from '@/components/brand/JoystieCompactMark';
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
 import { ONBOARDING_BLUR_FOOTER_HEIGHT_PX } from '@/components/onboarding/OnboardingBlurFooter';
+import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBackdrop';
+import {
+  ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX,
+} from '@/constants/onboarding-footer';
 import {
   getOnboardingParentExternalUrl,
   isRestrictedOAuthEnvironment,
@@ -109,7 +112,7 @@ function LoginField({
   );
 }
 
-function LoginPortaledFooter({
+function LoginCanvasFooter({
   loginError,
   isSubmitting,
   formLocked,
@@ -118,36 +121,41 @@ function LoginPortaledFooter({
   isSubmitting: boolean;
   formLocked: boolean;
 }) {
-  const footer = (
-    <div className="absolute inset-x-0 bottom-0 z-[45] flex w-full flex-col items-center justify-end gap-[15px] overflow-hidden bg-white/10 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] backdrop-blur-[5px]">
-      {loginError ? (
-        <p className="w-v03-content max-w-[calc(100vw-48px)] text-center font-simpler text-sm text-red-300">
-          {loginError}
-        </p>
-      ) : null}
+  return (
+    <>
+      <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
 
-      <button
-        type="submit"
-        form={LOGIN_FORM_ID}
-        disabled={formLocked}
-        className={`${footerButtonClass} ${formLocked ? 'pointer-events-none opacity-50' : ''}`}
+      <div
+        className="absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[15px] pt-5"
+        style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX }}
       >
-        {isSubmitting ? 'מתחבר...' : 'התחברות'}
-      </button>
+        {loginError ? (
+          <p className="w-full text-center font-simpler text-sm text-red-300">
+            {loginError}
+          </p>
+        ) : null}
 
-      <p className="w-v03-content max-w-[calc(100vw-48px)] text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-        <span>עדיין אין לך חשבון? </span>
-        <Link
-          href="/onboarding"
-          className="font-normal text-white underline decoration-solid underline-offset-2"
+        <button
+          type="submit"
+          form={LOGIN_FORM_ID}
+          disabled={formLocked}
+          className={`${footerButtonClass} ${formLocked ? 'pointer-events-none opacity-50' : ''}`}
         >
-          להרשמה
-        </Link>
-      </p>
-    </div>
-  );
+          {isSubmitting ? 'מתחבר...' : 'התחברות'}
+        </button>
 
-  return <FunnelRootPortal>{footer}</FunnelRootPortal>;
+        <p className="w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
+          <span>עדיין אין לך חשבון? </span>
+          <Link
+            href="/onboarding"
+            className="font-normal text-white underline decoration-solid underline-offset-2"
+          >
+            להרשמה
+          </Link>
+        </p>
+      </div>
+    </>
+  );
 }
 
 export function LoginScreen({
@@ -262,7 +270,7 @@ export function LoginScreen({
         </div>
       </div>
 
-      <LoginPortaledFooter
+      <LoginCanvasFooter
         loginError={loginError}
         isSubmitting={isSubmitting}
         formLocked={formLocked}

@@ -1,7 +1,10 @@
 'use client';
 
 import { useRef } from 'react';
-import { useFunnelHeroBleed } from '@/components/ui/FunnelViewportContext';
+import {
+  useFunnelBleedBarStyle,
+  useFunnelHeroBleed,
+} from '@/components/ui/FunnelViewportContext';
 import {
   CHILD_ONBOARDING_HERO_VIDEO,
   CHILD_WELCOME_STATUS_BUBBLE,
@@ -19,6 +22,7 @@ type ChildWelcomeStepProps = {
 export function ChildWelcomeStep({ onComplete }: ChildWelcomeStepProps) {
   const bubble = CHILD_WELCOME_STATUS_BUBBLE;
   const videoBleedStyle = useFunnelHeroBleed(V03_SCREEN_HEIGHT);
+  const statusBarStyle = useFunnelBleedBarStyle(bubble.top);
   const completedRef = useRef(false);
 
   const handleVideoEnd = () => {
@@ -48,13 +52,11 @@ export function ChildWelcomeStep({ onComplete }: ChildWelcomeStepProps) {
         </video>
       </div>
 
-      <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 z-10 overflow-visible">
         <div
-          className="pointer-events-auto absolute inline-flex items-center justify-center box-border"
+          className="pointer-events-auto absolute flex items-center justify-center box-border"
           style={{
-            top: bubble.top,
-            left: bubble.left,
-            width: bubble.width,
+            ...statusBarStyle,
             paddingTop: bubble.paddingTop,
             paddingBottom: bubble.paddingBottom,
             paddingLeft: bubble.paddingLeft,

@@ -15,8 +15,6 @@ import {
   SIGNUP_OAUTH_TERMS_TOGGLE_W_PX,
 } from '@/constants/signup-oauth-terms-layout';
 import { ONBOARDING_STACKED_FOOTER_BUTTON_H_PX } from '@/constants/onboarding-footer';
-import { V03_SCREEN_WIDTH } from '@/constants/v03-screen';
-
 type SignupOAuthTermsSheetProps = {
   termsAccepted: boolean;
   onTermsAcceptedChange: (accepted: boolean) => void;
@@ -72,9 +70,9 @@ export function SignupOAuthTermsSheet({
   termsError,
   onContinue,
 }: SignupOAuthTermsSheetProps) {
-  const { scale, viewportWidth } = useFunnelViewportMetrics();
+  const { scale, viewportWidth, designWidth } = useFunnelViewportMetrics();
 
-  const contentMaxWidthPx = V03_SCREEN_WIDTH * scale;
+  const contentMaxWidthPx = designWidth * scale;
   const padTopPx = SIGNUP_OAUTH_TERMS_SHEET_PAD_TOP_PX * scale;
   const padXPx = SIGNUP_OAUTH_TERMS_SHEET_PAD_X_PX * scale;
   const gapPx = SIGNUP_OAUTH_TERMS_SHEET_GAP_PX * scale;
