@@ -4,9 +4,6 @@ import Image from 'next/image';
 import { Plus } from 'lucide-react';
 import { SIGNUP_COMPANION_IMAGES } from '@/constants/onboarding-figma';
 
-const scaleClass =
-  'relative z-10 flex h-full w-full min-h-0 min-w-0 origin-center items-center justify-center transition-all duration-700 scale-[0.67] sm:scale-[0.69] md:scale-[0.59] lg:scale-[0.69] xl:scale-[0.77]';
-
 const PHONE_SHADOW = '2.35px 2.35px 11.751px rgba(0, 0, 0, 0.10)';
 
 type Props = { step: number };
@@ -14,7 +11,7 @@ type Props = { step: number };
 /** Landing hero wallet — v0.3 reveal styling, v0.2 demo content. */
 export function HeroWalletContentUI({ step }: Props) {
   return (
-    <div className={scaleClass} dir="rtl">
+    <div className="relative z-10" dir="rtl">
       <div className="hero-wallet-float">
         <div
           className="relative rounded-[2.75rem] border border-white/90 bg-[#eaeaea] p-2 md:rounded-[3.25rem] md:p-2.5"
@@ -44,6 +41,8 @@ export function HeroWalletContentUI({ step }: Props) {
                 height={140}
                 className="h-full w-full object-contain drop-shadow-v03-display"
                 draggable={false}
+                priority
+                unoptimized
               />
             </div>
 
@@ -97,6 +96,7 @@ export function HeroWalletContentUI({ step }: Props) {
                         width={40}
                         height={40}
                         className="h-full w-full object-contain"
+                        unoptimized
                       />
                     </div>
                     <span className="font-simpler text-base font-black leading-none text-v03-accent-foreground md:text-xl">
@@ -116,6 +116,7 @@ export function HeroWalletContentUI({ step }: Props) {
                         width={56}
                         height={56}
                         className="h-full w-full object-contain"
+                        unoptimized
                       />
                     </div>
                     <div className="font-simpler">

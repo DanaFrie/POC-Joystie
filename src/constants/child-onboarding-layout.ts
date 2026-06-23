@@ -1,3 +1,13 @@
+import { V03_SCREEN_WIDTH } from '@/constants/v03-screen';
+
+/** Center a fixed-width layer on the 375 canvas. */
+function centerX(width: number): number {
+  return (V03_SCREEN_WIDTH - width) / 2;
+}
+
+/** Shared Dori hero — inset from Figma 324 so bubble + CTA fit on 812. */
+export const CHILD_DORI_HERO_SIZE = 296;
+
 /** Joystie logo — child screens 3–4 (161×78 SVG, centered on 375 canvas). */
 export const CHILD_ONBOARDING_LOGO = {
   top: 120,
@@ -72,3 +82,64 @@ export const CHILD_COMPANION_PICK_FRAME = {
 
 /** @deprecated Use CHILD_COMPANION_PICK_FRAME */
 export const CHILD_DORI_OVERLAY = CHILD_COMPANION_PICK_FRAME;
+
+/** Screen 5 — egg intro copy (Figma 13147:5625). */
+export const CHILD_EGG_INTRO_FRAME = {
+  top: 170,
+  width: 323,
+  left: 26,
+  contentGap: 11,
+  titleGap: 2,
+  /** «תלחץ על הביצה!» — Figma center y ≈ 747 on 812 canvas. */
+  hintTop: 747,
+  arrow: { left: 180, top: 661, width: 13, height: 36 },
+  /** Ellipse 482 — covers upper canvas (status-bar zone omitted in app). */
+  glow: { left: -116, top: 0, width: 602, height: 124 },
+} as const;
+
+/** Screen 5 — egg video (Figma 12945:12023). */
+export const CHILD_EGG_VIDEO_FRAME = {
+  top: 338,
+  left: 26,
+  width: 323,
+  height: 305,
+} as const;
+
+/** Screen 6 — Dori hero + continue (Figma 13147:5622). */
+export const CHILD_DORI_REVEALED = {
+  hero: {
+    left: centerX(CHILD_DORI_HERO_SIZE),
+    top: 284,
+    size: CHILD_DORI_HERO_SIZE,
+  },
+  bubble: { top: 132, width: 265, left: centerX(265) },
+  continue: { top: 668, width: 217 },
+} as const;
+
+/** Screen 8 — mission intro (Figma 13147:5624). */
+export const CHILD_DORI_MISSION_INTRO = {
+  hero: {
+    left: centerX(CHILD_DORI_HERO_SIZE),
+    top: 308,
+    size: CHILD_DORI_HERO_SIZE,
+  },
+  bubble: { top: 84, width: 327, left: centerX(327) },
+  continue: { top: 668, width: 217 },
+} as const;
+
+/** Screen 9 — mission 1 (Figma 13147:5631). */
+export const CHILD_MISSION_ONE = {
+  hero: { left: centerX(200), top: 48, width: 200, height: 200 },
+  fireball: { width: 130, height: 155 },
+  content: { top: 268, width: 333, left: centerX(333), gap: 40 },
+} as const;
+
+/** Screens 10–11 — ball game (Figma 13147:5635 / 5632). */
+export const CHILD_BALL_GAME = {
+  bg: { left: centerX(375), top: 0, width: 375, height: 812 },
+  parentLabel: { top: 32, left: centerX(92), width: 92 },
+  childLabel: { top: 748 },
+  centerLine: { top: 396, width: 365 },
+  childPaddle: { top: 728, left: centerX(92), width: 92, height: 11 },
+  status: { top: 308, width: 332 },
+} as const;

@@ -1,5 +1,6 @@
 import {
   WHATSAPP_CHILD_INVITE_TEMPLATE_HE,
+  WHATSAPP_NATIVE_SEND_SCHEME,
   WHATSAPP_SHARE_BASE_URL,
   formatChildUrlForMessaging,
   resolveWhatsAppInviteVerb,
@@ -37,28 +38,50 @@ export function buildWhatsAppShareUrl(params: WhatsAppChildInviteParams): string
   return `${WHATSAPP_SHARE_BASE_URL}?text=${encodeURIComponent(text)}`;
 }
 
-/** Mobile browsers — same-tab handoff opens native WhatsApp after user consent. */
-function prefersNativeWhatsAppHandoff(): boolean {
+function isMobileHandset(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
 /**
- * Open wa.me with pre-filled text.
- * Mobile/Safari: same-document navigation (not `_blank`) so the OS offers the native app.
- * Desktop: new tab, with same-tab fallback if popups are blocked.
+ * Mobile: `whatsapp://send?text=` via synthetic click — no wa.me navigation (Safari
+ * universal links often resume the app without the prefilled composer).
+ * Desktop: `wa.me` in a new tab.
  */
-export function openWhatsAppShareUrl(url: string): void {
-  if (typeof window === 'undefined') return;
+export function openWhatsAppWithMessage(text: string): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-  if (prefersNativeWhatsAppHandoff()) {
-    window.location.assign(url);
+  const encoded = encodeURIComponent(text);
+
+  if (isMobileHandset()) {
+    const nativeUrl = `${WHATSAPP_NATIVE_SEND_SCHEME}?text=${encoded}`;
+    const link = document.createElement('a');
+    link.href = nativeUrl;
+    link.style.display = 'none';
+    link.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     return;
   }
 
-  const opened = window.open(url, '_blank', 'noopener,noreferrer');
+  const webUrl = `${WHATSAPP_SHARE_BASE_URL}?text=${encoded}`;
+  const opened = window.open(webUrl, '_blank', 'noopener,noreferrer');
   if (!opened) {
-    window.location.assign(url);
+    window.open(webUrl, '_blank');
+  }
+}
+
+/** Parse `text` from a wa.me URL and open the composer. */
+export function openWhatsAppShareUrl(url: string): void {
+  let text = '';
+  try {
+    text = new URL(url).searchParams.get('text') ?? '';
+  } catch {
+    // fall through
+  }
+  if (text) {
+    openWhatsAppWithMessage(text);
   }
 }
 
@@ -66,12 +89,10 @@ export function openWhatsAppChildInvite(
   params: WhatsAppChildInviteParams | string,
   legacyChildUrl?: string
 ): void {
-  const url =
+  const text =
     typeof params === 'string'
-      ? `${WHATSAPP_SHARE_BASE_URL}?text=${encodeURIComponent(
-          buildWhatsAppChildInviteMessage(params, legacyChildUrl)
-        )}`
-      : buildWhatsAppShareUrl(params);
+      ? buildWhatsAppChildInviteMessage(params, legacyChildUrl)
+      : buildWhatsAppChildInviteMessage(params);
 
-  openWhatsAppShareUrl(url);
+  openWhatsAppWithMessage(text);
 }

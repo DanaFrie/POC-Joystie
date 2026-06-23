@@ -1,23 +1,17 @@
-/** Green-900 ellipses 387 + 388 behind the hero wallet — Figma 375×812. */
+/** Green-900 ellipses behind the hero wallet. */
 export function LandingHeroEllipses() {
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-0 overflow-visible"
+      className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-full w-full max-w-[320px] -translate-x-1/2 -translate-y-[40%]"
       aria-hidden
     >
-      <div
-        className="pointer-events-none absolute left-[140px] top-[267px] h-[248px] w-[265px] overflow-visible"
-        aria-hidden
-      >
+      <div className="pointer-events-none absolute right-[-20px] top-[20%] h-[200px] w-[210px]">
         <div
           className="h-full w-full rounded-full"
           style={{ background: '#092125', filter: 'blur(45px)' }}
         />
       </div>
-      <div
-        className="pointer-events-none absolute left-[-24px] top-[284px] h-[236px] w-[253px] overflow-visible"
-        aria-hidden
-      >
+      <div className="pointer-events-none absolute left-[-30px] top-[28%] h-[190px] w-[200px]">
         <div
           className="h-full w-full rounded-full"
           style={{ background: '#092125', filter: 'blur(45px)' }}

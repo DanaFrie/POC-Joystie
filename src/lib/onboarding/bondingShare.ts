@@ -117,12 +117,12 @@ export async function prepareBondingInvite(params: {
   }
 }
 
-export async function shareBondingViaWhatsApp(params: {
+export function shareBondingViaWhatsApp(params: {
   childName: string;
   parentName?: string;
   parentGender?: 'female' | 'male';
   childUrl: string;
-}): Promise<void> {
+}): void {
   openWhatsAppChildInvite({
     childUrl: params.childUrl,
     childName: params.childName,
@@ -133,9 +133,7 @@ export async function shareBondingViaWhatsApp(params: {
   const inviteId = getOnboardingBondingInviteId();
   if (!inviteId) return;
 
-  try {
-    await markBondingWhatsAppShared(inviteId);
-  } catch (error) {
+  void markBondingWhatsAppShared(inviteId).catch((error) => {
     logger.warn('markBondingWhatsAppShared failed:', error);
-  }
+  });
 }

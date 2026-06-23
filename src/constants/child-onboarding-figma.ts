@@ -7,6 +7,14 @@ const FILE =
 export const childOnboardingFigmaLinks = {
   welcome: `${FILE}?node-id=13147-5620&m=dev`,
   companionPick: `${FILE}?node-id=13367-4097&m=dev`,
+  eggIntro: `${FILE}?node-id=13147-5625&m=dev`,
+  eggHatch: `${FILE}?node-id=13147-5626&m=dev`,
+  doriRevealed: `${FILE}?node-id=13147-5622&m=dev`,
+  doriTransition: `${FILE}?node-id=13147-5623&m=dev`,
+  doriMissionIntro: `${FILE}?node-id=13147-5624&m=dev`,
+  missionOne: `${FILE}?node-id=13147-5631&m=dev`,
+  ballGameWaiting: `${FILE}?node-id=13147-5635&m=dev`,
+  ballGameReady: `${FILE}?node-id=13147-5632&m=dev`,
 } as const;
 
 /** Placeholder child name until parent token is wired. */

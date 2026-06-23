@@ -20,6 +20,10 @@ export const onboardingFigmaLinks = {
   childInviteIntro: `${FILE}?node-id=12914-11767&m=dev`,
   childInviteShare: `${FILE}?node-id=12703-42221&m=dev`,
   childInviteWaiting: `${FILE}?node-id=12703-42221&m=dev`,
+  /** Post-bonding completion — Figma 13057:16567 */
+  onboardingCompletion: `${FILE}?node-id=13057-16567&m=dev`,
+  /** Subscription / trial gate — Figma 13277:11554 */
+  subscriptionGate: `${FILE}?node-id=13277-11554&m=dev`,
   revealRealData: `${FILE}?node-id=12910-9075&m=dev`,
   childrenDetails: `${FILE}?node-id=12703-42228&m=dev`,
   screen: `${FILE}?node-id=12703-42224&m=dev`,
@@ -47,7 +51,11 @@ export const ONBOARDING_FUNNEL_LOGIN_LEFT_PX = 108;
 export const ONBOARDING_PARENT_IMAGES = {
   mother: '/onboarding/parent/parent-mother.webp',
   father: '/onboarding/parent/parent-father.webp',
+  onboardingCompletion: '/onboarding/parent/onboarding-completion.webp',
 } as const;
+
+export const ONBOARDING_PARENT_SUBSCRIPTION_HERO_IMAGE =
+  '/onboarding/parent/bright-mountain-day.webp' as const;
 
 export const ONBOARDING_CHILDREN_PHONE_IMAGE =
   '/onboarding/parent/children-phones.webp' as const;

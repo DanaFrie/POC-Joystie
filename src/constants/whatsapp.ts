@@ -11,8 +11,11 @@ export const WHATSAPP_CHILD_INVITE_TEMPLATE_HE = `{inviteVerb} אותך לג׳ו
 export const WHATSAPP_INVITE_VERB_FEMALE = 'אני מזמינה';
 export const WHATSAPP_INVITE_VERB_MALE = 'אני מזמין';
 
-/** wa.me base — opens WhatsApp with pre-filled text (mobile + desktop). */
+/** wa.me base — desktop web handoff; mobile uses `whatsapp://send` in-app. */
 export const WHATSAPP_SHARE_BASE_URL = 'https://wa.me/';
+
+/** Native composer — mobile Safari (no wa.me redirect). */
+export const WHATSAPP_NATIVE_SEND_SCHEME = 'whatsapp://send' as const;
 
 export function resolveWhatsAppInviteVerb(
   parentGender?: 'female' | 'male' | null

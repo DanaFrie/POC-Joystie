@@ -51,6 +51,7 @@ export function LandingNav() {
             height={40}
             className="h-7 w-auto object-contain mix-blend-screen md:h-8"
             priority
+            unoptimized
           />
         </a>
 

@@ -6,23 +6,23 @@ import { useRouter } from 'next/navigation';
 
 const LandingHowItWorks = dynamic(
   () => import('@/components/landing/LandingHowItWorks').then((m) => m.LandingHowItWorks),
-  { ssr: true },
+  { ssr: false, loading: () => null },
 );
 const LandingTools = dynamic(
   () => import('@/components/landing/LandingTools').then((m) => m.LandingTools),
-  { ssr: true },
+  { ssr: false, loading: () => null },
 );
 const LandingFaq = dynamic(
   () => import('@/components/landing/LandingFaq').then((m) => m.LandingFaq),
-  { ssr: true },
+  { ssr: false, loading: () => null },
 );
 const LandingFounders = dynamic(
   () => import('@/components/landing/LandingFounders').then((m) => m.LandingFounders),
-  { ssr: true },
+  { ssr: false, loading: () => null },
 );
 const LandingFooter = dynamic(
   () => import('@/components/landing/LandingFooter').then((m) => m.LandingFooter),
-  { ssr: true },
+  { ssr: false, loading: () => null },
 );
 
 function defer(fn: () => void) {
@@ -38,13 +38,6 @@ export function LandingHomeBelowFold() {
   const router = useRouter();
   const revealRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null);
-
-  useEffect(() => {
-    defer(() => {
-      router.prefetch('/onboarding');
-      router.prefetch('/login');
-    });
-  }, [router]);
 
   useEffect(() => {
     defer(() => {

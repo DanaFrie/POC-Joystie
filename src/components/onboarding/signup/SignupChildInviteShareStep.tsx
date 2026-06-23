@@ -70,33 +70,25 @@ export function SignupChildInviteShareStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per child
   }, [childName]);
 
+  const inviteReady = Boolean(childUrl?.includes('token='));
+
   const handleWhatsApp = () => {
-    const launchWhatsApp = (url: string) => {
-      let advanced = false;
-      const advanceAfterReturn = () => {
-        if (advanced || document.visibilityState !== 'visible') return;
-        advanced = true;
-        document.removeEventListener('visibilitychange', advanceAfterReturn);
-        onShared?.();
-      };
-      document.addEventListener('visibilitychange', advanceAfterReturn);
-      void shareBondingViaWhatsApp({
-        childName,
-        childUrl: url,
-        parentGender: getParentGenderForMessage(),
-      });
+    if (!childUrl?.includes('token=')) return;
+
+    let advanced = false;
+    const advanceAfterReturn = () => {
+      if (advanced || document.visibilityState !== 'visible') return;
+      advanced = true;
+      document.removeEventListener('visibilitychange', advanceAfterReturn);
+      onShared?.();
     };
+    document.addEventListener('visibilitychange', advanceAfterReturn);
 
-    if (childUrl?.includes('token=')) {
-      launchWhatsApp(childUrl);
-      return;
-    }
-
-    void ensureInvite()
-      .then(launchWhatsApp)
-      .catch(() => {
-        // error surfaced via shareError
-      });
+    shareBondingViaWhatsApp({
+      childName,
+      childUrl,
+      parentGender: getParentGenderForMessage(),
+    });
   };
 
   const handleCopy = async () => {
@@ -141,11 +133,15 @@ export function SignupChildInviteShareStep({
           <button
             type="button"
             onClick={handleWhatsApp}
-            disabled={preparing}
+            disabled={preparing || !inviteReady}
             className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} bg-v03-turquoise-300 text-v03-turquoise-950 hover:brightness-105 disabled:opacity-60`}
           >
             <span className="whitespace-nowrap text-center">
-              {preparing ? 'מכינים לינק...' : 'שיתוף בוואטסאפ'}
+              {preparing
+                ? 'מכינים לינק...'
+                : !inviteReady
+                  ? 'מכינים לינק...'
+                  : 'שיתוף בוואטסאפ'}
             </span>
             <SignupWhatsAppIcon />
           </button>

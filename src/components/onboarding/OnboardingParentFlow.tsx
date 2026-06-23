@@ -13,13 +13,19 @@ import {
   ONBOARDING_BLUR_FOOTER_HEIGHT_PX,
   OnboardingBlurFooter,
 } from '@/components/onboarding/OnboardingBlurFooter';
+import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBackdrop';
+import {
+  ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX,
+} from '@/constants/onboarding-footer';
 import { OnboardingFooterCta } from '@/components/onboarding/OnboardingFooterCta';
 import { OnboardingFunnelScrollBody } from '@/components/onboarding/OnboardingFunnelScrollBody';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
 import { OnboardingRevealBleedBackground } from '@/components/onboarding/OnboardingRevealBleedBackground';
+import { ParentOnboardingCompletionStep } from '@/components/onboarding/parent/ParentOnboardingCompletionStep';
 import { ParentRoleCard } from '@/components/onboarding/parent-role/ParentRoleCard';
+import { ParentSubscriptionStep } from '@/components/onboarding/parent/ParentSubscriptionStep';
 import { PickFirstChildStep } from '@/components/onboarding/pick-child/PickFirstChildStep';
 import {
   OnboardingRevealStepContent,
@@ -39,6 +45,8 @@ import { SignupHowItWorksPill } from '@/components/onboarding/signup/SignupHowIt
 import { SignupIntroStep } from '@/components/onboarding/signup/SignupIntroStep';
 import { SignupOAuthTermsSheet } from '@/components/onboarding/signup/SignupOAuthTermsSheet';
 import { ONBOARDING_PARENT_IMAGES } from '@/constants/onboarding-figma';
+import { ONBOARDING_COMPANION_WAITING_COMPLETE_MS } from '@/constants/onboarding-completion-layout';
+import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
 import { SIGNUP_FORM_CONTENT_MARGIN_TOP_PX } from '@/constants/signup-layout';
 import {
   SIGNUP_JOURNEY_STAGE_COUNT,
@@ -145,7 +153,9 @@ type ParentFlowStep =
   | 'childInviteIntro'
   | 'childInviteShare'
   | 'childInviteWaiting'
-  | 'childInviteWaitingCompanion';
+  | 'childInviteWaitingCompanion'
+  | 'onboardingComplete'
+  | 'subscription';
 
 /** Parent funnel screens that show the fixed grid (Figma). */
 const PARENT_FUNNEL_GRID_STEPS = new Set<ParentFlowStep>([
@@ -163,6 +173,8 @@ const POST_SIGNUP_STEPS: ParentFlowStep[] = [
   'childInviteShare',
   'childInviteWaiting',
   'childInviteWaitingCompanion',
+  'onboardingComplete',
+  'subscription',
 ];
 
 function isPostSignupStep(step: ParentFlowStep) {
@@ -276,6 +288,8 @@ export function OnboardingParentFlow({
   const [childNameErrors, setChildNameErrors] = useState<Record<number, string>>(
     {}
   );
+  const [subscriptionPlan, setSubscriptionPlan] =
+    useState<OnboardingSubscriptionPlan | null>(null);
 
   const funnelScrollOverflows = useScrollOverflow(funnelScrollRef, [
     step,
@@ -294,7 +308,7 @@ export function OnboardingParentFlow({
     [pickOptions, selectedChildIndex]
   );
 
-  useOnboardingLightFunnel(isRevealStep(step));
+  useOnboardingLightFunnel(isRevealStep(step) || step === 'onboardingComplete');
 
   useEffect(() => {
     purgeStaleOAuthSessionFlags();
@@ -545,6 +559,20 @@ export function OnboardingParentFlow({
   }, [step]);
 
   useEffect(() => {
+    if (step !== 'subscription') return;
+    setSubscriptionPlan(null);
+  }, [step]);
+
+  useEffect(() => {
+    if (step !== 'childInviteWaitingCompanion') return;
+    const timer = window.setTimeout(
+      () => setStep('onboardingComplete'),
+      ONBOARDING_COMPANION_WAITING_COMPLETE_MS
+    );
+    return () => window.clearTimeout(timer);
+  }, [step]);
+
+  useEffect(() => {
     if (step !== 'childInviteWaiting') return;
     const timer = window.setTimeout(
       () => setStep('childInviteWaitingCompanion'),
@@ -777,6 +805,14 @@ export function OnboardingParentFlow({
       return;
     }
 
+    if (step === 'subscription') {
+      setStep('onboardingComplete');
+      return;
+    }
+    if (step === 'onboardingComplete') {
+      setStep('childInviteWaitingCompanion');
+      return;
+    }
     if (step === 'childInviteWaitingCompanion') {
       setStep('childInviteWaiting');
       return;
@@ -887,6 +923,70 @@ export function OnboardingParentFlow({
             ariaLabel="מתחברים לחשבון"
           />
         </OnboardingWaitingScreenShell>
+      </>
+    );
+  }
+
+  if (step === 'subscription') {
+    const handleSubscriptionClose = () => {
+      exitingToLandingRef.current = true;
+      clearParentFlowSession();
+      if (onBackToLanding) {
+        flushSync(() => onBackToLanding());
+      } else {
+        router.replace('/onboarding');
+      }
+    };
+
+    return (
+      <>
+        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
+        <div
+          key={step}
+          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-x-hidden overflow-y-visible"
+          style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
+        >
+          <ParentSubscriptionStep
+            selectedPlan={subscriptionPlan}
+            onPlanChange={setSubscriptionPlan}
+            onClose={handleSubscriptionClose}
+          />
+        </div>
+        <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
+        <div
+          className="absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[6px]"
+          style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX + 20 }}
+        >
+          <button
+            type="button"
+            disabled={subscriptionPlan === null}
+            className="inline-flex h-[55px] w-full items-center justify-center gap-2 overflow-hidden rounded-v03-button bg-v03-accent px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-normal text-[#031D15] shadow-v03-button transition hover:brightness-105 disabled:pointer-events-none disabled:opacity-50"
+          >
+            התחלת 30 ימים ניסיון בחינם
+          </button>
+          <p className="w-full text-center font-simpler text-[16px] font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200">
+            נזכיר לכם יומיים לפני שתקופת הניסיון נגמרת
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  if (step === 'onboardingComplete') {
+    return (
+      <>
+        {showBackButton && (
+          <OnboardingBackButton tone="light" onClick={handleBack} />
+        )}
+        <OnboardingFunnelStepSlot stepKey={step}>
+          <ParentOnboardingCompletionStep />
+        </OnboardingFunnelStepSlot>
+        <OnboardingBlurFooter
+          blur={false}
+          onClick={() => setStep('subscription')}
+        >
+          המשך
+        </OnboardingBlurFooter>
       </>
     );
   }
