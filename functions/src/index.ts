@@ -157,7 +157,6 @@ export const processScreenshot = functions.https.onCall(
  * To re-enable: uncomment the imports and exports below
  */
 
-<<<<<<< HEAD
 // Determine service account based on project ID
 // In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
 export function getServiceAccount(): string {
@@ -175,9 +174,7 @@ export function getServiceAccount(): string {
   
   return serviceAccount;
 };
-=======
-// const getServiceAccount = (): string => { ... }; // used by commented schedulers below
->>>>>>> feat/v03-ball-game
+
 
 // Scheduled function for first day notification - NOT DEPLOYED
 // Runs daily at 7:08 AM (Asia/Jerusalem)
