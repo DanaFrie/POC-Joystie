@@ -7,6 +7,12 @@ import {
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
 } from './bonding/invites';
+import {
+  createGameRoom,
+  joinGameRoom,
+  getGameOnboardingStatus,
+  completeGameOnboarding,
+} from './game/rooms';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -27,6 +33,10 @@ export {
   recordBondingInvite,
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
+  createGameRoom,
+  joinGameRoom,
+  getGameOnboardingStatus,
+  completeGameOnboarding,
 };
 
 // Define secret for Cloud Run service URL
@@ -147,6 +157,7 @@ export const processScreenshot = functions.https.onCall(
  * To re-enable: uncomment the imports and exports below
  */
 
+<<<<<<< HEAD
 // Determine service account based on project ID
 // In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
 export function getServiceAccount(): string {
@@ -164,6 +175,9 @@ export function getServiceAccount(): string {
   
   return serviceAccount;
 };
+=======
+// const getServiceAccount = (): string => { ... }; // used by commented schedulers below
+>>>>>>> feat/v03-ball-game
 
 // Scheduled function for first day notification - NOT DEPLOYED
 // Runs daily at 7:08 AM (Asia/Jerusalem)

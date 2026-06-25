@@ -3,6 +3,7 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { Functions } from 'firebase/functions';
+import type { Database } from 'firebase/database';
 import { createContextLogger } from '@/utils/logger';
 
 // Firebase configuration
@@ -35,6 +36,9 @@ function getFirebaseConfig() {
         case 'NEXT_PUBLIC_FIREBASE_APP_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
           break;
+        case 'NEXT_PUBLIC_FIREBASE_DATABASE_URL':
+          value = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+          break;
         default:
           value = undefined;
       }
@@ -57,6 +61,9 @@ function getFirebaseConfig() {
           break;
         case 'NEXT_PUBLIC_FIREBASE_APP_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_DATABASE_URL':
+          value = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
           break;
         default:
           value = undefined;
@@ -94,12 +101,16 @@ function getFirebaseConfig() {
   };
 
   const projectId = getEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+  const databaseURL =
+    getEnv('NEXT_PUBLIC_FIREBASE_DATABASE_URL') ||
+    (projectId ? `https://${projectId}-default-rtdb.firebaseio.com` : '');
   const config = {
     apiKey: getEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
     authDomain: getEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
     projectId,
     messagingSenderId: getEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
     appId: getEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
+    databaseURL,
   };
   
   // Debug logging (enabled in intgr, disabled in prod)
@@ -166,6 +177,7 @@ let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let functionsInstance: Functions | null = null;
+let rtdbInstance: Database | null = null;
 let initPromise: Promise<void> | null = null;
 
 // Initialize Firebase (lazy, client-side only)
@@ -185,6 +197,7 @@ async function initializeFirebase(): Promise<void> {
       const { getAuth } = await import('firebase/auth');
       const { getFirestore } = await import('firebase/firestore');
       const { getFunctions } = await import('firebase/functions');
+      const { getDatabase } = await import('firebase/database');
 
       // Get config at runtime (Next.js embeds NEXT_PUBLIC_* vars at build time)
       const config = getFirebaseConfig();
@@ -226,6 +239,9 @@ async function initializeFirebase(): Promise<void> {
 
       dbInstance = getFirestore(app);
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
+      if (config.databaseURL) {
+        rtdbInstance = getDatabase(app);
+      }
       
       // Initialize Analytics (client-side only, lazy-loaded when needed)
       // Analytics is initialized separately in utils/analytics.ts to avoid SSR issues
@@ -289,6 +305,18 @@ export async function getFunctionsInstance(): Promise<Functions> {
     throw new Error('Failed to initialize Firebase Functions');
   }
   return functionsInstance;
+}
+
+export async function getDatabaseInstance(): Promise<Database> {
+  if (!rtdbInstance) {
+    await initializeFirebase();
+  }
+  if (!rtdbInstance) {
+    throw new Error(
+      'Firebase Realtime Database not initialized. Set NEXT_PUBLIC_FIREBASE_DATABASE_URL or enable RTDB in the Firebase project.'
+    );
+  }
+  return rtdbInstance;
 }
 
 // Synchronous getters (for backward compatibility, but will throw if not initialized)
