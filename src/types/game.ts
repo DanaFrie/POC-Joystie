@@ -1,5 +1,7 @@
 /** Realtime Database ball-game room (v0.3 S3) */
 
+import type { GameOnboardingContext } from '@/constants/game';
+
 export type GameRoomPhase = 'waiting_child' | 'playing' | 'finished';
 
 export type GamePlayerRole = 'parent' | 'child';
@@ -25,6 +27,8 @@ export interface GameScoreState {
 
 export type GameWinner = GamePlayerRole | 'shared' | null;
 
+export type GameOutcome = 'won' | 'missed' | null;
+
 export interface GameRoomState {
   roomId: string;
   parentId: string;
@@ -34,10 +38,16 @@ export interface GameRoomState {
   challengeId?: string;
   childId?: string;
   bondingInviteId?: string;
+  /** Funnel context passed at room creation (onboarding). */
+  onboardingContext?: GameOnboardingContext;
+  /** Set when cooperative win is confirmed — onboarding may advance. */
+  onboardingAdvanced?: boolean;
+  onboardingAdvancedAt?: string | null;
+  gameOutcome?: GameOutcome;
   ball: GameBallState;
   paddles: GamePaddlesState;
   score: GameScoreState;
-  /** Which screen currently owns the ball physics step */
+  /** Legacy RTDB field — physics runs on parent only; kept for room schema compat */
   activeSide: GamePlayerRole;
   winner: GameWinner;
   createdAt: string;

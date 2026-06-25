@@ -11,12 +11,20 @@ import { getDatabaseInstance } from '@/lib/firebase';
 import { gameRoomPath } from '@/lib/game/paths';
 import type {
   GameBallState,
+  GameOutcome,
   GamePlayerRole,
   GamePaddlesState,
   GameRoomState,
   GameScoreState,
   GameWinner,
 } from '@/types/game';
+import type { GameOnboardingContext } from '@/constants/game';
+import {
+  clampBallCenter,
+  clampPaddleCenterX,
+  createStartBall,
+  DEFAULT_PADDLE_WIDTH,
+} from '@/lib/game/physics';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('GameRooms');
@@ -27,22 +35,33 @@ function parseRoom(roomId: string, raw: Record<string, unknown> | null): GameRoo
   const paddles = raw.paddles as GamePaddlesState | undefined;
   const score = raw.score as GameScoreState | undefined;
   if (!ball) return null;
+  const ballCenter = clampBallCenter(
+    Number.isFinite(ball.x) ? ball.x : 0.5,
+    Number.isFinite(ball.y) ? ball.y : 0.5
+  );
   const normalizedBall: GameBallState = {
-    x: Number.isFinite(ball.x) ? ball.x : 0.5,
-    y: Number.isFinite(ball.y) ? ball.y : 0.5,
-    vx: Number.isFinite(ball.vx) ? ball.vx : 0.32,
-    vy: Number.isFinite(ball.vy) ? ball.vy : 0.42,
+    x: ballCenter.x,
+    y: ballCenter.y,
+    vx: Number.isFinite(ball.vx) ? ball.vx : 0,
+    vy: Number.isFinite(ball.vy) ? ball.vy : 0,
     updatedBy: ball.updatedBy || 'parent',
     updatedAt: ball.updatedAt || new Date().toISOString(),
   };
   const normalizedPaddles: GamePaddlesState = {
-    parentX: Number.isFinite(paddles?.parentX) ? paddles!.parentX : 0.5,
-    childX: Number.isFinite(paddles?.childX) ? paddles!.childX : 0.5,
-    width: Number.isFinite(paddles?.width) ? paddles!.width : 0.28,
+    parentX: clampPaddleCenterX(
+      Number.isFinite(paddles?.parentX) ? paddles!.parentX : 0.5,
+      Number.isFinite(paddles?.width) ? paddles!.width : DEFAULT_PADDLE_WIDTH
+    ),
+    childX: clampPaddleCenterX(
+      Number.isFinite(paddles?.childX) ? paddles!.childX : 0.5,
+      Number.isFinite(paddles?.width) ? paddles!.width : DEFAULT_PADDLE_WIDTH
+    ),
+    width: Number.isFinite(paddles?.width) ? paddles!.width : DEFAULT_PADDLE_WIDTH,
   };
   const normalizedScore: GameScoreState = {
     shared: Number.isFinite(score?.shared) ? score!.shared : 0,
   };
+  const onboardingContext = raw.onboardingContext as GameOnboardingContext | undefined;
   return {
     roomId,
     parentId: String(raw.parentId ?? ''),
@@ -52,6 +71,11 @@ function parseRoom(roomId: string, raw: Record<string, unknown> | null): GameRoo
     challengeId: raw.challengeId ? String(raw.challengeId) : undefined,
     childId: raw.childId ? String(raw.childId) : undefined,
     bondingInviteId: raw.bondingInviteId ? String(raw.bondingInviteId) : undefined,
+    onboardingContext,
+    onboardingAdvanced: raw.onboardingAdvanced === true,
+    onboardingAdvancedAt:
+      raw.onboardingAdvancedAt != null ? String(raw.onboardingAdvancedAt) : null,
+    gameOutcome: (raw.gameOutcome as GameOutcome | undefined) ?? null,
     ball: normalizedBall,
     paddles: normalizedPaddles,
     score: normalizedScore,
@@ -91,10 +115,7 @@ export async function updateBallPosition(
   vy: number
 ): Promise<void> {
   const db = await getDatabaseInstance();
-  const clamped = {
-    x: Math.min(1, Math.max(0, x)),
-    y: Math.min(1, Math.max(0, y)),
-  };
+  const clamped = clampBallCenter(x, y);
   const now = new Date().toISOString();
   await update(ref(db, gameRoomPath(roomId)), {
     ball: {
@@ -111,10 +132,11 @@ export async function updateBallPosition(
 export async function updatePaddlePosition(
   roomId: string,
   role: GamePlayerRole,
-  x: number
+  x: number,
+  paddleWidth: number = DEFAULT_PADDLE_WIDTH
 ): Promise<void> {
   const db = await getDatabaseInstance();
-  const nextX = Math.min(0.9, Math.max(0.1, x));
+  const nextX = clampPaddleCenterX(x, paddleWidth);
   const key = role === 'parent' ? 'paddles/parentX' : 'paddles/childX';
   await update(ref(db, gameRoomPath(roomId)), {
     [key]: nextX,
@@ -130,12 +152,39 @@ export async function updateScoreAndPhase(
   winner: GameWinner
 ): Promise<void> {
   const db = await getDatabaseInstance();
+  const now = new Date().toISOString();
+  let gameOutcome: GameOutcome = null;
+  if (phase === 'finished') {
+    gameOutcome = winner === 'shared' ? 'won' : winner === null ? 'missed' : null;
+  }
   await update(ref(db, gameRoomPath(roomId)), {
     score,
     phase,
     activeSide,
     winner,
-    updatedAt: new Date().toISOString(),
+    gameOutcome,
+    updatedAt: now,
   });
-  logger.log('gameState', { roomId, score, phase, activeSide, winner });
+  logger.log('gameState', { roomId, score, phase, activeSide, winner, gameOutcome });
+}
+
+export async function resetGameRound(roomId: string): Promise<void> {
+  const db = await getDatabaseInstance();
+  const start = createStartBall();
+  const now = new Date().toISOString();
+  await update(ref(db, gameRoomPath(roomId)), {
+    ball: {
+      ...start,
+      updatedBy: 'parent',
+      updatedAt: now,
+    },
+    score: { shared: 0 },
+    phase: 'playing',
+    winner: null,
+    gameOutcome: null,
+    onboardingAdvanced: false,
+    onboardingAdvancedAt: null,
+    updatedAt: now,
+  });
+  logger.log('gameReset', { roomId });
 }

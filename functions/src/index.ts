@@ -1,9 +1,9 @@
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
-import { createGameRoom, joinGameRoom } from './game/rooms';
+import { createGameRoom, joinGameRoom, getGameOnboardingStatus, completeGameOnboarding } from './game/rooms';
 
-export { createGameRoom, joinGameRoom };
+export { createGameRoom, joinGameRoom, getGameOnboardingStatus, completeGameOnboarding };
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
