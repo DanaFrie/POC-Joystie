@@ -5,6 +5,8 @@ import { Plus } from 'lucide-react';
 import { SIGNUP_COMPANION_IMAGES } from '@/constants/onboarding-figma';
 
 const PHONE_SHADOW = '2.35px 2.35px 11.751px rgba(0, 0, 0, 0.10)';
+/** Wallet screen-time tap / purchase animation — Figma accent purple */
+const WALLET_TAP_COLOR = 'rgba(140, 0, 255, 1)';
 
 type Props = { step: number };
 
@@ -73,21 +75,35 @@ export function HeroWalletContentUI({ step }: Props) {
                     ₪20.50
                   </span>
                 </div>
-                <div className="absolute left-1/2 top-1/2 -z-10 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-v03-accent/15 blur-[50px] md:h-40 md:w-40" />
+                <div
+                  className="absolute left-1/2 top-1/2 -z-10 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[50px] md:h-40 md:w-40"
+                  style={{ backgroundColor: 'rgba(140, 0, 255, 0.15)' }}
+                />
               </div>
 
               <div className="mb-8 px-5 md:mb-10 md:px-8">
                 <div
                   className={`relative flex min-h-[100px] items-center justify-between overflow-hidden rounded-[1.75rem] border-[3px] p-4 transition-all duration-500 md:min-h-[130px] md:rounded-[2rem] md:border-4 md:p-6 ${
                     step === 1
-                      ? 'scale-105 border-v03-accent shadow-v03-display ring-4 ring-v03-accent/20 md:ring-8'
+                      ? 'scale-105 shadow-v03-display ring-4 ring-[rgba(140,0,255,0.22)] md:ring-8'
                       : 'border-v03-green-100 bg-v03-white shadow-sm'
-                  } ${step === 2 ? 'border-v03-accent bg-v03-accent/10' : ''}`}
+                  }`}
+                  style={
+                    step === 1
+                      ? { borderColor: WALLET_TAP_COLOR }
+                      : step === 2
+                        ? {
+                            borderColor: WALLET_TAP_COLOR,
+                            backgroundColor: 'rgba(140, 0, 255, 0.1)',
+                          }
+                        : undefined
+                  }
                 >
                   <div
-                    className={`absolute inset-0 z-30 flex translate-y-full flex-col items-center justify-center gap-2 bg-v03-accent transition-all duration-500 ${
+                    className={`absolute inset-0 z-30 flex translate-y-full flex-col items-center justify-center gap-2 transition-all duration-500 ${
                       step === 2 ? 'translate-y-0 opacity-100' : 'opacity-0'
                     }`}
+                    style={{ backgroundColor: WALLET_TAP_COLOR }}
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-v03-white p-2 shadow-lg ring-2 ring-v03-green-900/10">
                       <Image
@@ -99,7 +115,7 @@ export function HeroWalletContentUI({ step }: Props) {
                         unoptimized
                       />
                     </div>
-                    <span className="font-simpler text-base font-black leading-none text-v03-accent-foreground md:text-xl">
+                    <span className="font-simpler text-base font-black leading-none text-white md:text-xl">
                       הקניה הושלמה!
                     </span>
                   </div>
@@ -130,7 +146,10 @@ export function HeroWalletContentUI({ step }: Props) {
                       step >= 2 ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
                     }`}
                   >
-                    <div className="rounded-full border-2 border-v03-white bg-v03-accent p-2 text-v03-accent-foreground shadow-lg md:p-3">
+                    <div
+                      className="rounded-full border-2 border-v03-white p-2 text-white shadow-lg md:p-3"
+                      style={{ backgroundColor: WALLET_TAP_COLOR }}
+                    >
                       <Plus size={18} strokeWidth={4} className="md:h-5 md:w-5" />
                     </div>
                   </div>

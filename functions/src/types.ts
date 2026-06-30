@@ -2,7 +2,9 @@
 // These match the types in src/types/firestore.ts
 
 export type UserKidAgeScreenTime = {
+  name?: string;
   age: string;
+  gender?: 'boy' | 'girl';
   dailyScreenTimeHours: number;
 };
 

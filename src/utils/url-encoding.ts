@@ -1,9 +1,16 @@
 // URL encoding/decoding utility for child pages with parent identifier
 // Uses compact delimiter-based encoding to minimize token size
 import { clientConfig } from '@/config/client.config';
+import {
+  parseBondingInviteQueryParams,
+  preserveBondingInviteQueryParams,
+  withBondingInviteQueryParams,
+} from '@/lib/onboarding/bondingInviteUrl';
 import { createContextLogger } from './logger';
 
 const logger = createContextLogger('URL Encoding');
+
+export { parseBondingInviteQueryParams, withBondingInviteQueryParams };
 
 /**
  * Encode parent ID, child ID, and optional challenge ID into compact URL-safe token
@@ -99,7 +106,7 @@ export function decodeParentToken(token: string): {
 const CHILD_PATH = '/child';
 
 /** v0.3 onboarding funnel — child invite from parent bonding share */
-const ONBOARDING_CHILD_PATH = '/onboarding/child';
+export const ONBOARDING_CHILD_PATH = '/onboarding/child';
 
 function buildChildTokenUrl(
   parentId: string,
@@ -134,4 +141,43 @@ export function generateOnboardingChildUrl(
   baseUrl?: string
 ): string {
   return buildChildTokenUrl(parentId, childId, challengeId, baseUrl, ONBOARDING_CHILD_PATH);
+}
+
+/**
+ * Rebuild child invite URL on the current origin (keeps `token=`).
+ * Use when a stored link points at another host (e.g. joystie.com vs localhost).
+ */
+export function rewriteOnboardingChildUrlToCurrentOrigin(urlOrToken: string): string {
+  if (typeof window === 'undefined' || !urlOrToken.trim()) return urlOrToken;
+
+  try {
+    let token: string | null = null;
+    if (urlOrToken.includes('token=')) {
+      const parsed = new URL(urlOrToken, window.location.origin);
+      token = parsed.searchParams.get('token');
+    } else if (!urlOrToken.includes('/') && !urlOrToken.includes('?')) {
+      token = urlOrToken.trim();
+    }
+    if (!token) return urlOrToken;
+    const base = `${window.location.origin}${ONBOARDING_CHILD_PATH}?token=${encodeURIComponent(token)}`;
+    if (urlOrToken.includes('token=')) {
+      return preserveBondingInviteQueryParams(urlOrToken, base);
+    }
+    return base;
+  } catch {
+    return urlOrToken;
+  }
+}
+
+/** Child ball-game route with the same bonding token + invite query params. */
+export function buildGameChildUrlWithToken(token: string): string {
+  const encoded = encodeURIComponent(token);
+  if (typeof window === 'undefined') {
+    return `/game/child?token=${encoded}`;
+  }
+  const base = `${window.location.origin}/game/child?token=${encoded}`;
+  if (typeof window !== 'undefined') {
+    return preserveBondingInviteQueryParams(window.location.href, base);
+  }
+  return base;
 }

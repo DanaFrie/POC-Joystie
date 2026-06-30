@@ -2,10 +2,10 @@
  * Ellipse 385 — mint CTA glow (Figma Inspect).
  * inset: top 757, bottom -217, left -98, right 201 → 272×272 circle.
  */
-export function OnboardingMintGlow() {
+export function OnboardingMintGlow({ className = 'z-[8]' }: { className?: string }) {
   return (
     <div
-      className="pointer-events-none absolute z-[8]"
+      className={`pointer-events-none absolute ${className}`}
       aria-hidden
       style={{
         top: 757,

@@ -13,10 +13,13 @@ export default function ConditionalNavigation() {
     pathname === '/signup' ||
     pathname === '/onboarding' ||
     pathname?.startsWith('/onboarding/') ||
-    pathname === '/challengeSetup' ||
     pathname?.startsWith('/signup/terms') ||
     pathname === '/login' ||
-    pathname === '/forgot-password'
+    pathname?.startsWith('/login/') ||
+    pathname === '/forgot-password' ||
+    pathname === '/reset-password' ||
+    pathname === '/help' ||
+    pathname === '/dashboard'
   ) {
     return null;
   }

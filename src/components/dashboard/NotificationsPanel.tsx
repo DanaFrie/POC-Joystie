@@ -1,239 +1,211 @@
 'use client';
 
 import { useState } from 'react';
-import { Link2, Share2, Check } from 'lucide-react';
+import Link from 'next/link';
+import { Link2, Check } from 'lucide-react';
 import type { WeeklyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('NotificationsPanel');
 
 interface NotificationsPanelProps {
+  variant?: 'light' | 'dark';
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
   childName?: string;
   childGender?: 'boy' | 'girl';
   parentName?: string;
-  parentGender?: 'male' | 'female'; // Parent gender from Firestore
-  setupUrl?: string; // Setup URL to show when setup is not completed
+  parentGender?: 'male' | 'female';
+  setupUrl?: string;
   uploadUrl?: string;
-  redemptionUrl?: string; // Redemption URL to show on redemption day
-  weeklyUpload?: WeeklyUpload | null; // Weekly upload status
-  onOpenWeeklyReview?: () => void; // Handler to open weekly upload review modal
-  childSetupCompleted?: boolean; // Whether child has completed setup (has nickname and moneyGoals)
-  consultationCompleted?: boolean; // Whether consultation with advisor has been completed
-  noChallengeExists?: boolean; // Whether user has no active challenge (new registration)
+  redemptionUrl?: string;
+  weeklyUpload?: WeeklyUpload | null;
+  onOpenWeeklyReview?: () => void;
+  childSetupCompleted?: boolean;
+  consultationCompleted?: boolean;
+  noChallengeExists?: boolean;
 }
 
-export default function NotificationsPanel({ challengeNotStarted, challengeStartDate, childName, childGender, parentName, parentGender, setupUrl, uploadUrl, redemptionUrl, weeklyUpload, onOpenWeeklyReview, childSetupCompleted, consultationCompleted, noChallengeExists }: NotificationsPanelProps) {
-  const [copied, setCopied] = useState(false);
-  const formatStartDate = (dateStr?: string): string => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-    const dayName = dayNames[date.getDay()];
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    return `ביום ${dayName}, ${day}/${month}`;
-  };
+function useNotificationStyles(variant: 'light' | 'dark') {
+  if (variant === 'dark') {
+    return {
+      panel: '',
+      title: 'mb-2 font-simpler text-[11px] font-black uppercase tracking-[0.12em] text-v03-green-200',
+      card: 'rounded-[16px] border border-white/15 bg-white/5 p-3.5 backdrop-blur-sm',
+      cardAccent: 'rounded-[16px] border border-[#1BECAE]/35 bg-[#1BECAE]/10 p-3.5',
+      heading: 'mb-1.5 text-right font-simpler text-[14px] font-bold text-white',
+      body: 'text-right font-simpler text-[13px] leading-relaxed text-v03-green-100',
+      primaryBtn:
+        'flex w-full items-center justify-center gap-2 rounded-[18px] bg-white px-4 py-3 font-simpler text-[14px] font-bold text-v03-green-900 transition hover:brightness-95',
+      copiedBtn:
+        'flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#1BECAE] bg-[#1BECAE]/15 px-4 py-3 font-simpler text-[14px] font-bold text-white',
+      empty: 'py-1 text-right font-simpler text-[13px] text-v03-green-200',
+      subtitle: 'mt-2 text-right font-simpler text-[12px] leading-relaxed text-v03-green-200',
+    };
+  }
 
-  // Calculate relative day text (e.g., "מחר", "שני הבא", "שבת הקרובה", "שלישי בעוד שבועיים")
+  return {
+    panel: 'rounded-[22px] border border-v03-green-100 bg-v03-white p-4 shadow-sm',
+    title: 'mb-3 font-simpler text-[16px] font-bold text-v03-text-on-light',
+    card: 'rounded-[18px] border border-v03-green-200 bg-v03-green-200/20 p-4',
+    cardAccent: 'rounded-[18px] border border-v03-turquoise-300 bg-v03-turquoise-300/10 p-4',
+    heading: 'mb-2 text-center font-simpler text-[14px] font-bold text-v03-text-on-light',
+    body: 'text-center font-simpler text-[13px] leading-relaxed text-v03-green-700',
+    primaryBtn:
+      'flex w-full items-center justify-center gap-2 rounded-[18px] bg-v03-green-900 px-4 py-3 font-simpler text-[14px] font-bold text-white transition hover:brightness-95',
+    copiedBtn:
+      'flex w-full items-center justify-center gap-2 rounded-[18px] border-2 border-v03-green-200 bg-v03-green-200/30 px-4 py-3 font-simpler text-[14px] font-bold text-v03-text-on-light',
+    empty: 'py-2 text-center font-simpler text-[14px] text-v03-green-700',
+    subtitle: 'mt-2 px-2 text-center font-simpler text-[12px] leading-relaxed text-v03-green-700',
+  };
+}
+
+export default function NotificationsPanel({
+  variant = 'dark',
+  challengeNotStarted,
+  challengeStartDate,
+  childName,
+  parentGender,
+  setupUrl,
+  redemptionUrl,
+  weeklyUpload,
+  childSetupCompleted,
+  consultationCompleted,
+  noChallengeExists,
+}: NotificationsPanelProps) {
+  const [copied, setCopied] = useState(false);
+  const s = useNotificationStyles(variant);
+
   const getRelativeDayText = (dateStr?: string): string => {
     if (!dateStr) return '';
-    
+
     const targetDate = new Date(dateStr);
     targetDate.setHours(0, 0, 0, 0);
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const diffTime = targetDate.getTime() - today.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-    
+
     const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
     const targetDayName = dayNames[targetDate.getDay()];
-    
-    // Today
-    if (diffDays === 0) {
-      return 'היום';
-    }
-    
-    // Tomorrow
-    if (diffDays === 1) {
-      return 'מחר';
-    }
-    
-    // Within this week (2-6 days)
+
+    if (diffDays === 0) return 'היום';
+    if (diffDays === 1) return 'מחר';
     if (diffDays >= 2 && diffDays <= 6) {
-      // Use "הקרוב/ה" for days this week
-      const suffix = targetDate.getDay() === 6 ? 'הקרובה' : 'הקרוב'; // שבת = feminine
+      const suffix = targetDate.getDay() === 6 ? 'הקרובה' : 'הקרוב';
       return `${targetDayName} ${suffix}`;
     }
-    
-    // Next week (7-13 days)
-    if (diffDays >= 7 && diffDays <= 13) {
-      return `${targetDayName} הבא`;
-    }
-    
-    // Two weeks from now (14-20 days)
-    if (diffDays >= 14 && diffDays <= 20) {
-      return `${targetDayName} בעוד שבועיים`;
-    }
-    
-    // More than 2 weeks - show "בעוד X ימים"
+    if (diffDays >= 7 && diffDays <= 13) return `${targetDayName} הבא`;
+    if (diffDays >= 14 && diffDays <= 20) return `${targetDayName} בעוד שבועיים`;
     return `בעוד ${diffDays} ימים`;
   };
 
-  // Use parentGender from Firestore, fallback to 'female' if not provided
   const parentGenderValue = parentGender || 'female';
-  const parentVerb = parentGenderValue === 'female' ? 'תוכלי' : 'תוכל';
+  const sendVerb = parentGenderValue === 'female' ? 'שלחי' : 'שלח';
 
-  // Weekly upload approval is shown only above the bar chart in WeeklyProgress, not here
-  const hasNotifications = noChallengeExists || consultationCompleted === false || (consultationCompleted === true && challengeNotStarted);
+  const hasNotifications =
+    noChallengeExists || consultationCompleted === false || (consultationCompleted === true && challengeNotStarted);
 
   const handleCopyUrl = async (url: string) => {
     if (!url) return;
-    
+
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      // Reset after 2 seconds
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
+      setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       logger.error('Failed to copy URL:', error);
     }
   };
 
-  // Determine which URL to show based on activity logic:
-  // 1. If setup not completed → setup URL
-  // 2. If setup completed and no weekly upload → redemption URL (on redemption day)
-  // 3. If weekly upload approved → redemption URL for next steps
   let urlToCopy: string | undefined;
   if (!childSetupCompleted && setupUrl) {
-    // Setup not completed - show setup URL
     urlToCopy = setupUrl;
   } else if (redemptionUrl) {
-    // Show redemption URL for uploading or viewing results
     urlToCopy = redemptionUrl;
   }
-  
-  // Show button when:
-  // 1. Challenge exists (we have childName)
-  // 2. We have a URL to copy (setup, upload, or redemption)
+
   const showCopyButton = !!childName && !!urlToCopy;
-  const copyVerb = parentGenderValue === 'female' ? 'העתיקי' : 'העתק';
-  const sendVerb = parentGenderValue === 'female' ? 'שלחי' : 'שלח';
-  const childPossessive = childGender === 'girl' ? 'שלה' : 'שלו';
-  // More explicit text about sharing/sending - makes it clear this is for sharing a link
   const buttonText = `קישור לעמוד של ${childName}`;
-  // Text explaining how to share the link
   const subtitleText = `${sendVerb} את הקישור ל${childName} דרך וואטסאפ או הודעה`;
   const copiedSubtitleText = `הקישור הועתק! הדבקי אותו בהודעה ל${childName}`;
 
-  return (
-    <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-4">
-      <div className="mb-3">
-        <h2 className="font-varela font-semibold text-base text-[#282743]">
-          עדכונים
-        </h2>
-      </div>
+  const content = (
+    <>
+      <h2 className={s.title}>עדכונים</h2>
 
-      {/* No challenge exists - prompt to create one */}
       {noChallengeExists && (
-        <div className="bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A] rounded-[12px] p-4 mb-3">
-          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
-            ברוכים הבאים! 👋
-          </h3>
-          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center mb-3">
+        <div className={`${s.card} mb-2`}>
+          <h3 className={s.heading}>ברוכים הבאים! 👋</h3>
+          <p className={`${s.body} mb-3`}>
             כדי להתחיל, יש להגדיר אתגר ראשון עבור הילד שלכם.
           </p>
-          <a
-            href="/onboarding"
-            className="block w-full py-3 px-4 rounded-[12px] bg-[#273143] text-white font-varela font-semibold text-sm text-center hover:bg-opacity-90 transition-all"
-          >
+          <Link href="/onboarding" className={s.primaryBtn}>
             התחל אתגר
-          </a>
+          </Link>
         </div>
       )}
 
-      {/* Consultation status - Show different messages based on status */}
       {consultationCompleted === false && !noChallengeExists && (
-        <div className="bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A] rounded-[12px] p-4 mb-3">
-          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
-            בקרוב ניפגש
-          </h3>
-          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center">
-            לאחר השיחה עם המומחה שלנו, תוכלו להתחיל באתגר.
-          </p>
+        <div className={`${s.card} mb-2`}>
+          <h3 className={s.heading}>בקרוב ניפגש</h3>
+          <p className={s.body}>לאחר השיחה עם המומחה שלנו, תוכלו להתחיל באתגר.</p>
         </div>
       )}
 
-      {/* Challenge starting soon - consultation completed but challenge hasn't started yet */}
       {consultationCompleted === true && challengeNotStarted && challengeStartDate && (
-        <div className="bg-green-50 border-2 border-green-200 rounded-[12px] p-4 mb-3">
-          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
-            {getRelativeDayText(challengeStartDate)} האתגר מתחיל! 🎉
-          </h3>
-          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center">
-            התכוננו להתחלה מרגשת!
-          </p>
+        <div className={`${s.cardAccent} mb-2`}>
+          <h3 className={s.heading}>{getRelativeDayText(challengeStartDate)} האתגר מתחיל! 🎉</h3>
+          <p className={s.body}>התכוננו להתחלה מרגשת!</p>
         </div>
       )}
-      
-      {/* After parent approved weekly upload – invite to create new challenge (link inactive) */}
+
       {weeklyUpload?.status === 'approved' && !challengeNotStarted && (
-        <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
-          <h3 className="font-varela font-semibold text-sm text-[#262135] mb-2 text-center">
-            מוכנים לאתגר הבא?
-          </h3>
-          <p className="font-varela text-xs text-[#282743] leading-relaxed text-center mb-3">
+        <div className={`${s.card} mb-2`}>
+          <h3 className={s.heading}>מוכנים לאתגר הבא?</h3>
+          <p className={`${s.body} mb-3`}>
             הגדירו אתגר חדש עבור {childName} כדי להמשיך.
           </p>
-          <a
-            href="/onboarding"
-            className="block w-full py-3 px-4 rounded-[12px] bg-[#273143] text-white font-varela font-semibold text-sm text-center hover:bg-opacity-90 transition-all"
-          >
+          <Link href="/onboarding" className={s.primaryBtn}>
             בניית אתגר חדש
-          </a>
+          </Link>
         </div>
       )}
 
-      {/* Copy URL button – only when challenge is active and upload not yet approved (pending/rejected = link stays active for upload/re-upload) */}
       {showCopyButton && urlToCopy && !challengeNotStarted && weeklyUpload?.status !== 'approved' && (
-        <div className="mb-3 p-4 rounded-[12px] bg-[#E6F19A] bg-opacity-30 border-2 border-[#E6F19A]">
+        <div className={`${s.card} mb-2`}>
           <button
+            type="button"
             onClick={() => urlToCopy && handleCopyUrl(urlToCopy)}
-            className={`w-full py-3 px-4 rounded-[12px] font-varela font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-              copied
-                ? 'bg-[#E6F19A] text-[#273143] border-2 border-[#E6F19A]'
-                : 'bg-[#273143] text-white hover:bg-opacity-90 border-2 border-[#273143]'
-            }`}
+            className={copied ? s.copiedBtn : s.primaryBtn}
           >
             {copied ? (
               <>
-                <Check size={18} className="flex-shrink-0" />
+                <Check size={18} className="shrink-0" />
                 <span>הועתק!</span>
               </>
             ) : (
               <>
-                <Link2 size={18} className="flex-shrink-0" />
+                <Link2 size={18} className="shrink-0" />
                 <span>{buttonText}</span>
               </>
             )}
           </button>
-          <p className="font-varela text-xs text-[#948DA9] text-center mt-2 leading-relaxed px-2">
-            {copied ? copiedSubtitleText : subtitleText}
-          </p>
+          <p className={s.subtitle}>{copied ? copiedSubtitleText : subtitleText}</p>
         </div>
       )}
 
       {!hasNotifications && !showCopyButton && weeklyUpload?.status !== 'approved' && (
-        <p className="font-varela text-sm text-[#948DA9] text-center py-2">
-          אין עדכונים חדשים
-        </p>
+        <p className={s.empty}>אין עדכונים חדשים</p>
       )}
-    </div>
+    </>
   );
-}
 
+  if (variant === 'dark') {
+    return <section className="w-full">{content}</section>;
+  }
+
+  return <section className={s.panel}>{content}</section>;
+}

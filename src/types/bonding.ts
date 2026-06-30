@@ -11,6 +11,8 @@ export interface FirestoreBondingInvite {
   parentId: string;
   childId?: string;
   challengeId?: string;
+  childName?: string;
+  parentName?: string;
   childUrl: string;
   whatsappShareUrl: string;
   status: BondingInviteStatus;
@@ -18,4 +20,7 @@ export interface FirestoreBondingInvite {
   updatedAt: string;
   whatsappSharedAt?: string;
   childLinkOpenedAt?: string;
+  eggCompletedAt?: string;
+  gameRoomId?: string;
+  gameJoinCode?: string;
 }

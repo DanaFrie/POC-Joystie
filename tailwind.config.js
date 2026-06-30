@@ -47,6 +47,7 @@ module.exports = {
       },
       fontFamily: {
         simpler: ['Simpler Pro', 'var(--font-simpler)', 'Assistant', 'sans-serif'],
+        assistant: ['var(--font-simpler)', 'Assistant', 'sans-serif'],
         heebo: ['var(--font-heebo)', 'Heebo', 'sans-serif'],
         montserrat: ['"Montserrat Alternates"', 'sans-serif'],
         rubik: ['Rubik', 'sans-serif'],

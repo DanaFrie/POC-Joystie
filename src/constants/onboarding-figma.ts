@@ -16,14 +16,24 @@ export const onboardingFigmaLinks = {
   signupIntroStep3: `${FILE}?node-id=12703-42219&m=dev`,
   /** Post-OAuth terms sheet — Figma 13367:6834 */
   signupOAuthTerms: `${FILE}?node-id=13367-6834&m=dev`,
-  pickFirstChild: `${FILE}?node-id=12703-42220&m=dev`,
+  pickFirstChild: `${FILE}?node-id=13680-1526&m=dev`,
   childInviteIntro: `${FILE}?node-id=12914-11767&m=dev`,
   childInviteShare: `${FILE}?node-id=12703-42221&m=dev`,
   childInviteWaiting: `${FILE}?node-id=12703-42221&m=dev`,
+  /** Parent pre-game ready — Figma 13245:19151 */
+  childGameReady: `${FILE}?node-id=13245-19151&m=dev`,
+  /** Parent post-game section — Figma 13615:10483 */
+  parentPostGameSection: `${FILE}?node-id=13615-10483&m=dev`,
+  /** Parent post-game — child change to confirm (Figma 13656:4329) */
+  parentReviewChildChange: `${FILE}?node-id=13656-4329&m=dev`,
+  /** Parent post-game — parent change choice (Figma 13615:10486) */
+  parentAdditionalChange: `${FILE}?node-id=13615-10486&m=dev`,
   /** Post-bonding completion — Figma 13057:16567 */
   onboardingCompletion: `${FILE}?node-id=13057-16567&m=dev`,
   /** Subscription / trial gate — Figma 13277:11554 */
   subscriptionGate: `${FILE}?node-id=13277-11554&m=dev`,
+  /** Plan + change option cards — Figma 13617:4029 */
+  selectableOptionCard: `${FILE}?node-id=13617-4029&m=dev`,
   revealRealData: `${FILE}?node-id=12910-9075&m=dev`,
   childrenDetails: `${FILE}?node-id=12703-42228&m=dev`,
   screen: `${FILE}?node-id=12703-42224&m=dev`,

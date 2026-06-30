@@ -1,9 +1,8 @@
 'use client';
 
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
-import { SignupHeroEllipses } from '@/components/onboarding/signup/SignupHeroEllipses';
+import { SelectableOptionCard } from '@/components/onboarding/parent/SelectableOptionCard';
 import { SubscriptionJoystieLogo } from '@/components/onboarding/parent/SubscriptionJoystieLogo';
-import { SubscriptionPlanRadio } from '@/components/onboarding/parent/SubscriptionPlanRadio';
 import {
   ONBOARDING_SUBSCRIPTION,
   ONBOARDING_SUBSCRIPTION_FEATURES,
@@ -11,16 +10,12 @@ import {
   ONBOARDING_SUBSCRIPTION_PLANS,
   type OnboardingSubscriptionPlan,
 } from '@/constants/onboarding-subscription-layout';
-
-const PLAN_CARD_BASE_CLASS =
-  'relative flex w-full items-center overflow-hidden rounded-[24px] border-[1.5px] border-solid bg-white/[0.05] transition';
-
-const SELECTED_PLAN_GLOW_CLASS =
-  'pointer-events-none absolute left-[204px] top-[92px] h-[99px] w-[98px] rounded-full';
+import { ONBOARDING_SELECTABLE_OPTION } from '@/constants/onboarding-selectable-option';
 
 type ParentSubscriptionStepProps = {
   selectedPlan: OnboardingSubscriptionPlan | null;
   onPlanChange: (plan: OnboardingSubscriptionPlan) => void;
+  onContinue?: () => void;
   onClose?: () => void;
 };
 
@@ -28,47 +23,45 @@ type ParentSubscriptionStepProps = {
 export function ParentSubscriptionStep({
   selectedPlan,
   onPlanChange,
+  onContinue,
   onClose,
 }: ParentSubscriptionStepProps) {
   const layout = ONBOARDING_SUBSCRIPTION;
+  const { hero } = layout;
+
+  const heroBackground = `${hero.gradient}, url(${hero.image}) lightgray ${hero.imagePosition} / ${hero.imageSize} no-repeat`;
 
   return (
-    <div
-      dir="rtl"
-      className="relative h-full w-full overflow-x-hidden bg-v03-green-900"
-    >
-      {/* Hero stack — mountain → ellipses → gradient (signup/login coords). */}
+    <div dir="rtl" className="relative h-full w-full overflow-x-hidden bg-v03-green-900">
       <div
-        className="pointer-events-none absolute left-0 z-[1] w-full overflow-visible"
+        className="pointer-events-none absolute left-0 w-full overflow-visible"
         style={{
-          top: layout.hero.top,
-          height: layout.hero.ellipseFrameHeight,
+          top: hero.top,
+          height: hero.height,
         }}
         aria-hidden
       >
         <div
-          className="absolute left-0 top-0 z-0 w-full overflow-hidden"
-          style={{ height: layout.hero.height }}
-        >
-          <OnboardingLazyImage
-            src={layout.hero.image}
-            alt=""
-            className="absolute left-1/2 top-0 min-h-full min-w-[115%] -translate-x-1/2 object-cover object-top"
-            priority
-          />
-        </div>
-
-        <SignupHeroEllipses className="z-[1]" />
+          className="absolute left-0 top-0 z-[1]"
+          style={{
+            width: hero.width,
+            height: hero.height,
+            background: heroBackground,
+          }}
+        />
 
         <div
-          className="absolute left-0 top-0 z-[2] w-full"
-          style={{ height: layout.hero.height }}
-        >
-          <div
-            className="absolute inset-0"
-            style={{ background: layout.hero.gradient }}
-          />
-        </div>
+          className="absolute z-[2]"
+          style={{
+            top: hero.ellipse.top,
+            left: hero.ellipse.left,
+            width: hero.ellipse.width,
+            height: hero.ellipse.height,
+            borderRadius: hero.ellipse.borderRadius,
+            background: hero.ellipse.color,
+            filter: `blur(${hero.ellipse.blur}px)`,
+          }}
+        />
       </div>
 
       <div
@@ -88,15 +81,9 @@ export function ParentSubscriptionStep({
           type="button"
           onClick={onClose}
           aria-label="סגירה"
-          className="absolute left-[13px] top-[52px] z-[60] flex items-center rounded-full bg-white/30 p-[6px] backdrop-blur-[10px]"
+          className="absolute left-[13px] top-[26px] z-[60] flex items-center rounded-full bg-white/30 p-[6px] backdrop-blur-[10px]"
         >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden
-          >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
               d="M7 7l10 10M17 7L7 17"
               stroke="#092125"
@@ -136,10 +123,7 @@ export function ParentSubscriptionStep({
           style={{ padding: layout.features.padding, gap: layout.features.gap }}
         >
           {ONBOARDING_SUBSCRIPTION_FEATURES.map((feature) => (
-            <div
-              key={feature.label}
-              className="flex w-full items-center gap-2"
-            >
+            <div key={feature.label} className="flex w-full items-center gap-2">
               <div
                 className="flex min-w-0 flex-1 items-center gap-2"
                 style={{ gap: layout.features.rowGap }}
@@ -185,46 +169,43 @@ export function ParentSubscriptionStep({
         {ONBOARDING_SUBSCRIPTION_PLANS.map((option) => {
           const selected = selectedPlan === option.id;
           return (
-            <button
+              <SelectableOptionCard
               key={option.id}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => onPlanChange(option.id)}
-              className={`${PLAN_CARD_BASE_CLASS} ${
-                selected ? 'border-[#00FFB3]' : 'border-white/25'
-              }`}
-              style={{
-                gap: layout.planCard.gap,
-                padding: `${layout.planCard.paddingY}px ${layout.planCard.paddingX}px`,
-              }}
+              selected={selected}
+              onSelect={() => onPlanChange(option.id)}
+              textLayout="fixed"
             >
-              {selected ? (
-                <div
-                  className={SELECTED_PLAN_GLOW_CLASS}
-                  style={{
-                    background: 'rgba(0, 255, 179, 0.90)',
-                    filter: 'blur(61.49px)',
-                  }}
-                  aria-hidden
-                />
-              ) : null}
-              <div className="relative z-[1] flex min-w-0 flex-1 flex-col items-end justify-center gap-1 text-right">
-                <p className="font-simpler text-[20px] font-bold leading-[1.2] tracking-[-0.3px] text-white">
-                  {option.title}
-                </p>
-                <p
-                  className="font-simpler text-[16px] font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200"
-                  dir="ltr"
-                  style={{ unicodeBidi: 'plaintext' }}
-                >
-                  {option.price}
-                </p>
-              </div>
-              <SubscriptionPlanRadio selected={selected} />
-            </button>
+              <p className="w-full text-right font-simpler text-[20px] font-bold leading-[1.2] tracking-[-0.3px] text-white">
+                {option.title}
+              </p>
+              <p className="w-full text-right font-simpler text-[16px] font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200">
+                {option.price}
+              </p>
+            </SelectableOptionCard>
           );
         })}
+      </div>
+
+      <div
+        className="absolute z-[10] flex flex-col items-center"
+        style={{
+          left: layout.cta.left,
+          top: layout.cta.top,
+          width: layout.cta.width,
+          gap: layout.cta.gap,
+        }}
+      >
+        <button
+          type="button"
+          disabled={selectedPlan === null}
+          onClick={onContinue}
+          className={ONBOARDING_SELECTABLE_OPTION.primaryCtaClass}
+        >
+          התחלת 30 ימים ניסיון בחינם
+        </button>
+        <p className="w-full text-center font-simpler text-[16px] font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200">
+          נזכיר לכם יומיים לפני שתקופת הניסיון נגמרת
+        </p>
       </div>
     </div>
   );

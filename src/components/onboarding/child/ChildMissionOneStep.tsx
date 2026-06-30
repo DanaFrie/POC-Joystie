@@ -1,37 +1,48 @@
 'use client';
 
-import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_MISSION_ONE } from '@/constants/child-onboarding-layout';
 
 /** Screen 9 — Figma 13147:5631. Mission 1 — fireball handoff. */
-export function ChildMissionOneStep({ onContinue }: { onContinue?: () => void }) {
+export function ChildMissionOneStep({
+  onContinue,
+  parentGender = 'male',
+}: {
+  onContinue?: () => void;
+  parentGender?: 'female' | 'male';
+}) {
   const layout = CHILD_MISSION_ONE;
-  const fireball = layout.fireball;
+  const frame = layout.fireballFrame;
+  const image = frame.image;
+  const parentLabel = parentGender === 'female' ? 'אמא' : 'אבא';
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-transparent">
       <OnboardingMintGlow />
 
       <div
-        className="pointer-events-none absolute z-[2] flex items-center justify-center overflow-hidden"
+        className="pointer-events-none absolute z-[2] inline-flex flex-col items-center"
         style={{
-          left: layout.hero.left,
-          top: layout.hero.top,
-          width: layout.hero.width,
-          height: layout.hero.height,
+          left: frame.left,
+          top: frame.top,
+          padding: `0 0 ${frame.paddingBottom}px ${frame.paddingLeft}px`,
+          transform: `rotate(${frame.rotationDeg}deg)`,
+          transformOrigin: 'center center',
         }}
+        aria-hidden
       >
-        <div className="-rotate-60">
-          <OnboardingLazyImage
-            src={CHILD_ONBOARDING_ASSETS.fireball}
-            alt=""
-            className="object-contain"
-            style={{ width: fireball.width, height: fireball.height }}
-            priority
-          />
-        </div>
+        <div
+          style={{
+            width: image.width,
+            height: image.height,
+            aspectRatio: `${59} / ${71}`,
+            backgroundImage: `url(${CHILD_ONBOARDING_ASSETS.fireball})`,
+            backgroundPosition: `${image.backgroundPositionX}px ${image.backgroundPositionY}px`,
+            backgroundSize: `${image.backgroundSizeWidthPct}% ${image.backgroundSizeHeightPct}%`,
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
       </div>
 
       <div
@@ -57,7 +68,7 @@ export function ChildMissionOneStep({ onContinue }: { onContinue?: () => void })
           </h1>
 
           <p className="w-full text-center font-simpler text-[20px] font-normal leading-[1.2] tracking-[-0.3px] text-white">
-            משפרים את שיתוף הפעולה שלך ושל אבא
+            משפרים את שיתוף הפעולה שלך ושל {parentLabel}
           </p>
         </div>
 
@@ -66,7 +77,9 @@ export function ChildMissionOneStep({ onContinue }: { onContinue?: () => void })
           onClick={onContinue}
           className="inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-v03-turquoise-300 px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] text-v03-green-900 shadow-v03-button transition hover:brightness-95"
         >
-          קדימה, אני ואבא מוכנים!
+          {parentGender === 'female'
+            ? `קדימה, אני ו${parentLabel} מוכנות!`
+            : `קדימה, אני ו${parentLabel} מוכנים!`}
         </button>
       </div>
     </div>

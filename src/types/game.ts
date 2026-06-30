@@ -2,7 +2,12 @@
 
 import type { GameOnboardingContext } from '@/constants/game';
 
-export type GameRoomPhase = 'waiting_child' | 'playing' | 'finished';
+export type GameRoomPhase =
+  | 'waiting_child'
+  | 'waiting_ready'
+  | 'countdown'
+  | 'playing'
+  | 'finished';
 
 export type GamePlayerRole = 'parent' | 'child';
 
@@ -11,6 +16,8 @@ export interface GameBallState {
   y: number;
   vx: number;
   vy: number;
+  /** Player who should receive the ball (derived from vy when absent). */
+  toward?: GamePlayerRole;
   updatedBy: GamePlayerRole;
   updatedAt: string;
 }
@@ -29,6 +36,11 @@ export type GameWinner = GamePlayerRole | 'shared' | null;
 
 export type GameOutcome = 'won' | 'missed' | null;
 
+export interface GamePlayReadyState {
+  parent: boolean;
+  child: boolean;
+}
+
 export interface GameRoomState {
   roomId: string;
   parentId: string;
@@ -44,6 +56,12 @@ export interface GameRoomState {
   onboardingAdvanced?: boolean;
   onboardingAdvancedAt?: string | null;
   gameOutcome?: GameOutcome;
+  /** Both sides tapped ready on the ball-game screen. */
+  playReady?: GamePlayReadyState;
+  /** First cooperative rally started (enables pre-play countdown once). */
+  hasStartedRound?: boolean;
+  /** ISO timestamp when synchronized countdown began. */
+  countdownAt?: string | null;
   ball: GameBallState;
   paddles: GamePaddlesState;
   score: GameScoreState;

@@ -1,8 +1,10 @@
 // Firestore data types - matching the database schema
 
-/** Age + daily screen time from parent onboarding (no children collection yet). */
+/** Age, name, gender + daily screen time from parent onboarding (no children collection yet). */
 export type UserKidAgeScreenTime = {
+  name?: string;
   age: string;
+  gender?: 'boy' | 'girl';
   dailyScreenTimeHours: number;
 };
 
@@ -14,6 +16,8 @@ export interface FirestoreUser {
   gender: 'male' | 'female';
   kidsAges: UserKidAgeScreenTime[];
   termsAccepted: boolean;
+  /** When true, parent finished onboarding and can go to dashboard. */
+  onboarding?: boolean;
   signupDate: string; // ISO timestamp
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp

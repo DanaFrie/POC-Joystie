@@ -1,5 +1,8 @@
 import type { GamePlayerRole } from '@/types/game';
-import { CHILD_PADDLE_Y, PARENT_PADDLE_Y } from '@/lib/game/physics';
+import {
+  PHYSICS_CHILD_PADDLE_CENTER_Y,
+  PHYSICS_PARENT_PADDLE_CENTER_Y,
+} from '@/lib/game/ballGameCourt';
 
 /** Map shared court Y to this player's screen (own paddle always at bottom). */
 export function courtYForViewer(y: number, role: GamePlayerRole): number {
@@ -20,9 +23,13 @@ export function pointerXToCourt(clientX: number, rect: DOMRect): number {
 }
 
 export function localPaddleWorldY(role: GamePlayerRole): number {
-  return role === 'parent' ? PARENT_PADDLE_Y : CHILD_PADDLE_Y;
+  return role === 'parent'
+    ? PHYSICS_PARENT_PADDLE_CENTER_Y
+    : PHYSICS_CHILD_PADDLE_CENTER_Y;
 }
 
 export function rivalPaddleWorldY(role: GamePlayerRole): number {
-  return role === 'parent' ? CHILD_PADDLE_Y : PARENT_PADDLE_Y;
+  return role === 'parent'
+    ? PHYSICS_CHILD_PADDLE_CENTER_Y
+    : PHYSICS_PARENT_PADDLE_CENTER_Y;
 }

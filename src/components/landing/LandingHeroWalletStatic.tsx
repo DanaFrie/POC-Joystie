@@ -73,7 +73,10 @@ export function LandingHeroWalletStatic() {
                       <div className="text-xs font-bold tracking-wide text-v03-green-700 md:text-sm">₪1.50</div>
                     </div>
                   </div>
-                  <div className="rounded-full border-2 border-v03-white bg-v03-accent p-2 text-v03-accent-foreground shadow-lg md:p-3">
+                  <div
+                    className="rounded-full border-2 border-v03-white p-2 text-white shadow-lg md:p-3"
+                    style={{ backgroundColor: 'rgba(140, 0, 255, 1)' }}
+                  >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                       <path
                         d="M12 5v14M5 12h14"

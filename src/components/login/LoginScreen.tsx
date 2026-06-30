@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRef } from 'react';
 import { JoystieCompactMark } from '@/components/brand/JoystieCompactMark';
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
@@ -9,6 +10,8 @@ import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBack
 import {
   ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX,
 } from '@/constants/onboarding-footer';
+import { useScrollOverflow } from '@/hooks/useScrollOverflow';
+import { getForgotPasswordPath } from '@/lib/auth/postLoginNavigation';
 import {
   getOnboardingParentExternalUrl,
   isRestrictedOAuthEnvironment,
@@ -36,12 +39,14 @@ type LoginScreenProps = {
   password: string;
   errors: Record<string, string>;
   loginError?: string;
+  showResumeSignupBanner?: boolean;
   isSubmitting: boolean;
   oauthLoading?: 'google' | 'apple' | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onOAuthGoogle?: () => void;
   onOAuthApple?: () => void;
+  onSignupClick?: () => void;
 };
 
 function OAuthButton({
@@ -112,25 +117,43 @@ function LoginField({
   );
 }
 
+function LoginResumeSignupBanner() {
+  return (
+    <div className="flex h-[72px] w-full shrink-0 items-center justify-center gap-2.5 self-stretch rounded-[20px] bg-white/5 backdrop-blur-[7.5px]">
+      <p className="flex-1 text-center font-simpler text-[18px] font-normal leading-[125%] tracking-[-0.27px] text-white">
+        התחלת את התהליך ועוד לא סיימנו,
+        <br />
+        שנשלים יחד את ההצטרפות?
+      </p>
+    </div>
+  );
+}
+
 function LoginCanvasFooter({
   loginError,
   isSubmitting,
   formLocked,
+  showBlur,
+  onSignupClick,
 }: {
   loginError?: string;
   isSubmitting: boolean;
   formLocked: boolean;
+  showBlur: boolean;
+  onSignupClick?: () => void;
 }) {
   return (
     <>
-      <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
+      {showBlur ? (
+        <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
+      ) : null}
 
       <div
-        className="absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[15px] pt-5"
+        className="pointer-events-none absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[15px] pt-5"
         style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX }}
       >
         {loginError ? (
-          <p className="w-full text-center font-simpler text-sm text-red-300">
+          <p className="pointer-events-auto w-full text-center font-simpler text-sm text-red-300">
             {loginError}
           </p>
         ) : null}
@@ -139,15 +162,20 @@ function LoginCanvasFooter({
           type="submit"
           form={LOGIN_FORM_ID}
           disabled={formLocked}
-          className={`${footerButtonClass} ${formLocked ? 'pointer-events-none opacity-50' : ''}`}
+          className={`pointer-events-auto ${footerButtonClass} ${formLocked ? 'opacity-50' : ''}`}
         >
           {isSubmitting ? 'מתחבר...' : 'התחברות'}
         </button>
 
-        <p className="w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
+        <p className="pointer-events-auto w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
           <span>עדיין אין לך חשבון? </span>
           <Link
             href="/onboarding"
+            onClick={(e) => {
+              if (!onSignupClick) return;
+              e.preventDefault();
+              onSignupClick();
+            }}
             className="font-normal text-white underline decoration-solid underline-offset-2"
           >
             להרשמה
@@ -163,15 +191,31 @@ export function LoginScreen({
   password,
   errors,
   loginError,
+  showResumeSignupBanner = false,
   isSubmitting,
   oauthLoading = null,
   onChange,
   onSubmit,
   onOAuthGoogle,
   onOAuthApple,
+  onSignupClick,
 }: LoginScreenProps) {
   const googleBlocked = isRestrictedOAuthEnvironment();
   const formLocked = isSubmitting || oauthLoading !== null;
+  const loginScrollRef = useRef<HTMLDivElement>(null);
+  const scrollOverflows = useScrollOverflow(loginScrollRef, [
+    showResumeSignupBanner,
+    loginError,
+    errors,
+    email,
+    password,
+    googleBlocked,
+    oauthLoading,
+  ]);
+  const forgotPasswordHref = getForgotPasswordPath({
+    email,
+    existing: showResumeSignupBanner,
+  });
 
   return (
     <>
@@ -180,7 +224,10 @@ export function LoginScreen({
         className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-visible"
         style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
       >
-        <div className="absolute inset-0 isolate overflow-y-auto v03-scroll-hidden">
+        <div
+          ref={loginScrollRef}
+          className="absolute inset-0 isolate overflow-y-auto v03-scroll-hidden"
+        >
           <SignupHeroFrame scrollTop={0} />
 
           <form
@@ -192,15 +239,17 @@ export function LoginScreen({
             <div className="flex w-full flex-col items-center gap-5">
               <JoystieCompactMark width={45.47} height={45.04} />
 
+              <div className="flex w-v03-content flex-col items-end justify-center gap-[15px]">
+                <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
+                  התחברות לג׳ויסטי
+                </h1>
+
+                {showResumeSignupBanner ? <LoginResumeSignupBanner /> : null}
+              </div>
+
               <div className="flex w-full flex-col items-end gap-[19px]">
                 <div className="flex w-full flex-col items-center gap-5">
                   <div className="flex w-full flex-col items-start gap-5">
-                    <div className="flex w-full flex-col items-end">
-                      <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
-                        התחברות לג׳ויסטי
-                      </h1>
-                    </div>
-
                     {googleBlocked ? (
                       <div className="w-full rounded-[18px] border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-center font-simpler text-sm leading-[1.4] text-amber-100">
                         <p>התחברות עם Google לא עובדת מתוך Cursor.</p>
@@ -260,6 +309,15 @@ export function LoginScreen({
                           onChange={onChange}
                           disabled={formLocked}
                         />
+                        <p className="relative z-[30] w-full px-2.5 text-right">
+                          <Link
+                            href={forgotPasswordHref}
+                            prefetch={false}
+                            className="pointer-events-auto font-simpler text-[14px] font-normal leading-[17.5px] text-v03-green-100 underline decoration-solid underline-offset-2"
+                          >
+                            שכחתי סיסמה
+                          </Link>
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -274,6 +332,8 @@ export function LoginScreen({
         loginError={loginError}
         isSubmitting={isSubmitting}
         formLocked={formLocked}
+        showBlur={scrollOverflows}
+        onSignupClick={onSignupClick}
       />
     </>
   );

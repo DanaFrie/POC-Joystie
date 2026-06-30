@@ -1,5 +1,8 @@
 'use client';
 
+import { SelectableOptionCard } from '@/components/onboarding/parent/SelectableOptionCard';
+import { PICK_FIRST_CHILD_CARD } from '@/constants/pick-first-child-layout';
+
 type PickFirstChildCardProps = {
   name: string;
   screenTimeLabel: string;
@@ -7,56 +10,44 @@ type PickFirstChildCardProps = {
   onSelect: () => void;
 };
 
-/** Child picker row — Figma 12703:42220 (327×card). */
+/** Child picker row — Figma 13680:1526 (327×card, radio left · copy right). */
 export function PickFirstChildCard({
   name,
   screenTimeLabel,
   selected,
   onSelect,
 }: PickFirstChildCardProps) {
+  const title = PICK_FIRST_CHILD_CARD.title;
+  const subtitle = PICK_FIRST_CHILD_CARD.subtitle;
+
   return (
-    <button
-      type="button"
-      dir="ltr"
-      onClick={onSelect}
-      className={`relative flex w-full max-w-v03-content items-center justify-between overflow-hidden rounded-[24px] bg-white/5 px-[30px] py-[25px] transition ${
-        selected
-          ? 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white'
-          : 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white/25 hover:outline-white/40'
-      }`}
+    <SelectableOptionCard
+      selected={selected}
+      onSelect={onSelect}
+      textLayout="flex"
+      contentGap={PICK_FIRST_CHILD_CARD.contentGap}
     >
-      {selected && (
-        <div
-          className="pointer-events-none absolute h-[99px] w-[98px] rounded-full"
-          style={{
-            left: 205.75,
-            top: 93.5,
-            background: 'rgba(0, 255, 179, 0.90)',
-            filter: 'blur(61.49px)',
-          }}
-          aria-hidden
-        />
-      )}
-
       <span
-        className="relative z-[1] flex h-6 w-6 shrink-0 items-center justify-center"
-        aria-hidden
+        className="w-full text-right font-simpler font-bold text-white"
+        style={{
+          fontSize: title.fontSize,
+          lineHeight: `${title.lineHeight}px`,
+          letterSpacing: `${title.letterSpacing}px`,
+        }}
       >
-        <span className="relative h-6 w-6 overflow-hidden rounded-xl bg-[#3A514F]">
-          {selected && (
-            <span className="absolute left-[7px] top-[7px] h-[10px] w-[10px] rounded-full bg-[#1BECAE]" />
-          )}
-        </span>
+        {name}
       </span>
-
-      <div className="relative z-[1] flex w-[153.5px] shrink-0 flex-col items-end justify-center gap-1">
-        <span className="text-center font-simpler text-[20px] font-bold leading-normal text-white">
-          {name}
-        </span>
-        <span className="text-center font-simpler text-base font-normal leading-[21.6px] text-[#B0C6BF]">
-          {screenTimeLabel}
-        </span>
-      </div>
-    </button>
+      <span
+        className="w-full text-right font-simpler font-normal"
+        style={{
+          fontSize: subtitle.fontSize,
+          lineHeight: `${subtitle.lineHeight}px`,
+          letterSpacing: `${subtitle.letterSpacing}px`,
+          color: subtitle.color,
+        }}
+      >
+        {screenTimeLabel}
+      </span>
+    </SelectableOptionCard>
   );
 }

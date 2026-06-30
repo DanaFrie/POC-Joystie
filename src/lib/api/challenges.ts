@@ -233,39 +233,6 @@ export async function getLatestChallenge(parentId: string): Promise<FirestoreCha
 }
 
 /**
- * Get all pending challenges (for admin - consultation approval)
- * Returns challenges where consultationCompleted is not true and isActive is false
- */
-export async function getAllPendingChallenges(): Promise<FirestoreChallenge[]> {
-  try {
-    const { collection, query, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const challengesRef = collection(db, CHALLENGES_COLLECTION);
-    
-    // Query all challenges (no filter - admin has permission to read all)
-    const q = query(challengesRef);
-    const querySnapshot = await getDocs(q);
-    
-    // Filter in code: pending consultations (not completed and not active)
-    const allChallenges = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FirestoreChallenge));
-    
-    const pendingChallenges = allChallenges.filter(
-      (challenge) => challenge.consultationCompleted !== true && !challenge.isActive
-    );
-    
-    logger.log(`Found ${pendingChallenges.length} pending challenges out of ${allChallenges.length} total`);
-    
-    return pendingChallenges;
-  } catch (error) {
-    logger.error('Error getting all pending challenges:', error);
-    throw new Error('שגיאה בטעינת האתגרים הממתינים.');
-  }
-}
-
-/**
  * Deactivate a challenge
  * Optionally includes redemption data when deactivating after redemption
  */

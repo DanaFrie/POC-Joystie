@@ -9,12 +9,15 @@ export const childOnboardingFigmaLinks = {
   companionPick: `${FILE}?node-id=13367-4097&m=dev`,
   eggIntro: `${FILE}?node-id=13147-5625&m=dev`,
   eggHatch: `${FILE}?node-id=13147-5626&m=dev`,
-  doriRevealed: `${FILE}?node-id=13147-5622&m=dev`,
+  doriRevealed: `${FILE}?node-id=13656-6594&m=dev`,
+  eggTransition: `${FILE}?node-id=13147-5623&m=dev`,
   doriTransition: `${FILE}?node-id=13147-5623&m=dev`,
-  doriMissionIntro: `${FILE}?node-id=13147-5624&m=dev`,
+  doriMissionIntro: `${FILE}?node-id=13656-6740&m=dev`,
   missionOne: `${FILE}?node-id=13147-5631&m=dev`,
   ballGameWaiting: `${FILE}?node-id=13147-5635&m=dev`,
   ballGameReady: `${FILE}?node-id=13147-5632&m=dev`,
+  /** Parent ball game — score ring Frame 1430108693 */
+  ballGameScoreRing: `${FILE}?node-id=13656-7722&m=dev`,
 } as const;
 
 /** Placeholder child name until parent token is wired. */
@@ -22,9 +25,9 @@ export const CHILD_ONBOARDING_PLACEHOLDER_NAME = 'יואב' as const;
 
 export const CHILD_ONBOARDING_HERO_VIDEO = '/phone_hover_power.mp4' as const;
 
-/** Auto-advance timings (ms) — screens 2→3 and 3→4, 10% faster than 2500. */
-export const CHILD_ONBOARDING_MINT_GLOW_AUTO_MS = 2250;
-export const CHILD_ONBOARDING_KINGDOM_AUTO_MS = 2250;
+/** Auto-advance timings (ms) — screens 2→3 and 3→4. */
+export const CHILD_ONBOARDING_MINT_GLOW_AUTO_MS = 1500;
+export const CHILD_ONBOARDING_KINGDOM_AUTO_MS = 1500;
 
 /** Companion enter animations on screen 4 — 10% faster than default funnel tokens. */
 export const CHILD_ONBOARDING_ENTER_VARS = {

@@ -2,15 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
-import { ChildContinueGlowButton } from '@/components/onboarding/child/ChildContinueGlowButton';
+import { ChildDoriContinueFooter } from '@/components/onboarding/child/ChildDoriContinueFooter';
+import { ChildDoriMediaFrame } from '@/components/onboarding/child/ChildDoriMediaFrame';
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_DORI_MISSION_INTRO } from '@/constants/child-onboarding-layout';
 
-/** Screen 8 — Figma 13147:5624. Three missions intro. */
+/** Screen 8 — Figma 13656:6740. Three missions intro (same shell as Dori reveal). */
 export function ChildDoriMissionIntroStep({ onContinue }: { onContinue?: () => void }) {
   const layout = CHILD_DORI_MISSION_INTRO;
-  const hero = layout.hero;
+  const bubble = layout.bubble;
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -20,13 +21,28 @@ export function ChildDoriMissionIntroStep({ onContinue }: { onContinue?: () => v
   }, []);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-transparent">
+    <div className="relative h-full w-full overflow-visible bg-transparent">
       <OnboardingMintGlow />
 
-      <div
-        className="pointer-events-none absolute z-[2] overflow-hidden"
-        style={{ left: hero.left, top: hero.top, width: hero.size, height: hero.size }}
+      <ChildSpeechBubble
+        top={bubble.top}
+        width={bubble.width}
+        left={bubble.left}
+        tailLeft={bubble.tailLeft}
+        tailBorderOverlap={bubble.tailBorderOverlap}
+        tailPosition="bottom"
+        paddingTop={bubble.paddingTop}
+        paddingBottom={bubble.paddingBottom}
       >
+        <p className="w-full text-center font-simpler text-[24px] font-normal leading-[1.25] tracking-[-0.36px] text-white">
+          כדי להתחיל לחסוך זמן מסך וכסף, עלינו לעבור בהצלחה 3 משימות.
+        </p>
+        <p className="w-full text-center font-simpler text-[24px] font-black leading-[1.15] tracking-[-0.36px] text-white">
+          בואו נצא לדרך!
+        </p>
+      </ChildSpeechBubble>
+
+      <ChildDoriMediaFrame>
         <video
           ref={videoRef}
           src={CHILD_ONBOARDING_ASSETS.doriPhone}
@@ -38,21 +54,9 @@ export function ChildDoriMissionIntroStep({ onContinue }: { onContinue?: () => v
           className="pointer-events-none h-full w-full object-contain object-center"
           aria-hidden
         />
-      </div>
+      </ChildDoriMediaFrame>
 
-      <ChildSpeechBubble top={layout.bubble.top} width={layout.bubble.width} left={layout.bubble.left}>
-        <div className="flex-1 whitespace-pre-wrap text-center font-simpler text-[24px] leading-[30px] tracking-[-0.36px] text-white">
-          <p className="mb-0">כדי להתחיל לחסוך זמן מסך וכסף, עלינו לעבור בהצלחה 3 משימות.</p>
-          <p className="font-bold">בוא נצא לדרך!</p>
-        </div>
-      </ChildSpeechBubble>
-
-      <div
-        className="absolute left-1/2 z-10 -translate-x-1/2"
-        style={{ top: layout.continue.top, width: layout.continue.width }}
-      >
-        <ChildContinueGlowButton onClick={onContinue} />
-      </div>
+      <ChildDoriContinueFooter onClick={onContinue} />
     </div>
   );
 }

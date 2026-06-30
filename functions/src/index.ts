@@ -2,16 +2,21 @@ import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
 import { authOnUserCreated } from './auth/onUserCreate';
+import { checkAuthEmailExists } from './auth/checkEmailExists';
 import {
   recordBondingInvite,
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
+  resolveBondingGameRoom,
+  reportChildOnboardingMilestone,
+  getChildOnboardingProgress,
 } from './bonding/invites';
 import {
   createGameRoom,
   joinGameRoom,
   getGameOnboardingStatus,
   completeGameOnboarding,
+  endOnboardingGameRoom,
 } from './game/rooms';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
@@ -30,13 +35,18 @@ if (!admin.apps.length) {
 
 export {
   authOnUserCreated,
+  checkAuthEmailExists,
   recordBondingInvite,
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
+  resolveBondingGameRoom,
+  reportChildOnboardingMilestone,
+  getChildOnboardingProgress,
   createGameRoom,
   joinGameRoom,
   getGameOnboardingStatus,
   completeGameOnboarding,
+  endOnboardingGameRoom,
 };
 
 // Define secret for Cloud Run service URL

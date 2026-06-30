@@ -1,20 +1,30 @@
 import { ONBOARDING_PARENT_SUBSCRIPTION_HERO_IMAGE } from '@/constants/onboarding-figma';
 
-import { SIGNUP_HERO_HEIGHT_PX } from '@/constants/signup-layout';
-
 /** Parent subscription gate — Figma 13277:11554 (Screen 78/79). */
 export const ONBOARDING_SUBSCRIPTION = {
   hero: {
-    top: 26,
-    height: 366,
-    /** Ellipse stack uses same 533px frame as signup/login hero. */
-    ellipseFrameHeight: SIGNUP_HERO_HEIGHT_PX,
+    /** Full-bleed from canvas top — no Figma status-bar offset. */
+    top: 0,
+    width: 375,
+    height: 414,
     image: ONBOARDING_PARENT_SUBSCRIPTION_HERO_IMAGE,
     gradient:
       'linear-gradient(180deg, rgba(47, 47, 47, 0) 25.37%, rgba(47, 47, 47, 0.5) 39.86%)',
+    imagePosition: '-20.25px -24.304px',
+    imageSize: '110.8% 100.362%',
+    /** Bottom blend into green-900 — replaces signup hero ellipse stack. */
+    ellipse: {
+      top: 365,
+      left: -33,
+      width: 425,
+      height: 82,
+      borderRadius: 425,
+      color: '#092125',
+      blur: 15,
+    },
   },
-  logo: { top: 72, width: 107, height: 53.5 },
-  copy: { top: 135, left: 22, width: 332, gap: 12, headlineGap: 5 },
+  logo: { top: 46, width: 107, height: 53.5 },
+  copy: { top: 109, left: 24, width: 327, gap: 12, headlineGap: 5 },
   features: {
     padding: 20,
     radius: 16.145,
@@ -23,12 +33,18 @@ export const ONBOARDING_SUBSCRIPTION = {
     checkSize: 18.462,
     iconSize: 20,
   },
-  plans: { top: 450, left: 24, width: 327, gap: 12 },
+  plans: { top: 424, left: 24, width: 327, gap: 12 },
   planCard: {
     paddingX: 30,
     paddingY: 25,
     gap: 20,
     radius: 24,
+  },
+  cta: {
+    top: 652,
+    left: 24,
+    width: 327,
+    gap: 6,
   },
 } as const;
 
@@ -42,12 +58,12 @@ export const ONBOARDING_SUBSCRIPTION_PLANS: {
   {
     id: 'annual',
     title: 'מנוי שנתי',
-    price: '₪244.99 (14.90 לחודש)',
+    price: '₪120 (₪10 לחודש)',
   },
   {
     id: 'monthly',
     title: 'מנוי חודשי',
-    price: '₪24.90 לחודש',
+    price: '₪15 לחודש',
   },
 ];
 

@@ -17,6 +17,11 @@ export function resetOnboardingParentFlowStart() {
   sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'role');
 }
 
+/** Login page "להרשמה" — open parent funnel on `/onboarding`, not the landing hero. */
+export function beginOnboardingSignupFromLogin() {
+  resetOnboardingParentFlowStart();
+}
+
 /** Clear parent funnel session — return to landing on `/onboarding`. */
 export function clearParentFlowSession() {
   if (typeof window === 'undefined') return;

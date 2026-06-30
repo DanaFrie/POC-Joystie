@@ -18,7 +18,7 @@ type PickFirstChildStepProps = {
   onSelectIndex: (index: number) => void;
 };
 
-/** Figma 12703:42220 — עם מי מתחילים? (flow layout for scroll region) */
+/** Figma 13680:1526 — עם מי מתחילים? (flow layout for scroll region) */
 export function PickFirstChildStep({
   options,
   selectedIndex,

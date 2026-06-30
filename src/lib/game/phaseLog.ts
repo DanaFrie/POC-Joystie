@@ -6,6 +6,8 @@ const logger = createContextLogger('GamePhase');
 
 const PHASE_LABELS: Record<GameRoomPhase, string> = {
   waiting_child: 'ממתין לילד — הכדור במרכז עד הצטרפות',
+  waiting_ready: 'שני הצדדים מאשרים מוכנות לפני תחילת משחק',
+  countdown: 'ספירה לאחור לפני תחילת משחק ראשון',
   playing: 'משחק פעיל — מנוע פיזיקה על מסך ההורה',
   finished: 'סיום סיבוב',
 };

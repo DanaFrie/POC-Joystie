@@ -1,7 +1,7 @@
-import Image from 'next/image';
+import { JoystieWordmarkLogo } from '@/components/brand/JoystieWordmarkLogo';
 
 /**
- * Logo stack — Figma 12703:41507 (glow) + 12703:41508 (logo)
+ * Logo stack — Figma 12703:41507 (glow) + 12703:41508 (wordmark SVG)
  * 375×812 coordinates; scales via FunnelViewport.
  */
 export function OnboardingLogo() {
@@ -18,19 +18,11 @@ export function OnboardingLogo() {
         />
       </div>
 
-      {/* logo-joystie.png — 12822:3557 */}
+      {/* Joystie wordmark — 12822:3557 (161×78) */}
       <div
-        className="pointer-events-none absolute left-[calc(50%+8.51px)] top-[195px] z-[5] h-[79px] w-[164px] -translate-x-1/2"
-        aria-hidden
+        className="pointer-events-none absolute left-[calc(50%+8.51px)] top-[195px] z-[5] h-[78px] w-[161px] -translate-x-1/2"
       >
-        <Image
-          src="/brand/logo-joystie.png"
-          alt="Joystie"
-          width={164}
-          height={79}
-          className="h-full w-full object-contain mix-blend-screen"
-          priority
-        />
+        <JoystieWordmarkLogo className="h-full w-full" role="img" aria-label="Joystie" />
       </div>
     </>
   );

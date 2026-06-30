@@ -8,7 +8,6 @@ import {
 } from '@/components/ui/FunnelViewportContext';
 import {
   CHILD_ONBOARDING_HERO_VIDEO,
-  CHILD_ONBOARDING_PLACEHOLDER_NAME,
   CHILD_WELCOME_ELLIPSE_389,
   CHILD_WELCOME_ELLIPSE_391,
   CHILD_WELCOME_HEADLINE,
@@ -16,6 +15,8 @@ import {
 } from '@/constants/child-onboarding-figma';
 
 type ChildWelcomeStepProps = {
+  childName: string;
+  childGender?: 'boy' | 'girl';
   onComplete: () => void;
 };
 
@@ -38,7 +39,11 @@ const WELCOME_ELLIPSE_LAYER_HEIGHT = Math.max(
  * Screen 1 — Figma 13147:5620.
  * Hero video + welcome copy + status bubble (no device status-bar chrome).
  */
-export function ChildWelcomeStep({ onComplete }: ChildWelcomeStepProps) {
+export function ChildWelcomeStep({
+  childName,
+  childGender = 'boy',
+  onComplete,
+}: ChildWelcomeStepProps) {
   const bubble = CHILD_WELCOME_STATUS_BUBBLE;
   const headline = CHILD_WELCOME_HEADLINE;
   const videoFillStyle = useFunnelFullBleed();
@@ -149,9 +154,9 @@ export function ChildWelcomeStep({ onComplete }: ChildWelcomeStepProps) {
               textShadow: headline.textShadow,
             }}
           >
-            {`${CHILD_ONBOARDING_PLACEHOLDER_NAME}, `}
+            {`${childName}, `}
             {'\n'}
-            ברוך הבא לג׳ויסטי!
+            {childGender === 'girl' ? 'ברוכה הבאה לג׳ויסטי!' : 'ברוך הבא לג׳ויסטי!'}
           </h1>
         </div>
 

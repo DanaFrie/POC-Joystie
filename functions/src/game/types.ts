@@ -1,4 +1,4 @@
-export type GameRoomPhase = 'waiting_child' | 'playing' | 'finished';
+export type GameRoomPhase = 'waiting_child' | 'waiting_ready' | 'playing' | 'finished';
 
 export type GameOutcome = 'won' | 'missed' | null;
 
@@ -37,6 +37,10 @@ export interface GameRoomRecord {
   };
   score: {
     shared: number;
+  };
+  playReady?: {
+    parent: boolean;
+    child: boolean;
   };
   activeSide: 'parent' | 'child';
   winner: 'parent' | 'child' | 'shared' | null;

@@ -9,8 +9,8 @@ export function buildChildGameUrl(
   origin: string,
   roomId: string,
   joinCode: string,
-  /** Production: `/onboarding/child/game`. Dev test: `/game/test`. */
-  basePath = '/game/test'
+  /** Child ball game route. */
+  basePath = '/game/child'
 ): string {
   const params = new URLSearchParams({
     mode: 'child',

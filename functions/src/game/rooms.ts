@@ -1,8 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
 import {
-  BALL_START_VX,
-  BALL_START_VY,
   DEFAULT_PADDLE_WIDTH,
   GAME_WIN_SCORE,
 } from './constants';
@@ -63,6 +61,7 @@ export const createGameRoom = functions.https.onCall(
       childUid: null,
       joinCode: randomJoinCode().toUpperCase(),
       phase: 'waiting_child',
+      playReady: { parent: false, child: false },
       ball: defaultBall(now),
       paddles: {
         parentX: 0.5,
@@ -88,6 +87,20 @@ export const createGameRoom = functions.https.onCall(
     };
 
     await roomRef.set(record);
+
+    const bondingInviteId = onboardingContext?.bondingInviteId;
+    if (bondingInviteId) {
+      const inviteRef = admin.firestore().collection('bonding_invites').doc(bondingInviteId);
+      await inviteRef.set(
+        {
+          gameRoomId: roomId,
+          gameJoinCode: record.joinCode,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    }
+
     functions.logger.info('createGameRoom', { roomId, parentId, winScore: GAME_WIN_SCORE });
     return { roomId, joinCode: record.joinCode, winScore: GAME_WIN_SCORE };
   }
@@ -130,20 +143,21 @@ export const joinGameRoom = functions.https.onCall(
     const now = new Date().toISOString();
     await roomRef.update({
       childUid: uid,
-      phase: 'playing',
+      phase: 'waiting_ready',
+      playReady: { parent: false, child: false },
       ball: {
         x: 0.5,
         y: 0.5,
-        vx: BALL_START_VX,
-        vy: BALL_START_VY,
+        vx: 0,
+        vy: 0,
         updatedBy: 'parent',
         updatedAt: now,
       },
       updatedAt: now,
     });
 
-    functions.logger.info('joinGameRoom', { roomId, childUid: uid, phase: 'playing' });
-    return { roomId, phase: 'playing' as const, winScore: GAME_WIN_SCORE };
+    functions.logger.info('joinGameRoom', { roomId, childUid: uid, phase: 'waiting_ready' });
+    return { roomId, phase: 'waiting_ready' as const, winScore: GAME_WIN_SCORE };
   }
 );
 
@@ -252,5 +266,70 @@ export const completeGameOnboarding = functions.https.onCall(
       winScore: GAME_WIN_SCORE,
       score: room.score.shared,
     };
+  }
+);
+
+/**
+ * Marks cooperative win, removes RTDB room + bonding public snapshot.
+ * Called by parent after win fade — stops live game sync.
+ */
+export const endOnboardingGameRoom = functions.https.onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+    }
+    const uid = request.auth.uid;
+    const { roomId } = request.data as { roomId?: string };
+    if (!roomId) {
+      throw new functions.https.HttpsError('invalid-argument', 'roomId required');
+    }
+
+    const roomRef = getRtdb().ref(`${ROOMS_PATH}/${roomId}`);
+    const snap = await roomRef.get();
+    if (!snap.exists()) {
+      return { roomId, removed: false, alreadyGone: true };
+    }
+
+    const room = snap.val() as GameRoomRecord;
+    if (room.parentId !== uid) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Only parent can end onboarding game'
+      );
+    }
+
+    const won =
+      room.phase === 'finished' &&
+      room.winner === 'shared' &&
+      room.score.shared >= GAME_WIN_SCORE;
+
+    if (!won) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Game not won yet — need cooperative win at target score'
+      );
+    }
+
+    const now = new Date().toISOString();
+    if (!room.onboardingAdvanced) {
+      await roomRef.update({
+        onboardingAdvanced: true,
+        onboardingAdvancedAt: now,
+        gameOutcome: 'won',
+        updatedAt: now,
+      });
+    }
+
+    await roomRef.remove();
+    await getRtdb().ref(`onboardingBondingPublic/${uid}`).remove();
+
+    functions.logger.info('endOnboardingGameRoom', {
+      roomId,
+      parentId: uid,
+      score: room.score.shared,
+    });
+
+    return { roomId, removed: true, winScore: GAME_WIN_SCORE, score: room.score.shared };
   }
 );

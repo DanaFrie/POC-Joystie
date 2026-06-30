@@ -24,6 +24,7 @@ export const authOnUserCreated = functions.auth.user().onCreate(async (user) => 
     gender: 'male',
     kidsAges: [],
     termsAccepted: false,
+    onboarding: false,
     signupDate: now,
     createdAt: now,
     updatedAt: now,

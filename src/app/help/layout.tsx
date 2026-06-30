@@ -1,0 +1,32 @@
+import type { Metadata } from 'next';
+import { OnboardingFunnelRoot } from '@/components/onboarding/OnboardingFunnelRoot';
+import { FunnelViewport } from '@/components/ui/FunnelViewport';
+
+export const metadata: Metadata = {
+  themeColor: '#092125',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  },
+};
+
+export default function HelpLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <OnboardingFunnelRoot>
+      <link
+        rel="preload"
+        href="/signup/hero/box-mountain.webp"
+        as="image"
+        type="image/webp"
+      />
+      <FunnelViewport
+        surface="dark"
+        scaleMode="scroll"
+        className="font-simpler text-v03-text-on-dark"
+      >
+        <div className="relative h-full w-full">{children}</div>
+      </FunnelViewport>
+    </OnboardingFunnelRoot>
+  );
+}

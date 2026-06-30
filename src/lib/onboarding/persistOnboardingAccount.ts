@@ -75,7 +75,9 @@ function buildKidsAgesFromFunnel(
   screenTimes: OnboardingChildScreenTime[]
 ): UserKidAgeScreenTime[] {
   return children.map((child, index) => ({
+    name: child.name.trim(),
     age: String(child.age),
+    gender: child.gender,
     dailyScreenTimeHours: screenTimes[index]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   }));
 }
@@ -97,7 +99,9 @@ function saveFunnelChildrenToSession(
 
   if (typeof window !== 'undefined') {
     const kidsAges = snapshots.map((s) => ({
+      name: s.name,
       age: s.age,
+      gender: s.gender,
       dailyScreenTimeHours: s.dailyScreenTimeHours,
     }));
     localStorage.setItem(
@@ -176,6 +180,7 @@ export async function persistOnboardingAccountAfterAuth(params: {
       gender,
       kidsAges,
       termsAccepted: true,
+      onboarding: false,
       signupDate: now,
     });
   } else {

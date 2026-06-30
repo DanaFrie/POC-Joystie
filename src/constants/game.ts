@@ -5,8 +5,8 @@ export const GAME_WIN_SCORE = 10;
 
 /** Placeholder next-step ids until onboarding routes wire real steps. */
 export const GAME_ONBOARDING_NEXT_STEP = {
-  parent: 'onboarding_after_game_parent',
-  child: 'onboarding_after_game_child',
+  parent: 'onboardingComplete',
+  child: 'missionOneWin',
 } as const;
 
 export type GameOnboardingContext = {

@@ -1,54 +1,68 @@
 'use client';
 
-import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
+import { useEffect, useRef } from 'react';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
-import { ChildContinueGlowButton } from '@/components/onboarding/child/ChildContinueGlowButton';
+import { ChildDoriContinueFooter } from '@/components/onboarding/child/ChildDoriContinueFooter';
+import { ChildDoriMediaFrame } from '@/components/onboarding/child/ChildDoriMediaFrame';
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
-import { CHILD_ONBOARDING_PLACEHOLDER_NAME } from '@/constants/child-onboarding-figma';
 import { CHILD_DORI_REVEALED } from '@/constants/child-onboarding-layout';
 
-/** Screen 6 — Figma 13147:5622. Dori revealed after egg hatch. */
-export function ChildDoriRevealedStep({ onContinue }: { onContinue?: () => void }) {
+/** Screen 6 — Figma 13656:6594. Dori revealed after egg hatch. */
+export function ChildDoriRevealedStep({
+  childName,
+  onContinue,
+}: {
+  childName: string;
+  onContinue?: () => void;
+}) {
   const layout = CHILD_DORI_REVEALED;
-  const hero = layout.hero;
+  const bubble = layout.bubble;
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    void video.play().catch(() => {});
+  }, []);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-transparent">
+    <div className="relative h-full w-full overflow-visible bg-transparent">
       <OnboardingMintGlow />
 
-      <div
-        className="pointer-events-none absolute z-[2] overflow-hidden"
-        style={{ left: hero.left, top: hero.top, width: hero.size, height: hero.size }}
-      >
-        <OnboardingLazyImage
-          src={CHILD_ONBOARDING_ASSETS.doriWaveHello}
-          alt=""
-          className="h-full w-full object-contain"
-          priority
-        />
-      </div>
-
       <ChildSpeechBubble
-        top={layout.bubble.top}
-        width={layout.bubble.width}
-        left={layout.bubble.left}
+        top={bubble.top}
+        width={bubble.width}
+        left={bubble.left}
+        tailLeft={bubble.tailLeft}
+        tailBorderOverlap={bubble.tailBorderOverlap}
+        tailPosition="bottom"
+        paddingTop={bubble.paddingTop}
+        paddingBottom={bubble.paddingBottom}
+        appearance={{ gap: 0 }}
       >
-        <p className="flex-1 text-center font-simpler text-[24px] leading-[30px] tracking-[-0.36px] text-white">
-          <span className="font-normal">
-            {`אין עליך ${CHILD_ONBOARDING_PLACEHOLDER_NAME}!`}
-            <br />
-          </span>
-          <span className="font-black leading-[1.25]">תודה שהערת אותי!</span>
+        <p className="w-full text-center font-simpler text-[24px] font-normal leading-[1.25] tracking-[-0.36px] text-white">
+          {`אין עליך ${childName}!`}
+          <br />
+          <span className="font-black">תודה שהערת אותי!</span>
         </p>
       </ChildSpeechBubble>
 
-      <div
-        className="absolute left-1/2 z-10 -translate-x-1/2"
-        style={{ top: layout.continue.top, width: layout.continue.width }}
-      >
-        <ChildContinueGlowButton onClick={onContinue} />
-      </div>
+      <ChildDoriMediaFrame>
+        <video
+          ref={videoRef}
+          src={CHILD_ONBOARDING_ASSETS.doriRevealTransitionVideo}
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          className="pointer-events-none h-full w-full object-contain object-center"
+          aria-hidden
+        />
+      </ChildDoriMediaFrame>
+
+      <ChildDoriContinueFooter onClick={onContinue} />
     </div>
   );
 }

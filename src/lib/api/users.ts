@@ -35,6 +35,35 @@ export async function createUser(
 }
 
 /**
+ * Find a user profile by email (POC: public read on users collection).
+ */
+export async function getUserByEmail(email: string): Promise<FirestoreUser | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  try {
+    const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
+    const db = await getFirestoreInstance();
+    const q = query(
+      collection(db, USERS_COLLECTION),
+      where('email', '==', normalized),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      return null;
+    }
+
+    const docSnap = snap.docs[0];
+    return { id: docSnap.id, ...docSnap.data() } as FirestoreUser;
+  } catch (error) {
+    logger.error('Error getting user by email:', error);
+    return null;
+  }
+}
+
+/**
  * Get user data by ID
  */
 export async function getUser(userId: string, useCache: boolean = true): Promise<FirestoreUser | null> {

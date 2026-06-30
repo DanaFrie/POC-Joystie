@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  completeGameOnboarding,
   createGameRoom,
   joinGameRoom,
 } from '@/lib/api/game';
@@ -16,14 +15,20 @@ import {
 } from '@/lib/game/phaseLog';
 import { isPhysicsAuthority, stepBallPhysics } from '@/lib/game/physics';
 import {
+  beginCountdown,
+  restartAfterMiss,
   resetGameRound,
+  startGamePlay,
   subscribeToGameRoom,
+  ensureWaitingReadyPhase,
   updateBallPosition,
   updatePaddlePosition,
-  updateScoreAndPhase,
+  updatePlayReady,
 } from '@/lib/game/rooms';
-import { getAuthInstance } from '@/lib/firebase';
+import { BALL_GAME_COUNTDOWN_TOTAL_MS } from '@/constants/ball-game-countdown';
+import { ensureAnonymousChildAuth as signInAnonymousChild } from '@/lib/game/anonymousChildAuth';
 import { getCurrentUserId } from '@/utils/auth';
+import type { GameOnboardingContext } from '@/constants/game';
 import type { GamePlayerRole, GameRoomPhase, GameRoomState } from '@/types/game';
 
 const PARENT_AS_CHILD_ERROR =
@@ -54,15 +59,20 @@ export type UseGameSessionOptions = {
   mode: string | null;
   roomIdParam: string;
   joinCodeParam: string;
-  /** Dev: `/game/test`. Onboarding child route TBD. */
+  /** Onboarding child game: `/game/child`. */
   childBasePath?: string;
+  /** When set with empty roomId, auto-create as parent on mount. */
+  autoCreateParent?: boolean;
+  createRoomContext?: GameOnboardingContext;
 };
 
 export function useGameSession({
   mode,
   roomIdParam,
   joinCodeParam,
-  childBasePath = '/game/test',
+  childBasePath = '/game/child',
+  autoCreateParent = false,
+  createRoomContext,
 }: UseGameSessionOptions) {
   const [roomId, setRoomId] = useState(roomIdParam);
   const [joinCode, setJoinCode] = useState(joinCodeParam);
@@ -75,7 +85,6 @@ export function useGameSession({
   const roomRef = useRef<GameRoomState | null>(null);
   const childJoinAttempted = useRef(false);
   const lastPhaseRef = useRef<GameRoomPhase | null>(null);
-  const onboardingCompleteCalled = useRef(false);
 
   useEffect(() => {
     roomRef.current = room;
@@ -139,52 +148,26 @@ export function useGameSession({
           winner: current.winner,
         });
 
+        const scoreChanged = result.score.shared !== current.score.shared;
+        const phaseChanged =
+          result.phase !== current.phase || result.winner !== current.winner;
+
         await updateBallPosition(
           roomId,
           role,
           result.ball.x,
           result.ball.y,
           result.ball.vx,
-          result.ball.vy
+          result.ball.vy,
+          result.ball.toward,
+          scoreChanged || phaseChanged
+            ? {
+                score: result.score,
+                phase: result.phase,
+                winner: result.winner,
+              }
+            : undefined
         );
-
-        if (
-          result.score.shared !== current.score.shared ||
-          result.phase !== current.phase ||
-          result.winner !== current.winner
-        ) {
-          await updateScoreAndPhase(
-            roomId,
-            result.score,
-            result.phase,
-            'parent',
-            result.winner
-          );
-        }
-
-        if (
-          result.phase === 'finished' &&
-          result.winner === 'shared' &&
-          !onboardingCompleteCalled.current
-        ) {
-          onboardingCompleteCalled.current = true;
-          try {
-            await completeGameOnboarding({ roomId });
-            logOnboardingAdvanceReady({
-              ...current,
-              score: result.score,
-              phase: result.phase,
-              winner: result.winner,
-              onboardingAdvanced: true,
-            });
-          } catch (err) {
-            onboardingCompleteCalled.current = false;
-            logGamePhase('finished', {
-              completeGameOnboardingError:
-                err instanceof Error ? err.message : 'unknown',
-            });
-          }
-        }
       } catch (err) {
         setError(
           err instanceof Error
@@ -198,37 +181,41 @@ export function useGameSession({
   }, [roomId, role]);
 
   const ensureAnonymousChildAuth = useCallback(async () => {
-    const auth = await getAuthInstance();
-    const { signInAnonymously, signOut } = await import('firebase/auth');
-    if (auth.currentUser) await signOut(auth);
-    await signInAnonymously(auth);
-    return getCurrentUserId();
+    return signInAnonymousChild();
   }, []);
 
-  const onCreateParentRoom = async () => {
+  const autoCreateAttempted = useRef(false);
+
+  const onCreateParentRoom = useCallback(async (context?: GameOnboardingContext) => {
     setError(null);
     setBusy(true);
-    onboardingCompleteCalled.current = false;
     try {
       const uid = await getCurrentUserId();
       if (!uid) {
         setError('התחברו כהורה (אימייל) לפני יצירת חדר');
+        autoCreateAttempted.current = false;
         return;
       }
-      const result = await createGameRoom({
-        parentStepId: 'dev_test_parent',
-        childStepId: 'dev_test_child',
-      });
+      const result = await createGameRoom(context ?? createRoomContext ?? {});
       setRoomId(result.roomId);
       setJoinCode(result.joinCode);
       setRole('parent');
       logGamePhase('waiting_child', { roomId: result.roomId, source: 'create' });
+      return result;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'יצירת חדר נכשלה');
+      autoCreateAttempted.current = false;
+      return null;
     } finally {
       setBusy(false);
     }
-  };
+  }, [createRoomContext]);
+
+  useEffect(() => {
+    if (!autoCreateParent || autoCreateAttempted.current || roomId) return;
+    autoCreateAttempted.current = true;
+    void onCreateParentRoom(createRoomContext);
+  }, [autoCreateParent, roomId, createRoomContext, onCreateParentRoom]);
 
   const attemptChildJoin = useCallback(async () => {
     if (!roomIdParam || !joinCodeParam) return;
@@ -241,7 +228,12 @@ export function useGameSession({
       setRoomId(roomIdParam);
       setJoinCode(joinCodeParam);
       setRole('child');
-      logGamePhase('playing', { roomId: roomIdParam, source: 'child_join' });
+      try {
+        await ensureWaitingReadyPhase(roomIdParam);
+      } catch {
+        // deployed joinGameRoom may already use waiting_ready
+      }
+      logGamePhase('waiting_ready', { roomId: roomIdParam, source: 'child_join' });
     } catch (e) {
       const msg = formatGameError(e);
       if (msg === PARENT_AS_CHILD_ERROR) {
@@ -262,21 +254,64 @@ export function useGameSession({
     void attemptChildJoin();
   }, [mode, roomIdParam, joinCodeParam, role, attemptChildJoin]);
 
-  const onArenaPointer = async (clientX: number, _clientY: number, rect: DOMRect) => {
-    if (!roomId || !role || !room) return;
-    const x = pointerXToCourt(clientX, rect);
-    try {
-      await updatePaddlePosition(roomId, role, x, room.paddles.width);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'עדכון מגש נכשל');
-    }
-  };
+  const lastPaddleWriteAt = useRef(0);
 
-  const onRetry = async () => {
-    if (!roomId || busy) return;
+  const onArenaPointer = useCallback(
+    (clientX: number, _clientY: number, rect: DOMRect) => {
+      if (!roomId || !role || !room || room.phase !== 'playing') return;
+      const x = pointerXToCourt(clientX, rect);
+      const now = performance.now();
+      if (now - lastPaddleWriteAt.current < 32) return;
+      lastPaddleWriteAt.current = now;
+      void updatePaddlePosition(roomId, role, x, room.paddles.width).catch((err) => {
+        setError(err instanceof Error ? err.message : 'עדכון מגש נכשל');
+      });
+    },
+    [roomId, role, room]
+  );
+
+  const playReadyInFlight = useRef(false);
+  const countdownStartedRef = useRef<string | null>(null);
+  const playStartedRef = useRef<string | null>(null);
+  const restartAfterMissRef = useRef<string | null>(null);
+
+  const markPlayReady = useCallback(async () => {
+    if (!roomId || playReadyInFlight.current) return;
+
+    let effectiveRole = role;
+    if (!effectiveRole && room) {
+      const uid = await getCurrentUserId();
+      if (uid && uid === room.parentId) effectiveRole = 'parent';
+      else if (uid && uid === room.childUid) effectiveRole = 'child';
+    }
+    if (!effectiveRole) {
+      setError('לא ניתן לאשר מוכנות — נסו לרענן את העמוד');
+      return;
+    }
+
+    playReadyInFlight.current = true;
+    setError(null);
+    try {
+      await updatePlayReady(roomId, effectiveRole, true);
+      if (!role) setRole(effectiveRole);
+      logGamePhase('waiting_ready', { roomId, role: effectiveRole, playReady: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'אישור מוכנות נכשל');
+    } finally {
+      playReadyInFlight.current = false;
+    }
+  }, [roomId, role, room]);
+
+  const onRetry = useCallback(async () => {
+    if (!roomId || playReadyInFlight.current) return;
+    const current = roomRef.current;
+    if (current?.phase === 'finished' && !current.winner) {
+      await markPlayReady();
+      return;
+    }
+    if (busy) return;
     setError(null);
     setBusy(true);
-    onboardingCompleteCalled.current = false;
     try {
       await resetGameRound(roomId);
       logGamePhase('playing', { roomId, source: 'retry' });
@@ -285,7 +320,69 @@ export function useGameSession({
     } finally {
       setBusy(false);
     }
-  };
+  }, [roomId, busy, markPlayReady]);
+
+  /** Parent only — first rally: synchronized countdown before play. */
+  useEffect(() => {
+    if (!roomId || !room || role !== 'parent') return;
+    const ready = room.playReady ?? { parent: false, child: false };
+    if (
+      room.childUid &&
+      ready.parent &&
+      !room.hasStartedRound &&
+      (room.phase === 'waiting_ready' || room.phase === 'waiting_child')
+    ) {
+      const key = `${roomId}:countdown`;
+      if (countdownStartedRef.current === key) return;
+      countdownStartedRef.current = key;
+      void beginCountdown(roomId).catch((err) => {
+        countdownStartedRef.current = null;
+        setError(err instanceof Error ? err.message : 'התחלת ספירה נכשלה');
+      });
+    }
+    if (room.phase === 'waiting_ready' && !ready.parent) {
+      countdownStartedRef.current = null;
+    }
+  }, [roomId, role, room]);
+
+  /** Parent only — end countdown → serve toward child. */
+  useEffect(() => {
+    if (!roomId || !room || role !== 'parent') return;
+    if (room.phase !== 'countdown' || !room.countdownAt) return;
+
+    const key = `${roomId}:${room.countdownAt}`;
+    const startMs = new Date(room.countdownAt).getTime();
+    const fire = () => {
+      if (Date.now() - startMs < BALL_GAME_COUNTDOWN_TOTAL_MS) return;
+      if (playStartedRef.current === key) return;
+      playStartedRef.current = key;
+      void startGamePlay(roomId).catch((err) => {
+        playStartedRef.current = null;
+        setError(err instanceof Error ? err.message : 'התחלת משחק נכשלה');
+      });
+    };
+    fire();
+    const id = window.setInterval(fire, 100);
+    return () => window.clearInterval(id);
+  }, [roomId, role, room]);
+
+  /** Parent only — both tapped retry after miss. */
+  useEffect(() => {
+    if (!roomId || !room || role !== 'parent') return;
+    const ready = room.playReady ?? { parent: false, child: false };
+    if (room.phase === 'finished' && !room.winner && ready.parent && ready.child) {
+      const key = `${roomId}:${room.updatedAt}:restart`;
+      if (restartAfterMissRef.current === key) return;
+      restartAfterMissRef.current = key;
+      void restartAfterMiss(roomId).catch((err) => {
+        restartAfterMissRef.current = null;
+        setError(err instanceof Error ? err.message : 'התחלת משחק מחדש נכשלה');
+      });
+    }
+    if (room.phase === 'playing') {
+      restartAfterMissRef.current = null;
+    }
+  }, [roomId, role, room]);
 
   const childLink =
     typeof window !== 'undefined' && roomId && joinCode
@@ -306,6 +403,7 @@ export function useGameSession({
     attemptChildJoin,
     onArenaPointer,
     onRetry,
+    markPlayReady,
     resetChildJoinAttempt: () => {
       childJoinAttempted.current = false;
     },

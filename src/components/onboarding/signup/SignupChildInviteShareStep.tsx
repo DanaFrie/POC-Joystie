@@ -28,12 +28,14 @@ function getParentGenderForMessage(): 'female' | 'male' {
 
 type SignupChildInviteShareStepProps = {
   childName: string;
+  childGender?: 'boy' | 'girl';
   onShared?: () => void;
 };
 
 /** Figma 12703:42221 — hero, WhatsApp / copy link, footnote. */
 export function SignupChildInviteShareStep({
   childName,
+  childGender,
   onShared,
 }: SignupChildInviteShareStepProps) {
   const [copied, setCopied] = useState(false);
@@ -48,6 +50,7 @@ export function SignupChildInviteShareStep({
     try {
       const result = await prepareBondingInvite({
         childName,
+        childGender,
       });
       setChildUrl(result.childUrl);
       return result.childUrl;

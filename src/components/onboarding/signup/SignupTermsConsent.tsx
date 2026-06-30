@@ -48,7 +48,7 @@ export function SignupTermsConsent({
           <span className="flex-1 font-simpler text-[16px] font-normal leading-[21.6px] text-[#E3EDEA]">
             קראתי ואני מאשר/ת את{' '}
             <Link
-              href="/signup/terms"
+              href="/onboarding/terms"
               className="underline decoration-solid underline-offset-2"
               onClick={(e) => e.stopPropagation()}
             >

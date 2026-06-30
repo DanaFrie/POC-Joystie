@@ -95,7 +95,7 @@ export function ChildBallGameStep({
               className="font-simpler text-[22px] font-black leading-[1.25] tracking-[-0.36px] text-white"
               style={{ textShadow: '0 0 20px rgba(255, 255, 255, 0.5)' }}
             >
-              מחכים שאבא יאשר שהוא מוכן...
+              מחכים שאבא יאשר שהוא מוכן
             </p>
             <div className="mt-6 flex items-center justify-center gap-2" aria-hidden>
               {[0, 1, 2].map((i) => (

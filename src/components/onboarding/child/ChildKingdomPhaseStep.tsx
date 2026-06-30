@@ -16,8 +16,8 @@ type ChildKingdomPhaseStepProps = {
 };
 
 /**
- * Screens 2–4 — layers accumulate (mint glow → kingdom → companion).
- * Single mount; new elements enter per phase without remounting prior layers.
+ * Screens 2–4 — layers accumulate without remounting prior layers.
+ * 2: mint glow only · 3: kingdom + ellipses (group fade) · 4: logo + companion (stagger).
  */
 export function ChildKingdomPhaseStep({
   phase,
@@ -31,26 +31,22 @@ export function ChildKingdomPhaseStep({
       className="relative h-full w-full overflow-visible bg-transparent"
       style={CHILD_ONBOARDING_ENTER_VARS as CSSProperties}
     >
-      <div className="v03-funnel-enter-0">
-        <OnboardingMintGlow />
-      </div>
+      <OnboardingMintGlow />
 
       {showKingdom ? (
-        <>
-          <div className="v03-funnel-enter-0">
-            <OnboardingKingdom />
-          </div>
-          <div className="v03-funnel-enter-1">
-            <OnboardingEllipses />
-          </div>
-          <div className="v03-funnel-enter-2">
-            <ChildOnboardingLogo />
-          </div>
-        </>
+        <div className="v03-funnel-enter-0">
+          <OnboardingKingdom />
+          <OnboardingEllipses />
+        </div>
       ) : null}
 
       {showCompanion ? (
-        <ChildCompanionOverlay onContinue={onCompanionContinue} />
+        <>
+          <div className="v03-funnel-enter-0">
+            <ChildOnboardingLogo />
+          </div>
+          <ChildCompanionOverlay onContinue={onCompanionContinue} />
+        </>
       ) : null}
     </div>
   );

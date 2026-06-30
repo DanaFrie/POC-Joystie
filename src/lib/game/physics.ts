@@ -1,4 +1,12 @@
 import { GAME_WIN_SCORE } from '@/constants/game';
+import {
+  PHYSICS_BALL_RADIUS_X,
+  PHYSICS_BALL_RADIUS_Y,
+  PHYSICS_CHILD_PADDLE_SURFACE_Y,
+  PHYSICS_PARENT_PADDLE_SURFACE_Y,
+  PHYSICS_PADDLE_HEIGHT_NORM,
+} from '@/lib/game/ballGameCourt';
+import { velocityToward, ballTowardFromVy } from '@/lib/game/ballDirection';
 import type {
   GamePlayerRole,
   GamePaddlesState,
@@ -7,12 +15,19 @@ import type {
   GameWinner,
 } from '@/types/game';
 
-/** Ball diameter in normalized court coords (0–1). */
-export const BALL_DIAMETER = 0.04;
-export const BALL_RADIUS = BALL_DIAMETER / 2;
+/** Ball radius in normalized court coords — matches 44px rendered ball. */
+export const BALL_RADIUS_X = PHYSICS_BALL_RADIUS_X;
+export const BALL_RADIUS_Y = PHYSICS_BALL_RADIUS_Y;
+/** @deprecated use BALL_RADIUS_X / BALL_RADIUS_Y */
+export const BALL_RADIUS = BALL_RADIUS_Y;
+export const BALL_DIAMETER = BALL_RADIUS_Y * 2;
 
-export const PARENT_PADDLE_Y = 0.92;
-export const CHILD_PADDLE_Y = 0.08;
+/** Paddle collision surfaces — aligned to Figma paddle edges on play lane. */
+export const PARENT_PADDLE_Y = PHYSICS_PARENT_PADDLE_SURFACE_Y;
+export const CHILD_PADDLE_Y = PHYSICS_CHILD_PADDLE_SURFACE_Y;
+
+/** Paddle width in normalized court coords (0–1) — Figma 92px on 327px lane. */
+export const DEFAULT_PADDLE_WIDTH = 92 / 327;
 
 export const PHYSICS_DT = 0.03;
 export const PHYSICS_SUBSTEPS = 4;
@@ -20,16 +35,11 @@ export const PHYSICS_SUBSTEPS = 4;
 /** @deprecated use GAME_WIN_SCORE from @/constants/game */
 export const WIN_SCORE = GAME_WIN_SCORE;
 
-/** Paddle width in normalized court coords (0–1). */
-export const DEFAULT_PADDLE_WIDTH = 0.28;
-
-/** Ball speed when play begins (after child joins). */
-export const BALL_START_VX = 0.1;
-export const BALL_START_VY = 0.14;
-
-const MIN_SPEED = 0.1;
-const MAX_SPEED = 0.32;
-const PADDLE_BOOST = 1.02;
+const MIN_SPEED = 0.1794;
+const MAX_SPEED = 0.5;
+const PADDLE_BOOST = 1.04;
+const PADDLE_ANGLE_GAIN = 0.28;
+const PADDLE_ANGLE_JITTER = 0.06;
 
 const SUBSTEP_DT = PHYSICS_DT / PHYSICS_SUBSTEPS;
 
@@ -38,6 +48,7 @@ export type BallVector = {
   y: number;
   vx: number;
   vy: number;
+  toward?: GamePlayerRole;
 };
 
 export type PhysicsStepInput = {
@@ -54,21 +65,24 @@ export type PhysicsStepResult = PhysicsStepInput & {
   missedBy: GamePlayerRole | null;
 };
 
+/** Serve from center toward the child paddle (shared y → 0). */
 export function createStartBall(): BallVector {
-  return { x: 0.5, y: 0.5, vx: BALL_START_VX, vy: BALL_START_VY };
+  const { vx, vy } = velocityToward('child');
+  return { x: 0.5, y: 0.5, vx, vy, toward: 'child' };
 }
 
-/** Kick a stationary ball when play begins (e.g. join fn not yet deployed). */
+/** Kick a stationary ball — preserve intended receiver. */
 export function ensureBallMoving(ball: BallVector): BallVector {
   if (Math.hypot(ball.vx, ball.vy) < 0.02) {
-    return { ...ball, vx: BALL_START_VX, vy: BALL_START_VY };
+    const toward = ball.toward ?? ballTowardFromVy(ball.vy);
+    const { vx, vy } = velocityToward(toward);
+    return { ...ball, vx, vy, toward };
   }
-  return ball;
+  return { ...ball, toward: ball.toward ?? ballTowardFromVy(ball.vy) };
 }
 
 function clampBallX(x: number): number {
-  const r = BALL_RADIUS;
-  return Math.min(1 - r, Math.max(r, x));
+  return Math.min(1 - BALL_RADIUS_X, Math.max(BALL_RADIUS_X, x));
 }
 
 /** Keep paddle center so the full paddle stays inside the court. */
@@ -83,12 +97,12 @@ export function clampBallCenter(x: number, y: number): { x: number; y: number } 
 
 function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
   const speed = Math.hypot(vx, vy);
+  if (speed < 1e-9) {
+    return velocityToward('child');
+  }
   if (speed < MIN_SPEED) {
-    const angle = Math.atan2(vy || 1, vx || 0.3);
-    return {
-      vx: Math.cos(angle) * MIN_SPEED,
-      vy: Math.sin(angle) * MIN_SPEED,
-    };
+    const scale = MIN_SPEED / speed;
+    return { vx: vx * scale, vy: vy * scale };
   }
   if (speed > MAX_SPEED) {
     const scale = MAX_SPEED / speed;
@@ -97,8 +111,35 @@ function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
   return { vx, vy };
 }
 
-function overlapsPaddleX(x: number, paddleX: number, paddleHalf: number): boolean {
-  return Math.abs(x - paddleX) <= paddleHalf + BALL_RADIUS * 0.2;
+const PADDLE_HIT_EPS = 0.004;
+
+function overlapsPaddleX(
+  x: number,
+  paddleX: number,
+  paddleHalf: number
+): boolean {
+  return Math.abs(x - paddleX) <= paddleHalf + BALL_RADIUS_X * 1.05;
+}
+
+function ballOverlapsPaddle(
+  x: number,
+  y: number,
+  paddleX: number,
+  paddleHalf: number,
+  paddleY: number,
+  isBottomPaddle: boolean
+): boolean {
+  if (!overlapsPaddleX(x, paddleX, paddleHalf)) return false;
+  if (isBottomPaddle) {
+    return (
+      y + BALL_RADIUS_Y >= paddleY - PADDLE_HIT_EPS &&
+      y - BALL_RADIUS_Y <= paddleY + PHYSICS_PADDLE_HEIGHT_NORM + PADDLE_HIT_EPS
+    );
+  }
+  return (
+    y - BALL_RADIUS_Y <= paddleY + PADDLE_HIT_EPS &&
+    y + BALL_RADIUS_Y >= paddleY - PHYSICS_PADDLE_HEIGHT_NORM - PADDLE_HIT_EPS
+  );
 }
 
 function reflectOffPaddle(
@@ -107,25 +148,28 @@ function reflectOffPaddle(
   vy: number,
   paddleX: number,
   paddleHalf: number,
+  defender: GamePlayerRole,
   paddleY: number
-): { vx: number; vy: number; y: number } {
+): { vx: number; vy: number; y: number; toward: GamePlayerRole } {
   const hitOffset = Math.max(-1, Math.min(1, (x - paddleX) / paddleHalf));
+  const nextToward: GamePlayerRole = defender === 'parent' ? 'child' : 'parent';
+  const speed = Math.max(MIN_SPEED, Math.hypot(vx, vy) * PADDLE_BOOST);
+  const angleKick =
+    hitOffset * PADDLE_ANGLE_GAIN +
+    (Math.random() - 0.5) * PADDLE_ANGLE_JITTER;
+  const angledVx = vx + angleKick;
+  const towardVel = velocityToward(nextToward, speed, angledVx);
+  const normalized = normalizeSpeed(towardVel.vx, towardVel.vy);
   const isBottomPaddle = paddleY > 0.5;
-  let newVx = vx + hitOffset * 0.12;
-  let newVy = isBottomPaddle
-    ? -Math.abs(vy) * PADDLE_BOOST
-    : Math.abs(vy) * PADDLE_BOOST;
-  const normalized = normalizeSpeed(newVx, newVy);
   const y = isBottomPaddle
-    ? paddleY - BALL_RADIUS
-    : paddleY + BALL_RADIUS;
-  return { ...normalized, y };
+    ? paddleY - BALL_RADIUS_Y
+    : paddleY + BALL_RADIUS_Y;
+  return { ...normalized, y, toward: nextToward };
 }
 
 function bounceHorizontal(x: number, vx: number): { x: number; vx: number } {
-  const r = BALL_RADIUS;
-  if (x <= r) return { x: r, vx: Math.abs(vx) };
-  if (x >= 1 - r) return { x: 1 - r, vx: -Math.abs(vx) };
+  if (x <= BALL_RADIUS_X) return { x: BALL_RADIUS_X, vx: Math.abs(vx) };
+  if (x >= 1 - BALL_RADIUS_X) return { x: 1 - BALL_RADIUS_X, vx: -Math.abs(vx) };
   return { x, vx };
 }
 
@@ -134,6 +178,7 @@ type SubstepResult = {
   y: number;
   vx: number;
   vy: number;
+  toward?: GamePlayerRole;
   scored: boolean;
   missed: boolean;
   missedBy: GamePlayerRole | null;
@@ -150,39 +195,65 @@ function tryPaddleBounce(
   vy: number,
   paddleX: number,
   paddleHalf: number,
-  paddleY: number
-): { hit: boolean; x: number; y: number; vx: number; vy: number } {
-  const r = BALL_RADIUS;
+  paddleY: number,
+  defender: GamePlayerRole
+): { hit: boolean; x: number; y: number; vx: number; vy: number; toward?: GamePlayerRole } {
   const isBottomPaddle = paddleY > 0.5;
 
   if (isBottomPaddle) {
-    if (vy <= 0) return { hit: false, x, y, vx, vy };
-    const crossed = prevY + r < paddleY && y + r >= paddleY;
+    if (vy <= 0) {
+      return { hit: false, x, y, vx, vy };
+    }
+    const crossed =
+      prevY + BALL_RADIUS_Y <= paddleY + PADDLE_HIT_EPS &&
+      y + BALL_RADIUS_Y >= paddleY - PADDLE_HIT_EPS;
     if (!crossed || !overlapsPaddleX(x, paddleX, paddleHalf)) {
       return { hit: false, x, y, vx, vy };
     }
-    const reflected = reflectOffPaddle(x, vx, vy, paddleX, paddleHalf, paddleY);
+    const reflected = reflectOffPaddle(
+      x,
+      vx,
+      vy,
+      paddleX,
+      paddleHalf,
+      defender,
+      paddleY
+    );
     return {
       hit: true,
       x,
       y: reflected.y,
       vx: reflected.vx,
       vy: reflected.vy,
+      toward: reflected.toward,
     };
   }
 
-  if (vy >= 0) return { hit: false, x, y, vx, vy };
-  const crossed = prevY - r > paddleY && y - r <= paddleY;
+  if (vy >= 0) {
+    return { hit: false, x, y, vx, vy };
+  }
+  const crossed =
+    prevY - BALL_RADIUS_Y >= paddleY - PADDLE_HIT_EPS &&
+    y - BALL_RADIUS_Y <= paddleY + PADDLE_HIT_EPS;
   if (!crossed || !overlapsPaddleX(x, paddleX, paddleHalf)) {
     return { hit: false, x, y, vx, vy };
   }
-  const reflected = reflectOffPaddle(x, vx, vy, paddleX, paddleHalf, paddleY);
+  const reflected = reflectOffPaddle(
+    x,
+    vx,
+    vy,
+    paddleX,
+    paddleHalf,
+    defender,
+    paddleY
+  );
   return {
     hit: true,
     x,
     y: reflected.y,
     vx: reflected.vx,
     vy: reflected.vy,
+    toward: reflected.toward,
   };
 }
 
@@ -198,27 +269,40 @@ function detectPaddleMiss(
   hadHit: boolean
 ): GamePlayerRole | null {
   if (hadHit) return null;
-  const r = BALL_RADIUS;
   const isBottomPaddle = paddleY > 0.5;
+
+  if (ballOverlapsPaddle(x, y, paddleX, paddleHalf, paddleY, isBottomPaddle)) {
+    return null;
+  }
 
   if (isBottomPaddle) {
     if (vy <= 0) return null;
-    const crossedLine = prevY + r <= paddleY && y + r > paddleY;
-    const tunneledPast = prevY + r < paddleY && y - r > paddleY;
+    const crossedLine =
+      prevY + BALL_RADIUS_Y <= paddleY + PADDLE_HIT_EPS &&
+      y + BALL_RADIUS_Y > paddleY + PADDLE_HIT_EPS;
+    const tunneledPast =
+      prevY + BALL_RADIUS_Y < paddleY && y - BALL_RADIUS_Y > paddleY;
     if ((crossedLine || tunneledPast) && !overlapsPaddleX(x, paddleX, paddleHalf)) {
       return defender;
     }
-    if (y + r >= 1 - 0.002) return defender;
+    if (y + BALL_RADIUS_Y >= 1 - PADDLE_HIT_EPS && !overlapsPaddleX(x, paddleX, paddleHalf)) {
+      return defender;
+    }
     return null;
   }
 
   if (vy >= 0) return null;
-  const crossedLine = prevY - r >= paddleY && y - r < paddleY;
-  const tunneledPast = prevY - r > paddleY && y + r < paddleY;
+  const crossedLine =
+    prevY - BALL_RADIUS_Y >= paddleY - PADDLE_HIT_EPS &&
+    y - BALL_RADIUS_Y < paddleY - PADDLE_HIT_EPS;
+  const tunneledPast =
+    prevY - BALL_RADIUS_Y > paddleY && y + BALL_RADIUS_Y < paddleY;
   if ((crossedLine || tunneledPast) && !overlapsPaddleX(x, paddleX, paddleHalf)) {
     return defender;
   }
-  if (y - r <= 0.002) return defender;
+  if (y - BALL_RADIUS_Y <= PADDLE_HIT_EPS && !overlapsPaddleX(x, paddleX, paddleHalf)) {
+    return defender;
+  }
   return null;
 }
 
@@ -230,6 +314,7 @@ function physicsSubstep(
   winner: GameWinner
 ): SubstepResult {
   let { x, y, vx, vy } = ball;
+  let toward = ball.toward ?? ballTowardFromVy(vy);
   const prevY = y;
   let scored = false;
   let missed = false;
@@ -254,7 +339,8 @@ function physicsSubstep(
     vy,
     paddles.parentX,
     paddleHalf,
-    PARENT_PADDLE_Y
+    PARENT_PADDLE_Y,
+    'parent'
   );
 
   if (parentBounce.hit) {
@@ -263,6 +349,7 @@ function physicsSubstep(
     y = parentBounce.y;
     vx = parentBounce.vx;
     vy = parentBounce.vy;
+    toward = parentBounce.toward ?? toward;
     score = { shared: score.shared + 1 };
     scored = true;
     if (score.shared >= WIN_SCORE) {
@@ -278,7 +365,8 @@ function physicsSubstep(
       vy,
       paddles.childX,
       paddleHalf,
-      CHILD_PADDLE_Y
+      CHILD_PADDLE_Y,
+      'child'
     );
     if (childBounce.hit) {
       childHit = true;
@@ -286,6 +374,7 @@ function physicsSubstep(
       y = childBounce.y;
       vx = childBounce.vx;
       vy = childBounce.vy;
+      toward = childBounce.toward ?? toward;
       score = { shared: score.shared + 1 };
       scored = true;
       if (score.shared >= WIN_SCORE) {
@@ -312,7 +401,7 @@ function physicsSubstep(
       missedBy = parentMiss;
       phase = 'finished';
       winner = null;
-      y = Math.min(1 - BALL_RADIUS * 0.5, y);
+      y = Math.min(1 - BALL_RADIUS_Y * 0.5, y);
       vx = 0;
       vy = 0;
     } else {
@@ -332,7 +421,7 @@ function physicsSubstep(
         missedBy = childMiss;
         phase = 'finished';
         winner = null;
-        y = Math.max(BALL_RADIUS * 0.5, y);
+        y = Math.max(BALL_RADIUS_Y * 0.5, y);
         vx = 0;
         vy = 0;
       }
@@ -346,6 +435,7 @@ function physicsSubstep(
     y,
     vx,
     vy,
+    toward,
     scored,
     missed,
     missedBy,
@@ -372,11 +462,20 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
     if (phase !== 'playing') break;
 
     const step = physicsSubstep(ball, input.paddles, score, phase, winner);
-    ball = { x: step.x, y: step.y, vx: step.vx, vy: step.vy };
+    ball = {
+      x: step.x,
+      y: step.y,
+      vx: step.vx,
+      vy: step.vy,
+      toward: step.toward ?? ball.toward,
+    };
     score = step.score;
     phase = step.phase;
     winner = step.winner;
-    if (step.scored) scored = true;
+    if (step.scored) {
+      scored = true;
+      break;
+    }
     if (step.missed) {
       missed = true;
       missedBy = step.missedBy;

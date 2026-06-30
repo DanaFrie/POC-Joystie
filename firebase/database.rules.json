@@ -1,47 +1,157 @@
 {
+
   "rules": {
-    "gameRooms": {
-      "$roomId": {
-        ".read": "auth != null && (auth.uid == data.child('parentId').val() || auth.uid == data.child('childUid').val())",
-        ".write": "auth != null && (!data.exists() || auth.uid == data.child('parentId').val() || auth.uid == data.child('childUid').val())",
-        "parentId": {
-          ".validate": "!data.exists() || newData.val() == data.val()"
-        },
-        "joinCode": {
-          ".validate": "newData.isString() && newData.val().length == 6"
-        },
-        "ball": {
-          "x": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
-          "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
-          "vx": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1" },
-          "vy": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1" },
-          "updatedBy": { ".validate": "newData.isString()" },
-          "updatedAt": { ".validate": "newData.isString()" }
-        },
-        "paddles": {
-          "parentX": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
-          "childX": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
-          "width": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1" }
-        },
-        "score": {
-          "shared": { ".validate": "newData.isNumber() && newData.val() >= 0" }
-        },
-        "phase": {
-          ".validate": "newData.isString()"
-        },
-        "winner": {
-          ".validate": "newData.val() == null || newData.isString()"
-        },
-        "gameOutcome": {
-          ".validate": "newData.val() == null || newData.val() == 'won' || newData.val() == 'missed'"
-        },
-        "onboardingAdvanced": {
-          ".validate": "newData.isBoolean()"
-        },
-        "onboardingAdvancedAt": {
-          ".validate": "newData.val() == null || newData.isString()"
-        }
+
+    "onboardingChildProgress": {
+
+      "$parentId": {
+
+        ".read": "auth != null",
+
+        ".write": "auth != null",
+
+        "linkOpened": { ".validate": "newData.isBoolean()" },
+
+        "welcomeReached": { ".validate": "newData.isBoolean()" },
+
+        "doriRevealed": { ".validate": "newData.isBoolean()" },
+
+        "eggComplete": { ".validate": "newData.isBoolean()" },
+
+        "linkOpenedAt": { ".validate": "newData.isString()" },
+
+        "welcomeReachedAt": { ".validate": "newData.isString()" },
+
+        "doriRevealedAt": { ".validate": "newData.isString()" },
+
+        "eggCompleteAt": { ".validate": "newData.isString()" },
+
+        "updatedAt": { ".validate": "newData.isString()" }
+
       }
+
+    },
+
+    "onboardingBondingMeta": {
+
+      "$parentId": {
+
+        ".read": "auth != null",
+
+        ".write": "auth != null && auth.uid == $parentId"
+
+      }
+
+    },
+
+    "onboardingBondingPublic": {
+
+      "$parentId": {
+
+        ".read": "auth != null",
+
+        ".write": "auth != null && auth.uid == $parentId"
+
+      }
+
+    },
+
+    "gameRooms": {
+
+      "$roomId": {
+
+        ".read": "auth != null",
+
+        ".write": "auth != null && (!data.exists() || auth.uid == data.child('parentId').val() || auth.uid == data.child('childUid').val() || (data.child('childUid').val() == null && newData.child('childUid').val() == auth.uid && newData.child('parentId').val() == data.child('parentId').val()))",
+
+        "parentId": {
+
+          ".validate": "!data.exists() || newData.val() == data.val()"
+
+        },
+
+        "joinCode": {
+
+          ".validate": "newData.isString() && newData.val().length == 6"
+
+        },
+
+        "ball": {
+
+          "x": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+
+          "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+
+          "vx": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1" },
+
+          "vy": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1" },
+
+          "updatedBy": { ".validate": "newData.isString()" },
+
+          "updatedAt": { ".validate": "newData.isString()" }
+
+        },
+
+        "paddles": {
+
+          "parentX": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+
+          "childX": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+
+          "width": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 1" }
+
+        },
+
+        "score": {
+
+          "shared": { ".validate": "newData.isNumber() && newData.val() >= 0" }
+
+        },
+
+        "playReady": {
+
+          "parent": { ".validate": "newData.isBoolean()" },
+
+          "child": { ".validate": "newData.isBoolean()" }
+
+        },
+
+        "phase": {
+
+          ".validate": "newData.isString()"
+
+        },
+
+        "winner": {
+
+          ".validate": "newData.val() == null || newData.isString()"
+
+        },
+
+        "gameOutcome": {
+
+          ".validate": "newData.val() == null || newData.val() == 'won' || newData.val() == 'missed'"
+
+        },
+
+        "onboardingAdvanced": {
+
+          ".validate": "newData.isBoolean()"
+
+        },
+
+        "onboardingAdvancedAt": {
+
+          ".validate": "newData.val() == null || newData.isString()"
+
+        }
+
+      }
+
     }
+
   }
+
 }
+
+

@@ -3,22 +3,14 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
-const V02_BG_PATHS = new Set(['/dashboard', '/help', '/forgot-password', '/reset-password']);
-
 function needsLegacyV02Surface(pathname: string | null): boolean {
   if (!pathname) return false;
-  if (V02_BG_PATHS.has(pathname)) return true;
-  if (pathname.startsWith('/admin')) return true;
-  if (pathname.startsWith('/signup/terms')) return true;
+  if (pathname.startsWith('/child')) return true;
   return false;
 }
 
 function needsLegacyV02Fonts(pathname: string | null): boolean {
-  if (!pathname) return false;
-  if (needsLegacyV02Surface(pathname)) return true;
-  if (pathname === '/signup') return true;
-  if (pathname.startsWith('/signup/')) return true;
-  return false;
+  return needsLegacyV02Surface(pathname);
 }
 
 export default function ConditionalMainWrapper({
@@ -33,8 +25,12 @@ export default function ConditionalMainWrapper({
     pathname === '/onboarding' ||
     pathname?.startsWith('/onboarding/') ||
     pathname === '/login' ||
+    pathname?.startsWith('/login/') ||
     pathname === '/signup' ||
-    pathname?.startsWith('/signup/terms');
+    pathname?.startsWith('/signup/') ||
+    pathname?.startsWith('/child') ||
+    pathname === '/help' ||
+    pathname === '/dashboard';
 
   const useLegacyBg = needsLegacyV02Surface(pathname);
   const useLegacyFonts = needsLegacyV02Fonts(pathname);

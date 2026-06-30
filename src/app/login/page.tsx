@@ -1,14 +1,13 @@
 'use client';
 
-import '@/lib/onboarding/oauthRedirectPrime';
-
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginScreen } from '@/components/login/LoginScreen';
 import { createSession, isLoggedIn, clearSession } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
-import { getUser } from '@/lib/api/users';
-import { getLatestChallenge } from '@/lib/api/challenges';
+import { ensureUserProfileForLogin } from '@/lib/auth/ensureUserProfile';
+import { navigateAfterLogin } from '@/lib/auth/postLoginNavigation';
+import { beginOnboardingSignupFromLogin } from '@/lib/onboarding/parentFlowSession';
 import { getErrorMessage } from '@/utils/errors';
 import { createContextLogger } from '@/utils/logger';
 import {
@@ -23,9 +22,10 @@ import {
 
 const logger = createContextLogger('Login');
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
-    email: '',
+    email: searchParams.get('email') ?? '',
     password: '',
   });
 
@@ -35,11 +35,13 @@ export default function LoginPage() {
   const [loginError, setLoginError] = useState('');
   const router = useRouter();
 
+  const showResumeSignupBanner = searchParams.get('existing') === '1';
+
   const finishLogin = useCallback(
     async (uid: string) => {
       createSession(uid);
-      const challenge = await getLatestChallenge(uid);
-      router.push(challenge ? '/dashboard' : '/onboarding');
+      const userData = await ensureUserProfileForLogin(uid);
+      navigateAfterLogin(userData, router);
     },
     [router]
   );
@@ -52,12 +54,8 @@ export default function LoginPage() {
         return;
       }
 
-      const challenge = await getLatestChallenge(userId);
-      if (challenge) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
-      }
+      const userData = await ensureUserProfileForLogin(userId);
+      navigateAfterLogin(userData, router);
     } catch (error) {
       logger.error('Error checking user:', error);
       router.push('/onboarding');
@@ -66,11 +64,6 @@ export default function LoginPage() {
 
   const completeOAuthLogin = useCallback(
     async (uid: string) => {
-      const userData = await getUser(uid);
-      if (!userData) {
-        setLoginError('נתוני המשתמש לא נמצאו. אנא הירשם מחדש.');
-        return;
-      }
       await finishLogin(uid);
     },
     [finishLogin]
@@ -243,18 +236,33 @@ export default function LoginPage() {
     }
   };
 
+  const handleSignupClick = useCallback(() => {
+    beginOnboardingSignupFromLogin();
+    router.push('/onboarding');
+  }, [router]);
+
   return (
     <LoginScreen
       email={formData.email}
       password={formData.password}
       errors={errors}
       loginError={loginError}
+      showResumeSignupBanner={showResumeSignupBanner}
       isSubmitting={isSubmitting}
       oauthLoading={oauthLoading}
       onChange={handleChange}
       onSubmit={handleSubmit}
       onOAuthGoogle={() => handleOAuth('google')}
       onOAuthApple={() => handleOAuth('apple')}
+      onSignupClick={handleSignupClick}
     />
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

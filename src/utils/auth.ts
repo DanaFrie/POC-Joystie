@@ -132,10 +132,12 @@ export async function sendPasswordReset(email: string): Promise<void> {
       throw new Error('authDomain not configured in Firebase');
     }
     
-    // Use authDomain (e.g., joystie-poc.firebaseapp.com) to build the reset URL
-    // This ensures it matches what's configured in Firebase Console template
-    // Firebase Auth will handle the redirect to our app's reset-password page
-    const resetUrl = `https://${authDomain}/reset-password`;
+    // Continue URL after the user taps the reset link in email.
+    const resetPath = '/login/reset-password';
+    const resetUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${resetPath}`
+        : `https://${authDomain}${resetPath}`;
     
     const actionCodeSettings = {
       url: resetUrl,
