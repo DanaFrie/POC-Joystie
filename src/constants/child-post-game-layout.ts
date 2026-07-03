@@ -12,6 +12,7 @@ export const CHILD_HAPPY_TRANSITION_MS = 1_800;
 export const CHILD_MISSION_ONE_WIN = {
   content: { top: 117, width: 327, gap: 17 },
   header: { gap: 24 },
+  check: { size: 49 },
   headline: {
     fontSize: 30,
     lineHeight: 1.1,
@@ -49,7 +50,6 @@ export const CHILD_MISSION_TWO_INTRO = {
   titleBlockGap: 40,
   titleGap: 35,
   headlineGap: 4,
-  glowButton: { left: 255, top: 678 },
 } as const;
 
 /** Dark Dori shell — notebook surprise (post mission 2 intro). */
@@ -90,17 +90,23 @@ export const CHILD_MISSION_TWO_CHANGE = {
   continue: { left: 79, top: 678, width: 217, gap: 17 },
 } as const;
 
+/** Castle interior layout shift — aligns UI with repositioned castle art. */
+const CHILD_RUN_TO_CASTLE_SHIFT_X = 45;
+const CHILD_RUN_TO_CASTLE_SHIFT_Y = 43;
+/** Extra nudge for tilt cards only (left 30px from prior placement). */
+const CHILD_CASTLE_CARD_EXTRA_SHIFT_X = -30;
+
 /** Run to castle — Dori video + compact tooltip + glow tap. */
 export const CHILD_RUN_TO_CASTLE = {
   video: {
     top: 0,
-    left: -8.1,
+    left: 0,
     width: 510.251,
     height: 900,
     aspectRatio: '55 / 97',
   },
   bubble: {
-    top: v03OffsetBelowStatusBar(399),
+    top: v03OffsetBelowStatusBar(356),
     left: 37,
     width: 235,
     tailLeft: 181,
@@ -116,20 +122,20 @@ export const CHILD_RUN_TO_CASTLE = {
     backdropBlur: 11.409310340881348,
     boxShadow: '0 5.493px 5.493px rgba(0, 0, 0, 0.25)',
   },
-  glowButton: { left: 255, top: v03OffsetBelowStatusBar(299) },
+  glowButton: { left: 255, top: v03OffsetBelowStatusBar(256) },
   uiFadeMs: 500,
   castleDissolveMs: 2_400,
   headerFadeMs: 500,
   cardRevealMs: 650,
   castle: {
-    top: 0,
-    left: -45,
+    top: 43,
+    left: 0,
     width: 466,
     height: 823,
     aspectRatio: '47 / 83',
   },
   header: {
-    top: v03OffsetBelowStatusBar(0),
+    top: 43,
     width: 375,
     height: 100,
     padding: 10,
@@ -174,8 +180,8 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'friends-less-screen',
     title: 'להיות יותר זמן עם חברים, ופחות זמן במסך',
-    placeTop: 142,
-    placeLeft: 119,
+    placeTop: 142 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeLeft: 119 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: 0,
     width: 229.03,
     height: 82.58,
@@ -185,8 +191,8 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'save-money',
     title: 'לחסוך יותר כסף כדי לקנות משהו שאני רוצה',
-    placeTop: 239.1729,
-    placeLeft: 18.2168,
+    placeTop: 239.1729 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeLeft: 18.2168 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: -1.06,
     width: 227.7,
     height: 78.4,
@@ -196,8 +202,8 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'quality-time',
     title: 'לבלות יותר זמן איכות עם אמא ואבא ופחות במסך',
-    placeTop: 339.9998,
-    placeLeft: 107,
+    placeTop: 339.9998 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeLeft: 107 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: 2.29,
     width: 231.63,
     height: 91.5,
@@ -207,8 +213,8 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'no-phone-bedroom',
     title: 'לנסות לא להכניס את הפלאפון לחדר השינה',
-    placeTop: 432,
-    placeLeft: 17,
+    placeTop: 432 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeLeft: 17 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: -7.36,
     width: 233.42,
     height: 98.41,
@@ -425,7 +431,7 @@ export const CHILD_CASTLE_CHANGE_REACTION = {
 /** Confirm / celebration content — aligned to runToCastle interior (header + cards). */
 export const CHILD_CASTLE_CHANGE_OVERLAY_CONTENT = {
   left: centerX(327),
-  cardStackTop: v03OffsetBelowStatusBar(238),
+  cardStackTop: v03OffsetBelowStatusBar(238) + CHILD_RUN_TO_CASTLE_SHIFT_Y,
   sectionGap: 33,
 } as const;
 
@@ -441,8 +447,8 @@ export const CHILD_CASTLE_CHANGE_CELEBRATION = {
   overlayEnterMs: 480,
   autoAdvanceMs: 2_800,
   confetti: {
-    top: v03OffsetBelowStatusBar(91),
-    left: -57.4258,
+    top: v03OffsetBelowStatusBar(91) + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    left: -57.4258 + CHILD_RUN_TO_CASTLE_SHIFT_X,
     width: 490.426,
     height: 490.426,
   },
@@ -483,6 +489,12 @@ export const CHILD_CHANGE_KING = {
   textGap: 15,
   titleGap: 4,
   heroSize: 236.78,
+  confetti: {
+    top: 28.4502,
+    left: -90.6094,
+    width: 556.609,
+    height: 742.145,
+  },
   title: {
     fontSize: 40,
     lineHeight: 44,
@@ -575,7 +587,6 @@ export const CHILD_CONTRACT_CELEBRATION = {
   footer: {
     paddingTop: 20,
     gap: 15,
-    blur: 5,
   },
 } as const;
 
@@ -590,31 +601,38 @@ export const CHILD_MISSION_THREE_SELFIE = {
   },
   hero: ONBOARDING_COMPLETION.hero,
   footer: {
-    paddingTop: 20,
+    top: 690,
+    buttonTop: 710,
     gap: 15,
     columnWidth: 332,
     columnGap: 10,
   },
 } as const;
 
-/** Selfie pattern — castle background + name badges + capture CTA. */
+/** Selfie pattern — castle background + circular face holes + name badges. */
 export const CHILD_SELFIE_PATTERN = {
+  mask: {
+    blur: 28,
+    overlay: 'rgba(9, 33, 37, 0.42)',
+    ringStroke: 2,
+    ringOpacity: 0.65,
+  },
+  childHole: { cx: 95, cy: 400, r: 102 },
+  parentHole: { cx: 280, cy: 400, r: 102 },
   childBadge: {
-    left: 68.28,
-    top: v03OffsetBelowStatusBar(18.33),
+    centerX: 95,
+    top: 328,
     paddingX: 20.5,
     paddingY: 10.79,
     borderRadius: 17.27,
-    gap: 10.79,
     fontSize: 19.42,
   },
   parentBadge: {
-    left: 259.04,
-    top: v03OffsetBelowStatusBar(0),
+    centerX: 280,
+    top: 328,
     paddingX: 23.65,
     paddingY: 12.45,
     borderRadius: 19.92,
-    gap: 12.45,
     fontSize: 22.41,
   },
   captureButton: {
@@ -625,11 +643,16 @@ export const CHILD_SELFIE_PATTERN = {
     paddingX: 15,
     paddingY: 8,
     borderRadius: 22,
+    gap: 8,
   },
 } as const;
 
-/** Shared photo result / share — footer + headline chrome. */
+/** Shared photo result / share — footer anchored to Figma canvas (no status-bar chrome). */
 export const CHILD_SHARED_PHOTO_FOOTER = {
+  frameTop: 678,
+  frameLeft: 79,
+  frameWidth: 217,
+  frameGap: 17,
   paddingTop: 29.28,
   paddingX: 42.67,
   gap: 12.55,
@@ -649,19 +672,26 @@ export const CHILD_SHARED_PHOTO_FOOTER = {
 } as const;
 
 export const CHILD_SHARED_PHOTO_REVIEW = {
-  logo: { left: 19, top: v03OffsetBelowStatusBar(19), width: 90 },
+  logo: { left: 19, top: 19, width: 90 },
 } as const;
 
 export const CHILD_SHARED_PHOTO_SHARE = {
   logo: CHILD_SHARED_PHOTO_REVIEW.logo,
   headline: {
     left: 44,
-    top: v03OffsetBelowStatusBar(86),
+    top: 86,
     width: 299,
     height: 106.231,
     fontSize: 40,
     lineHeight: 1.1,
     letterSpacing: -0.8,
     textShadow: '0 0 10px rgba(0, 0, 0, 0.30)',
+    underline: {
+      top: 93,
+      left: 7,
+      width: 254.171,
+      height: 13.231,
+      strokeWidth: 16,
+    },
   },
 } as const;

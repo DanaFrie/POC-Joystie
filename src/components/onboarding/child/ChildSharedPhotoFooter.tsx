@@ -17,16 +17,24 @@ type ChildSharedPhotoFooterProps = {
 export function ChildSharedPhotoFooter({ children }: ChildSharedPhotoFooterProps) {
   return (
     <div
-      className="absolute inset-x-0 bottom-0 z-30 flex flex-col items-center justify-end bg-v03-green-900 backdrop-blur-[4.18px]"
+      className="absolute inset-x-0 z-30 flex flex-col items-center bg-v03-green-900 backdrop-blur-[4.18px]"
       style={{
+        top: footer.frameTop,
         paddingTop: footer.paddingTop,
         paddingLeft: footer.paddingX,
         paddingRight: footer.paddingX,
         gap: footer.gap,
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      {children}
+      <div
+        className="flex w-full flex-col items-center"
+        style={{
+          maxWidth: footer.buttonWidth,
+          gap: footer.frameGap,
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -120,7 +128,7 @@ export function ChildSharedPhotoFooterLink({
 export function ChildSharedPhotoFooterButtonStack({ children }: { children: ReactNode }) {
   return (
     <div
-      className="flex w-full max-w-[301.2px] flex-col items-stretch self-center"
+      className="flex w-full flex-col items-stretch"
       style={{ gap: footer.columnGap }}
     >
       <div className="flex flex-col items-stretch" style={{ gap: footer.buttonGap }}>

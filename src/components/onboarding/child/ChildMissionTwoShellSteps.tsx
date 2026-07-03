@@ -6,6 +6,7 @@ import { ChildDoriMediaFrame } from '@/components/onboarding/child/ChildDoriMedi
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
+import { CHILD_DORI_CONTINUE_FOOTER } from '@/constants/child-onboarding-layout';
 import {
   CHILD_MISSION_TWO_CHANGE,
   CHILD_MISSION_TWO_NOTEBOOK,
@@ -51,7 +52,7 @@ export function ChildMissionTwoNotebookStep({
         />
       </ChildDoriMediaFrame>
 
-      <ChildDoriContinueFooter frame={layout.continue} onClick={onContinue} />
+      <ChildDoriContinueFooter frame={CHILD_DORI_CONTINUE_FOOTER} onClick={onContinue} />
     </div>
   );
 }
@@ -103,7 +104,7 @@ export function ChildMissionTwoChangeIntroStep({ onContinue }: ChildMissionTwoCh
         />
       </div>
 
-      <ChildDoriContinueFooter frame={layout.continue} onClick={onContinue} />
+      <ChildDoriContinueFooter frame={CHILD_DORI_CONTINUE_FOOTER} onClick={onContinue} />
     </div>
   );
 }

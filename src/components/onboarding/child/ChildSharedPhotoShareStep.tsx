@@ -8,6 +8,7 @@ import {
   ChildSharedPhotoSecondaryButton,
 } from '@/components/onboarding/child/ChildSharedPhotoFooter';
 import { ChildSharedPhotoShareIcon } from '@/components/onboarding/child/ChildSharedPhotoIcons';
+import { ChildSharedPhotoShareUnderline } from '@/components/onboarding/child/ChildSharedPhotoShareUnderline';
 import { CHILD_SHARED_PHOTO_SHARE } from '@/constants/child-post-game-layout';
 import {
   CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS,
@@ -29,16 +30,17 @@ export function ChildSharedPhotoShareStep({
   onWallet,
 }: ChildSharedPhotoShareStepProps) {
   const headline = CHILD_SHARED_PHOTO_SHARE.headline;
+  const underline = headline.underline;
 
   return (
     <ChildSharedPhotoBackdrop photoSrc={photoSrc}>
       <div
-        className="absolute z-20 flex items-center justify-center text-center"
+        className="absolute z-20 text-center"
         style={{
           left: headline.left,
           top: headline.top,
           width: headline.width,
-          minHeight: headline.height,
+          height: headline.height,
         }}
       >
         <h1
@@ -54,6 +56,12 @@ export function ChildSharedPhotoShareStep({
           <br />
           {CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS}
         </h1>
+        <ChildSharedPhotoShareUnderline
+          top={underline.top}
+          left={underline.left}
+          width={underline.width}
+          height={underline.height}
+        />
       </div>
 
       <ChildSharedPhotoFooter>

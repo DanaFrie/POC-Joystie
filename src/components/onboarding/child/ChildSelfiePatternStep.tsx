@@ -1,6 +1,7 @@
 'use client';
 
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
+import { ChildSelfieFaceMask } from '@/components/onboarding/child/ChildSelfieFaceMask';
 import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_SELFIE_PATTERN } from '@/constants/child-post-game-layout';
@@ -42,7 +43,7 @@ type ChildSelfiePatternStepProps = {
   onCapture?: () => void;
 };
 
-/** Mission 3 — castle selfie frame with child + parent name badges. */
+/** Mission 3 — castle selfie frame with circular face holes + name badges. */
 export function ChildSelfiePatternStep({
   childName,
   parentGender,
@@ -52,6 +53,7 @@ export function ChildSelfiePatternStep({
   const layout = CHILD_SELFIE_PATTERN;
   const bleedStyle = useFunnelFullBleed();
   const parentLabel = resolveParentCourtLabel(parentGender, parentName);
+  const mask = layout.mask;
   const childBadge = layout.childBadge;
   const parentBadge = layout.parentBadge;
   const capture = layout.captureButton;
@@ -66,22 +68,30 @@ export function ChildSelfiePatternStep({
         priority
       />
 
-      <div className="absolute inset-0 z-10">
+      <ChildSelfieFaceMask
+        childHole={layout.childHole}
+        parentHole={layout.parentHole}
+        blur={mask.blur}
+        overlay={mask.overlay}
+        ringStroke={mask.ringStroke}
+        ringOpacity={mask.ringOpacity}
+      />
+
+      <div className="absolute inset-0 z-20">
         <span
-          className="absolute inline-flex items-center justify-center bg-v03-green-700"
+          className="absolute inline-flex -translate-x-1/2 items-center justify-center bg-v03-green-700"
           style={{
-            left: childBadge.left,
+            left: childBadge.centerX,
             top: childBadge.top,
             paddingLeft: childBadge.paddingX,
             paddingRight: childBadge.paddingX,
             paddingTop: childBadge.paddingY,
             paddingBottom: childBadge.paddingY,
             borderRadius: childBadge.borderRadius,
-            gap: childBadge.gap,
           }}
         >
           <span
-            className="text-center font-simpler font-bold text-white"
+            className="whitespace-nowrap text-center font-simpler font-bold text-white"
             style={{ fontSize: childBadge.fontSize }}
           >
             {childName}
@@ -89,20 +99,19 @@ export function ChildSelfiePatternStep({
         </span>
 
         <span
-          className="absolute inline-flex items-center justify-center bg-v03-green-700"
+          className="absolute inline-flex -translate-x-1/2 items-center justify-center bg-v03-green-700"
           style={{
-            left: parentBadge.left,
+            left: parentBadge.centerX,
             top: parentBadge.top,
             paddingLeft: parentBadge.paddingX,
             paddingRight: parentBadge.paddingX,
             paddingTop: parentBadge.paddingY,
             paddingBottom: parentBadge.paddingY,
             borderRadius: parentBadge.borderRadius,
-            gap: parentBadge.gap,
           }}
         >
           <span
-            className="text-center font-simpler font-bold text-white"
+            className="whitespace-nowrap text-center font-simpler font-bold text-white"
             style={{ fontSize: parentBadge.fontSize }}
           >
             {parentLabel}
@@ -114,17 +123,18 @@ export function ChildSelfiePatternStep({
         <button
           type="button"
           onClick={onCapture}
-          className="absolute z-20 inline-flex cursor-pointer touch-manipulation items-center justify-center rounded-[22px] bg-v03-turquoise-300 font-simpler text-[18px] font-bold leading-[1.2] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
+          className="absolute z-30 inline-flex cursor-pointer touch-manipulation items-center justify-center rounded-[22px] bg-v03-turquoise-300 font-simpler text-[18px] font-bold leading-[1.2] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
           style={{
             left: capture.left,
             top: capture.top,
             width: capture.width,
             height: capture.height,
             padding: `${capture.paddingY}px ${capture.paddingX}px`,
+            gap: capture.gap,
           }}
           aria-label={CHILD_SELFIE_PATTERN_CAPTURE_LABEL}
         >
-          <span className="inline-flex items-center gap-2" dir="ltr">
+          <span className="inline-flex items-center gap-2" dir="rtl">
             <span>{CHILD_SELFIE_PATTERN_CAPTURE_LABEL}</span>
             <SelfieCaptureCameraIcon />
           </span>

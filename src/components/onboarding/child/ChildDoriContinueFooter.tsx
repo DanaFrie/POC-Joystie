@@ -39,7 +39,7 @@ export function ChildDoriContinueFooter({
       aria-label={CONTINUE_LABEL}
     >
       <ChildContinueGlowIcon />
-      <span className="w-full text-center font-simpler text-[24px] font-normal leading-[1.25] tracking-[-0.36px] text-[#CADCD6]">
+      <span className="relative z-[1] w-full text-center font-simpler text-[24px] font-normal leading-[1.25] tracking-[-0.36px] text-[#CADCD6]">
         {CONTINUE_LABEL}
       </span>
     </button>

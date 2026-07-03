@@ -3,6 +3,9 @@
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { ChildPostGameFunnelShell } from '@/components/onboarding/child/ChildPostGameFunnelShell';
 import { ONBOARDING_COMPLETION_IMAGE } from '@/constants/onboarding-completion-layout';
+import {
+  ONBOARDING_STACKED_FOOTER_CONTENT_W_PX,
+} from '@/constants/onboarding-footer';
 import { CHILD_MISSION_THREE_SELFIE } from '@/constants/child-post-game-layout';
 import {
   CHILD_MISSION_THREE_BADGE,
@@ -26,10 +29,11 @@ export function ChildMissionThreeSelfieIntroStep({
 }: ChildMissionThreeSelfieIntroStepProps) {
   const layout = CHILD_MISSION_THREE_SELFIE;
   const hero = layout.hero;
+  const footer = layout.footer;
   const readyLabel = childPlayReadyConfirmLabel(parentName, parentGender);
 
   return (
-    <ChildPostGameFunnelShell ellipse="lowerLeft">
+    <ChildPostGameFunnelShell ellipse="lowerLeft" showGrid={false}>
       <section
         className="absolute left-1/2 z-10 flex -translate-x-1/2 flex-col items-center"
         style={{
@@ -89,22 +93,19 @@ export function ChildMissionThreeSelfieIntroStep({
       </section>
 
       <div
-        className="absolute inset-x-0 bottom-0 z-[30] flex flex-col items-center justify-end"
-        style={{
-          paddingTop: layout.footer.paddingTop,
-          gap: layout.footer.gap,
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}
+        className="absolute inset-x-0 z-[30] flex flex-col items-center"
+        style={{ top: footer.top, paddingTop: 20, gap: footer.gap }}
       >
         <div
           className="flex flex-col items-center"
-          style={{ width: layout.footer.columnWidth, gap: layout.footer.columnGap }}
+          style={{ width: footer.columnWidth, gap: footer.columnGap }}
         >
           {onContinue ? (
             <button
               type="button"
               onClick={onContinue}
-              className="inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
+              className="inline-flex h-[55px] items-center justify-center rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
+              style={{ width: ONBOARDING_STACKED_FOOTER_CONTENT_W_PX }}
             >
               {readyLabel}
             </button>

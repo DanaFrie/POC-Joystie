@@ -28,7 +28,7 @@ export function ChildSharedPhotoRetakeIcon() {
   );
 }
 
-/** Share icon — three nodes. */
+/** Share icon — three connected nodes (Figma share CTA). */
 export function ChildSharedPhotoShareIcon() {
   const size = 15.06;
   return (
@@ -39,12 +39,26 @@ export function ChildSharedPhotoShareIcon() {
       viewBox="0 0 16 16"
       fill="none"
       className="shrink-0"
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, flexShrink: 0 }}
       aria-hidden
     >
-      <circle cx="11" cy="3" r="1.8" stroke="#303030" strokeWidth="1.26" />
-      <circle cx="3.5" cy="7" r="1.8" stroke="#303030" strokeWidth="1.26" />
-      <circle cx="11" cy="11.5" r="1.8" stroke="#303030" strokeWidth="1.26" />
+      <circle cx="10.9809" cy="2.82365" r="1.56876" stroke="#303030" strokeWidth="1.25501" />
+      <circle cx="3.45157" cy="7.21622" r="1.56876" stroke="#303030" strokeWidth="1.25501" />
+      <path
+        d="M9.41222 3.76503L5.01968 6.27505"
+        stroke="#303030"
+        strokeWidth="1.25501"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.70567 8.4713L9.41196 11.2951"
+        stroke="#303030"
+        strokeWidth="1.25501"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="10.9809" cy="12.2362" r="1.56876" stroke="#303030" strokeWidth="1.25501" />
     </svg>
   );
 }

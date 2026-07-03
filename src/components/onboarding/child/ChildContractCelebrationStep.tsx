@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
+import { OnboardingBlurFooter } from '@/components/onboarding/OnboardingBlurFooter';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { SIGNUP_JOURNEY_STEP3_IMAGE } from '@/constants/onboarding-figma';
-import {
-  ONBOARDING_STACKED_FOOTER_CONTENT_W_PX,
-  ONBOARDING_STACKED_FOOTER_GUTTER_PX,
-} from '@/constants/onboarding-footer';
 import { CHILD_CONTRACT_CELEBRATION } from '@/constants/child-post-game-layout';
 import {
   CHILD_CONTRACT_CONTINUE_LABEL,
@@ -93,29 +90,11 @@ export function ChildContractCelebrationStep({ onContinue }: ChildContractCelebr
         </div>
       </section>
 
-      <div
-        className="absolute inset-x-0 bottom-0 z-[30] flex flex-col items-center justify-end backdrop-blur-[5px]"
-        style={{
-          paddingTop: layout.footer.paddingTop,
-          gap: layout.footer.gap,
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}
-      >
-        {onContinue ? (
-          <button
-            type="button"
-            onClick={onContinue}
-            className="inline-flex h-[55px] items-center justify-center rounded-[22px] bg-v03-turquoise-300 px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-v03-button transition hover:brightness-95"
-            style={{
-              width: ONBOARDING_STACKED_FOOTER_CONTENT_W_PX,
-              marginLeft: ONBOARDING_STACKED_FOOTER_GUTTER_PX,
-              marginRight: ONBOARDING_STACKED_FOOTER_GUTTER_PX,
-            }}
-          >
-            {CHILD_CONTRACT_CONTINUE_LABEL}
-          </button>
-        ) : null}
-      </div>
+      {onContinue ? (
+        <OnboardingBlurFooter blur={false} onClick={onContinue} className="!bg-v03-turquoise-300 !text-v03-green-900">
+          {CHILD_CONTRACT_CONTINUE_LABEL}
+        </OnboardingBlurFooter>
+      ) : null}
     </div>
   );
 }

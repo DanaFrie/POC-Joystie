@@ -26,6 +26,7 @@ export function ChildChangeKingStep({
   onConfettiEnd,
 }: ChildChangeKingStepProps) {
   const layout = CHILD_CHANGE_KING;
+  const confetti = layout.confetti;
 
   useEffect(() => {
     const timer = window.setTimeout(onConfettiEnd, CHILD_KING_CONFETTI_MS);
@@ -34,8 +35,26 @@ export function ChildChangeKingStep({
 
   return (
     <ChildPostGameFunnelShell ellipse="upper">
+      <div
+        className="pointer-events-none absolute z-[30]"
+        style={{
+          top: confetti.top,
+          left: confetti.left,
+          width: confetti.width,
+          height: confetti.height,
+        }}
+        aria-hidden
+      >
+        <OnboardingLazyImage
+          src={CHILD_ONBOARDING_ASSETS.confettiRed}
+          alt=""
+          className="size-full object-cover object-center"
+          priority
+        />
+      </div>
+
       <section
-        className="absolute left-1/2 flex w-full max-w-v03-content -translate-x-1/2 flex-col items-center px-v03-gutter"
+        className="absolute left-1/2 z-10 flex w-full max-w-v03-content -translate-x-1/2 flex-col items-center px-v03-gutter"
         style={{
           top: layout.contentTop,
           gap: layout.contentGap,

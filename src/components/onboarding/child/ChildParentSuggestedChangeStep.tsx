@@ -33,7 +33,6 @@ export function ChildParentSuggestedChangeStep({
   parentGender,
   changeText = CHILD_DEMO_PARENT_SUGGESTED_CHANGE,
   onAccept,
-  onDecline,
 }: ChildParentSuggestedChangeStepProps) {
   const layout = CHILD_PARENT_SUGGESTED_CHANGE;
   const actions = layout.actions;
@@ -212,9 +211,9 @@ export function ChildParentSuggestedChangeStep({
             </button>
             <button
               type="button"
-              onClick={onDecline}
               disabled={celebrated}
               className={actions.secondaryClass}
+              aria-disabled="true"
             >
               {childParentSuggestedDeclineLabelForChild(childGender, parentGender)}
             </button>

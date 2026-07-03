@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   ChildGamePostWinFlow,
@@ -11,6 +11,8 @@ import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunn
 import { ChildFunnelBleedBackground } from '@/components/onboarding/child/ChildFunnelBleedBackground';
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 import { useOnboardingGame } from '@/hooks/useOnboardingGame';
+import { consumeChildDoriMissionIntroDone } from '@/lib/onboarding/childFlowSession';
+import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
 import { decodeParentToken, parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 function ChildGameInner() {
@@ -26,6 +28,16 @@ function ChildGameInner() {
   const parentName = bonding?.parentName;
 
   const [postGamePhase, setPostGamePhase] = useState<ChildPostGamePhase>('game');
+  const skipMissionIntro = useMemo(() => consumeChildDoriMissionIntroDone(), []);
+  const missionReadySignaled = useRef(false);
+
+  useEffect(() => {
+    if (!skipMissionIntro || !parentId || missionReadySignaled.current) return;
+    missionReadySignaled.current = true;
+    void signalChildOnboardingMilestone(parentId, 'mission_ready').catch(() => {
+      missionReadySignaled.current = false;
+    });
+  }, [skipMissionIntro, parentId]);
 
   const onChildGameWon = useCallback(() => {
     setPostGamePhase('winFadeOut');
@@ -37,7 +49,7 @@ function ChildGameInner() {
     inviteId,
     childName,
     parentName,
-    showMissionIntro: true,
+    showMissionIntro: !skipMissionIntro,
     onChildGameWon,
   });
 

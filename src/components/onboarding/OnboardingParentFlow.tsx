@@ -263,6 +263,8 @@ export function OnboardingParentFlow({
   const router = useRouter();
   const exitingToLandingRef = useRef(false);
   const [step, setStep] = useState<ParentFlowStep>(readInitialFlowStep);
+  const stepRef = useRef(step);
+  stepRef.current = step;
   const [accountCreated, setAccountCreated] = useState(() =>
     isOnboardingAccountCreated()
   );
@@ -670,12 +672,9 @@ export function OnboardingParentFlow({
   }, []);
 
   const onMissionReady = useCallback(() => {
-    setStep((s) => {
-      if (s === 'childInviteWaiting') {
-        router.push('/game');
-      }
-      return s;
-    });
+    if (stepRef.current === 'childInviteWaiting') {
+      router.push('/game');
+    }
   }, [router]);
 
   const parentWaitingStep = step === 'childInviteWaiting' ? step : null;

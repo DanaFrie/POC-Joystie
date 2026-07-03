@@ -39,37 +39,6 @@ export function ChildCastleChangeReactionTiles({
     >
       <button
         type="button"
-        onClick={onReady}
-        disabled={dimmed}
-        className="inline-flex w-[120px] cursor-pointer touch-manipulation select-none flex-col items-center border-0 bg-transparent p-0 [-webkit-tap-highlight-color:transparent] disabled:cursor-default"
-        style={{ gap: layout.labelGap }}
-        aria-label={readyLabel}
-      >
-        <span
-          className="inline-flex h-[120px] w-full items-center justify-center rounded-[16.14px] bg-[#F2F2F2] shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]"
-          style={{ padding: layout.tilePadding }}
-        >
-          <OnboardingLazyImage
-            src={CHILD_ONBOARDING_ASSETS.castleChangeConfirmIcon}
-            alt=""
-            className="shrink-0 object-contain"
-            style={{ width: iconSize, height: iconSize }}
-            priority
-          />
-        </span>
-        <span
-          className="w-full text-center font-simpler font-normal text-white"
-          style={{
-            fontSize: layout.label.fontSize,
-            lineHeight: `${layout.label.lineHeight}px`,
-          }}
-        >
-          {readyLabel}
-        </span>
-      </button>
-
-      <button
-        type="button"
         onClick={onDecline}
         disabled={dimmed}
         className="inline-flex w-[120px] cursor-pointer touch-manipulation select-none flex-col items-center border-0 bg-transparent p-0 [-webkit-tap-highlight-color:transparent] disabled:cursor-default"
@@ -96,6 +65,37 @@ export function ChildCastleChangeReactionTiles({
           }}
         >
           {declineLabel}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onReady}
+        disabled={dimmed}
+        className="inline-flex w-[120px] cursor-pointer touch-manipulation select-none flex-col items-center border-0 bg-transparent p-0 [-webkit-tap-highlight-color:transparent] disabled:cursor-default"
+        style={{ gap: layout.labelGap }}
+        aria-label={readyLabel}
+      >
+        <span
+          className="inline-flex h-[120px] w-full items-center justify-center rounded-[16.14px] bg-[#F2F2F2] shadow-[inset_0_4px_4px_rgba(0,0,0,0.25)]"
+          style={{ padding: layout.tilePadding }}
+        >
+          <OnboardingLazyImage
+            src={CHILD_ONBOARDING_ASSETS.castleChangeConfirmIcon}
+            alt=""
+            className="shrink-0 object-contain"
+            style={{ width: iconSize, height: iconSize }}
+            priority
+          />
+        </span>
+        <span
+          className="w-full text-center font-simpler font-normal text-white"
+          style={{
+            fontSize: layout.label.fontSize,
+            lineHeight: `${layout.label.lineHeight}px`,
+          }}
+        >
+          {readyLabel}
         </span>
       </button>
     </div>

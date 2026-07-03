@@ -43,7 +43,7 @@ export function ChildRunToCastleStep({
   const [videoOpacity, setVideoOpacity] = useState(1);
   const [castleOpacity, setCastleOpacity] = useState(0);
   const [headerOpacity, setHeaderOpacity] = useState(0);
-  const [cardVisible, setCardVisible] = useState(false);
+  const [revealedCardCount, setRevealedCardCount] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState('');
 
@@ -73,11 +73,16 @@ export function ChildRunToCastleStep({
     if (phase !== 'interior') return;
 
     const headerRaf = window.requestAnimationFrame(() => setHeaderOpacity(1));
-    const cardTimer = window.setTimeout(() => setCardVisible(true), layout.cardRevealMs);
+    const cardTimers = CHILD_CASTLE_INTERIOR_CARDS.map((_, index) =>
+      window.setTimeout(
+        () => setRevealedCardCount((count) => Math.max(count, index + 1)),
+        layout.cardRevealMs + index * 180
+      )
+    );
 
     return () => {
       window.cancelAnimationFrame(headerRaf);
-      window.clearTimeout(cardTimer);
+      cardTimers.forEach((timer) => window.clearTimeout(timer));
     };
   }, [phase, layout.cardRevealMs]);
 
@@ -188,12 +193,11 @@ export function ChildRunToCastleStep({
             className="absolute inset-0"
             style={{ zIndex: cards.zIndex }}
           >
-            {cardVisible ? (
-            <div className="v03-funnel-enter-0 absolute inset-0">
-              {CHILD_CASTLE_INTERIOR_CARDS.map((card) => (
+            {CHILD_CASTLE_INTERIOR_CARDS.map((card, index) =>
+              index < revealedCardCount ? (
                 <div
                   key={card.id}
-                  className="absolute"
+                  className="castle-card-enter absolute"
                   style={{
                     top: card.placeTop,
                     left: card.placeLeft,
@@ -201,18 +205,23 @@ export function ChildRunToCastleStep({
                     height: card.height,
                     transform: `rotate(${card.placeRotateDeg}deg)`,
                     transformOrigin: 'top left',
+                    animationDelay: `${index * 180}ms`,
                   }}
                 >
-                  <ChildCastleTiltCard
-                    variant="slider"
-                    layout={childCastleInteriorCardLayout(card)}
-                    title={card.title}
-                    onSelect={() => handleSelectCard(card.id, card.title)}
-                  />
+                  <div
+                    className="castle-card-float relative size-full"
+                    style={{ animationDelay: `${index * 0.35}s` }}
+                  >
+                    <ChildCastleTiltCard
+                      variant="slider"
+                      layout={childCastleInteriorCardLayout(card)}
+                      title={card.title}
+                      onSelect={() => handleSelectCard(card.id, card.title)}
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
-          ) : null}
+              ) : null
+            )}
           </div>
         </>
       ) : null}

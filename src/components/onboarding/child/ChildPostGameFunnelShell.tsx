@@ -10,9 +10,11 @@ import { CHILD_POST_GAME_ELLIPSE } from '@/constants/child-post-game-layout';
 /** Green-900 funnel shell — grid + configurable mint ellipse (Figma 13466 / 13674). */
 export function ChildPostGameFunnelShell({
   ellipse = 'upper',
+  showGrid = true,
   children,
 }: {
   ellipse?: ChildPostGameEllipseVariant;
+  showGrid?: boolean;
   children: ReactNode;
 }) {
   const bleedStyle = useFunnelFullBleed();
@@ -42,7 +44,7 @@ export function ChildPostGameFunnelShell({
       ) : (
         <OnboardingMintGlow className="z-[1]" />
       )}
-      <ChildPostGameGrid />
+      <ChildPostGameGrid enabled={showGrid} />
       <div className="relative z-[10] h-full w-full">{children}</div>
     </div>
   );

@@ -77,7 +77,7 @@ export function ChildCastleChangeCelebrationOverlay({
       />
 
       <div
-        className="pointer-events-none absolute z-[5] flex items-center justify-center"
+        className="pointer-events-none absolute z-[40] flex items-center justify-center"
         style={{
           top: confetti.top,
           left: confetti.left,
@@ -93,7 +93,7 @@ export function ChildCastleChangeCelebrationOverlay({
         />
       </div>
 
-      <div className="absolute inset-0 z-10">
+      <div className="pointer-events-none absolute inset-0 z-10">
         <div
           className="absolute flex flex-col items-center"
           style={{

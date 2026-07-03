@@ -1,12 +1,13 @@
 'use client';
 
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
-import { ChildContinueGlowTapButton } from '@/components/onboarding/child/ChildContinueGlowButton';
+import { ChildDoriContinueFooter } from '@/components/onboarding/child/ChildDoriContinueFooter';
 import { ChildPostGameGreenBackground } from '@/components/onboarding/child/ChildPostGameGreenBackground';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
+import { CHILD_DORI_CONTINUE_FOOTER } from '@/constants/child-onboarding-layout';
 import { CHILD_MISSION_TWO_INTRO } from '@/constants/child-post-game-layout';
 
-/** Mission 2 intro — notebook hero + copy; glow tap advances to change intro. */
+/** Mission 2 intro — notebook hero + copy; glow footer @ 79/678. */
 export function ChildMissionTwoIntroStep({
   parentName,
   parentGender = 'male',
@@ -84,11 +85,7 @@ export function ChildMissionTwoIntroStep({
       </div>
 
       {onContinue ? (
-        <ChildContinueGlowTapButton
-          left={layout.glowButton.left}
-          top={layout.glowButton.top}
-          onClick={onContinue}
-        />
+        <ChildDoriContinueFooter frame={CHILD_DORI_CONTINUE_FOOTER} onClick={onContinue} />
       ) : null}
     </div>
   );

@@ -6,6 +6,7 @@ import { BallGameWinFadeOverlay } from '@/components/onboarding/game/BallGameWin
 import { OnboardingBallGameScreen } from '@/components/onboarding/game/OnboardingBallGameScreen';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { OnboardingBlurFooter } from '@/components/onboarding/OnboardingBlurFooter';
+import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
 import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
 import { ChildFunnelBleedBackground } from '@/components/onboarding/child/ChildFunnelBleedBackground';
@@ -204,6 +205,7 @@ export function ParentGamePostWinFlow({
             />
           </div>
         ) : null}
+        <OnboardingGrid />
         <OnboardingWaitingScreenShell zIndex={20}>
           <OnboardingWaitingCenterContent
             headline={headline}

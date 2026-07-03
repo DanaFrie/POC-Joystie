@@ -4,7 +4,7 @@ import { useLayoutEffect, useState } from 'react';
 import { V03_DESKTOP_MIN_WIDTH } from '@/constants/v03-screen';
 
 /** In-canvas grid above green/mint background — Figma post-game screens. */
-export function ChildPostGameGrid() {
+export function ChildPostGameGrid({ enabled = true }: { enabled?: boolean }) {
   const [hidden, setHidden] = useState(true);
 
   useLayoutEffect(() => {
@@ -20,7 +20,7 @@ export function ChildPostGameGrid() {
     };
   }, []);
 
-  if (hidden) {
+  if (!enabled || hidden) {
     return null;
   }
 

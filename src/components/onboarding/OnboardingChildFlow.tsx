@@ -21,9 +21,8 @@ import { ChildMissionOneWinStep } from '@/components/onboarding/child/ChildMissi
 import { ChildMissionTwoIntroStep } from '@/components/onboarding/child/ChildMissionTwoIntroStep';
 
 import {
-  ChildMissionTwoChangeIntroStep,
-  ChildMissionTwoNotebookStep,
-} from '@/components/onboarding/child/ChildMissionTwoShellSteps';
+  ChildMissionTwoDoriSequenceStep,
+} from '@/components/onboarding/child/ChildMissionTwoDoriSequenceStep';
 
 import { ChildRunToCastleStep } from '@/components/onboarding/child/ChildRunToCastleStep';
 
@@ -51,6 +50,8 @@ import {
 
 import { ChildWelcomeStep } from '@/components/onboarding/child/ChildWelcomeStep';
 
+import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
+
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
@@ -66,6 +67,17 @@ import {
 } from '@/constants/child-onboarding-figma';
 
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
+
+import {
+  markChildDoriMissionIntroDone,
+  readPersistedChildFlowStep,
+  writePersistedChildFlowStep,
+} from '@/lib/onboarding/childFlowSession';
+
+import {
+  childReviewBackTone,
+  getChildReviewPreviousStep,
+} from '@/lib/onboarding/childFlowReviewNav';
 
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 
@@ -93,9 +105,7 @@ type PostEggPhase =
 
   | 'missionTwoIntro'
 
-  | 'missionTwoNotebook'
-
-  | 'missionTwoChangeIntro'
+  | 'missionTwoDoriShell'
 
   | 'runToCastle'
 
@@ -141,8 +151,7 @@ function childFlowStepKey(step: ChildFlowStep): string {
   if (step === 'doriMissionIntro') return 'doriMissionIntro';
   if (step === 'missionOneWin') return 'missionOneWin';
   if (step === 'missionTwoIntro') return 'missionTwoIntro';
-  if (step === 'missionTwoNotebook') return 'missionTwoNotebook';
-  if (step === 'missionTwoChangeIntro') return 'missionTwoChangeIntro';
+  if (step === 'missionTwoDoriShell') return 'missionTwoDoriShell';
   if (step === 'runToCastle') return 'runToCastle';
   if (step === 'changeKing') return 'changeKing';
   if (step === 'waitingParentApproval') return 'waitingParentApproval';
@@ -195,7 +204,6 @@ function usesOwnFunnelBackground(step: ChildFlowStep): boolean {
 
 
 function readInitialChildStep(): ChildFlowStep {
-
   if (typeof window === 'undefined') return 'welcome';
 
   if (sessionStorage.getItem(ONBOARDING_CHILD_GAME_WON_KEY)) {
@@ -203,8 +211,10 @@ function readInitialChildStep(): ChildFlowStep {
     return 'missionOneWin';
   }
 
-  return 'welcome';
+  const persisted = readPersistedChildFlowStep();
+  if (persisted) return persisted as ChildFlowStep;
 
+  return 'welcome';
 }
 
 
@@ -289,10 +299,22 @@ export function OnboardingChildFlow() {
 
 
 
+  useEffect(() => {
+    writePersistedChildFlowStep(step);
+  }, [step]);
+
   const goToBallGame = useCallback(() => {
+    markChildDoriMissionIntroDone();
+    writePersistedChildFlowStep('doriMissionIntro');
+    const parentId = bonding?.parentId;
+    if (parentId) {
+      void signalChildOnboardingMilestone(parentId, 'mission_ready').catch(() => {
+        // parent may still advance via RTDB poll
+      });
+    }
     const token = new URLSearchParams(window.location.search).get('token');
     router.push(token ? buildGameChildUrlWithToken(token) : '/game/child');
-  }, [router]);
+  }, [router, bonding?.parentId]);
 
   useEffect(() => {
     if (step !== 'doriMissionIntro') return;
@@ -322,9 +344,22 @@ export function OnboardingChildFlow() {
 
 
 
+  const reviewPreviousStep = getChildReviewPreviousStep(step);
+
+  const handleReviewBack = useCallback(() => {
+    const previous = getChildReviewPreviousStep(step);
+    if (previous) setStep(previous as ChildFlowStep);
+  }, [step]);
+
+
+
   return (
 
     <>
+
+      {reviewPreviousStep ? (
+        <OnboardingBackButton tone={childReviewBackTone(step)} onClick={handleReviewBack} />
+      ) : null}
 
       {isLightStep(step) ? (
         <ChildFunnelLightBackground whiteStopPercent={lightBackgroundWhiteStop(step)} />
@@ -373,8 +408,6 @@ export function OnboardingChildFlow() {
           <ChildEggHatchStep
 
             childGender={childGender}
-
-            onBack={() => setStep('companionPick')}
 
             onComplete={onEggHatchComplete}
 
@@ -433,19 +466,15 @@ export function OnboardingChildFlow() {
           <ChildMissionTwoIntroStep
             parentName={parentName}
             parentGender={parentGender}
-            onContinue={() => setStep('missionTwoChangeIntro')}
+            onContinue={() => setStep('missionTwoDoriShell')}
           />
         ) : null}
 
-        {step === 'missionTwoNotebook' ? (
-          <ChildMissionTwoNotebookStep
+        {step === 'missionTwoDoriShell' ? (
+          <ChildMissionTwoDoriSequenceStep
             childName={childName}
-            onContinue={() => setStep('missionTwoChangeIntro')}
+            onComplete={() => setStep('runToCastle')}
           />
-        ) : null}
-
-        {step === 'missionTwoChangeIntro' ? (
-          <ChildMissionTwoChangeIntroStep onContinue={() => setStep('runToCastle')} />
         ) : null}
 
         {step === 'runToCastle' ? (

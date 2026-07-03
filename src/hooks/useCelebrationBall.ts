@@ -31,13 +31,14 @@ function stepWallBounce(ball: BallVector): BallVector {
 
 /** Local wall-bounce motion after cooperative win — ball keeps moving while UI fades. */
 export function useCelebrationBall(initial: BallVector | null, active: boolean) {
-  const [ball, setBall] = useState<BallVector | null>(initial);
+  const [ball, setBall] = useState<BallVector | null>(null);
 
   useEffect(() => {
-    if (!active || !initial) {
+    if (!active) {
       setBall(null);
       return;
     }
+    if (!initial) return;
 
     setBall(initial);
     const id = window.setInterval(() => {
@@ -45,7 +46,7 @@ export function useCelebrationBall(initial: BallVector | null, active: boolean) 
     }, 50);
 
     return () => window.clearInterval(id);
-  }, [active, initial]);
+  }, [active, initial?.x, initial?.y, initial?.vx, initial?.vy]);
 
   return ball;
 }
