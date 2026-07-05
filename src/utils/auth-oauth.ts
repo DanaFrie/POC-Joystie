@@ -1,4 +1,4 @@
-import type { Auth, AuthError, User, UserCredential } from 'firebase/auth';
+import type { Auth, AuthError, AuthProvider, User, UserCredential } from 'firebase/auth';
 import { getAdditionalUserInfo, getRedirectResult } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
 import {
@@ -13,12 +13,22 @@ import { createContextLogger } from '@/utils/logger';
 const oauthLog = createContextLogger('OAuth');
 
 export type OAuthProviderId = 'google.com' | 'apple.com';
+export type OAuthProviderUiId = 'google' | 'apple';
 
 export type OAuthSignInResult =
-  | { ok: true; user: User; isNewUser: boolean }
+  | { ok: true; user: User; isNewUser: boolean; displayName?: string }
   | { ok: false; errorMessage: string; errorCode: string };
 
 const OAUTH_PROVIDER_IDS: OAuthProviderId[] = ['google.com', 'apple.com'];
+
+const UI_TO_FIREBASE_PROVIDER: Record<OAuthProviderUiId, OAuthProviderId> = {
+  google: 'google.com',
+  apple: 'apple.com',
+};
+
+export function toOAuthProviderId(provider: OAuthProviderUiId): OAuthProviderId {
+  return UI_TO_FIREBASE_PROVIDER[provider];
+}
 
 const REDIRECT_PROMISE_KEY = '__joystie_oauth_redirect_promise';
 
@@ -30,7 +40,7 @@ function isEmbeddedFrame(): boolean {
   }
 }
 
-/** Google blocks OAuth in embedded WebViews (Cursor IDE, Electron, in-app browsers). */
+/** Google/Apple block OAuth in embedded WebViews (Cursor IDE, Electron, in-app browsers). */
 export function isRestrictedOAuthEnvironment(): boolean {
   if (typeof window === 'undefined') return false;
   const ua = navigator.userAgent;
@@ -42,7 +52,7 @@ export function isRestrictedOAuthEnvironment(): boolean {
 }
 
 export function getRestrictedOAuthMessage(): string {
-  return 'Google חוסם התחברות מדפדפן מוטמע (כולל תצוגה בתוך Cursor). פתחו את האתר ב-Chrome או Safari.';
+  return 'Google ו-Apple חוסמים התחברות מדפדפן מוטמע (כולל תצוגה בתוך Cursor). פתחו את האתר ב-Chrome או Safari.';
 }
 
 export function getOnboardingParentExternalUrl(): string {
@@ -130,35 +140,114 @@ function redirectWaitMs(auth: Auth): number {
   return isFirebaseAppHostingOrigin() ? Math.max(base, auth.currentUser ? 12000 : 6000) : base;
 }
 
+/** Apple Hide My Email relay addresses are valid OAuth emails. */
+export function isApplePrivateRelayEmail(email: string): boolean {
+  return /@privaterelay\.appleid\.com$/i.test(email.trim());
+}
+
+export function isValidOAuthEmail(email: string): boolean {
+  const trimmed = email.trim();
+  if (!trimmed) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+}
+
+async function createConfiguredOAuthProvider(
+  providerId: OAuthProviderId
+): Promise<AuthProvider> {
+  const { GoogleAuthProvider, OAuthProvider } = await import('firebase/auth');
+  if (providerId === 'google.com') {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    return provider;
+  }
+  const provider = new OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+  return provider;
+}
+
+type AppleProfileName = {
+  firstName?: string;
+  lastName?: string;
+  given_name?: string;
+  family_name?: string;
+  name?: { firstName?: string; lastName?: string };
+};
+
+function extractDisplayNameFromCredential(credential: UserCredential): string {
+  if (credential.user.displayName?.trim()) {
+    return credential.user.displayName.trim();
+  }
+
+  const profile = getAdditionalUserInfo(credential)?.profile as AppleProfileName | null;
+  if (!profile) return '';
+
+  const nested = profile.name;
+  if (nested) {
+    const full = [nested.firstName, nested.lastName].filter(Boolean).join(' ').trim();
+    if (full) return full;
+  }
+
+  const given = String(profile.given_name ?? profile.firstName ?? '').trim();
+  const family = String(profile.family_name ?? profile.lastName ?? '').trim();
+  return [given, family].filter(Boolean).join(' ').trim();
+}
+
+async function maybePersistOAuthDisplayName(
+  credential: UserCredential
+): Promise<string> {
+  const displayName = extractDisplayNameFromCredential(credential);
+  if (!displayName || credential.user.displayName?.trim()) {
+    return displayName || credential.user.displayName?.trim() || '';
+  }
+
+  try {
+    const { updateProfile } = await import('firebase/auth');
+    await updateProfile(credential.user, { displayName });
+    oauthLog.log('profile:displayName-persisted', {
+      uid: credential.user.uid,
+      displayName,
+    });
+  } catch (error) {
+    oauthLog.warn('profile:displayName-persist-failed', error);
+  }
+
+  return displayName;
+}
+
+function buildOAuthSuccessResult(
+  credential: UserCredential,
+  isNewUser: boolean,
+  displayName: string
+): OAuthSignInResult & { ok: true } {
+  return {
+    ok: true,
+    user: credential.user,
+    isNewUser,
+    displayName: displayName || undefined,
+  };
+}
+
 async function signInWithProviderPopup(providerId: OAuthProviderId): Promise<OAuthSignInResult> {
   try {
-    const { signInWithPopup, GoogleAuthProvider, OAuthProvider } = await import('firebase/auth');
+    const { signInWithPopup } = await import('firebase/auth');
     const auth = await getAuthInstance();
     await prepareAuthForOAuthSignIn();
-
-    const provider =
-      providerId === 'google.com'
-        ? new GoogleAuthProvider()
-        : new OAuthProvider('apple.com');
-
-    if (providerId === 'google.com') {
-      provider.setCustomParameters({ prompt: 'select_account' });
-    }
-    if (providerId === 'apple.com') {
-      provider.addScope('email');
-      provider.addScope('name');
-    }
+    const provider = await createConfiguredOAuthProvider(providerId);
 
     oauthLog.log('popup:start', { providerId });
     const credential = await signInWithPopup(auth, provider);
     const isNewUser = await resolveIsNewUser(credential);
+    const displayName = await maybePersistOAuthDisplayName(credential);
     oauthLog.log('popup:success', {
       providerId,
       uid: credential.user.uid,
-      email: credential.user.email,
+      email: getOAuthUserEmail(credential.user),
       isNewUser,
+      displayName: displayName || null,
+      appleRelay: isApplePrivateRelayEmail(getOAuthUserEmail(credential.user)),
     });
-    return { ok: true, user: credential.user, isNewUser };
+    return buildOAuthSuccessResult(credential, isNewUser, displayName);
   } catch (error) {
     const authError = error as AuthError;
     oauthLog.warn('popup:error', {
@@ -175,17 +264,11 @@ async function signInWithProviderPopup(providerId: OAuthProviderId): Promise<OAu
 }
 
 async function signInWithProviderRedirect(providerId: OAuthProviderId): Promise<void> {
-  const { signInWithRedirect, GoogleAuthProvider, OAuthProvider } = await import('firebase/auth');
+  const { signInWithRedirect } = await import('firebase/auth');
   const auth = await getAuthInstance();
   await prepareAuthForOAuthSignIn();
   markOAuthRedirectPendingForProviderId(providerId);
-  const provider =
-    providerId === 'google.com'
-      ? new GoogleAuthProvider()
-      : new OAuthProvider('apple.com');
-  if (providerId === 'google.com') {
-    provider.setCustomParameters({ prompt: 'select_account' });
-  }
+  const provider = await createConfiguredOAuthProvider(providerId);
   oauthLog.log('redirect:start', {
     providerId,
     origin: typeof window !== 'undefined' ? window.location.href : '',
@@ -194,20 +277,31 @@ async function signInWithProviderRedirect(providerId: OAuthProviderId): Promise<
 }
 
 /**
- * Google sign-in. Uses redirect on mobile/Safari; popup elsewhere.
+ * Shared Google/Apple sign-in. Uses redirect on mobile/Safari; popup elsewhere.
+ * App Hosting (*.hosted.app) always uses popup — redirect state is unreliable there.
  */
-export async function signInWithGoogle(options?: {
-  useRedirect?: boolean;
-}): Promise<OAuthSignInResult | { ok: true; redirecting: true }> {
+export async function signInWithOAuth(
+  provider: OAuthProviderUiId,
+  options?: { useRedirect?: boolean }
+): Promise<OAuthSignInResult | { ok: true; redirecting: true }> {
+  const providerId = toOAuthProviderId(provider);
   const useRedirect = options?.useRedirect ?? prefersOAuthRedirect();
-  oauthLog.log('google:mode', { useRedirect, restricted: isRestrictedOAuthEnvironment() });
+  oauthLog.log('oauth:mode', {
+    provider,
+    providerId,
+    useRedirect,
+    restricted: isRestrictedOAuthEnvironment(),
+    appHosting: isFirebaseAppHostingOrigin(),
+  });
+
   if (useRedirect) {
-    await signInWithProviderRedirect('google.com');
+    await signInWithProviderRedirect(providerId);
     return { ok: true, redirecting: true };
   }
-  const result = await signInWithProviderPopup('google.com');
+
+  const result = await signInWithProviderPopup(providerId);
   if (!result.ok && result.errorCode === 'auth/popup-blocked') {
-    await signInWithProviderRedirect('google.com');
+    await signInWithProviderRedirect(providerId);
     return { ok: true, redirecting: true };
   }
   if (!result.ok && result.errorCode === 'auth/popup-closed-by-user') {
@@ -216,26 +310,18 @@ export async function signInWithGoogle(options?: {
   return result;
 }
 
-/**
- * Apple sign-in. Uses redirect on mobile/Safari; popup elsewhere.
- */
+/** @deprecated Prefer `signInWithOAuth('google')` — kept for call-site compatibility. */
+export async function signInWithGoogle(options?: {
+  useRedirect?: boolean;
+}): Promise<OAuthSignInResult | { ok: true; redirecting: true }> {
+  return signInWithOAuth('google', options);
+}
+
+/** @deprecated Prefer `signInWithOAuth('apple')` — kept for call-site compatibility. */
 export async function signInWithApple(options?: {
   useRedirect?: boolean;
 }): Promise<OAuthSignInResult | { ok: true; redirecting: true }> {
-  const useRedirect = options?.useRedirect ?? prefersOAuthRedirect();
-  if (useRedirect) {
-    await signInWithProviderRedirect('apple.com');
-    return { ok: true, redirecting: true };
-  }
-  const result = await signInWithProviderPopup('apple.com');
-  if (!result.ok && result.errorCode === 'auth/popup-closed-by-user') {
-    return result;
-  }
-  if (!result.ok && result.errorCode === 'auth/popup-blocked') {
-    await signInWithProviderRedirect('apple.com');
-    return { ok: true, redirecting: true };
-  }
-  return result;
+  return signInWithOAuth('apple', options);
 }
 
 export function userHasOAuthProvider(user: User): boolean {
@@ -255,19 +341,26 @@ function hasOAuthProvider(user: User): boolean {
   return userHasOAuthProvider(user);
 }
 
-/** Email on user or linked provider (Google may hydrate providerData before user.email). */
+/** Email on user or linked provider (incl. Apple Hide My Email relay). */
 export function getOAuthUserEmail(user: User): string {
-  if (user.email) return user.email;
+  if (user.email?.trim()) return user.email.trim();
   for (const provider of user.providerData) {
-    if (provider.email) return provider.email;
+    if (provider.email?.trim()) return provider.email.trim();
   }
+  return '';
+}
+
+/** Display name from Auth profile (Apple sends name only on first sign-in). */
+export function getOAuthUserDisplayName(user: User): string {
+  if (user.displayName?.trim()) return user.displayName.trim();
   return '';
 }
 
 function isOAuthUser(user: User): boolean {
   if (hasOAuthProvider(user)) return true;
   // Fresh redirect: currentUser may exist before providerData hydrates.
-  return user.providerData.length === 0 && Boolean(user.email);
+  const email = getOAuthUserEmail(user);
+  return user.providerData.length === 0 && isValidOAuthEmail(email);
 }
 
 async function hydrateOAuthUser(user: User): Promise<User> {
@@ -291,10 +384,12 @@ function pickOAuthUser(
   if (!user || user.isAnonymous) return null;
   const email = getOAuthUserEmail(user);
   const linked = hasOAuthProvider(user);
+  const hasEmail = isValidOAuthEmail(email);
   if (options?.trustAnySignedInUser) {
-    return email || linked ? user : null;
+    return hasEmail || linked ? user : null;
   }
-  return isOAuthUser(user) && (email || linked) ? user : null;
+  // Apple may omit email on repeat sign-in — linked provider is enough.
+  return isOAuthUser(user) && (hasEmail || linked) ? user : null;
 }
 
 /** Sign out any existing session so Google/Apple redirect is not conflated with email/password. */
@@ -373,7 +468,12 @@ export async function resolveOAuthPendingUser(
 ): Promise<OAuthSignInResult | null> {
   const user = await waitForOAuthUser(maxWaitMs, options);
   if (!user) return null;
-  return { ok: true, user, isNewUser: true };
+  return {
+    ok: true,
+    user,
+    isNewUser: true,
+    displayName: getOAuthUserDisplayName(user) || undefined,
+  };
 }
 
 async function completeOAuthRedirectOnce(
@@ -388,17 +488,20 @@ async function completeOAuthRedirectOnce(
     const credential = await getRedirectResult(auth);
     if (credential?.user) {
       const info = getAdditionalUserInfo(credential);
+      const displayName = await maybePersistOAuthDisplayName(credential);
       oauthLog.log('redirect:result', {
         uid: credential.user.uid,
-        email: credential.user.email,
+        email: getOAuthUserEmail(credential.user),
         isNewUser: info?.isNewUser ?? false,
+        displayName: displayName || null,
         providerIds: credential.user.providerData.map((p) => p.providerId),
+        appleRelay: isApplePrivateRelayEmail(getOAuthUserEmail(credential.user)),
       });
-      return {
-        ok: true,
-        user: credential.user,
-        isNewUser: info?.isNewUser ?? false,
-      };
+      return buildOAuthSuccessResult(
+        credential,
+        info?.isNewUser ?? false,
+        displayName
+      );
     }
 
     // Redirect may hydrate currentUser shortly after getRedirectResult returns null.
@@ -410,7 +513,12 @@ async function completeOAuthRedirectOnce(
         email: getOAuthUserEmail(user),
         providerIds: user.providerData.map((p) => p.providerId),
       });
-      return { ok: true, user, isNewUser: true };
+      return {
+        ok: true,
+        user,
+        isNewUser: true,
+        displayName: getOAuthUserDisplayName(user) || undefined,
+      };
     }
 
     if (isOAuthRedirectRecoverable()) {

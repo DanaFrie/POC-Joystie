@@ -1,6 +1,7 @@
 import { getAuthInstance } from '@/lib/firebase';
 import { createUser, getUser, getUserByEmail } from '@/lib/api/users';
 import { splitDisplayName } from '@/lib/onboarding/persistOnboardingAccount';
+import { getOAuthUserDisplayName, getOAuthUserEmail } from '@/utils/auth-oauth';
 import type { FirestoreUser } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
 
@@ -37,7 +38,7 @@ export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreU
     throw new Error('נתוני המשתמש לא נמצאו. אנא הירשמו מחדש.');
   }
 
-  const email = (firebaseUser.email || '').trim().toLowerCase();
+  const email = getOAuthUserEmail(firebaseUser).toLowerCase();
   const byEmail = email ? await getUserByEmail(email) : null;
 
   if (byEmail) {
@@ -52,7 +53,9 @@ export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreU
       signupDate: byEmail.signupDate || now,
     });
   } else {
-    const { firstName, lastName } = splitDisplayName(firebaseUser.displayName || '');
+    const { firstName, lastName } = splitDisplayName(
+      getOAuthUserDisplayName(firebaseUser)
+    );
     const now = new Date().toISOString();
     await createUser(uid, {
       email,

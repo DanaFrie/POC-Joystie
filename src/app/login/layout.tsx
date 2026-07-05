@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { OnboardingFunnelRoot } from '@/components/onboarding/OnboardingFunnelRoot';
 import { FunnelViewport } from '@/components/ui/FunnelViewport';
+import {
+  FunnelHeroPortalMount,
+  FunnelStepContentLayer,
+} from '@/components/ui/FunnelHeroPortalMount';
 
 export const metadata: Metadata = {
   themeColor: '#092125',
@@ -25,7 +29,10 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
         scaleMode="scroll"
         className="font-simpler text-v03-text-on-dark"
       >
-        <div className="relative h-full w-full">{children}</div>
+        <div className="relative h-full w-full">
+          <FunnelHeroPortalMount />
+          <FunnelStepContentLayer>{children}</FunnelStepContentLayer>
+        </div>
       </FunnelViewport>
     </OnboardingFunnelRoot>
   );

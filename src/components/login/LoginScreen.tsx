@@ -200,7 +200,7 @@ export function LoginScreen({
   onOAuthApple,
   onSignupClick,
 }: LoginScreenProps) {
-  const googleBlocked = isRestrictedOAuthEnvironment();
+  const oauthBlocked = isRestrictedOAuthEnvironment();
   const formLocked = isSubmitting || oauthLoading !== null;
   const loginScrollRef = useRef<HTMLDivElement>(null);
   const scrollOverflows = useScrollOverflow(loginScrollRef, [
@@ -209,7 +209,7 @@ export function LoginScreen({
     errors,
     email,
     password,
-    googleBlocked,
+    oauthBlocked,
     oauthLoading,
   ]);
   const forgotPasswordHref = getForgotPasswordPath({
@@ -250,9 +250,9 @@ export function LoginScreen({
               <div className="flex w-full flex-col items-end gap-[19px]">
                 <div className="flex w-full flex-col items-center gap-5">
                   <div className="flex w-full flex-col items-start gap-5">
-                    {googleBlocked ? (
+                    {oauthBlocked ? (
                       <div className="w-full rounded-[18px] border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-center font-simpler text-sm leading-[1.4] text-amber-100">
-                        <p>התחברות עם Google לא עובדת מתוך Cursor.</p>
+                        <p>התחברות עם Google או Apple לא עובדת מתוך Cursor.</p>
                         <a
                           href={getOnboardingParentExternalUrl()}
                           target="_blank"
@@ -269,13 +269,13 @@ export function LoginScreen({
                         label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
                         icon={<GoogleIcon />}
                         onClick={onOAuthGoogle}
-                        disabled={formLocked || googleBlocked}
+                        disabled={formLocked || oauthBlocked}
                       />
                       <OAuthButton
                         label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
                         icon={<AppleIcon />}
                         onClick={onOAuthApple}
-                        disabled={formLocked}
+                        disabled={formLocked || oauthBlocked}
                       />
                     </div>
                   </div>

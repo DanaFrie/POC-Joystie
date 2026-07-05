@@ -13,6 +13,10 @@ export type FunnelViewportMetrics = {
   viewportHeight: number;
   /** `scroll` mode — canvas taller than usable viewport (enable page scroll). */
   needsVerticalScroll: boolean;
+  /** Canvas px visible in viewport @ scale 1 — min(812, usableHeight / scale). */
+  usableCanvasHeightPx: number;
+  /** Logical canvas height (812 or compact `--v03-active-canvas-height`). */
+  canvasHeightPx: number;
 };
 
 const DEFAULT_METRICS: FunnelViewportMetrics = {
@@ -23,6 +27,8 @@ const DEFAULT_METRICS: FunnelViewportMetrics = {
   viewportWidth: V03_SCREEN_WIDTH,
   viewportHeight: 812,
   needsVerticalScroll: false,
+  usableCanvasHeightPx: V03_SCREEN_HEIGHT,
+  canvasHeightPx: V03_SCREEN_HEIGHT,
 };
 
 type FunnelViewportContextValue = {

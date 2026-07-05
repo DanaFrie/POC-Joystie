@@ -1,12 +1,12 @@
 'use client';
 
 import { useLayoutEffect, useState } from 'react';
-import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
+import { OnboardingGridLayer } from '@/components/onboarding/OnboardingGridLayer';
 import { V03_DESKTOP_MIN_WIDTH } from '@/constants/v03-screen';
 
 /**
- * Viewport-fixed funnel grid (landing `bg-grid` method) — bleeds on all mobile widths.
- * Portaled below funnel content on `[data-v03-funnel]`.
+ * Funnel grid — in-canvas layer between green bleed (z-0) and heroes (z-[2]+).
+ * Bleeds into letterbox gaps on tall viewports (S20).
  */
 export function OnboardingGrid() {
   const [hidden, setHidden] = useState(true);
@@ -28,9 +28,5 @@ export function OnboardingGrid() {
     return null;
   }
 
-  return (
-    <FunnelRootPortal>
-      <div className="v03-funnel-grid" aria-hidden />
-    </FunnelRootPortal>
-  );
+  return <OnboardingGridLayer />;
 }

@@ -14,8 +14,7 @@ import {
   prefersOAuthRedirect,
   primeOAuthRedirectCapture,
   resolveOAuthSignInAfterRedirect,
-  signInWithApple,
-  signInWithGoogle,
+  signInWithOAuth,
   isRestrictedOAuthEnvironment,
   getRestrictedOAuthMessage,
 } from '@/utils/auth-oauth';
@@ -197,7 +196,7 @@ function LoginPageContent() {
   };
 
   const handleOAuth = async (provider: 'google' | 'apple') => {
-    if (provider === 'google' && isRestrictedOAuthEnvironment()) {
+    if (isRestrictedOAuthEnvironment()) {
       setLoginError(getRestrictedOAuthMessage());
       return;
     }
@@ -211,10 +210,7 @@ function LoginPageContent() {
     const useRedirect = prefersOAuthRedirect();
 
     try {
-      const result =
-        provider === 'google'
-          ? await signInWithGoogle({ useRedirect })
-          : await signInWithApple({ useRedirect });
+      const result = await signInWithOAuth(provider, { useRedirect });
 
       if (result.ok && 'redirecting' in result) {
         return;

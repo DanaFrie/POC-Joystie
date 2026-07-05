@@ -6,6 +6,7 @@ import { ChildOnboardingLogo } from '@/components/onboarding/child/ChildOnboardi
 import { OnboardingEllipses } from '@/components/onboarding/OnboardingEllipses';
 import { OnboardingKingdom } from '@/components/onboarding/OnboardingKingdom';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { FunnelStepBackground, FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { CHILD_ONBOARDING_ENTER_VARS } from '@/constants/child-onboarding-figma';
 
 export type ChildKingdomPhase = 'mintGlow' | 'kingdomLanding' | 'companionPick';
@@ -27,18 +28,21 @@ export function ChildKingdomPhaseStep({
   const showCompanion = phase === 'companionPick';
 
   return (
-    <div
-      className="relative h-full w-full overflow-visible bg-transparent"
-      style={CHILD_ONBOARDING_ENTER_VARS as CSSProperties}
-    >
-      <OnboardingMintGlow />
+    <FunnelStepRoot fitViewport className="bg-transparent">
+      <div
+        className="relative h-full w-full overflow-visible bg-transparent"
+        style={CHILD_ONBOARDING_ENTER_VARS as CSSProperties}
+      >
+        <FunnelStepBackground preserveCanvasHeight showGrid>
+        <OnboardingMintGlow />
 
-      {showKingdom ? (
-        <div className="v03-funnel-enter-0">
-          <OnboardingKingdom />
-          <OnboardingEllipses />
-        </div>
-      ) : null}
+        {showKingdom ? (
+          <div className="v03-funnel-enter-0">
+            <OnboardingKingdom />
+            <OnboardingEllipses />
+          </div>
+        ) : null}
+      </FunnelStepBackground>
 
       {showCompanion ? (
         <>
@@ -48,6 +52,7 @@ export function ChildKingdomPhaseStep({
           <ChildCompanionOverlay onContinue={onCompanionContinue} />
         </>
       ) : null}
-    </div>
+      </div>
+    </FunnelStepRoot>
   );
 }

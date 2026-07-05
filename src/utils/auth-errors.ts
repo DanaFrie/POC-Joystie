@@ -29,7 +29,7 @@ export function getAuthErrorMessage(code: string): string {
     'auth/redirect-cancelled-by-user': 'ההתחברות בוטלה.',
     'auth/redirect-operation-pending': 'התחברות כבר בתהליך. המתינו רגע.',
     'auth/disallowed-useragent':
-      'לא ניתן להתחבר עם Google מדפדפן מוטמע. פתחו את האתר ב-Chrome או Safari.',
+      'לא ניתן להתחבר עם Google או Apple מדפדפן מוטמע. פתחו את האתר ב-Chrome או Safari.',
   };
 
   return errorMessages[code] || 'אירעה שגיאה בהתחברות. נסה שוב.';

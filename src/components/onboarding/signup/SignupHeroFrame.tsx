@@ -6,6 +6,8 @@ import {
 } from '@/components/onboarding/signup/SignupHeroEllipses';
 import { ONBOARDING_SIGNUP_HERO_IMAGE } from '@/constants/onboarding-figma';
 import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
+
+const FUNNEL_HERO_PORTAL_SELECTOR = '[data-v03-funnel-hero]';
 import {
   useFunnelHeroBleedInsets,
   useFunnelViewportMetrics,
@@ -25,8 +27,8 @@ type SignupHeroFrameProps = {
 };
 
 /**
- * Figma Frame 1430108703 — z-order: mountain (1) → ellipses (2) → form (in flow).
- * Portaled below funnel content (wrapper z-10).
+ * Figma Frame 1430108703 — z-order: mountain (1) → ellipses (2) → form (z-10+).
+ * Portaled into `[data-v03-funnel-hero]` above green bleed, below step content.
  */
 export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
   const { scale, offsetX, offsetY, viewportWidth, designWidth } =
@@ -43,7 +45,7 @@ export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
 
   return (
     <>
-      <FunnelRootPortal>
+      <FunnelRootPortal rootSelector={FUNNEL_HERO_PORTAL_SELECTOR}>
         <div
           className="pointer-events-none overflow-hidden"
           style={{

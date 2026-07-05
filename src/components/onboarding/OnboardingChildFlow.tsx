@@ -194,6 +194,10 @@ function showChildFunnelGrid(step: ChildFlowStep): boolean {
 
 function usesOwnFunnelBackground(step: ChildFlowStep): boolean {
   return (
+    step === 'welcome' ||
+    step === 'mintGlow' ||
+    step === 'kingdomLanding' ||
+    step === 'companionPick' ||
     step === 'preparingSharedPhoto' ||
     step === 'selfiePattern' ||
     step === 'sharedPhotoReview' ||

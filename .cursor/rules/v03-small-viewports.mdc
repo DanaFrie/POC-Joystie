@@ -47,6 +47,13 @@ iPhone SE (1st–3rd), iPhone 12/13 mini, iPhone 4/5, Galaxy A / older Android �
 | Fixed / hero steps | Ensure step or parent scroll region covers overflow; avoid `overflow-hidden` without a scroll sibling |
 | Portals / bleed math | `useFunnelViewportMetrics()` — `scale` reflects width-fit, not height-fit |
 | Mount flash | `FunnelViewport` defers canvas children until `layoutReady`; portaled layers gate on `useFunnelLayoutReady()` |
+| 100vh foreground | `src/components/ui/funnel-layout/*` + `funnel-vertical-layout.ts` — migrate screens in batches (Step 1: primitives only) |
+
+## 100vh foreground stack (migration)
+
+- **Background:** `FunnelStepBackground` — absolute bleed, not in flex flow.
+- **Foreground:** `FunnelStepForeground` + `FunnelStepMain` + `FunnelStepFooter` — `h-full`, `justify-between`, scroll in main when needed.
+- **Do not** migrate all screens at once — pilot → bulk by `FunnelStepTemplate`.
 
 ## Landing / marketing
 

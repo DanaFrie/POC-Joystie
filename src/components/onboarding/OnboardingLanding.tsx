@@ -1,19 +1,24 @@
 'use client';
 
 import { OnboardingCopy } from '@/components/onboarding/OnboardingCopy';
-import { OnboardingEllipses } from '@/components/onboarding/OnboardingEllipses';
-import { OnboardingFooterCta } from '@/components/onboarding/OnboardingFooterCta';
-import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
-import { OnboardingKingdom } from '@/components/onboarding/OnboardingKingdom';
+import { OnboardingKingdomEllipsesBackdrop } from '@/components/onboarding/OnboardingKingdomEllipsesBackdrop';
 import { OnboardingLogo } from '@/components/onboarding/OnboardingLogo';
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import {
+  FunnelStepFooter,
+  FunnelStepForeground,
+  FunnelStepRoot,
+  FunnelStepSection,
+} from '@/components/ui/funnel-layout';
 import { resetOnboardingParentFlowStart } from '@/lib/onboarding/parentFlowSession';
 
 type OnboardingLandingProps = {
   onStart: () => void;
 };
 
-/** Step 1 — landing only (`/onboarding`). */
+/**
+ * Step 1 — landing (`/onboarding`).
+ * 100vh foreground stack (logo → copy → footer); bleed layers stay absolute.
+ */
 export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
   const handleStart = () => {
     resetOnboardingParentFlowStart();
@@ -21,21 +26,26 @@ export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
   };
 
   return (
-    <>
-      <OnboardingGrid />
-      <OnboardingKingdom />
-      <OnboardingEllipses />
-      <OnboardingLogo />
-      <OnboardingMintGlow />
-      <OnboardingCopy />
-      <OnboardingFooterCta
-        layout="landing"
-        variant="primary"
-        showLoginLink
-        onClick={handleStart}
-      >
-        התחלה
-      </OnboardingFooterCta>
-    </>
+    <FunnelStepRoot aria-label="Joystie onboarding landing" fitViewport>
+      <OnboardingKingdomEllipsesBackdrop />
+      <FunnelStepForeground distribution="between" padTopPx={0} padBottomPx={16} fitViewport>
+        <FunnelStepSection>
+          <OnboardingLogo flow />
+        </FunnelStepSection>
+
+        <FunnelStepSection>
+          <OnboardingCopy flow />
+        </FunnelStepSection>
+
+        <FunnelStepFooter
+          variant="accent"
+          showLoginLink
+          blur={false}
+          onClick={handleStart}
+        >
+          התחלה
+        </FunnelStepFooter>
+      </FunnelStepForeground>
+    </FunnelStepRoot>
   );
 }

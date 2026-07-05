@@ -470,7 +470,7 @@ html[dir="rtl"] {
     linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
-/* Desktop funnel overlay — in-canvas repeat grid */
+/* Funnel grid — in-canvas repeat; above green bleed, below kingdom / ellipses */
 .v03-onboarding-grid-layer {
   position: absolute;
   inset: 0;

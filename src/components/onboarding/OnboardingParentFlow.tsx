@@ -119,10 +119,11 @@ import {
   getRestrictedOAuthMessage,
   isLikelyOAuthRedirectReturn,
   isRestrictedOAuthEnvironment,
+  getOAuthUserDisplayName,
   getOAuthUserEmail,
-  signInWithApple,
-  signInWithGoogle,
   prefersOAuthRedirect,
+  signInWithOAuth,
+  toOAuthProviderId,
   userHasOAuthProvider,
   userMatchesOAuthProvider,
 } from '@/utils/auth-oauth';
@@ -497,8 +498,7 @@ export function OnboardingParentFlow({
       await auth.currentUser!.getIdToken(true);
       const providerIds = auth.currentUser!.providerData.map((p) => p.providerId);
       if (params.oauthProvider) {
-        const expected =
-          params.oauthProvider === 'apple' ? 'apple.com' : 'google.com';
+        const expected = toOAuthProviderId(params.oauthProvider);
         if (
           !userHasOAuthProvider(auth.currentUser!) ||
           !userMatchesOAuthProvider(auth.currentUser!, expected)
@@ -629,7 +629,10 @@ export function OnboardingParentFlow({
         await finishAccountSetup({
           uid: outcome.result.user.uid,
           email: getOAuthUserEmail(outcome.result.user),
-          displayName: outcome.result.user.displayName ?? undefined,
+          displayName:
+            outcome.result.displayName ||
+            getOAuthUserDisplayName(outcome.result.user) ||
+            undefined,
           termsAccepted: true,
           oauthProvider: readOAuthProvider(),
         });
@@ -763,8 +766,8 @@ export function OnboardingParentFlow({
   };
 
   const handleOAuth = async (provider: 'google' | 'apple') => {
-    if (provider === 'google' && isRestrictedOAuthEnvironment()) {
-      logger.warn('OAuth blocked: restricted environment');
+    if (isRestrictedOAuthEnvironment()) {
+      logger.warn('OAuth blocked: restricted environment', { provider });
       setErrors({ _general: getRestrictedOAuthMessage() });
       return;
     }
@@ -782,10 +785,7 @@ export function OnboardingParentFlow({
     }
 
     try {
-      const result =
-        provider === 'google'
-          ? await signInWithGoogle({ useRedirect })
-          : await signInWithApple({ useRedirect });
+      const result = await signInWithOAuth(provider, { useRedirect });
 
       if (result.ok && 'redirecting' in result) {
         logger.log('OAuth redirecting', { provider });
@@ -834,7 +834,10 @@ export function OnboardingParentFlow({
       await finishAccountSetup({
         uid: result.user.uid,
         email: getOAuthUserEmail(result.user),
-        displayName: result.user.displayName ?? undefined,
+        displayName:
+          result.displayName ||
+          getOAuthUserDisplayName(result.user) ||
+          undefined,
         termsAccepted: values.termsAccepted,
         oauthProvider: provider,
       });

@@ -12,6 +12,7 @@ import {
   V03_SCREEN_HEIGHT,
   V03_SCREEN_WIDTH,
 } from '@/constants/v03-screen';
+import { V03_ACTIVE_CANVAS_HEIGHT_VAR } from '@/constants/funnel-vertical-layout';
 
 export type FunnelSurface = 'dark' | 'light';
 
@@ -50,9 +51,25 @@ const SSR_FUNNEL_METRICS: FunnelViewportMetrics = {
   viewportWidth: V03_SCREEN_WIDTH,
   viewportHeight: V03_SCREEN_HEIGHT,
   needsVerticalScroll: false,
+  usableCanvasHeightPx: V03_SCREEN_HEIGHT,
+  canvasHeightPx: V03_SCREEN_HEIGHT,
 };
 
 const V03_CONTENT_GUTTER_TOTAL = 48;
+
+function readActiveCanvasHeightPx(): number {
+  const funnelRoot = document.querySelector('[data-v03-funnel]');
+  if (!(funnelRoot instanceof HTMLElement)) {
+    return V03_SCREEN_HEIGHT;
+  }
+  const compact = parseFloat(
+    funnelRoot.style.getPropertyValue(V03_ACTIVE_CANVAS_HEIGHT_VAR) || '0'
+  );
+  if (compact > 0) {
+    return Math.min(V03_SCREEN_HEIGHT, compact);
+  }
+  return V03_SCREEN_HEIGHT;
+}
 
 function measureViewport(
   scaleMode: FunnelScaleMode,
@@ -82,7 +99,12 @@ function measureViewport(
   const scale = resolveScale(scaleMode, scaleX, scaleY);
   const designWidth = resolveDesignWidth(scaleMode, width, scale);
   const scaledW = designWidth * scale;
-  const scaledH = V03_SCREEN_HEIGHT * scale;
+  const usableCanvasHeightPx = Math.min(
+    V03_SCREEN_HEIGHT,
+    Math.max(Math.floor(usableHeight / scale), 1)
+  );
+  const activeCanvasHeightPx = readActiveCanvasHeightPx();
+  const scaledH = activeCanvasHeightPx * scale;
 
   return {
     scale,
@@ -98,6 +120,8 @@ function measureViewport(
     designWidth,
     viewportWidth: width,
     viewportHeight: height,
+    usableCanvasHeightPx,
+    canvasHeightPx: activeCanvasHeightPx,
     needsVerticalScroll:
       scaleMode === 'scroll' && scaledH > usableHeight + 1,
   };
@@ -251,7 +275,7 @@ export function FunnelViewport({
       : 'overflow-x-hidden overflow-y-hidden'
     : 'overflow-visible';
   const scaledVisualWidth = metrics.designWidth * metrics.scale;
-  const scaledVisualHeight = V03_SCREEN_HEIGHT * metrics.scale;
+  const scaledVisualHeight = metrics.canvasHeightPx * metrics.scale;
   const scrollSafePadding = isScrollMode && !ignoreSafeArea
     ? {
         paddingTop: metrics.offsetY,
@@ -261,7 +285,7 @@ export function FunnelViewport({
 
   const canvasStyle = {
     width: metrics.designWidth,
-    height: V03_SCREEN_HEIGHT,
+    height: metrics.canvasHeightPx,
     transform: `scale(${metrics.scale})`,
     transformOrigin: 'top left',
   } as const;
