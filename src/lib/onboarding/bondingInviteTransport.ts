@@ -1,8 +1,8 @@
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 
 /**
- * Use RTDB `onboardingBondingInvites` instead of bonding callables.
- * intgr App Hosting hits CORS when callables are not deployed; localhost same.
+ * intgr + localhost: bonding/game callables are often undeployed (CORS on preflight).
+ * Route invite, game-room resolve, milestones, and ball-game rooms through RTDB instead.
  */
 export function useRtdbBondingInvites(): boolean {
   if (isLocalDevHost()) return true;

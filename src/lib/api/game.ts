@@ -10,10 +10,15 @@ import {
   joinGameRoomLocal,
 } from '@/lib/game/localRooms';
 import { httpsCallable } from 'firebase/functions';
+import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('GameAPI');
+
+function useLocalGameRooms(): boolean {
+  return isLocalDevHost() || useRtdbBondingInvites();
+}
 
 export interface CreateGameRoomInput extends GameOnboardingContext {}
 
@@ -75,7 +80,7 @@ export interface EndOnboardingGameRoomResult {
 export async function createGameRoom(
   input: CreateGameRoomInput = {}
 ): Promise<CreateGameRoomResult> {
-  if (isLocalDevHost()) {
+  if (useLocalGameRooms()) {
     logger.log('createGameRoom (local RTDB)', input);
     return createGameRoomLocal(input);
   }
@@ -90,7 +95,7 @@ export async function createGameRoom(
 }
 
 export async function joinGameRoom(input: JoinGameRoomInput): Promise<JoinGameRoomResult> {
-  if (isLocalDevHost()) {
+  if (useLocalGameRooms()) {
     logger.log('joinGameRoom (local RTDB)', { roomId: input.roomId });
     return joinGameRoomLocal(input.roomId, input.joinCode);
   }
@@ -117,7 +122,7 @@ export async function getGameOnboardingStatus(
 export async function completeGameOnboarding(
   input: CompleteGameOnboardingInput
 ): Promise<CompleteGameOnboardingResult> {
-  if (isLocalDevHost()) {
+  if (useLocalGameRooms()) {
     logger.log('completeGameOnboarding (local RTDB)', input);
     return completeGameOnboardingLocal(input.roomId);
   }
@@ -134,7 +139,7 @@ export async function completeGameOnboarding(
 export async function endOnboardingGameRoom(
   input: EndOnboardingGameRoomInput
 ): Promise<EndOnboardingGameRoomResult> {
-  if (isLocalDevHost()) {
+  if (useLocalGameRooms()) {
     logger.log('endOnboardingGameRoom (local RTDB)', input);
     return endOnboardingGameRoomLocal(input.roomId);
   }

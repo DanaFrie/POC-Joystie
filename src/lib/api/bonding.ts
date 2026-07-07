@@ -2,7 +2,10 @@
  * Bonding invite API (calls Firebase Functions).
  */
 import { getFunctionsInstance } from '@/lib/firebase';
-import { readOnboardingBondingPublic } from '@/lib/game/bondingPublic';
+import {
+  readOnboardingBondingMeta,
+  readOnboardingBondingPublic,
+} from '@/lib/game/bondingPublic';
 import {
   recordLocalBondingInvite,
   resolveLocalBondingInvite,
@@ -83,6 +86,7 @@ export async function markBondingWhatsAppShared(inviteId: string): Promise<void>
 }
 
 export async function markBondingChildLinkOpened(inviteId: string): Promise<void> {
+  if (isLocalDevHost() || useRtdbBondingInvites()) return;
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<{ inviteId: string }, { ok: boolean }>(
     functions,
@@ -105,20 +109,41 @@ export interface ResolveBondingGameRoomResult {
   joinCode: string | null;
 }
 
+async function resolveBondingGameRoomFromRtdb(
+  input: ResolveBondingGameRoomInput
+): Promise<ResolveBondingGameRoomResult> {
+  let childName: string | null = null;
+  let parentName: string | null = null;
+
+  if (input.inviteId) {
+    try {
+      const invite = await resolveLocalBondingInvite(input.inviteId);
+      childName = invite.childName;
+      parentName = invite.parentName;
+    } catch {
+      // invite record is optional enrichment for display names
+    }
+  }
+
+  const pub = await readOnboardingBondingPublic(input.parentId);
+  const meta = await readOnboardingBondingMeta(input.parentId);
+
+  return {
+    parentId: input.parentId,
+    inviteId: input.inviteId,
+    childName: pub?.childName ?? meta?.childName ?? childName,
+    parentName: pub?.parentName ?? meta?.parentName ?? parentName,
+    roomId: pub?.roomId ?? null,
+    joinCode: pub?.joinCode ?? null,
+  };
+}
+
 export async function resolveBondingGameRoom(
   input: ResolveBondingGameRoomInput
 ): Promise<ResolveBondingGameRoomResult> {
-  if (isLocalDevHost()) {
-    logger.log('resolveBondingGameRoom (local RTDB)', { parentId: input.parentId });
-    const pub = await readOnboardingBondingPublic(input.parentId);
-    return {
-      parentId: input.parentId,
-      inviteId: input.inviteId,
-      childName: pub?.childName ?? null,
-      parentName: pub?.parentName ?? null,
-      roomId: pub?.roomId ?? null,
-      joinCode: pub?.joinCode ?? null,
-    };
+  if (isLocalDevHost() || useRtdbBondingInvites()) {
+    logger.log('resolveBondingGameRoom (RTDB)', { parentId: input.parentId });
+    return resolveBondingGameRoomFromRtdb(input);
   }
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<ResolveBondingGameRoomInput, ResolveBondingGameRoomResult>(
@@ -146,7 +171,7 @@ export async function reportChildOnboardingMilestone(input: {
   milestone: ChildOnboardingMilestone;
   changeText?: string;
 }): Promise<{ ok: boolean; reason?: string }> {
-  if (isLocalDevHost()) {
+  if (isLocalDevHost() || useRtdbBondingInvites()) {
     return { ok: true };
   }
   const functions = await getFunctionsInstance();
