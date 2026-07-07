@@ -1,5 +1,5 @@
 /**
- * Local dev bonding invites — RTDB instead of undeployed callables (CORS-safe).
+ * RTDB bonding invites — localhost + intgr App Hosting (callable-free).
  * Production uses Firestore via `recordBondingInvite` / `resolveBondingInvite`.
  */
 import { get, ref, set } from 'firebase/database';

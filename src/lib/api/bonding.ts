@@ -7,6 +7,7 @@ import {
   recordLocalBondingInvite,
   resolveLocalBondingInvite,
 } from '@/lib/onboarding/localBondingInvite';
+import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
 import { httpsCallable } from 'firebase/functions';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
@@ -40,8 +41,8 @@ export interface ResolveBondingInviteResult {
 export async function resolveBondingInvite(
   inviteId: string
 ): Promise<ResolveBondingInviteResult> {
-  if (isLocalDevHost()) {
-    logger.log('resolveBondingInvite (local RTDB)', { inviteId });
+  if (useRtdbBondingInvites()) {
+    logger.log('resolveBondingInvite (RTDB)', { inviteId });
     return resolveLocalBondingInvite(inviteId);
   }
   const functions = await getFunctionsInstance();
@@ -57,8 +58,8 @@ export async function resolveBondingInvite(
 export async function recordBondingInvite(
   input: RecordBondingInviteInput
 ): Promise<RecordBondingInviteResult> {
-  if (isLocalDevHost()) {
-    logger.log('recordBondingInvite (local RTDB)', { childId: input.childId });
+  if (useRtdbBondingInvites()) {
+    logger.log('recordBondingInvite (RTDB)', { childId: input.childId });
     return recordLocalBondingInvite(input);
   }
   const functions = await getFunctionsInstance();
@@ -72,7 +73,7 @@ export async function recordBondingInvite(
 }
 
 export async function markBondingWhatsAppShared(inviteId: string): Promise<void> {
-  if (isLocalDevHost()) return;
+  if (isLocalDevHost() || useRtdbBondingInvites()) return;
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<{ inviteId: string }, { ok: boolean }>(
     functions,
