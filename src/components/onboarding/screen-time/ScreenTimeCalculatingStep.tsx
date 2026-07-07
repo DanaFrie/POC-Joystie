@@ -7,11 +7,14 @@ const PROGRESS_MS = 3500;
 
 type ScreenTimeCalculatingStepProps = {
   onComplete: () => void;
+  /** Centered inside `FunnelStepForeground` (100vh funnel). */
+  flow?: boolean;
 };
 
 /** Figma loading — grid visible, ring + % animate 0→100, then `onComplete`. */
 export function ScreenTimeCalculatingStep({
   onComplete,
+  flow = false,
 }: ScreenTimeCalculatingStepProps) {
   const [percent, setPercent] = useState(0);
   const onCompleteRef = useRef(onComplete);
@@ -37,12 +40,15 @@ export function ScreenTimeCalculatingStep({
   }, []);
 
   return (
-    <>
-      <section
-        className="absolute inset-0 z-[10] flex flex-col items-center justify-center gap-[39px] px-v03-gutter"
-        aria-label="מחשבים זמן מסך"
-        aria-busy="true"
-      >
+    <section
+      className={
+        flow
+          ? 'pointer-events-none flex w-full flex-col items-center justify-center gap-[39px] px-v03-gutter'
+          : 'absolute inset-0 z-[10] flex flex-col items-center justify-center gap-[39px] px-v03-gutter'
+      }
+      aria-label="מחשבים זמן מסך"
+      aria-busy="true"
+    >
         <ScreenTimeProgressRing percent={percent} />
 
         <div className="flex w-full max-w-v03-content flex-col items-center">
@@ -53,7 +59,6 @@ export function ScreenTimeCalculatingStep({
             מחשבים זמן מסך...
           </p>
         </div>
-      </section>
-    </>
+    </section>
   );
 }

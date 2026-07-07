@@ -17,19 +17,19 @@ type ChildSharedPhotoFooterProps = {
 export function ChildSharedPhotoFooter({ children }: ChildSharedPhotoFooterProps) {
   return (
     <div
-      className="absolute inset-x-0 z-30 flex flex-col items-center bg-v03-green-900 backdrop-blur-[4.18px]"
+      className="relative z-30 mt-auto flex w-full shrink-0 flex-col items-center bg-v03-green-900 backdrop-blur-[4.18px]"
       style={{
-        top: footer.frameTop,
         paddingTop: footer.paddingTop,
         paddingLeft: footer.paddingX,
         paddingRight: footer.paddingX,
+        paddingBottom: 'max(34px, env(safe-area-inset-bottom))',
         gap: footer.gap,
       }}
     >
       <div
         className="flex w-full flex-col items-center"
         style={{
-          maxWidth: footer.buttonWidth,
+          maxWidth: footer.frameWidth,
           gap: footer.frameGap,
         }}
       >
@@ -54,6 +54,7 @@ export function ChildSharedPhotoPrimaryButton({
     <button
       type="button"
       onClick={onClick}
+      dir="rtl"
       className="inline-flex w-full cursor-pointer touch-manipulation items-center justify-center rounded-[18.41px] bg-v03-turquoise-300 font-simpler font-bold text-v03-green-900 transition hover:brightness-95"
       style={{
         maxWidth: footer.buttonWidth,
@@ -64,7 +65,7 @@ export function ChildSharedPhotoPrimaryButton({
         ...buttonTextStyle,
       }}
     >
-      <span className="inline-flex items-center gap-[6.69px]" dir="ltr">
+      <span className="inline-flex items-center gap-[6.69px]">
         <span>{children}</span>
         {icon}
       </span>
@@ -87,6 +88,7 @@ export function ChildSharedPhotoSecondaryButton({
     <button
       type="button"
       onClick={onClick}
+      dir="rtl"
       className="inline-flex w-full cursor-pointer touch-manipulation items-center justify-center rounded-[18.41px] bg-transparent font-simpler font-bold text-white outline outline-[0.84px] outline-white transition hover:bg-white/5"
       style={{
         maxWidth: footer.buttonWidth,
@@ -98,7 +100,7 @@ export function ChildSharedPhotoSecondaryButton({
         ...buttonTextStyle,
       }}
     >
-      <span className="inline-flex items-center gap-[6.69px]" dir="ltr">
+      <span className="inline-flex items-center gap-[6.69px]">
         <span>{children}</span>
         {icon}
       </span>
@@ -117,6 +119,7 @@ export function ChildSharedPhotoFooterLink({
     <button
       type="button"
       onClick={onClick}
+      dir="rtl"
       className="w-full cursor-pointer touch-manipulation border-0 bg-transparent p-0 text-center font-simpler font-bold text-white underline"
       style={buttonTextStyle}
     >

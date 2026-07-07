@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { OnboardingCountStepper } from '@/components/onboarding/children-count/OnboardingCountStepper';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import { ONBOARDING_CHILDREN_PHONE_IMAGE } from '@/constants/onboarding-figma';
+import { PARENT_PHONE_COUNT_STEP } from '@/constants/parent-onboarding-layout';
+import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
   ONBOARDING_CHILDREN_PHONE_MAX,
   ONBOARDING_CHILDREN_PHONE_MIN,
@@ -14,19 +17,23 @@ type ChildrenPhoneCountStepProps = {
   onCountChange: (count: number) => void;
 };
 
-/** Children phone count — second step on /onboarding/parent. */
+/** Children phone count — flow stack inside `FunnelStepForeground`. */
 export function ChildrenPhoneCountStep({
   count,
   onCountChange,
 }: ChildrenPhoneCountStepProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const layout = PARENT_PHONE_COUNT_STEP;
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const topPx = (layout.top / V03_SCREEN_HEIGHT) * usableCanvasHeightPx;
 
   return (
     <section
-      className="absolute left-0 right-0 top-[130px] z-[10] flex flex-col items-center gap-[19px] px-v03-gutter"
+      className="pointer-events-auto flex w-full flex-col items-center px-v03-gutter"
+      style={{ paddingTop: topPx, gap: layout.columnGap }}
       aria-label="מספר ילדים עם טלפון"
     >
-      <div className="relative h-[180px] w-[180px] shrink-0">
+      <div className="v03-funnel-enter-0 relative h-[180px] w-[180px] shrink-0">
         {!imageFailed && (
           <OnboardingLazyImage
             src={ONBOARDING_CHILDREN_PHONE_IMAGE}
@@ -37,8 +44,11 @@ export function ChildrenPhoneCountStep({
         )}
       </div>
 
-      <div className="flex w-full max-w-v03-content flex-col items-center gap-[35px]">
-        <header className="flex w-full flex-col items-center justify-center gap-1 px-[15px]">
+      <div
+        className="flex w-full max-w-v03-content flex-col items-center"
+        style={{ gap: layout.contentGap }}
+      >
+        <header className="v03-funnel-enter-1 flex w-full flex-col items-center justify-center gap-1 px-[15px]">
           <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white">
             כמה מהילדים במשפחה משתמשים בטלפון?
           </h1>
@@ -47,12 +57,14 @@ export function ChildrenPhoneCountStep({
           </p>
         </header>
 
-        <OnboardingCountStepper
-          value={count}
-          min={ONBOARDING_CHILDREN_PHONE_MIN}
-          max={ONBOARDING_CHILDREN_PHONE_MAX}
-          onChange={onCountChange}
-        />
+        <div className="v03-funnel-enter-2">
+          <OnboardingCountStepper
+            value={count}
+            min={ONBOARDING_CHILDREN_PHONE_MIN}
+            max={ONBOARDING_CHILDREN_PHONE_MAX}
+            onChange={onCountChange}
+          />
+        </div>
       </div>
     </section>
   );

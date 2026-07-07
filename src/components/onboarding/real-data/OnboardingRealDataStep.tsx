@@ -2,51 +2,63 @@
 
 import { StatsComparisonCards } from '@/components/onboarding/real-data/StatsComparisonCards';
 import { StatsPhoneMockup } from '@/components/onboarding/real-data/StatsPhoneMockup';
-import { ONBOARDING_BLUR_FOOTER_RESERVE_CLASS } from '@/components/onboarding/OnboardingBlurFooter';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import {
-  REVEAL_REAL_DATA_CARDS_MIN_H_PX,
   REVEAL_REAL_DATA_CONTENT_GAP_PX,
-  REVEAL_REAL_DATA_CONTENT_TOP_PX,
-  REVEAL_REAL_DATA_PHONE_H_PX,
+  REVEAL_REAL_DATA_CONTENT_OVERLAP_PX,
   REVEAL_REAL_DATA_PHONE_TOP_PX,
-  REVEAL_REAL_DATA_PHONE_W_PX,
 } from '@/constants/reveal-real-data-layout';
+import { REVEAL_PHONE_CLUSTER_WIDTH_PX } from '@/constants/reveal-phone-layout';
+
+/** Break out of foreground gutter so the 331px card cluster fits the 375px canvas. */
+const CARDS_GUTTER_BREAKOUT_STYLE = {
+  marginInline: 'calc(-1 * var(--v03-gutter))',
+  width: 'calc(100% + 2 * var(--v03-gutter))',
+} as const;
 
 /** Figma 12910:9075 — phone + «נתונים של משתמשים אמיתיים» comparison. */
 export function OnboardingRealDataStep() {
+  const phoneTop = useFunnelProportionalTopPx(REVEAL_REAL_DATA_PHONE_TOP_PX);
+
   return (
     <section
-      className={`v03-real-data-step absolute inset-0 z-[10] overflow-y-auto v03-scroll-hidden ${ONBOARDING_BLUR_FOOTER_RESERVE_CLASS}`}
+      className="v03-real-data-step relative flex h-full min-h-0 w-full flex-col overflow-hidden"
       aria-label="נתונים של משתמשים אמיתיים"
     >
       <div
-        className="absolute left-1/2 z-[1] flex -translate-x-1/2 justify-center"
-        style={{
-          top: REVEAL_REAL_DATA_PHONE_TOP_PX,
-          width: REVEAL_REAL_DATA_PHONE_W_PX,
-          height: REVEAL_REAL_DATA_PHONE_H_PX,
-        }}
+        className="relative z-[1] flex shrink-0 justify-center overflow-hidden px-v03-gutter"
+        style={{ paddingTop: phoneTop }}
       >
-        <div className="v03-funnel-enter-reveal-0">
-          <StatsPhoneMockup />
+        <div
+          className="overflow-hidden"
+          style={{ width: REVEAL_PHONE_CLUSTER_WIDTH_PX }}
+        >
+          <div className="v03-funnel-enter-reveal-0">
+            <StatsPhoneMockup />
+          </div>
         </div>
       </div>
 
       <div
-        className="absolute inset-x-0 z-[1] flex flex-col items-center"
-        style={{
-          top: REVEAL_REAL_DATA_CONTENT_TOP_PX,
-          gap: REVEAL_REAL_DATA_CONTENT_GAP_PX,
-        }}
+        className="relative z-[3] flex min-h-0 flex-1 flex-col items-center overflow-hidden"
+        style={{ marginTop: -REVEAL_REAL_DATA_CONTENT_OVERLAP_PX }}
       >
-        <p className="v03-funnel-enter-reveal-1 w-full text-center font-simpler text-base font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-400">
-          נתונים של משתמשים אמיתיים:
-        </p>
         <div
-          className="w-full"
-          style={{ minHeight: REVEAL_REAL_DATA_CARDS_MIN_H_PX }}
+          className="flex w-full flex-col items-center overflow-hidden"
+          style={{
+            gap: REVEAL_REAL_DATA_CONTENT_GAP_PX,
+            paddingTop: 4,
+          }}
         >
-          <StatsComparisonCards />
+          <p className="v03-funnel-enter-reveal-1 w-full max-w-v03-content px-v03-gutter text-center font-simpler text-base font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-400">
+            נתונים של משתמשים אמיתיים:
+          </p>
+          <div
+            className="flex w-full justify-center overflow-hidden"
+            style={CARDS_GUTTER_BREAKOUT_STYLE}
+          >
+            <StatsComparisonCards />
+          </div>
         </div>
       </div>
     </section>

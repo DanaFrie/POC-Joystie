@@ -1,13 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChildCastleChangeCelebrationOverlay } from '@/components/onboarding/child/ChildCastleChangeCelebrationOverlay';
 import { ChildCastleChangeConfirmOverlay } from '@/components/onboarding/child/ChildCastleChangeConfirmOverlay';
 import { ChildCastleTiltCard } from '@/components/onboarding/child/ChildCastleTiltCard';
 import { ChildContinueGlowTapButton } from '@/components/onboarding/child/ChildContinueGlowButton';
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import {
+  funnelProportionalTopPx,
+  useFunnelFullBleed,
+  useFunnelViewportMetrics,
+} from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import {
   CHILD_CASTLE_INTERIOR_CARDS,
@@ -17,23 +22,44 @@ import {
 
 type RunPhase = 'idle' | 'playing' | 'dissolve' | 'interior' | 'confirm' | 'celebration';
 
-/** Run to castle — tap plays video; dissolve → castle + header + tilt card slider. */
+/** Run-to-castle video → castle interior card picker. */
 export function ChildRunToCastleStep({
   childName,
   childGender = 'boy',
   onContinue,
+  onChangeConfirmed,
 }: {
   childName: string;
   childGender?: 'boy' | 'girl';
   onContinue?: () => void;
+  /** Fired when child ticks confirm on the chosen change — unlocks parent reviewChange. */
+  onChangeConfirmed?: (changeText: string) => void;
 }) {
   const layout = CHILD_RUN_TO_CASTLE;
   const bubble = layout.bubble;
-  const videoLayout = layout.video;
-  const castleLayout = layout.castle;
   const glow = layout.glowButton;
   const header = layout.header;
   const cards = layout.cards;
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const mediaBleedStyle = useFunnelFullBleed();
+  const scaleY = (figmaY: number) => funnelProportionalTopPx(figmaY, usableCanvasHeightPx);
+
+  const headerTopPx = scaleY(header.top);
+  const headerHeightPx = scaleY(header.height);
+  const bubbleTopPx = scaleY(bubble.top);
+  const glowTopPx = scaleY(glow.top);
+
+  const scaledInteriorCards = useMemo(
+    () =>
+      CHILD_CASTLE_INTERIOR_CARDS.map((card) => ({
+        card,
+        placeTopPx: scaleY(card.placeTop),
+        widthPx: card.width,
+        minHeightPx: card.height,
+      })),
+    [usableCanvasHeightPx]
+  );
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const dissolveDone = useRef(false);
   const phaseRef = useRef<RunPhase>('idle');
@@ -72,11 +98,14 @@ export function ChildRunToCastleStep({
   useEffect(() => {
     if (phase !== 'interior') return;
 
+    setRevealedCardCount(0);
+    setHeaderOpacity(0);
+
     const headerRaf = window.requestAnimationFrame(() => setHeaderOpacity(1));
     const cardTimers = CHILD_CASTLE_INTERIOR_CARDS.map((_, index) =>
       window.setTimeout(
         () => setRevealedCardCount((count) => Math.max(count, index + 1)),
-        layout.cardRevealMs + index * 180
+        layout.cardRevealMs + index * layout.cardRevealStaggerMs
       )
     );
 
@@ -84,7 +113,7 @@ export function ChildRunToCastleStep({
       window.cancelAnimationFrame(headerRaf);
       cardTimers.forEach((timer) => window.clearTimeout(timer));
     };
-  }, [phase, layout.cardRevealMs]);
+  }, [phase, layout.cardRevealMs, layout.cardRevealStaggerMs]);
 
   const handleTap = useCallback(() => {
     if (phaseRef.current !== 'idle') return;
@@ -109,6 +138,13 @@ export function ChildRunToCastleStep({
     setPhase('celebration');
   }, []);
 
+  const handleCelebrationComplete = useCallback(() => {
+    if (selectedTitle.trim()) {
+      onChangeConfirmed?.(selectedTitle.trim());
+    }
+    onContinue?.();
+  }, [onChangeConfirmed, onContinue, selectedTitle]);
+
   const handleDeclineChange = useCallback(() => {
     setSelectedId(null);
     setSelectedTitle('');
@@ -120,9 +156,11 @@ export function ChildRunToCastleStep({
   const headerTransition = `opacity ${layout.headerFadeMs}ms ease-out`;
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-transparent">
-      <OnboardingMintGlow />
-
+    <FunnelStepRoot
+      fitViewport
+      aria-label="ריצה לארמון"
+      className="overflow-hidden bg-transparent"
+    >
       <video
         ref={videoRef}
         src={CHILD_ONBOARDING_ASSETS.doriRunToCastle}
@@ -130,13 +168,9 @@ export function ChildRunToCastleStep({
         playsInline
         preload="auto"
         onEnded={handleVideoEnded}
-        className="pointer-events-none absolute z-[1] shrink-0 object-cover"
+        className="pointer-events-none absolute z-[1] object-cover object-top"
         style={{
-          top: videoLayout.top,
-          left: videoLayout.left,
-          width: videoLayout.width,
-          height: videoLayout.height,
-          aspectRatio: videoLayout.aspectRatio,
+          ...mediaBleedStyle,
           opacity: videoOpacity,
           transition: phase === 'dissolve' ? dissolveTransition : undefined,
         }}
@@ -146,13 +180,9 @@ export function ChildRunToCastleStep({
       <OnboardingLazyImage
         src={CHILD_ONBOARDING_ASSETS.doriCastle}
         alt=""
-        className="pointer-events-none absolute z-[2] shrink-0 object-cover"
+        className="pointer-events-none absolute z-[2] object-cover object-top"
         style={{
-          top: castleLayout.top,
-          left: castleLayout.left,
-          width: castleLayout.width,
-          height: castleLayout.height,
-          aspectRatio: castleLayout.aspectRatio,
+          ...mediaBleedStyle,
           opacity: castleOpacity,
           transition: dissolveTransition,
         }}
@@ -164,9 +194,9 @@ export function ChildRunToCastleStep({
           <header
             className="absolute left-0 z-[15] flex w-full items-center justify-center"
             style={{
-              top: header.top,
+              top: headerTopPx,
               width: header.width,
-              height: header.height,
+              height: headerHeightPx,
               padding: header.padding,
               gap: header.gap,
               background: header.background,
@@ -189,35 +219,40 @@ export function ChildRunToCastleStep({
             </p>
           </header>
 
-          <div
-            className="absolute inset-0"
-            style={{ zIndex: cards.zIndex }}
-          >
-            {CHILD_CASTLE_INTERIOR_CARDS.map((card, index) =>
+          <div className="absolute inset-0" style={{ zIndex: cards.zIndex }}>
+            {scaledInteriorCards.map(({ card, placeTopPx, widthPx, minHeightPx }, index) =>
               index < revealedCardCount ? (
                 <div
                   key={card.id}
-                  className="castle-card-enter absolute"
+                  className="absolute"
                   style={{
-                    top: card.placeTop,
+                    top: placeTopPx,
                     left: card.placeLeft,
-                    width: card.width,
-                    height: card.height,
+                    width: widthPx,
+                    minHeight: minHeightPx,
                     transform: `rotate(${card.placeRotateDeg}deg)`,
                     transformOrigin: 'top left',
-                    animationDelay: `${index * 180}ms`,
                   }}
                 >
                   <div
-                    className="castle-card-float relative size-full"
-                    style={{ animationDelay: `${index * 0.35}s` }}
+                    className="castle-card-enter"
+                    style={{ animationDelay: `${index * layout.cardRevealStaggerMs}ms` }}
                   >
-                    <ChildCastleTiltCard
-                      variant="slider"
-                      layout={childCastleInteriorCardLayout(card)}
-                      title={card.title}
-                      onSelect={() => handleSelectCard(card.id, card.title)}
-                    />
+                    <div
+                      className="castle-card-float relative"
+                      style={{ animationDelay: `${index * 0.4}s` }}
+                    >
+                      <ChildCastleTiltCard
+                        variant="slider"
+                        layout={{
+                          ...childCastleInteriorCardLayout(card),
+                          width: widthPx,
+                          height: minHeightPx,
+                        }}
+                        title={card.title}
+                        onSelect={() => handleSelectCard(card.id, card.title)}
+                      />
+                    </div>
                   </div>
                 </div>
               ) : null
@@ -237,7 +272,7 @@ export function ChildRunToCastleStep({
       <ChildCastleChangeCelebrationOverlay
         childGender={childGender}
         visible={phase === 'celebration'}
-        onContinue={onContinue}
+        onComplete={handleCelebrationComplete}
       />
 
       <div
@@ -249,10 +284,10 @@ export function ChildRunToCastleStep({
         aria-hidden={!uiVisible}
       >
         <div className={phase === 'idle' ? 'pointer-events-auto' : 'pointer-events-none'}>
-          <ChildContinueGlowTapButton left={glow.left} top={glow.top} onClick={handleTap} />
+          <ChildContinueGlowTapButton left={glow.left} top={glowTopPx} onClick={handleTap} />
 
           <ChildSpeechBubble
-            top={bubble.top}
+            top={bubbleTopPx}
             left={bubble.left}
             width={bubble.width}
             tailLeft={bubble.tailLeft}
@@ -277,6 +312,6 @@ export function ChildRunToCastleStep({
           </ChildSpeechBubble>
         </div>
       </div>
-    </div>
+    </FunnelStepRoot>
   );
 }

@@ -124,11 +124,21 @@ export async function resolveBondingGameRoom(
   return data;
 }
 
-export type ChildOnboardingMilestone = 'link_opened' | 'egg_complete' | 'welcome_reached' | 'dori_revealed' | 'mission_ready';
+export type ChildOnboardingMilestone =
+  | 'link_opened'
+  | 'egg_complete'
+  | 'welcome_reached'
+  | 'dori_revealed'
+  | 'mission_ready'
+  | 'change_selected'
+  | 'parent_change_accepted'
+  | 'parent_change_declined'
+  | 'selfie_mission_done';
 
 export async function reportChildOnboardingMilestone(input: {
   parentId: string;
   milestone: ChildOnboardingMilestone;
+  changeText?: string;
 }): Promise<{ ok: boolean; reason?: string }> {
   if (isLocalDevHost()) {
     return { ok: true };

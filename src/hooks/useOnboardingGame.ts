@@ -268,7 +268,7 @@ export function useOnboardingGame({
     if (role === 'parent') {
       if (parentWinHandled.current) return;
       parentWinHandled.current = true;
-      if (session.roomId) {
+      if (!onParentGameWon && session.roomId) {
         void endOnboardingGameRoom({ roomId: session.roomId }).catch(() => {});
       }
       if (onParentGameWon) {

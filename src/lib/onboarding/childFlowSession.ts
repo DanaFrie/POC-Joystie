@@ -1,10 +1,6 @@
 /** Session keys for `/onboarding/child` funnel step persistence. */
 export const ONBOARDING_CHILD_FLOW_STEP_KEY = 'onboardingChildFlowStep';
 
-/** Set when child completed doriMissionIntro — skip in-game mission intro on `/game/child`. */
-export const ONBOARDING_CHILD_DORI_MISSION_INTRO_DONE_KEY =
-  'onboardingChildDoriMissionIntroDone';
-
 const PERSISTED_STEPS = new Set([
   'welcome',
   'mintGlow',
@@ -18,6 +14,7 @@ const PERSISTED_STEPS = new Set([
   'missionOneWin',
   'missionTwoIntro',
   'missionTwoDoriShell',
+  'missionTwoChangeIntro',
   'runToCastle',
   'changeKing',
   'waitingParentApproval',
@@ -44,16 +41,4 @@ export function writePersistedChildFlowStep(step: string): void {
   if (typeof window === 'undefined') return;
   if (!PERSISTED_STEPS.has(step)) return;
   sessionStorage.setItem(ONBOARDING_CHILD_FLOW_STEP_KEY, step);
-}
-
-export function markChildDoriMissionIntroDone(): void {
-  if (typeof window === 'undefined') return;
-  sessionStorage.setItem(ONBOARDING_CHILD_DORI_MISSION_INTRO_DONE_KEY, '1');
-}
-
-export function consumeChildDoriMissionIntroDone(): boolean {
-  if (typeof window === 'undefined') return false;
-  const done = sessionStorage.getItem(ONBOARDING_CHILD_DORI_MISSION_INTRO_DONE_KEY) === '1';
-  if (done) sessionStorage.removeItem(ONBOARDING_CHILD_DORI_MISSION_INTRO_DONE_KEY);
-  return done;
 }

@@ -5,18 +5,21 @@ import { useRef } from 'react';
 import { JoystieCompactMark } from '@/components/brand/JoystieCompactMark';
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
-import { ONBOARDING_BLUR_FOOTER_HEIGHT_PX } from '@/components/onboarding/OnboardingBlurFooter';
-import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBackdrop';
 import {
-  ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX,
-} from '@/constants/onboarding-footer';
+  FunnelStepFooter,
+  FunnelStepForeground,
+  FunnelStepMain,
+  FunnelStepRoot,
+} from '@/components/ui/funnel-layout';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
+import { getFunnelScrollFrameBottomInsetPx } from '@/constants/funnel-vertical-layout';
+import { getLoginScrollTopPx } from '@/constants/login-layout';
 import { useScrollOverflow } from '@/hooks/useScrollOverflow';
 import { getForgotPasswordPath } from '@/lib/auth/postLoginNavigation';
 import {
   getOnboardingParentExternalUrl,
   isRestrictedOAuthEnvironment,
 } from '@/utils/auth-oauth';
-import { SIGNUP_FORM_CONTENT_MARGIN_TOP_PX } from '@/constants/signup-layout';
 
 const LOGIN_FORM_ID = 'login-form';
 
@@ -30,9 +33,6 @@ const labelClass =
 
 const inputClass =
   'h-[49px] w-full rounded-[18px] border border-white/20 bg-white/5 px-[15px] py-[14px] text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white outline-none focus:border-white/40';
-
-const footerButtonClass =
-  'inline-flex h-[55px] w-v03-content max-w-[calc(100vw-48px)] items-center justify-center gap-2 overflow-hidden rounded-[22px] bg-white px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-v03-button transition hover:brightness-95';
 
 type LoginScreenProps = {
   email: string;
@@ -129,63 +129,6 @@ function LoginResumeSignupBanner() {
   );
 }
 
-function LoginCanvasFooter({
-  loginError,
-  isSubmitting,
-  formLocked,
-  showBlur,
-  onSignupClick,
-}: {
-  loginError?: string;
-  isSubmitting: boolean;
-  formLocked: boolean;
-  showBlur: boolean;
-  onSignupClick?: () => void;
-}) {
-  return (
-    <>
-      {showBlur ? (
-        <FunnelBleedFooterBackdrop shellTopPx={ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX} />
-      ) : null}
-
-      <div
-        className="pointer-events-none absolute left-v03-gutter z-[45] flex w-v03-content flex-col items-center gap-[15px] pt-5"
-        style={{ top: ONBOARDING_STACKED_FOOTER_SHELL_TOP_PX }}
-      >
-        {loginError ? (
-          <p className="pointer-events-auto w-full text-center font-simpler text-sm text-red-300">
-            {loginError}
-          </p>
-        ) : null}
-
-        <button
-          type="submit"
-          form={LOGIN_FORM_ID}
-          disabled={formLocked}
-          className={`pointer-events-auto ${footerButtonClass} ${formLocked ? 'opacity-50' : ''}`}
-        >
-          {isSubmitting ? 'מתחבר...' : 'התחברות'}
-        </button>
-
-        <p className="pointer-events-auto w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-          <span>עדיין אין לך חשבון? </span>
-          <Link
-            href="/onboarding"
-            onClick={(e) => {
-              if (!onSignupClick) return;
-              e.preventDefault();
-              onSignupClick();
-            }}
-            className="font-normal text-white underline decoration-solid underline-offset-2"
-          >
-            להרשמה
-          </Link>
-        </p>
-      </div>
-    </>
-  );
-}
-
 export function LoginScreen({
   email,
   password,
@@ -212,34 +155,35 @@ export function LoginScreen({
     oauthBlocked,
     oauthLoading,
   ]);
+  const loginPadTopPx = useFunnelProportionalTopPx(getLoginScrollTopPx(showResumeSignupBanner));
   const forgotPasswordHref = getForgotPasswordPath({
     email,
     existing: showResumeSignupBanner,
   });
 
   return (
-    <>
-      <div
-        dir="rtl"
-        className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-visible"
-        style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
+    <FunnelStepRoot fitViewport aria-label="התחברות">
+      <SignupHeroFrame />
+      <FunnelStepForeground
+        distribution="between"
+        padTopPx={loginPadTopPx}
+        padBottomPx={getFunnelScrollFrameBottomInsetPx({ showSignupLink: true })}
+        fitViewport
       >
-        <div
-          ref={loginScrollRef}
-          className="absolute inset-0 isolate overflow-y-auto v03-scroll-hidden"
+        <FunnelStepMain
+          scroll
+          scrollRef={loginScrollRef}
+          className="relative min-h-0 w-full flex-1"
         >
-          <SignupHeroFrame scrollTop={0} />
-
           <form
             id={LOGIN_FORM_ID}
             onSubmit={onSubmit}
-            className="relative z-[20] mx-auto flex w-v03-content flex-col items-center gap-[15px] pb-8"
-            style={{ marginTop: SIGNUP_FORM_CONTENT_MARGIN_TOP_PX }}
+            className="relative z-[20] mx-auto flex w-full flex-col items-stretch gap-[15px]"
           >
             <div className="flex w-full flex-col items-center gap-5">
               <JoystieCompactMark width={45.47} height={45.04} />
 
-              <div className="flex w-v03-content flex-col items-end justify-center gap-[15px]">
+              <div className="flex w-full flex-col items-end justify-center gap-[15px]">
                 <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
                   התחברות לג׳ויסטי
                 </h1>
@@ -325,16 +269,22 @@ export function LoginScreen({
               </div>
             </div>
           </form>
-        </div>
-      </div>
+        </FunnelStepMain>
 
-      <LoginCanvasFooter
-        loginError={loginError}
-        isSubmitting={isSubmitting}
-        formLocked={formLocked}
-        showBlur={scrollOverflows}
-        onSignupClick={onSignupClick}
-      />
-    </>
+        <FunnelStepFooter
+          variant="secondary"
+          showSignupLink
+          overlay
+          blur={scrollOverflows}
+          disabled={formLocked}
+          type="submit"
+          formId={LOGIN_FORM_ID}
+          errorMessage={loginError}
+          onSignupClick={onSignupClick}
+        >
+          {isSubmitting ? 'מתחבר...' : 'התחברות'}
+        </FunnelStepFooter>
+      </FunnelStepForeground>
+    </FunnelStepRoot>
   );
 }

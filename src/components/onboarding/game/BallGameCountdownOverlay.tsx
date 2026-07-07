@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import {
   BALL_GAME_COUNTDOWN_TOTAL_MS,
   ballGameCountdownStep,
@@ -12,26 +13,29 @@ type BallGameCountdownOverlayProps = {
 };
 
 /** Figma canvas coords — shared headline slot for מוכנים? / צאו לדרך!; numbers below. */
-const HEADLINE_TOP = 281;
-const NUMBER_TOP = 359;
-const NUMBER_LEFT = 118;
-const NUMBER_WIDTH = 131;
+const HEADLINE_TOP_PX = 281;
+const NUMBER_TOP_PX = 359;
+const NUMBER_LEFT_PX = 118;
+const NUMBER_WIDTH_PX = 131;
+const HEADLINE_WIDTH_PX = 327;
 
 function CountdownHeadlineSlot({
   children,
   flashKey,
   className,
   style,
+  topPx,
 }: {
   children: ReactNode;
   flashKey: number;
   className: string;
   style?: React.CSSProperties;
+  topPx: number;
 }) {
   return (
     <div
       className="absolute left-1/2 -translate-x-1/2"
-      style={{ top: HEADLINE_TOP, width: 327 }}
+      style={{ top: topPx, width: HEADLINE_WIDTH_PX }}
     >
       <p key={flashKey} className={className} style={style}>
         {children}
@@ -42,6 +46,9 @@ function CountdownHeadlineSlot({
 
 /** First-rally countdown — מוכנים? → 3 → 2 → 1 → צאו לדרך! */
 export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverlayProps) {
+  const scaleY = useFunnelProportionalTopPx;
+  const headlineTopPx = scaleY(HEADLINE_TOP_PX);
+  const numberTopPx = scaleY(NUMBER_TOP_PX);
   const [step, setStep] = useState<BallGameCountdownStep>('ready');
   const [flashKey, setFlashKey] = useState(0);
 
@@ -76,6 +83,7 @@ export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverl
       {step === 'go' ? (
         <CountdownHeadlineSlot
           flashKey={flashKey}
+          topPx={headlineTopPx}
           className="ball-game-countdown-flash text-center font-assistant font-black text-white"
           style={{
             fontSize: 60,
@@ -90,6 +98,7 @@ export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverl
           {showReady ? (
             <CountdownHeadlineSlot
               flashKey={flashKey}
+              topPx={headlineTopPx}
               className="ball-game-countdown-flash text-center font-assistant font-normal text-white"
               style={{
                 fontSize: 40,
@@ -105,9 +114,9 @@ export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverl
               key={`num-${flashKey}`}
               className="ball-game-countdown-flash absolute text-center font-assistant font-black text-white"
               style={{
-                top: NUMBER_TOP,
-                left: NUMBER_LEFT,
-                width: NUMBER_WIDTH,
+                top: numberTopPx,
+                left: NUMBER_LEFT_PX,
+                width: NUMBER_WIDTH_PX,
                 fontSize: 130.35,
                 lineHeight: '156.42px',
               }}

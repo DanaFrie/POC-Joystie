@@ -2,18 +2,15 @@
 
 
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { ChildSharedPhotoReviewStep } from '@/components/onboarding/child/ChildSharedPhotoReviewStep';
-import { ChildSharedPhotoShareStep } from '@/components/onboarding/child/ChildSharedPhotoShareStep';
-import { ChildSelfiePatternStep } from '@/components/onboarding/child/ChildSelfiePatternStep';
+import { ChildSelfieMissionFlow } from '@/components/onboarding/child/ChildSelfieMissionFlow';
 import { ChildMissionThreeSelfieIntroStep } from '@/components/onboarding/child/ChildMissionThreeSelfieIntroStep';
 import { ChildContractCelebrationStep } from '@/components/onboarding/child/ChildContractCelebrationStep';
 import { ChildChangeKingStep } from '@/components/onboarding/child/ChildChangeKingStep';
 import { ChildParentSuggestedChangeStep } from '@/components/onboarding/child/ChildParentSuggestedChangeStep';
-import { ChildSharedPhotoPreparingStep } from '@/components/onboarding/child/ChildSharedPhotoPreparingStep';
 import { ChildWaitingParentApprovalStep } from '@/components/onboarding/child/ChildWaitingParentApprovalStep';
 
 import { ChildMissionOneWinStep } from '@/components/onboarding/child/ChildMissionOneWinStep';
@@ -21,8 +18,9 @@ import { ChildMissionOneWinStep } from '@/components/onboarding/child/ChildMissi
 import { ChildMissionTwoIntroStep } from '@/components/onboarding/child/ChildMissionTwoIntroStep';
 
 import {
-  ChildMissionTwoDoriSequenceStep,
-} from '@/components/onboarding/child/ChildMissionTwoDoriSequenceStep';
+  ChildMissionTwoChangeIntroStep,
+  ChildMissionTwoNotebookStep,
+} from '@/components/onboarding/child/ChildMissionTwoShellSteps';
 
 import { ChildRunToCastleStep } from '@/components/onboarding/child/ChildRunToCastleStep';
 
@@ -69,7 +67,6 @@ import {
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
 
 import {
-  markChildDoriMissionIntroDone,
   readPersistedChildFlowStep,
   writePersistedChildFlowStep,
 } from '@/lib/onboarding/childFlowSession';
@@ -81,9 +78,11 @@ import {
 
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 
+import { usePostGameSync } from '@/hooks/usePostGameSync';
+
 import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
 
-import { buildGameChildUrlWithToken, parseBondingInviteQueryParams } from '@/utils/url-encoding';
+import { buildGameChildUrlWithToken, decodeParentToken, parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 
 
@@ -106,6 +105,8 @@ type PostEggPhase =
   | 'missionTwoIntro'
 
   | 'missionTwoDoriShell'
+
+  | 'missionTwoChangeIntro'
 
   | 'runToCastle'
 
@@ -152,6 +153,7 @@ function childFlowStepKey(step: ChildFlowStep): string {
   if (step === 'missionOneWin') return 'missionOneWin';
   if (step === 'missionTwoIntro') return 'missionTwoIntro';
   if (step === 'missionTwoDoriShell') return 'missionTwoDoriShell';
+  if (step === 'missionTwoChangeIntro') return 'missionTwoChangeIntro';
   if (step === 'runToCastle') return 'runToCastle';
   if (step === 'changeKing') return 'changeKing';
   if (step === 'waitingParentApproval') return 'waitingParentApproval';
@@ -189,7 +191,7 @@ function lightBackgroundWhiteStop(step: ChildFlowStep): number {
 }
 
 function showChildFunnelGrid(step: ChildFlowStep): boolean {
-  return step === 'preparingSharedPhoto';
+  return false;
 }
 
 function usesOwnFunnelBackground(step: ChildFlowStep): boolean {
@@ -198,10 +200,7 @@ function usesOwnFunnelBackground(step: ChildFlowStep): boolean {
     step === 'mintGlow' ||
     step === 'kingdomLanding' ||
     step === 'companionPick' ||
-    step === 'preparingSharedPhoto' ||
-    step === 'selfiePattern' ||
-    step === 'sharedPhotoReview' ||
-    step === 'sharedPhotoShare'
+    step === 'selfiePattern'
   );
 }
 
@@ -236,6 +235,7 @@ export function OnboardingChildFlow() {
   const bonding = useChildBondingContext();
 
   const [step, setStep] = useState<ChildFlowStep>(readInitialChildStep);
+  const [, startGameTransition] = useTransition();
 
 
 
@@ -246,6 +246,63 @@ export function OnboardingChildFlow() {
   const childGender = bonding?.childGender ?? urlMeta.childGender ?? 'boy';
 
   const parentGender = bonding?.parentGender ?? urlMeta.parentGender ?? 'male';
+
+  const token = searchParams.get('token');
+  const decodedParent = token ? decodeParentToken(token) : null;
+  const parentId = bonding?.parentId ?? decodedParent?.parentId ?? null;
+
+  const postGameSyncEnabled =
+    Boolean(parentId) &&
+    (step === 'runToCastle' ||
+      step === 'changeKing' ||
+      step === 'waitingParentApproval' ||
+      step === 'parentSuggestedChange' ||
+      step === 'contractCelebration' ||
+      step === 'missionThreeSelfieIntro');
+
+  const postGame = usePostGameSync({
+    parentId,
+    role: 'child',
+    enabled: postGameSyncEnabled,
+  });
+
+  useEffect(() => {
+    if (!postGame.childStep) return;
+
+    switch (postGame.childStep) {
+      case 'waitingParentApproval':
+        if (step === 'parentSuggestedChange' || step === 'contractCelebration') {
+          setStep('waitingParentApproval');
+        }
+        break;
+      case 'parentSuggestedChange':
+        if (step === 'waitingParentApproval') {
+          setStep('parentSuggestedChange');
+        }
+        break;
+      case 'contractCelebration':
+        if (step === 'waitingParentApproval' || step === 'parentSuggestedChange') {
+          setStep('contractCelebration');
+        }
+        break;
+      case 'missionThreeSelfieIntro':
+        if (
+          step === 'waitingParentApproval' ||
+          step === 'parentSuggestedChange' ||
+          step === 'contractCelebration'
+        ) {
+          setStep('missionThreeSelfieIntro');
+        }
+        break;
+      case 'preparingSharedPhoto':
+        if (step === 'selfiePattern' || step === 'missionThreeSelfieIntro') {
+          setStep('preparingSharedPhoto');
+        }
+        break;
+      default:
+        break;
+    }
+  }, [postGame.childStep, step]);
 
 
 
@@ -308,20 +365,22 @@ export function OnboardingChildFlow() {
   }, [step]);
 
   const goToBallGame = useCallback(() => {
-    markChildDoriMissionIntroDone();
-    writePersistedChildFlowStep('doriMissionIntro');
-    const parentId = bonding?.parentId;
-    if (parentId) {
-      void signalChildOnboardingMilestone(parentId, 'mission_ready').catch(() => {
-        // parent may still advance via RTDB poll
-      });
-    }
     const token = new URLSearchParams(window.location.search).get('token');
-    router.push(token ? buildGameChildUrlWithToken(token) : '/game/child');
-  }, [router, bonding?.parentId]);
+    const url = token ? buildGameChildUrlWithToken(token) : '/game/child';
+    const parentIdForMilestone =
+      bonding?.parentId ?? (token ? decodeParentToken(token)?.parentId : null);
+
+    if (parentIdForMilestone) {
+      void signalChildOnboardingMilestone(parentIdForMilestone, 'mission_ready').catch(() => {});
+    }
+
+    startGameTransition(() => {
+      router.push(url);
+    });
+  }, [bonding?.parentId, router]);
 
   useEffect(() => {
-    if (step !== 'doriMissionIntro') return;
+    if (step !== 'doriMissionIntro' && step !== 'doriTransition') return;
     const token = new URLSearchParams(window.location.search).get('token');
     router.prefetch(token ? buildGameChildUrlWithToken(token) : '/game/child');
   }, [router, step]);
@@ -475,9 +534,15 @@ export function OnboardingChildFlow() {
         ) : null}
 
         {step === 'missionTwoDoriShell' ? (
-          <ChildMissionTwoDoriSequenceStep
+          <ChildMissionTwoNotebookStep
             childName={childName}
-            onComplete={() => setStep('runToCastle')}
+            onContinue={() => setStep('missionTwoChangeIntro')}
+          />
+        ) : null}
+
+        {step === 'missionTwoChangeIntro' ? (
+          <ChildMissionTwoChangeIntroStep
+            onContinue={() => setStep('runToCastle')}
           />
         ) : null}
 
@@ -485,7 +550,10 @@ export function OnboardingChildFlow() {
           <ChildRunToCastleStep
             childName={childName}
             childGender={childGender}
-            onContinue={() => setStep('changeKing')}
+            onChangeConfirmed={(changeText) => {
+              void postGame.signalChangeSelected(changeText);
+            }}
+            onContinue={() => setStep('waitingParentApproval')}
           />
         ) : null}
 
@@ -498,18 +566,20 @@ export function OnboardingChildFlow() {
         ) : null}
 
         {step === 'waitingParentApproval' ? (
-          <ChildWaitingParentApprovalStep
-            parentGender={parentGender}
-            onComplete={() => setStep('parentSuggestedChange')}
-          />
+          <ChildWaitingParentApprovalStep parentGender={parentGender} />
         ) : null}
 
         {step === 'parentSuggestedChange' ? (
           <ChildParentSuggestedChangeStep
             childGender={childGender}
             parentGender={parentGender}
-            onAccept={() => setStep('contractCelebration')}
-            onDecline={() => setStep('preparingSharedPhoto')}
+            changeText={postGame.parentSuggestedChangeText}
+            onAccept={() => {
+              void postGame.acceptParentChange();
+            }}
+            onDecline={() => {
+              void postGame.declineParentChange();
+            }}
           />
         ) : null}
 
@@ -528,28 +598,17 @@ export function OnboardingChildFlow() {
         ) : null}
 
         {step === 'selfiePattern' ? (
-          <ChildSelfiePatternStep
+          <ChildSelfieMissionFlow
             childName={childName}
             parentName={parentName}
             parentGender={parentGender}
-            onCapture={() => setStep('preparingSharedPhoto')}
+            parentId={parentId}
+            onShareReached={() => {
+              if (parentId) {
+                void signalChildOnboardingMilestone(parentId, 'selfie_mission_done');
+              }
+            }}
           />
-        ) : null}
-
-        {step === 'preparingSharedPhoto' ? (
-          <ChildSharedPhotoPreparingStep onComplete={() => setStep('sharedPhotoReview')} />
-        ) : null}
-
-        {step === 'sharedPhotoReview' ? (
-          <ChildSharedPhotoReviewStep
-            onLiked={() => setStep('sharedPhotoShare')}
-            onRetake={() => setStep('selfiePattern')}
-            onSkip={() => setStep('sharedPhotoShare')}
-          />
-        ) : null}
-
-        {step === 'sharedPhotoShare' ? (
-          <ChildSharedPhotoShareStep onShare={() => {}} onWallet={() => {}} />
         ) : null}
 
       </OnboardingFunnelStepSlot>

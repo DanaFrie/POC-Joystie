@@ -3,9 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BallGameWinFadeOverlay } from '@/components/onboarding/game/BallGameWinFadeOverlay';
+import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
 import { OnboardingBallGameScreen } from '@/components/onboarding/game/OnboardingBallGameScreen';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
-import { ChildFunnelBleedBackground } from '@/components/onboarding/child/ChildFunnelBleedBackground';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { CHILD_POST_GAME_WIN_FADE_MS } from '@/constants/child-post-game-layout';
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { useCelebrationBall } from '@/hooks/useCelebrationBall';
@@ -56,7 +57,6 @@ export function ChildGamePostWinFlow({
   setupBusy,
   childJoinBlocked,
   parentAsChildError,
-  setupError,
 }: ChildGamePostWinFlowProps) {
   const router = useRouter();
   const navigated = useRef(false);
@@ -87,12 +87,14 @@ export function ChildGamePostWinFlow({
 
   return (
     <>
-      <ChildFunnelBleedBackground />
       <OnboardingFunnelStepSlot stepKey="childBallGame" clipOverflow={false}>
         {childJoinBlocked ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center font-assistant text-white">
-            <p>{parentAsChildError}</p>
-          </div>
+          <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
+            <BallGameFunnelBackground />
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 px-6 text-center font-assistant text-white">
+              <p>{parentAsChildError}</p>
+            </div>
+          </FunnelStepRoot>
         ) : (
           <OnboardingBallGameScreen
             role="child"
@@ -109,11 +111,6 @@ export function ChildGamePostWinFlow({
             hideWinBanner={phase === 'winFadeOut'}
           />
         )}
-        {setupError ? (
-          <p className="absolute bottom-24 left-0 right-0 z-[50] px-6 text-center font-assistant text-sm text-red-300">
-            {setupError}
-          </p>
-        ) : null}
       </OnboardingFunnelStepSlot>
       {phase === 'winFadeOut' ? <BallGameWinFadeOverlay opacity={fadeOpacity} /> : null}
     </>

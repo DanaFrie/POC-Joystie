@@ -1,9 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import {
   AuthFunnelScreenShell,
-  authFunnelFooterButtonClass,
   authFunnelInputClass,
   authFunnelLabelClass,
 } from '@/components/login/AuthFunnelScreenShell';
@@ -73,11 +71,8 @@ export function ResetPasswordScreen({
     return (
       <AuthFunnelScreenShell
         title="איפוס סיסמה"
-        footer={
-          <p className="w-full text-center font-simpler text-[16px] text-white">
-            בודק קישור...
-          </p>
-        }
+        footerCtaLabel="בודק קישור..."
+        footerStatusOnly
       >
         <p className="w-full text-center font-simpler text-[14px] leading-[17.5px] text-v03-green-100">
           רגע אחד, מאמתים את הקישור מהאימייל.
@@ -90,24 +85,9 @@ export function ResetPasswordScreen({
     return (
       <AuthFunnelScreenShell
         title="איפוס סיסמה"
-        footer={
-          <>
-            <Link
-              href="/login/forgot-password"
-              className={`${authFunnelFooterButtonClass} text-center no-underline`}
-            >
-              בקשו קישור חדש
-            </Link>
-            <p className="w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-              <Link
-                href="/login"
-                className="font-normal text-white underline decoration-solid underline-offset-2"
-              >
-                חזרה להתחברות
-              </Link>
-            </p>
-          </>
-        }
+        footerCtaLabel="בקשו קישור חדש"
+        footerCtaHref="/login/forgot-password"
+        footerSecondaryLink={{ label: 'חזרה להתחברות', href: '/login' }}
       >
         <p className="w-full rounded-[18px] border border-red-300/40 bg-red-400/10 px-4 py-4 text-center font-simpler text-sm text-red-300">
           {validationError}
@@ -121,37 +101,15 @@ export function ResetPasswordScreen({
       title="איפוס סיסמה"
       formId={success ? undefined : FORM_ID}
       onSubmit={onSubmit}
-      footer={
-        success ? (
-          <Link
-            href="/login"
-            className={`${authFunnelFooterButtonClass} text-center no-underline`}
-          >
-            להתחברות
-          </Link>
-        ) : (
-          <>
-            <button
-              type="submit"
-              form={FORM_ID}
-              disabled={isSubmitting}
-              className={`${authFunnelFooterButtonClass} ${
-                isSubmitting ? 'pointer-events-none opacity-50' : ''
-              }`}
-            >
-              {isSubmitting ? 'מאפס...' : 'איפוס סיסמה'}
-            </button>
-            <p className="w-full text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-              <Link
-                href="/login"
-                className="font-normal text-white underline decoration-solid underline-offset-2"
-              >
-                חזרה להתחברות
-              </Link>
-            </p>
-          </>
-        )
+      footerCtaLabel={
+        success ? 'להתחברות' : isSubmitting ? 'מאפס...' : 'איפוס סיסמה'
       }
+      footerCtaHref={success ? '/login' : undefined}
+      footerCtaType="submit"
+      footerCtaFormId={success ? undefined : FORM_ID}
+      footerCtaDisabled={isSubmitting}
+      footerSecondaryLink={success ? undefined : { label: 'חזרה להתחברות', href: '/login' }}
+      errorMessage={!success ? error : undefined}
     >
       {success ? (
         <div className="w-full rounded-[18px] border border-white/20 bg-white/5 px-4 py-4 text-center font-simpler text-[16px] leading-[21.6px] text-[#E3EDEA]">
@@ -176,11 +134,6 @@ export function ResetPasswordScreen({
             onChange={onConfirmPasswordChange}
             disabled={isSubmitting}
           />
-          {error ? (
-            <p className="w-full px-2.5 text-center font-simpler text-sm text-red-300">
-              {error}
-            </p>
-          ) : null}
         </div>
       )}
     </AuthFunnelScreenShell>

@@ -6,8 +6,8 @@ export type SignupJourneyStageIndex = 0 | 1 | 2;
 export const SIGNUP_JOURNEY_STEPS = [
   {
     eyebrow: 'שלב 1',
-    title: 'בוחרים יחד חבר למסע',
-    subtitle: 'יחד עם הילדים, בוחרים חבר שילווה לאורך הדרך',
+    title: 'מכירים את החבר שלנו למסע',
+    subtitle: 'יחד עם יואב, תעירו את דורי הדרקון ותצאו יחד למסע משותף',
   },
   {
     eyebrow: 'שלב 2',

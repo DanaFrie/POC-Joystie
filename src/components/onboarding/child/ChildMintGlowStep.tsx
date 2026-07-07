@@ -1,15 +1,13 @@
 'use client';
 
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 
-/** Screen 2 — green canvas + Ellipse 385 (bottom-left mint glow). */
+/** Screen 2 — green canvas + grid + Ellipse 385 (bottom-left mint glow). */
 export function ChildMintGlowStep() {
   return (
-    <div
-      className="relative h-full w-full overflow-visible bg-transparent"
-      aria-hidden
-    >
-      <OnboardingMintGlow />
-    </div>
+    <FunnelStepRoot fitViewport aria-hidden>
+      <OnboardingMintGridBackdrop />
+    </FunnelStepRoot>
   );
 }

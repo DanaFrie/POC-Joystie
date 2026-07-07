@@ -23,7 +23,8 @@ export function ChildCastleTiltCard({
 
   const cardStyle: CSSProperties = {
     width: layout.width,
-    height: layout.height,
+    minHeight: layout.height,
+    height: isSlider ? 'auto' : layout.height,
     paddingTop: isSlider ? sliderStyle.paddingTop : layout.paddingTop,
     paddingBottom: isSlider ? sliderStyle.paddingBottom : layout.paddingBottom,
     paddingLeft: isSlider ? sliderStyle.paddingX : layout.paddingX,
@@ -44,7 +45,11 @@ export function ChildCastleTiltCard({
         }),
   };
 
-  const glow = isSlider ? sliderStyle.glow : layout.glow;
+  const glow = isSlider
+    ? layout.glow.width > 0
+      ? layout.glow
+      : { ...sliderStyle.glow, width: 0, height: 0, blur: 0 }
+    : layout.glow;
   const glowStyle: CSSProperties = {
     width: glow.width,
     height: glow.height,
@@ -58,11 +63,13 @@ export function ChildCastleTiltCard({
 
   const inner = (
     <>
-      <div
-        className="pointer-events-none absolute rounded-full"
-        aria-hidden
-        style={glowStyle}
-      />
+      {glow.width > 0 ? (
+        <div
+          className="pointer-events-none absolute rounded-full"
+          aria-hidden
+          style={glowStyle}
+        />
+      ) : null}
       <div
         className="relative z-[1] flex w-full flex-col items-center"
         style={{ gap: isSlider ? sliderStyle.contentGap : layout.contentGap }}
@@ -78,7 +85,7 @@ export function ChildCastleTiltCard({
           <p
             className="w-full text-center font-simpler font-black text-white"
             style={{
-              minHeight: layout.titleStyle.minHeight,
+              minHeight: isSlider ? undefined : layout.titleStyle.minHeight,
               fontSize: layout.titleStyle.fontSize,
               lineHeight: `${layout.titleStyle.lineHeight}px`,
             }}
@@ -94,9 +101,9 @@ export function ChildCastleTiltCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`absolute overflow-hidden transition hover:brightness-105 ${
-        isSlider ? '' : 'bg-white/[0.05]'
-      }`}
+      className={`absolute transition hover:brightness-105 ${
+        isSlider ? 'overflow-visible' : 'overflow-hidden'
+      } ${isSlider ? '' : 'bg-white/[0.05]'}`}
       style={cardStyle}
     >
       {inner}

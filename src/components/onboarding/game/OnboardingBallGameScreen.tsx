@@ -1,21 +1,24 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { BallGameCourtBall, BALL_GAME_COURT_BALL_SIZE } from '@/components/onboarding/game/BallGameCourtBall';
+import { BallGameCourtBall } from '@/components/onboarding/game/BallGameCourtBall';
 import { BallGameCourtLayer } from '@/components/onboarding/game/BallGameCourtLayer';
 import { BallGameCountdownOverlay } from '@/components/onboarding/game/BallGameCountdownOverlay';
 import { BallGameFailureOverlay } from '@/components/onboarding/game/BallGameFailureOverlay';
+import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
 import { BallGameParentReadyScreen } from '@/components/onboarding/game/BallGameParentReadyScreen';
 import { OnboardingWaitingOverlay } from '@/components/onboarding/OnboardingWaitingOverlay';
-import {
-  CHILD_BALL_GAME,
-  PARENT_BALL_GAME,
-} from '@/constants/child-onboarding-layout';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import { GAME_WIN_SCORE } from '@/constants/game';
 import {
   BALL_GAME_COUNTDOWN_STEP_MS,
   BALL_GAME_COUNTDOWN_TOTAL_MS,
 } from '@/constants/ball-game-countdown';
+import {
+  useScaledBallGameBallSizePx,
+  useScaledBallGameLayout,
+} from '@/hooks/useScaledBallGameLayout';
 import {
   ballGameWaitingHeadline,
   childPlayReadyConfirmLabel,
@@ -75,7 +78,9 @@ export function OnboardingBallGameScreen({
   celebrationBall,
   hideWinBanner = false,
 }: OnboardingBallGameScreenProps) {
-  const layout = role === 'parent' ? PARENT_BALL_GAME : CHILD_BALL_GAME;
+  const layout = useScaledBallGameLayout(role);
+  const ballSizePx = useScaledBallGameBallSizePx();
+  const { designWidth, usableCanvasHeightPx } = useFunnelViewportMetrics();
   const playCourt = ballGamePlayCourt(layout);
   const courtParentGender: 'female' | 'male' =
     parentGender ??
@@ -91,11 +96,13 @@ export function OnboardingBallGameScreen({
       return new DOMRect(0, 0, playCourt.width, playCourt.height);
     }
     const bounds = root.getBoundingClientRect();
+    const scaleX = bounds.width / designWidth;
+    const scaleY = bounds.height / usableCanvasHeightPx;
     return new DOMRect(
-      bounds.left + playCourt.left,
-      bounds.top + playCourt.top,
-      playCourt.width,
-      playCourt.height
+      bounds.left + playCourt.left * scaleX,
+      bounds.top + playCourt.top * scaleY,
+      playCourt.width * scaleX,
+      playCourt.height * scaleY
     );
   };
 
@@ -184,17 +191,6 @@ export function OnboardingBallGameScreen({
     onPointerMove(clientX, clientY, rect);
   };
 
-  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    emitPointer(e.clientX, e.clientY);
-  };
-
-  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    if (!touch) return;
-    emitPointer(touch.clientX, touch.clientY);
-  };
-
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!playing) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -239,20 +235,29 @@ export function OnboardingBallGameScreen({
   };
 
   return (
-    <div ref={rootRef} dir="rtl" className="font-assistant relative h-full w-full bg-transparent">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className={courtDimmed ? 'pointer-events-none opacity-60' : undefined}>
-          <BallGameCourtLayer
-            role={role}
-            parentGender={courtParentGender}
-            childName={childName}
-            score={won ? GAME_WIN_SCORE : score}
-            showScoreRing={playing || won || countdownGo}
-            showPaddles={
-              !roundStarted && !playing && !showReadyModal && !showFailureCard
-            }
-          />
-        </div>
+    <FunnelStepRoot
+      fitViewport
+      aria-label="משחק פונג"
+      className="overflow-hidden bg-transparent font-assistant"
+    >
+      <BallGameFunnelBackground />
+
+      <div ref={rootRef} className="absolute inset-0 overflow-hidden">
+        <BallGameCourtLayer
+          role={role}
+          layout={layout}
+          parentGender={courtParentGender}
+          childName={childName}
+          score={won ? GAME_WIN_SCORE : score}
+          showScoreRing={playing || won || countdownGo}
+          showPaddles={
+            !roundStarted && !playing && !showReadyModal && !showFailureCard
+          }
+        />
+
+        {courtDimmed ? (
+          <div className="pointer-events-none absolute inset-0 z-[5] bg-[#092125]/25" aria-hidden />
+        ) : null}
 
         {playing && room ? (
           <>
@@ -277,8 +282,6 @@ export function OnboardingBallGameScreen({
           onPointerMove={playing ? onPointerDrag : undefined}
           onPointerUp={playing ? onPointerUp : undefined}
           onPointerCancel={playing ? onPointerUp : undefined}
-          onMouseMove={playing ? onMouseMove : undefined}
-          onTouchMove={playing ? onTouchMove : undefined}
           role="presentation"
           aria-label="מגרש המשחק"
         />
@@ -289,11 +292,11 @@ export function OnboardingBallGameScreen({
             style={{
               left: ballPos.left,
               top: ballPos.top,
-              width: BALL_GAME_COURT_BALL_SIZE,
-              height: BALL_GAME_COURT_BALL_SIZE,
+              width: ballSizePx,
+              height: ballSizePx,
             }}
           >
-            <BallGameCourtBall />
+            <BallGameCourtBall sizePx={ballSizePx} />
           </div>
         ) : null}
 
@@ -324,6 +327,6 @@ export function OnboardingBallGameScreen({
       {showFailureCard ? (
         <BallGameFailureOverlay onRetry={onRetry!} busy={busy} />
       ) : null}
-    </div>
+    </FunnelStepRoot>
   );
 }

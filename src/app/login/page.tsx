@@ -10,6 +10,7 @@ import { navigateAfterLogin } from '@/lib/auth/postLoginNavigation';
 import { beginOnboardingSignupFromLogin } from '@/lib/onboarding/parentFlowSession';
 import { getErrorMessage } from '@/utils/errors';
 import { createContextLogger } from '@/utils/logger';
+import { clearOAuthSessionFlags, isOAuthRedirectRecoverable } from '@/lib/onboarding/oauthSession';
 import {
   prefersOAuthRedirect,
   primeOAuthRedirectCapture,
@@ -17,6 +18,7 @@ import {
   signInWithOAuth,
   isRestrictedOAuthEnvironment,
   getRestrictedOAuthMessage,
+  isLikelyOAuthRedirectReturn,
 } from '@/utils/auth-oauth';
 
 const logger = createContextLogger('Login');
@@ -107,8 +109,15 @@ function LoginPageContent() {
   useEffect(() => {
     primeOAuthRedirectCapture();
 
+    if (!isOAuthRedirectRecoverable() && !isLikelyOAuthRedirectReturn()) {
+      return;
+    }
+
     const resolveOAuthRedirect = async () => {
-      const result = await resolveOAuthSignInAfterRedirect();
+      const result = await resolveOAuthSignInAfterRedirect({
+        maxWaitMs: 4000,
+        trustAnySignedInUser: true,
+      });
       if (!result?.ok) {
         return;
       }
@@ -118,6 +127,7 @@ function LoginPageContent() {
       setLoginError('');
 
       try {
+        clearOAuthSessionFlags();
         await completeOAuthLogin(result.user.uid);
       } catch (error) {
         logger.error('OAuth redirect login error:', error);
@@ -229,6 +239,7 @@ function LoginPageContent() {
       setLoginError(getErrorMessage(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
     } finally {
       setOauthLoading(null);
+      clearOAuthSessionFlags();
     }
   };
 

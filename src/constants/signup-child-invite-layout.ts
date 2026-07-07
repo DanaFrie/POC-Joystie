@@ -1,4 +1,5 @@
 /** Child invite intro — Figma 12914:11767 */
+export const SIGNUP_CHILD_INVITE_INTRO_FRAME_W_PX = 327;
 export const SIGNUP_CHILD_INVITE_INTRO_TOP_PX = 110;
 export const SIGNUP_CHILD_INVITE_INTRO_COLUMN_GAP_PX = 55;
 /** Shared funnel CTA — matches `OnboardingFooterCta` / `OnboardingBlurFooter` */

@@ -117,15 +117,25 @@ export const CHILD_MISSION_THREE_CAMERA_DISCLAIMER =
 
 export const CHILD_SELFIE_PATTERN_CAPTURE_LABEL = 'צילום!';
 
+export const CHILD_SELFIE_CAMERA_DENIED_HEADLINE = 'לא אישרת גישה למצלמה';
+
+export const CHILD_SELFIE_CAMERA_DENIED_TITLE = 'מעדיפים בלי תמונה?';
+
+export const CHILD_SELFIE_CAMERA_DECLINE_LABEL = 'אני מעדיף לא להצטלם';
+
+export const CHILD_SELFIE_CAMERA_RETRY_LABEL = 'אני כן רוצה להצטלם';
+
+export const CHILD_SELFIE_CAMERA_DENIED_DISCLAIMER = 'יש לאשר גישה למצלמה';
+
 export const CHILD_SHARED_PHOTO_LIKED_LABEL = 'אהבנו את התמונה!';
 
 export const CHILD_SHARED_PHOTO_RETAKE_LABEL = 'רוצים לצלם תמונה חדשה';
 
 export const CHILD_SHARED_PHOTO_SKIP_LABEL = 'מעדיפים בלי תמונה? זה גם בסדר!';
 
-export const CHILD_SHARED_PHOTO_SHARE_HEADLINE_PREFIX = 'גם אנחנו';
+export const CHILD_SHARED_PHOTO_SHARE_HEADLINE_PREFIX = 'גם אנחנו חלק';
 
-export const CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS = 'חלק מהשינוי הדיגיטלי!';
+export const CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS = 'מהשינוי הדיגיטלי!';
 
 export const CHILD_SHARED_PHOTO_SHARE_PRIMARY_LABEL = 'שליחת התמונה לחברים או משפחה';
 

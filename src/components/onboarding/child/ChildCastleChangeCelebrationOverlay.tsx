@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChildCastleChangeCardStack } from '@/components/onboarding/child/ChildCastleChangeCardStack';
 import { ChildCastleChangeReactionTiles } from '@/components/onboarding/child/ChildCastleChangeReactionTiles';
 import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
+import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import {
   CHILD_CASTLE_CHANGE_CARD_STACK,
   CHILD_CASTLE_CHANGE_CELEBRATION,
@@ -12,42 +13,70 @@ import {
   CHILD_CASTLE_CHANGE_CELEBRATION_BODY,
   CHILD_CASTLE_CHANGE_CELEBRATION_TITLE,
 } from '@/lib/onboarding/childPostGameCopy';
-import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
+import {
+  funnelProportionalTopPx,
+  useFunnelFullBleed,
+  useFunnelViewportMetrics,
+} from '@/components/ui/FunnelViewportContext';
 
 type ChildCastleChangeCelebrationOverlayProps = {
   childGender?: 'boy' | 'girl';
   visible: boolean;
-  onContinue?: () => void;
+  onComplete?: () => void;
 };
 
-/** Figma 13702:9497 — celebration after confirm + confetti GIF. */
+/** Figma 13702:9497 — one-shot celebration after confirm, then advance. */
 export function ChildCastleChangeCelebrationOverlay({
   childGender = 'boy',
   visible,
-  onContinue,
+  onComplete,
 }: ChildCastleChangeCelebrationOverlayProps) {
   const layout = CHILD_CASTLE_CHANGE_CELEBRATION;
   const confetti = layout.confetti;
   const bleedStyle = useFunnelFullBleed();
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const scaleY = (figmaY: number) => funnelProportionalTopPx(figmaY, usableCanvasHeightPx);
+  const cardStackTopPx = scaleY(layout.cardStackTop);
+  const sectionGapPx = scaleY(layout.sectionGap);
+  const confettiTopPx = scaleY(confetti.top);
+  const confettiSizePx = scaleY(confetti.size);
   const [mounted, setMounted] = useState(visible);
   const [entered, setEntered] = useState(false);
+  const [confettiVisible, setConfettiVisible] = useState(false);
+  const onCompleteRef = useRef(onComplete);
+  const completedRef = useRef(false);
+
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (visible) {
+      completedRef.current = false;
+      setConfettiVisible(true);
       setMounted(true);
       const raf = window.requestAnimationFrame(() => setEntered(true));
       return () => window.cancelAnimationFrame(raf);
     }
     setEntered(false);
+    setConfettiVisible(false);
     const timer = window.setTimeout(() => setMounted(false), layout.overlayEnterMs);
     return () => window.clearTimeout(timer);
   }, [visible, layout.overlayEnterMs]);
 
   useEffect(() => {
-    if (!visible || !onContinue) return;
-    const timer = window.setTimeout(onContinue, layout.autoAdvanceMs);
+    if (!visible) return;
+    const hideTimer = window.setTimeout(() => setConfettiVisible(false), layout.confettiMs);
+    return () => window.clearTimeout(hideTimer);
+  }, [visible, layout.confettiMs]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const timer = window.setTimeout(() => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+      onCompleteRef.current?.();
+    }, layout.autoAdvanceMs);
     return () => window.clearTimeout(timer);
-  }, [visible, onContinue, layout.autoAdvanceMs]);
+  }, [visible, layout.autoAdvanceMs]);
 
   if (!mounted) return null;
 
@@ -79,28 +108,31 @@ export function ChildCastleChangeCelebrationOverlay({
       <div
         className="pointer-events-none absolute z-[40] flex items-center justify-center"
         style={{
-          top: confetti.top,
+          top: confettiTopPx,
           left: confetti.left,
-          width: confetti.width,
-          height: confetti.height,
-          opacity: entered ? 1 : 0,
+          width: confettiSizePx,
+          height: confettiSizePx,
+          opacity: confettiVisible && entered ? 1 : 0,
           transition: `opacity ${layout.overlayEnterMs}ms ease-out`,
         }}
       >
-        <ChildCastleConfetti
-          className="shrink-0"
-          style={{ width: confetti.width, height: confetti.height }}
-        />
+        {confettiVisible ? (
+          <ChildCastleConfetti
+            src={CHILD_ONBOARDING_ASSETS.confettiRed}
+            className="shrink-0"
+            style={{ width: confettiSizePx, height: confettiSizePx }}
+          />
+        ) : null}
       </div>
 
       <div className="pointer-events-none absolute inset-0 z-10">
         <div
           className="absolute flex flex-col items-center"
           style={{
-            top: layout.cardStackTop,
+            top: cardStackTopPx,
             left: layout.left,
             width: CHILD_CASTLE_CHANGE_CARD_STACK.width,
-            gap: layout.sectionGap,
+            gap: sectionGapPx,
           }}
         >
           <ChildCastleChangeCardStack>

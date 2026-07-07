@@ -4,7 +4,9 @@ import { PickFirstChildCard } from '@/components/onboarding/pick-child/PickFirst
 import {
   PICK_FIRST_CHILD_CARDS_GAP_PX,
   PICK_FIRST_CHILD_FOOTNOTE_MAX_W_PX,
+  PICK_FIRST_CHILD_FRAME_W_PX,
   PICK_FIRST_CHILD_HEADER_GAP_PX,
+  PICK_FIRST_CHILD_HEADER_PAD_X_PX,
   PICK_FIRST_CHILD_SECTION_GAP_PX,
 } from '@/constants/pick-first-child-layout';
 import { formatDailyScreenTimeSubtitle } from '@/lib/onboarding/childrenScreenTime';
@@ -18,7 +20,7 @@ type PickFirstChildStepProps = {
   onSelectIndex: (index: number) => void;
 };
 
-/** Figma 13680:1526 — עם מי מתחילים? (flow layout for scroll region) */
+/** Figma 13680:1526 — עם מי מתחילים? (two 327px in-flow frames) */
 export function PickFirstChildStep({
   options,
   selectedIndex,
@@ -27,12 +29,17 @@ export function PickFirstChildStep({
   return (
     <div
       dir="rtl"
-      className="flex w-full flex-col items-end px-v03-gutter pb-6 pt-[15px]"
+      className="mx-auto flex w-full flex-col items-center gap-[23px]"
       aria-label="בחירת ילד ראשון"
     >
       <header
-        className="v03-funnel-enter-0 flex w-v03-content flex-col items-end justify-center px-[15px]"
-        style={{ gap: PICK_FIRST_CHILD_HEADER_GAP_PX }}
+        className="v03-funnel-enter-0 flex flex-col items-end justify-center"
+        style={{
+          width: PICK_FIRST_CHILD_FRAME_W_PX,
+          paddingLeft: PICK_FIRST_CHILD_HEADER_PAD_X_PX,
+          paddingRight: PICK_FIRST_CHILD_HEADER_PAD_X_PX,
+          gap: PICK_FIRST_CHILD_HEADER_GAP_PX,
+        }}
       >
         <h1 className="w-full text-right font-simpler text-[30px] font-black leading-[34.5px] text-white">
           עם מי מתחילים?
@@ -43,8 +50,11 @@ export function PickFirstChildStep({
       </header>
 
       <div
-        className="v03-funnel-enter-1 mt-[23px] flex w-v03-content flex-col items-center"
-        style={{ gap: PICK_FIRST_CHILD_SECTION_GAP_PX }}
+        className="v03-funnel-enter-1 flex flex-col items-center"
+        style={{
+          width: PICK_FIRST_CHILD_FRAME_W_PX,
+          gap: PICK_FIRST_CHILD_SECTION_GAP_PX,
+        }}
       >
         <div
           className="flex w-full flex-col items-stretch"

@@ -102,7 +102,7 @@
   --v03-joystie-bar-duration: 520ms;
   --v03-joystie-bar-stagger: 140ms;
   --v03-joystie-bar-start-delay: calc(
-    var(--v03-funnel-enter-reveal-stagger) * 4 + var(--v03-funnel-enter-reveal-duration)
+    var(--v03-funnel-enter-reveal-stagger) * 2 + var(--v03-funnel-enter-reveal-duration)
   );
 }
 

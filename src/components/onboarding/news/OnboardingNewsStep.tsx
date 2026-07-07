@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { ONBOARDING_BLUR_FOOTER_RESERVE_CLASS } from '@/components/onboarding/OnboardingBlurFooter';
 import {
   ONBOARDING_NEWS_HERO_FALLBACK,
   ONBOARDING_NEWS_HERO_IMAGE,
@@ -16,7 +15,7 @@ export function OnboardingNewsStep() {
 
   return (
     <section
-      className={`absolute inset-0 z-[10] flex flex-col items-center px-v03-gutter ${ONBOARDING_BLUR_FOOTER_RESERVE_CLASS}`}
+      className="flex h-full min-h-0 w-full flex-col items-center overflow-hidden px-v03-gutter"
       aria-label="חדשות טובות ופחות טובות"
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[14px]">

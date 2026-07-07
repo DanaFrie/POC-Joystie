@@ -1,4 +1,4 @@
-import { V03_SCREEN_WIDTH, v03OffsetBelowStatusBar } from '@/constants/v03-screen';
+import { V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 import { ONBOARDING_COMPLETION } from '@/constants/onboarding-completion-layout';
 
 function centerX(width: number): number {
@@ -106,8 +106,8 @@ export const CHILD_RUN_TO_CASTLE = {
     aspectRatio: '55 / 97',
   },
   bubble: {
-    top: v03OffsetBelowStatusBar(356),
-    left: 37,
+    top: 356,
+    left: 45,
     width: 235,
     tailLeft: 181,
     tailBorderOverlap: -1.5,
@@ -122,20 +122,21 @@ export const CHILD_RUN_TO_CASTLE = {
     backdropBlur: 11.409310340881348,
     boxShadow: '0 5.493px 5.493px rgba(0, 0, 0, 0.25)',
   },
-  glowButton: { left: 255, top: v03OffsetBelowStatusBar(256) },
+  glowButton: { left: 263, top: 256 },
   uiFadeMs: 500,
   castleDissolveMs: 2_400,
   headerFadeMs: 500,
-  cardRevealMs: 650,
+  cardRevealMs: 800,
+  cardRevealStaggerMs: 280,
   castle: {
-    top: 43,
+    top: 0,
     left: 0,
-    width: 466,
-    height: 823,
-    aspectRatio: '47 / 83',
+    width: 375,
+    height: 812,
+    aspectRatio: '375 / 812',
   },
   header: {
-    top: 43,
+    top: 0,
     width: 375,
     height: 100,
     padding: 10,
@@ -180,7 +181,7 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'friends-less-screen',
     title: 'להיות יותר זמן עם חברים, ופחות זמן במסך',
-    placeTop: 142 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeTop: 142,
     placeLeft: 119 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: 0,
     width: 229.03,
@@ -191,7 +192,7 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'save-money',
     title: 'לחסוך יותר כסף כדי לקנות משהו שאני רוצה',
-    placeTop: 239.1729 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeTop: 239.1729,
     placeLeft: 18.2168 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: -1.06,
     width: 227.7,
@@ -202,7 +203,7 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'quality-time',
     title: 'לבלות יותר זמן איכות עם אמא ואבא ופחות במסך',
-    placeTop: 339.9998 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeTop: 339.9998,
     placeLeft: 107 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: 2.29,
     width: 231.63,
@@ -213,7 +214,7 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
   {
     id: 'no-phone-bedroom',
     title: 'לנסות לא להכניס את הפלאפון לחדר השינה',
-    placeTop: 432 + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+    placeTop: 475,
     placeLeft: 17 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: -7.36,
     width: 233.42,
@@ -428,11 +429,19 @@ export const CHILD_CASTLE_CHANGE_REACTION = {
   },
 } as const;
 
+/** Shared confetti — Figma 490×490 @ top 91. */
+export const CHILD_CASTLE_CHANGE_CONFETTI = {
+  top: 91,
+  left: -57.4258 + CHILD_RUN_TO_CASTLE_SHIFT_X,
+  size: 490,
+} as const;
+
 /** Confirm / celebration content — aligned to runToCastle interior (header + cards). */
 export const CHILD_CASTLE_CHANGE_OVERLAY_CONTENT = {
   left: centerX(327),
-  cardStackTop: v03OffsetBelowStatusBar(238) + CHILD_RUN_TO_CASTLE_SHIFT_Y,
+  cardStackTop: 238,
   sectionGap: 33,
+  confetti: CHILD_CASTLE_CHANGE_CONFETTI,
 } as const;
 
 /** Castle change confirm overlay — Figma 13702:10060. */
@@ -445,13 +454,10 @@ export const CHILD_CASTLE_CHANGE_CONFIRM = {
 export const CHILD_CASTLE_CHANGE_CELEBRATION = {
   ...CHILD_CASTLE_CHANGE_OVERLAY_CONTENT,
   overlayEnterMs: 480,
+  /** Hide looping GIF after one visual pass. */
+  confettiMs: 2_200,
   autoAdvanceMs: 2_800,
-  confetti: {
-    top: v03OffsetBelowStatusBar(91) + CHILD_RUN_TO_CASTLE_SHIFT_Y,
-    left: -57.4258 + CHILD_RUN_TO_CASTLE_SHIFT_X,
-    width: 490.426,
-    height: 490.426,
-  },
+  confetti: CHILD_CASTLE_CHANGE_CONFETTI,
   celebrationTitle: {
     fontSize: 40,
     lineHeight: 44,
@@ -470,7 +476,7 @@ export const CHILD_WAIT_PARENT_APPROVAL_MS = 6_000;
 /** Confetti GIF on king screen — advance when playback ends (tune to asset). */
 export const CHILD_KING_CONFETTI_MS = 2_800;
 
-export type ChildPostGameEllipseVariant = 'upper' | 'lowerLeft';
+export type ChildPostGameEllipseVariant = 'upper' | 'lowerLeft' | 'none';
 
 export const CHILD_POST_GAME_ELLIPSE = {
   upper: {
@@ -518,6 +524,7 @@ export const CHILD_PARENT_SUGGESTED_CHANGE = {
     lineHeight: 44,
   },
   card: {
+    width: 327,
     height: 186,
     paddingX: 18,
     paddingY: 30,
@@ -601,35 +608,51 @@ export const CHILD_MISSION_THREE_SELFIE = {
   },
   hero: ONBOARDING_COMPLETION.hero,
   footer: {
-    top: 690,
-    buttonTop: 710,
     gap: 15,
     columnWidth: 332,
     columnGap: 10,
   },
 } as const;
 
-/** Selfie pattern — castle background + circular face holes + name badges. */
+/** Selfie pattern — castle background + camera frame + circular face holes + name badges. */
 export const CHILD_SELFIE_PATTERN = {
-  mask: {
-    blur: 28,
-    overlay: 'rgba(9, 33, 37, 0.42)',
-    ringStroke: 2,
-    ringOpacity: 0.65,
+  cameraFrame: {
+    width: 425.26,
+    height: 274.221,
+    top: 324,
+    left: -25,
   },
-  childHole: { cx: 95, cy: 400, r: 102 },
-  parentHole: { cx: 280, cy: 400, r: 102 },
+  ellipseSize: 212.587,
+  ellipseStroke: 1.207,
+  ellipseBlur: 26.978,
+  childEllipse: {
+    left: 180,
+  },
+  parentEllipse: {
+    right: 213,
+    top: 15.2,
+  },
+  mask: {
+    blur: 26.978,
+    overlay: 'rgba(255, 255, 255, 0.20)',
+    ringStroke: 1.207,
+    ringOpacity: 1,
+  },
+  /** Computed @ 375×812 from Figma frame — child hole center. */
+  childHole: { cx: 261.16, cy: 479.11, r: 106.29 },
+  /** Computed @ 375×812 — parent hole center. */
+  parentHole: { cx: 80.84, cy: 463.49, r: 106.29 },
   childBadge: {
-    centerX: 95,
-    top: 328,
+    bottom: 215,
+    left: 68,
     paddingX: 20.5,
     paddingY: 10.79,
     borderRadius: 17.27,
     fontSize: 19.42,
   },
   parentBadge: {
-    centerX: 280,
-    top: 328,
+    bottom: 227,
+    left: 259,
     paddingX: 23.65,
     paddingY: 12.45,
     borderRadius: 19.92,
@@ -647,13 +670,17 @@ export const CHILD_SELFIE_PATTERN = {
   },
 } as const;
 
-/** Shared photo result / share — footer anchored to Figma canvas (no status-bar chrome). */
+/** Selfie capture — still preview on holes before loader. */
+export const CHILD_SELFIE_CAPTURE_PREVIEW = {
+  holdMs: 3_000,
+  fadeMs: 400,
+} as const;
+
+/** Shared photo result / share — footer pinned to bottom via flex (100vh). */
 export const CHILD_SHARED_PHOTO_FOOTER = {
-  frameTop: 678,
-  frameLeft: 79,
-  frameWidth: 217,
+  frameWidth: 386.543,
   frameGap: 17,
-  paddingTop: 29.28,
+  paddingTop: 29.284,
   paddingX: 42.67,
   gap: 12.55,
   blur: 4.18,
@@ -681,13 +708,16 @@ export const CHILD_SHARED_PHOTO_SHARE = {
     left: 44,
     top: 86,
     width: 299,
-    height: 106.231,
+    height: 108.231,
+    textWidth: 299,
+    textHeight: 88,
     fontSize: 40,
     lineHeight: 1.1,
     letterSpacing: -0.8,
     textShadow: '0 0 10px rgba(0, 0, 0, 0.30)',
     underline: {
-      top: 93,
+      top: 95,
+      gapBelowText: 5,
       left: 7,
       width: 254.171,
       height: 13.231,

@@ -29,39 +29,46 @@ export function ChildSharedPhotoShareStep({
   onShare,
   onWallet,
 }: ChildSharedPhotoShareStepProps) {
-  const headline = CHILD_SHARED_PHOTO_SHARE.headline;
-  const underline = headline.underline;
+  const frame = CHILD_SHARED_PHOTO_SHARE.headline;
+  const underline = frame.underline;
 
   return (
     <ChildSharedPhotoBackdrop photoSrc={photoSrc}>
       <div
-        className="absolute z-20 text-center"
+        className="absolute z-20 overflow-visible"
+        dir="rtl"
         style={{
-          left: headline.left,
-          top: headline.top,
-          width: headline.width,
-          height: headline.height,
+          left: frame.left,
+          top: frame.top,
+          width: frame.width,
+          height: frame.height,
         }}
       >
-        <h1
-          className="font-simpler font-black text-white"
-          style={{
-            fontSize: headline.fontSize,
-            lineHeight: headline.lineHeight,
-            letterSpacing: `${headline.letterSpacing}px`,
-            textShadow: headline.textShadow,
-          }}
-        >
-          {CHILD_SHARED_PHOTO_SHARE_HEADLINE_PREFIX}
-          <br />
-          {CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS}
-        </h1>
-        <ChildSharedPhotoShareUnderline
-          top={underline.top}
-          left={underline.left}
-          width={underline.width}
-          height={underline.height}
-        />
+        <div className="relative overflow-visible" style={{ width: frame.width, height: frame.height }}>
+          <h1
+            className="mx-auto flex flex-col text-center font-simpler font-black text-white"
+            style={{
+              width: frame.textWidth,
+              height: frame.textHeight,
+              fontSize: frame.fontSize,
+              letterSpacing: `${frame.letterSpacing}px`,
+              textShadow: frame.textShadow,
+            }}
+          >
+            <span className="block w-full whitespace-nowrap" style={{ lineHeight: '44px' }}>
+              {CHILD_SHARED_PHOTO_SHARE_HEADLINE_PREFIX}
+            </span>
+            <span className="block w-full whitespace-nowrap" style={{ lineHeight: '44px' }}>
+              {CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS}
+            </span>
+          </h1>
+          <ChildSharedPhotoShareUnderline
+            top={underline.top}
+            left={underline.left}
+            width={underline.width}
+            height={underline.height}
+          />
+        </div>
       </div>
 
       <ChildSharedPhotoFooter>

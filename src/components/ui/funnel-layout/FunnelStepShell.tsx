@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useLayoutEffect } from 'react';
 import { FUNNEL_SECTION_GAP_MIN_PX } from '@/constants/funnel-vertical-layout';
 import { V03_ACTIVE_CANVAS_HEIGHT_VAR } from '@/constants/funnel-vertical-layout';
@@ -35,6 +35,7 @@ export function FunnelStepSection({ children, className = '' }: FunnelStepSectio
 type FunnelStepRootProps = {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
   'aria-label'?: string;
   /** Shrink canvas + root to visible viewport height (no outer scroll on short phones). */
   fitViewport?: boolean;
@@ -44,6 +45,7 @@ type FunnelStepRootProps = {
 export function FunnelStepRoot({
   children,
   className = '',
+  style,
   'aria-label': ariaLabel,
   fitViewport = false,
 }: FunnelStepRootProps) {
@@ -73,7 +75,9 @@ export function FunnelStepRoot({
   }, [fitViewport, usableCanvasHeightPx]);
 
   const heightStyle = fitViewport
-    ? { height: usableCanvasHeightPx, maxHeight: usableCanvasHeightPx }
+    ? isCompactViewport
+      ? { height: usableCanvasHeightPx, maxHeight: usableCanvasHeightPx }
+      : { height: '100%', minHeight: usableCanvasHeightPx }
     : undefined;
 
   return (
@@ -81,8 +85,8 @@ export function FunnelStepRoot({
       dir="rtl"
       className={`relative w-full min-h-0 ${
         fitViewport && isCompactViewport ? 'overflow-hidden' : 'overflow-visible'
-      } ${fitViewport ? '' : 'h-full'} ${className}`}
-      style={heightStyle}
+      } ${fitViewport ? (isCompactViewport ? '' : 'h-full') : 'h-full'} ${className}`}
+      style={{ ...heightStyle, ...style }}
       aria-label={ariaLabel}
     >
       {children}

@@ -1,13 +1,14 @@
 'use client';
 
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
-import { ChildDoriContinueFooter } from '@/components/onboarding/child/ChildDoriContinueFooter';
 import { ChildPostGameGreenBackground } from '@/components/onboarding/child/ChildPostGameGreenBackground';
+import { ChildTurquoiseFooter } from '@/components/onboarding/child/ChildTurquoiseFooter';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
-import { CHILD_DORI_CONTINUE_FOOTER } from '@/constants/child-onboarding-layout';
 import { CHILD_MISSION_TWO_INTRO } from '@/constants/child-post-game-layout';
 
-/** Mission 2 intro — notebook hero + copy; glow footer @ 79/678. */
+/** Mission 2 intro — notebook hero + copy; turquoise CTA קדימה! */
 export function ChildMissionTwoIntroStep({
   parentName,
   parentGender = 'male',
@@ -19,31 +20,45 @@ export function ChildMissionTwoIntroStep({
 }) {
   const layout = CHILD_MISSION_TWO_INTRO;
   const parentLabel = parentGender === 'female' ? 'אמא' : parentName || 'אבא';
+  const scaleY = useFunnelProportionalTopPx;
+
+  const frameTopPx = scaleY(layout.frame.top);
+  const frameGapPx = scaleY(layout.frame.gap);
+  const imageWidthPx = scaleY(layout.image.width);
+  const imageHeightPx = scaleY(layout.image.height);
+  const textBlockGapPx = scaleY(layout.textBlockGap);
+  const titleBlockGapPx = scaleY(layout.titleBlockGap);
+  const titleGapPx = scaleY(layout.titleGap);
+  const headlineGapPx = scaleY(layout.headlineGap);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-transparent">
+    <FunnelStepRoot
+      fitViewport
+      aria-label="משימה 2"
+      className="overflow-hidden bg-transparent"
+    >
       <ChildPostGameGreenBackground />
 
       <div
         className="absolute z-10 flex flex-col items-center"
         style={{
           left: layout.frame.left,
-          top: layout.frame.top,
+          top: frameTopPx,
           right: layout.frame.left,
-          gap: layout.frame.gap,
+          gap: frameGapPx,
         }}
       >
         <OnboardingLazyImage
           src={CHILD_ONBOARDING_ASSETS.doriNotebookClose}
           alt=""
           className="shrink-0 object-cover"
-          style={{ width: layout.image.width, height: layout.image.height }}
+          style={{ width: imageWidthPx, height: imageHeightPx }}
           priority
         />
 
         <div
           className="flex w-full flex-col items-center"
-          style={{ gap: layout.textBlockGap }}
+          style={{ gap: textBlockGapPx }}
         >
           <div
             className="rounded-[16px] bg-v03-green-700"
@@ -61,15 +76,15 @@ export function ChildMissionTwoIntroStep({
 
           <div
             className="flex w-full flex-col items-center"
-            style={{ gap: layout.titleBlockGap }}
+            style={{ gap: titleBlockGapPx }}
           >
             <div
               className="flex w-full flex-col items-center"
-              style={{ gap: layout.titleGap }}
+              style={{ gap: titleGapPx }}
             >
               <div
                 className="flex w-full flex-col items-center"
-                style={{ gap: layout.headlineGap }}
+                style={{ gap: headlineGapPx }}
               >
                 <h1 className="w-full text-center font-simpler text-[40px] font-black leading-[44px] text-white">
                   מחליטים יחד על שינוי ראשון בחיים!
@@ -85,8 +100,8 @@ export function ChildMissionTwoIntroStep({
       </div>
 
       {onContinue ? (
-        <ChildDoriContinueFooter frame={CHILD_DORI_CONTINUE_FOOTER} onClick={onContinue} />
+        <ChildTurquoiseFooter onClick={onContinue}>קדימה!</ChildTurquoiseFooter>
       ) : null}
-    </div>
+    </FunnelStepRoot>
   );
 }

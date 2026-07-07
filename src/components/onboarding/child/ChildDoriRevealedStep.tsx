@@ -5,6 +5,8 @@ import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
 import { ChildDoriContinueFooter } from '@/components/onboarding/child/ChildDoriContinueFooter';
 import { ChildDoriMediaFrame } from '@/components/onboarding/child/ChildDoriMediaFrame';
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_DORI_REVEALED } from '@/constants/child-onboarding-layout';
 
@@ -18,6 +20,8 @@ export function ChildDoriRevealedStep({
 }) {
   const layout = CHILD_DORI_REVEALED;
   const bubble = layout.bubble;
+  const scaleY = useFunnelProportionalTopPx;
+  const bubbleTopPx = scaleY(bubble.top);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -27,13 +31,12 @@ export function ChildDoriRevealedStep({
   }, []);
 
   return (
-    <div className="relative h-full w-full overflow-visible bg-transparent">
+    <FunnelStepRoot fitViewport aria-label="דורי מתעורר" className="overflow-hidden bg-transparent">
       <OnboardingMintGlow />
 
       <ChildSpeechBubble
-        top={bubble.top}
+        top={bubbleTopPx}
         width={bubble.width}
-        left={bubble.left}
         tailLeft={bubble.tailLeft}
         tailBorderOverlap={bubble.tailBorderOverlap}
         tailPosition="bottom"
@@ -48,7 +51,7 @@ export function ChildDoriRevealedStep({
         </p>
       </ChildSpeechBubble>
 
-      <ChildDoriMediaFrame>
+      <ChildDoriMediaFrame top={layout.mediaTop}>
         <video
           ref={videoRef}
           src={CHILD_ONBOARDING_ASSETS.doriRevealTransitionVideo}
@@ -63,6 +66,6 @@ export function ChildDoriRevealedStep({
       </ChildDoriMediaFrame>
 
       <ChildDoriContinueFooter onClick={onContinue} />
-    </div>
+    </FunnelStepRoot>
   );
 }

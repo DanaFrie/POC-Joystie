@@ -1,69 +1,56 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  SignupHeroEllipses,
-} from '@/components/onboarding/signup/SignupHeroEllipses';
+import { SignupHeroEllipses } from '@/components/onboarding/signup/SignupHeroEllipses';
 import { ONBOARDING_SIGNUP_HERO_IMAGE } from '@/constants/onboarding-figma';
 import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
-
-const FUNNEL_HERO_PORTAL_SELECTOR = '[data-v03-funnel-hero]';
+import { useFunnelHeroBleed } from '@/components/ui/FunnelViewportContext';
 import {
-  useFunnelHeroBleedInsets,
-  useFunnelViewportMetrics,
-} from '@/components/ui/FunnelViewportContext';
-import {
-  SIGNUP_HERO_FRAME_TOP_PX,
   SIGNUP_HERO_HEIGHT_PX,
   SIGNUP_HERO_IMAGE_HEIGHT_PX,
+  SIGNUP_HERO_IMAGE_OFFSET_X_PX,
+  SIGNUP_HERO_IMAGE_VIEWPORT_W_PX,
+  SIGNUP_HERO_IMAGE_WIDTH_PX,
 } from '@/constants/signup-layout';
 
 const HERO_GRADIENT =
   'linear-gradient(180deg, rgba(47, 47, 47, 0) 0%, rgba(47, 47, 47, 0.5) 57.98%)';
 
-type SignupHeroFrameProps = {
-  /** Canvas-space scroll offset from the signup scroll container. */
-  scrollTop?: number;
-};
-
 /**
- * Figma Frame 1430108703 — z-order: mountain (1) → ellipses (2) → form (z-10+).
- * Portaled into `[data-v03-funnel-hero]` above green bleed, below step content.
+ * Figma Frame 1430108703 — mountain (z-1) → ellipses (z-2) → form (z-20+).
+ * Portaled to the hero bleed mount (like landing kingdom) — top-anchored background,
+ * not in scroll flow.
  */
-export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
-  const { scale, offsetX, offsetY, viewportWidth, designWidth } =
-    useFunnelViewportMetrics();
-  const { bleedY } = useFunnelHeroBleedInsets();
+export function SignupHeroFrame() {
+  const bleedStyle = useFunnelHeroBleed(SIGNUP_HERO_HEIGHT_PX);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const frameTopCanvas = SIGNUP_HERO_FRAME_TOP_PX - bleedY;
-  const heroTopPx = offsetY + (frameTopCanvas - scrollTop) * scale;
-  const heroHeightPx = (SIGNUP_HERO_IMAGE_HEIGHT_PX + bleedY) * scale;
-  const ellipseTopPx = offsetY + (SIGNUP_HERO_FRAME_TOP_PX - scrollTop) * scale;
-  const ellipseWidthPx = designWidth * scale;
-  const ellipseHeightPx = SIGNUP_HERO_HEIGHT_PX * scale;
-
   return (
-    <>
-      <FunnelRootPortal rootSelector={FUNNEL_HERO_PORTAL_SELECTOR}>
+    <FunnelRootPortal rootSelector="[data-v03-funnel-hero]">
+      <div
+        className="pointer-events-none relative overflow-visible v03-funnel-enter-0"
+        style={bleedStyle}
+        aria-hidden
+      >
         <div
-          className="pointer-events-none overflow-hidden"
+          className="absolute left-0 top-0 overflow-hidden"
           style={{
-            position: 'fixed',
-            left: 0,
-            top: heroTopPx,
-            width: viewportWidth,
-            height: heroHeightPx,
+            width: SIGNUP_HERO_IMAGE_VIEWPORT_W_PX,
+            height: SIGNUP_HERO_IMAGE_HEIGHT_PX,
             zIndex: 1,
           }}
-          aria-hidden
         >
           {!imageFailed && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={ONBOARDING_SIGNUP_HERO_IMAGE}
               alt=""
-              className="absolute left-1/2 top-0 min-h-full min-w-[115%] -translate-x-1/2 object-cover object-top"
+              className="absolute top-0 block max-w-none object-cover object-top"
+              style={{
+                width: SIGNUP_HERO_IMAGE_WIDTH_PX,
+                height: SIGNUP_HERO_IMAGE_HEIGHT_PX,
+                left: -SIGNUP_HERO_IMAGE_OFFSET_X_PX,
+              }}
               draggable={false}
               onError={() => setImageFailed(true)}
             />
@@ -72,40 +59,12 @@ export function SignupHeroFrame({ scrollTop = 0 }: SignupHeroFrameProps) {
         </div>
 
         <div
-          className="pointer-events-none overflow-visible"
-          style={{
-            position: 'fixed',
-            left: offsetX,
-            top: ellipseTopPx,
-            width: ellipseWidthPx,
-            height: ellipseHeightPx,
-            zIndex: 2,
-            transformOrigin: 'top left',
-          }}
-          aria-hidden
+          className="absolute inset-x-0 top-0 overflow-visible"
+          style={{ height: SIGNUP_HERO_HEIGHT_PX, zIndex: 2 }}
         >
-          <div
-            className="absolute inset-0 overflow-visible"
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: 'top left',
-              width: designWidth,
-              height: SIGNUP_HERO_HEIGHT_PX,
-            }}
-          >
-            <SignupHeroEllipses />
-          </div>
+          <SignupHeroEllipses />
         </div>
-      </FunnelRootPortal>
-
-      <div
-        className="pointer-events-none shrink-0 v03-funnel-enter-0"
-        style={{
-          height: SIGNUP_HERO_HEIGHT_PX + bleedY,
-          marginTop: SIGNUP_HERO_FRAME_TOP_PX - bleedY,
-        }}
-        aria-hidden
-      />
-    </>
+      </div>
+    </FunnelRootPortal>
   );
 }

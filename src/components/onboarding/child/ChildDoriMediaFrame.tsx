@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_DORI_MEDIA_FRAME } from '@/constants/child-onboarding-layout';
 
 const FADE_SOLID = '#092125';
@@ -9,63 +10,79 @@ const FADE_CLEAR = 'rgba(9, 33, 37, 0)';
 type ChildDoriMediaFrameProps = {
   children: ReactNode;
   className?: string;
+  /** Figma canvas Y before viewport scale; defaults to `CHILD_DORI_MEDIA_FRAME.top`. */
+  top?: number;
+  left?: number;
+  size?: number;
 };
 
-/** Dori hero — 324×324 @ left 27 top 271 with edge vignette strips (Figma 13656:6594 / 6740). */
-export function ChildDoriMediaFrame({ children, className = '' }: ChildDoriMediaFrameProps) {
+/**
+ * Dori hero — 324×324 with edge vignette strips locked to the video frame.
+ * Vignette rects scale with the frame so they stay relative to the video.
+ */
+export function ChildDoriMediaFrame({
+  children,
+  className = '',
+  top,
+  left,
+  size,
+}: ChildDoriMediaFrameProps) {
+  const scaleY = useFunnelProportionalTopPx;
   const frame = CHILD_DORI_MEDIA_FRAME;
+  const figmaTop = top ?? frame.top;
+  const figmaSize = size ?? frame.width;
+
+  const topPx = scaleY(figmaTop);
+  const sizePx = scaleY(figmaSize);
+  const edgeScale = sizePx / frame.width;
 
   return (
     <div
       className={`pointer-events-none absolute z-[2] overflow-hidden ${className}`}
       style={{
-        left: frame.left,
-        top: frame.top,
-        width: frame.width,
-        height: frame.height,
+        left: left ?? `calc(50% - ${sizePx / 2}px)`,
+        top: topPx,
+        width: sizePx,
+        height: sizePx,
       }}
     >
       <div className="relative size-full overflow-hidden">{children}</div>
 
-      {/* Upper — dark at top edge, fades down */}
       <div
         className="pointer-events-none absolute left-0 top-0 z-[3]"
         style={{
-          width: frame.width,
-          height: frame.edgeTop,
+          width: sizePx,
+          height: frame.edgeTop * edgeScale,
           background: `linear-gradient(180deg, ${FADE_SOLID} 0%, ${FADE_CLEAR} 100%)`,
         }}
         aria-hidden
       />
 
-      {/* Lower — dark at bottom edge, fades up */}
       <div
         className="pointer-events-none absolute bottom-0 left-0 z-[3]"
         style={{
-          width: frame.width,
-          height: frame.edgeBottom,
+          width: sizePx,
+          height: frame.edgeBottom * edgeScale,
           background: `linear-gradient(0deg, ${FADE_SOLID} 0%, ${FADE_CLEAR} 100%)`,
         }}
         aria-hidden
       />
 
-      {/* Left — dark at left edge, fades right */}
       <div
         className="pointer-events-none absolute left-0 top-0 z-[3]"
         style={{
-          width: frame.edgeSide,
-          height: frame.height,
+          width: frame.edgeSide * edgeScale,
+          height: sizePx,
           background: `linear-gradient(90deg, ${FADE_SOLID} 0%, ${FADE_CLEAR} 100%)`,
         }}
         aria-hidden
       />
 
-      {/* Right — dark at right edge, fades left */}
       <div
         className="pointer-events-none absolute right-0 top-0 z-[3]"
         style={{
-          width: frame.edgeSide,
-          height: frame.height,
+          width: frame.edgeSide * edgeScale,
+          height: sizePx,
           background: `linear-gradient(270deg, ${FADE_SOLID} 0%, ${FADE_CLEAR} 100%)`,
         }}
         aria-hidden

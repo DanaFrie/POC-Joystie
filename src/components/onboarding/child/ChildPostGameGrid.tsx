@@ -1,10 +1,12 @@
 'use client';
 
 import { useLayoutEffect, useState } from 'react';
+import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
 import { V03_DESKTOP_MIN_WIDTH } from '@/constants/v03-screen';
 
 /** In-canvas grid above green/mint background — Figma post-game screens. */
 export function ChildPostGameGrid({ enabled = true }: { enabled?: boolean }) {
+  const bleedStyle = useFunnelFullBleed();
   const [hidden, setHidden] = useState(true);
 
   useLayoutEffect(() => {
@@ -24,5 +26,11 @@ export function ChildPostGameGrid({ enabled = true }: { enabled?: boolean }) {
     return null;
   }
 
-  return <div className="v03-onboarding-grid-layer absolute inset-0 z-[2]" aria-hidden />;
+  return (
+    <div
+      className="v03-onboarding-grid-layer pointer-events-none absolute z-[2]"
+      style={bleedStyle}
+      aria-hidden
+    />
+  );
 }

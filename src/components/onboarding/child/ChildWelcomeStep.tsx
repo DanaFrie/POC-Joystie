@@ -8,7 +8,10 @@ import {
   FunnelStepRoot,
   FunnelStepSection,
 } from '@/components/ui/funnel-layout';
-import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
+import {
+  useFunnelProportionalTopPx,
+  useFunnelViewportMetrics,
+} from '@/components/ui/FunnelViewportContext';
 import {
   CHILD_ONBOARDING_HERO_VIDEO,
   CHILD_WELCOME_ELLIPSE_389,
@@ -16,7 +19,6 @@ import {
   CHILD_WELCOME_HEADLINE,
   CHILD_WELCOME_STATUS_BUBBLE,
 } from '@/constants/child-onboarding-figma';
-import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 
 type ChildWelcomeStepProps = {
   childName: string;
@@ -187,8 +189,7 @@ function ChildWelcomeHeadline({ childName, childGender }: ChildWelcomeHeadlinePr
  */
 function ChildWelcomeStatusBubble() {
   const bubble = CHILD_WELCOME_STATUS_BUBBLE;
-  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
-  const topPx = (bubble.top / V03_SCREEN_HEIGHT) * usableCanvasHeightPx;
+  const topPx = useFunnelProportionalTopPx(bubble.top);
 
   return (
     <div

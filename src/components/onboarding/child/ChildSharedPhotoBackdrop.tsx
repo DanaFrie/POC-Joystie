@@ -3,7 +3,8 @@
 import type { ReactNode } from 'react';
 import { JoystieWordmarkLogo } from '@/components/brand/JoystieWordmarkLogo';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
-import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelBleedBarStyle, useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_SHARED_PHOTO_REVIEW } from '@/constants/child-post-game-layout';
 
@@ -18,16 +19,22 @@ export function ChildSharedPhotoBackdrop({
   photoSrc = null,
   children,
 }: ChildSharedPhotoBackdropProps) {
-  const bleedStyle = useFunnelFullBleed();
+  const coverStyle = useFunnelBleedBarStyle(0);
+  const fullBleedStyle = useFunnelFullBleed();
   const logo = CHILD_SHARED_PHOTO_REVIEW.logo;
 
   return (
-    <div dir="rtl" className="relative h-full w-full overflow-hidden">
+    <FunnelStepRoot fitViewport className="overflow-hidden bg-v03-green-900">
+      <div
+        className="pointer-events-none absolute z-0 bg-v03-green-900"
+        style={fullBleedStyle}
+        aria-hidden
+      />
       <OnboardingLazyImage
         src={CHILD_ONBOARDING_ASSETS.castleDoriSelfie}
         alt=""
-        className="pointer-events-none absolute z-0 object-cover object-center"
-        style={bleedStyle}
+        className="pointer-events-none absolute z-0 object-cover"
+        style={{ ...coverStyle, objectPosition: 'center bottom' }}
         priority
       />
 
@@ -54,7 +61,7 @@ export function ChildSharedPhotoBackdrop({
         <JoystieWordmarkLogo className="h-auto w-full" />
       </div>
 
-      <div className="relative z-10 h-full w-full">{children}</div>
-    </div>
+      <div className="relative z-10 flex h-full min-h-0 flex-col">{children}</div>
+    </FunnelStepRoot>
   );
 }

@@ -18,10 +18,31 @@ export type OnboardingChildProgress = {
   eggCompleteAt?: string;
   missionReady?: boolean;
   missionReadyAt?: string;
+  /** Post-game — child confirmed castle change (tick). */
+  changeSelected?: boolean;
+  changeSelectedText?: string | null;
+  changeSelectedAt?: string;
+  /** Post-game — child accepted parent's additional change. */
+  parentChangeAccepted?: boolean;
+  /** Post-game — child declined parent's additional change (negotiation loop). */
+  parentChangeDeclined?: boolean;
+  parentChangeRespondedAt?: string | null;
+  /** Post-game — child finished selfie mission. */
+  selfieMissionDone?: boolean;
+  selfieMissionDoneAt?: string;
   updatedAt?: string;
 };
 
 const pathFor = (parentId: string) => `onboardingChildProgress/${parentId}`;
+
+/** Firebase RTDB rejects `undefined` — coerce clears to `null`. */
+function sanitizeChildProgressPatch(
+  patch: Partial<OnboardingChildProgress>
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(patch).map(([key, value]) => [key, value === undefined ? null : value])
+  );
+}
 
 export async function resetOnboardingChildProgress(parentId: string): Promise<void> {
   const db = await getDatabaseInstance();
@@ -36,6 +57,14 @@ export async function resetOnboardingChildProgress(parentId: string): Promise<vo
     eggCompleteAt: null,
     missionReady: false,
     missionReadyAt: null,
+    changeSelected: false,
+    changeSelectedText: null,
+    changeSelectedAt: null,
+    parentChangeAccepted: false,
+    parentChangeDeclined: false,
+    parentChangeRespondedAt: null,
+    selfieMissionDone: false,
+    selfieMissionDoneAt: null,
     updatedAt: new Date().toISOString(),
   });
   logger.log('reset', { parentId });
@@ -48,10 +77,18 @@ export async function publishOnboardingChildProgress(
   const db = await getDatabaseInstance();
   const now = new Date().toISOString();
   await update(ref(db, pathFor(parentId)), {
-    ...patch,
+    ...sanitizeChildProgressPatch(patch),
     updatedAt: now,
   });
   logger.log('publish', { parentId, ...patch });
+}
+
+export async function clearChildParentChangeResponse(parentId: string): Promise<void> {
+  await publishOnboardingChildProgress(parentId, {
+    parentChangeDeclined: false,
+    parentChangeAccepted: false,
+    parentChangeRespondedAt: null,
+  });
 }
 
 export async function readOnboardingChildProgress(
@@ -73,6 +110,7 @@ export function subscribeOnboardingChildProgress(
   void getDatabaseInstance().then((db) => {
     if (cancelled) return;
     innerUnsub = onValue(ref(db, pathFor(parentId)), (snap) => {
+      if (cancelled) return;
       onChange(snap.exists() ? (snap.val() as OnboardingChildProgress) : null);
     });
   });

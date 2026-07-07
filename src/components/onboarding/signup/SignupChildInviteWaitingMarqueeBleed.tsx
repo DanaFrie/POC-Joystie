@@ -1,7 +1,10 @@
 'use client';
 
 import { SignupChildInviteWaitingMarquee } from '@/components/onboarding/signup/SignupChildInviteWaitingMarquee';
-import { useFunnelHeroBleedInsets } from '@/components/ui/FunnelViewportContext';
+import {
+  useFunnelHeroBleedInsets,
+  useFunnelProportionalTopPx,
+} from '@/components/ui/FunnelViewportContext';
 import { SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX } from '@/constants/signup-child-invite-layout';
 
 /**
@@ -10,6 +13,9 @@ import { SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX } from '@/constants/signu
  */
 export function SignupChildInviteWaitingMarqueeBleed() {
   const { bleedX, width } = useFunnelHeroBleedInsets();
+  const marqueeBottomPx = useFunnelProportionalTopPx(
+    SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX
+  );
 
   return (
     <div
@@ -17,7 +23,7 @@ export function SignupChildInviteWaitingMarqueeBleed() {
       style={{
         left: -bleedX,
         width,
-        bottom: SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX,
+        bottom: marqueeBottomPx,
       }}
       aria-hidden
     >

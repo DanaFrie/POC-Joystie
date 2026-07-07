@@ -15,8 +15,8 @@ export function parentWaitingAdditionalChangeApprovalHeadline(
   gender: 'boy' | 'girl'
 ): string {
   return gender === 'girl'
-    ? `מחכים ש${childName} תאשר את השינוי הנוסף`
-    : `מחכים ש${childName} יאשר את השינוי הנוסף`;
+    ? `מחכים ש${childName} תגיב לשינוי הנוסף`
+    : `מחכים ש${childName} יגיב לשינוי הנוסף`;
 }
 
 export const PARENT_WAITING_DORI_SELFIE_HEADLINE = 'מחכים לסלפי עם דורי';

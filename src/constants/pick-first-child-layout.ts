@@ -1,4 +1,6 @@
 /** Pick first child — Figma 13680:1526 (עם מי מתחילים?). */
+export const PICK_FIRST_CHILD_FRAME_W_PX = 327;
+export const PICK_FIRST_CHILD_HEADER_PAD_X_PX = 15;
 export const PICK_FIRST_CHILD_HEADER_TOP_PX = 97;
 export const PICK_FIRST_CHILD_CARDS_TOP_PX = 210;
 export const PICK_FIRST_CHILD_HEADER_GAP_PX = 10;

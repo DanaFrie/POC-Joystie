@@ -30,6 +30,8 @@ type SignupChildInviteShareStepProps = {
   childName: string;
   childGender?: 'boy' | 'girl';
   onShared?: () => void;
+  /** 100vh funnel — centered column in foreground main. */
+  flow?: boolean;
 };
 
 /** Figma 12703:42221 — hero, WhatsApp / copy link, footnote. */
@@ -37,6 +39,7 @@ export function SignupChildInviteShareStep({
   childName,
   childGender,
   onShared,
+  flow = false,
 }: SignupChildInviteShareStepProps) {
   const [copied, setCopied] = useState(false);
   const [childUrl, setChildUrl] = useState(() => getBondingChildUrl());
@@ -78,14 +81,8 @@ export function SignupChildInviteShareStep({
   const handleWhatsApp = () => {
     if (!childUrl?.includes('token=')) return;
 
-    let advanced = false;
-    const advanceAfterReturn = () => {
-      if (advanced || document.visibilityState !== 'visible') return;
-      advanced = true;
-      document.removeEventListener('visibilitychange', advanceAfterReturn);
-      onShared?.();
-    };
-    document.addEventListener('visibilitychange', advanceAfterReturn);
+    // Advance immediately so session start precedes child opening the link.
+    onShared?.();
 
     shareBondingViaWhatsApp({
       childName,
@@ -116,13 +113,8 @@ export function SignupChildInviteShareStep({
     }
   };
 
-  return (
-    <div
-      dir="rtl"
-      className="absolute left-v03-gutter top-1/2 z-[10] flex w-v03-content -translate-y-1/2 flex-col items-stretch"
-      style={{ gap: SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX }}
-      aria-label="שיתוף הזמנה לילד"
-    >
+  const body = (
+    <>
       <div
         className="flex w-full flex-col items-stretch"
         style={{ gap: SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX }}
@@ -173,6 +165,30 @@ export function SignupChildInviteShareStep({
       >
         דרך הלינק שישותף עם {childName}, יתחיל התהליך המשותף שלכם
       </p>
+    </>
+  );
+
+  if (flow) {
+    return (
+      <div
+        dir="rtl"
+        className="pointer-events-auto mx-auto flex w-full max-w-v03-content flex-col items-stretch self-stretch"
+        style={{ gap: SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX }}
+        aria-label="שיתוף הזמנה לילד"
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      dir="rtl"
+      className="absolute left-v03-gutter top-1/2 z-[10] flex w-v03-content -translate-y-1/2 flex-col items-stretch"
+      style={{ gap: SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX }}
+      aria-label="שיתוף הזמנה לילד"
+    >
+      {body}
     </div>
   );
 }

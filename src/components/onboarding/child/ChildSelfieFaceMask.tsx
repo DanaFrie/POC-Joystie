@@ -17,6 +17,10 @@ type ChildSelfieFaceMaskProps = {
   overlay?: string;
   ringStroke?: number;
   ringOpacity?: number;
+  /** When false, only face rings — no frosted scrim (live camera uses opaque castle frame). */
+  showFrost?: boolean;
+  /** When false, hide white hole rings (blurred placeholder ellipses replace them). */
+  showRings?: boolean;
 };
 
 /** Full-bleed frosted mask with two circular face holes + include rings. */
@@ -27,6 +31,8 @@ export function ChildSelfieFaceMask({
   overlay = 'rgba(9, 33, 37, 0.42)',
   ringStroke = 2,
   ringOpacity = 0.65,
+  showFrost = true,
+  showRings = true,
 }: ChildSelfieFaceMaskProps) {
   const bleedStyle = useFunnelFullBleed();
   const uid = useId().replace(/:/g, '');
@@ -58,36 +64,40 @@ export function ChildSelfieFaceMask({
           </mask>
         </defs>
 
-        <foreignObject
-          x="0"
-          y="0"
-          width={V03_SCREEN_WIDTH}
-          height={V03_SCREEN_HEIGHT}
-          mask={`url(#${maskId})`}
-        >
-          <div
-            style={{
-              backdropFilter: `blur(${blur}px)`,
-              WebkitBackdropFilter: `blur(${blur}px)`,
-              background: overlay,
-              height: '100%',
-              width: '100%',
-            }}
-          />
-        </foreignObject>
+        {showFrost ? (
+          <foreignObject
+            x="0"
+            y="0"
+            width={V03_SCREEN_WIDTH}
+            height={V03_SCREEN_HEIGHT}
+            mask={`url(#${maskId})`}
+          >
+            <div
+              style={{
+                backdropFilter: `blur(${blur}px)`,
+                WebkitBackdropFilter: `blur(${blur}px)`,
+                background: overlay,
+                height: '100%',
+                width: '100%',
+              }}
+            />
+          </foreignObject>
+        ) : null}
 
-        {holes.map((hole) => (
-          <circle
-            key={`ring-${hole.cx}-${hole.cy}`}
-            cx={hole.cx}
-            cy={hole.cy}
-            r={hole.r}
-            stroke="white"
-            strokeOpacity={ringOpacity}
-            strokeWidth={ringStroke}
-            fill="none"
-          />
-        ))}
+        {showRings
+          ? holes.map((hole) => (
+              <circle
+                key={`ring-${hole.cx}-${hole.cy}`}
+                cx={hole.cx}
+                cy={hole.cy}
+                r={hole.r}
+                stroke="white"
+                strokeOpacity={ringOpacity}
+                strokeWidth={ringStroke}
+                fill="none"
+              />
+            ))
+          : null}
       </svg>
     </div>
   );

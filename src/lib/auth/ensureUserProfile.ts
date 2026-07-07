@@ -27,7 +27,7 @@ function profileFromFirestoreDoc(profile: FirestoreUser): Omit<
  * Resolve Firestore profile after Auth sign-in. Creates or re-links a profile when missing at uid.
  */
 export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreUser> {
-  const existing = await getUser(uid, false);
+  const existing = await getUser(uid, true);
   if (existing) {
     return existing;
   }
@@ -40,6 +40,7 @@ export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreU
 
   const email = getOAuthUserEmail(firebaseUser).toLowerCase();
   const byEmail = email ? await getUserByEmail(email) : null;
+  const now = new Date().toISOString();
 
   if (byEmail) {
     if (byEmail.id !== uid) {
@@ -47,31 +48,27 @@ export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreU
         `Firestore user ${byEmail.id} email match but Auth uid is ${uid} — creating profile at Auth uid`
       );
     }
-    const now = new Date().toISOString();
-    await createUser(uid, {
+    const profile = {
       ...profileFromFirestoreDoc(byEmail),
       signupDate: byEmail.signupDate || now,
-    });
-  } else {
-    const { firstName, lastName } = splitDisplayName(
-      getOAuthUserDisplayName(firebaseUser)
-    );
-    const now = new Date().toISOString();
-    await createUser(uid, {
-      email,
-      firstName,
-      lastName,
-      gender: 'male',
-      kidsAges: [],
-      termsAccepted: false,
-      onboarding: false,
-      signupDate: now,
-    });
+    };
+    await createUser(uid, profile);
+    return { id: uid, ...profile, createdAt: now, updatedAt: now };
   }
 
-  const created = await getUser(uid, false);
-  if (!created) {
-    throw new Error('נתוני המשתמש לא נמצאו. אנא הירשמו מחדש.');
-  }
-  return created;
+  const { firstName, lastName } = splitDisplayName(
+    getOAuthUserDisplayName(firebaseUser)
+  );
+  const profile = {
+    email,
+    firstName,
+    lastName,
+    gender: 'male' as const,
+    kidsAges: [],
+    termsAccepted: false,
+    onboarding: false,
+    signupDate: now,
+  };
+  await createUser(uid, profile);
+  return { id: uid, ...profile, createdAt: now, updatedAt: now };
 }

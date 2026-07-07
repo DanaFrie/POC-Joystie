@@ -33,6 +33,12 @@ export const CHILD_ONBOARDING_ASSETS = {
   doriCastle: '/onboarding/child/dori-castle.webp',
   /** Mission 3 — castle selfie camera frame background. */
   castleDoriSelfie: '/onboarding/child/castle-dori-selfie.webp',
+  /** Mission 3 intro — mother + child with Dori. */
+  motherChildDori: '/onboarding/child/mother-child-dori.webp',
+  /** Mission 3 intro — father + child with Dori. */
+  fatherChildDori: '/onboarding/child/father-child-dori.webp',
+  /** Castle change celebration — Figma 13702:9497 + confetti overlay. */
+  confettiPurple: '/onboarding/child/confeti-purple.gif',
   /** Castle change celebration — Figma 13702:9497 */
   confettiRed: '/onboarding/child/conffeti_red.gif',
   castleChangeConfirmIcon: '/onboarding/child/V-icon.png',

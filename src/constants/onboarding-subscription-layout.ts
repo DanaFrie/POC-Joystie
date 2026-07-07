@@ -23,13 +23,21 @@ export const ONBOARDING_SUBSCRIPTION = {
       blur: 15,
     },
   },
-  logo: { top: 46, width: 107, height: 53.5 },
-  copy: { top: 109, left: 24, width: 327, gap: 12, headlineGap: 5 },
+  logo: { top: 72, left: 162, width: 49.511, height: 47 },
+  logoEllipse: {
+    top: 32,
+    left: 117,
+    width: 145,
+    height: 89.93,
+    fill: 'rgba(6, 43, 33, 0.15)',
+    blur: 20.4617,
+  },
+  copy: { top: 135, left: 24, width: 327, gap: 12, headlineGap: 5 },
   features: {
     padding: 20,
     radius: 16.145,
-    gap: 20,
-    rowGap: 8,
+    gap: 12,
+    rowGap: 4,
     checkSize: 18.462,
     iconSize: 20,
   },
@@ -45,6 +53,12 @@ export const ONBOARDING_SUBSCRIPTION = {
     left: 24,
     width: 327,
     gap: 6,
+    button: {
+      height: 55,
+      paddingX: 15,
+      paddingY: 8,
+      gap: 8,
+    },
   },
 } as const;
 

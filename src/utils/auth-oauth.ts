@@ -32,6 +32,14 @@ export function toOAuthProviderId(provider: OAuthProviderUiId): OAuthProviderId 
 
 const REDIRECT_PROMISE_KEY = '__joystie_oauth_redirect_promise';
 
+/** Cap reload() per uid — repeated reloads were adding 20s+ on Apple redirect return. */
+const oauthReloadAttempted = new Set<string>();
+
+type OAuthRedirectResolveOptions = {
+  maxWaitMs?: number;
+  trustAnySignedInUser?: boolean;
+};
+
 function isEmbeddedFrame(): boolean {
   try {
     return window.self !== window.top;
@@ -134,10 +142,11 @@ function parseOAuthRedirectUrlError(): OAuthSignInResult | null {
   };
 }
 
-function redirectWaitMs(auth: Auth): number {
+function redirectWaitMs(auth: Auth, options?: OAuthRedirectResolveOptions): number {
+  if (options?.maxWaitMs !== undefined) return options.maxWaitMs;
   if (!isOAuthRedirectRecoverable()) return 0;
-  const base = auth.currentUser ? 8000 : 3000;
-  return isFirebaseAppHostingOrigin() ? Math.max(base, auth.currentUser ? 12000 : 6000) : base;
+  const base = auth.currentUser ? 3000 : 1500;
+  return isFirebaseAppHostingOrigin() ? Math.max(base, auth.currentUser ? 4500 : 2500) : base;
 }
 
 /** Apple Hide My Email relay addresses are valid OAuth emails. */
@@ -193,26 +202,28 @@ function extractDisplayNameFromCredential(credential: UserCredential): string {
   return [given, family].filter(Boolean).join(' ').trim();
 }
 
-async function maybePersistOAuthDisplayName(
-  credential: UserCredential
-): Promise<string> {
-  const displayName = extractDisplayNameFromCredential(credential);
-  if (!displayName || credential.user.displayName?.trim()) {
-    return displayName || credential.user.displayName?.trim() || '';
-  }
-
-  try {
-    const { updateProfile } = await import('firebase/auth');
-    await updateProfile(credential.user, { displayName });
-    oauthLog.log('profile:displayName-persisted', {
-      uid: credential.user.uid,
-      displayName,
+function scheduleOAuthDisplayNamePersist(
+  credential: UserCredential,
+  displayName: string
+): void {
+  if (!displayName || credential.user.displayName?.trim()) return;
+  void import('firebase/auth')
+    .then(({ updateProfile }) => updateProfile(credential.user, { displayName }))
+    .then(() => {
+      oauthLog.log('profile:displayName-persisted', {
+        uid: credential.user.uid,
+        displayName,
+      });
+    })
+    .catch((error) => {
+      oauthLog.warn('profile:displayName-persist-failed', error);
     });
-  } catch (error) {
-    oauthLog.warn('profile:displayName-persist-failed', error);
-  }
+}
 
-  return displayName;
+function resolveOAuthDisplayName(credential: UserCredential): string {
+  const displayName = extractDisplayNameFromCredential(credential);
+  scheduleOAuthDisplayNamePersist(credential, displayName);
+  return displayName || credential.user.displayName?.trim() || '';
 }
 
 function buildOAuthSuccessResult(
@@ -238,7 +249,7 @@ async function signInWithProviderPopup(providerId: OAuthProviderId): Promise<OAu
     oauthLog.log('popup:start', { providerId });
     const credential = await signInWithPopup(auth, provider);
     const isNewUser = await resolveIsNewUser(credential);
-    const displayName = await maybePersistOAuthDisplayName(credential);
+    const displayName = resolveOAuthDisplayName(credential);
     oauthLog.log('popup:success', {
       providerId,
       uid: credential.user.uid,
@@ -365,6 +376,10 @@ function isOAuthUser(user: User): boolean {
 
 async function hydrateOAuthUser(user: User): Promise<User> {
   if (user.email && user.providerData.length > 0) return user;
+  if (hasOAuthProvider(user)) return user;
+  if (oauthReloadAttempted.has(user.uid)) return user;
+
+  oauthReloadAttempted.add(user.uid);
   try {
     await user.reload();
     oauthLog.log('hydrate:reloaded', {
@@ -409,7 +424,7 @@ export async function prepareAuthForOAuthSignIn(): Promise<void> {
 }
 
 async function waitForOAuthUser(
-  maxWaitMs = 20000,
+  maxWaitMs = 5000,
   options?: { trustAnySignedInUser?: boolean }
 ): Promise<User | null> {
   const { onAuthStateChanged } = await import('firebase/auth');
@@ -417,11 +432,17 @@ async function waitForOAuthUser(
 
   const pickUser = (user: User | null) => pickOAuthUser(user, options);
 
-  if (auth.currentUser) {
-    const hydrated = await hydrateOAuthUser(auth.currentUser);
-    const immediate = pickUser(hydrated);
-    if (immediate) return immediate;
-  }
+  const tryCurrentUser = async (): Promise<User | null> => {
+    const current = auth.currentUser;
+    if (!current) return null;
+    let picked = pickUser(current);
+    if (picked) return picked;
+    const hydrated = await hydrateOAuthUser(current);
+    return pickUser(hydrated);
+  };
+
+  const immediate = await tryCurrentUser();
+  if (immediate) return immediate;
 
   return new Promise((resolve) => {
     let settled = false;
@@ -431,39 +452,31 @@ async function waitForOAuthUser(
       if (settled) return;
       settled = true;
       unsub();
-      window.clearInterval(interval);
       window.clearTimeout(timeout);
       resolve(user);
     };
 
     unsub = onAuthStateChanged(auth, (user) => {
       void (async () => {
-        if (!user) return;
-        const hydrated = await hydrateOAuthUser(user);
-        const picked = pickUser(hydrated);
+        if (!user || settled) return;
+        let picked = pickUser(user);
+        if (!picked) {
+          const hydrated = await hydrateOAuthUser(user);
+          picked = pickUser(hydrated);
+        }
         if (picked) finish(picked);
       })();
     });
 
-    const interval = window.setInterval(() => {
-      void (async () => {
-        const current = auth.currentUser;
-        if (!current) return;
-        const hydrated = await hydrateOAuthUser(current);
-        const picked = pickUser(hydrated);
-        if (picked) finish(picked);
-      })();
-    }, 300);
-
     const timeout = window.setTimeout(() => {
-      finish(pickUser(auth.currentUser));
+      void tryCurrentUser().then((user) => finish(user));
     }, maxWaitMs);
   });
 }
 
 /** Fallback when getRedirectResult is empty but Auth session exists after redirect. */
 export async function resolveOAuthPendingUser(
-  maxWaitMs = 12000,
+  maxWaitMs = 5000,
   options?: { trustAnySignedInUser?: boolean }
 ): Promise<OAuthSignInResult | null> {
   const user = await waitForOAuthUser(maxWaitMs, options);
@@ -477,7 +490,8 @@ export async function resolveOAuthPendingUser(
 }
 
 async function completeOAuthRedirectOnce(
-  authOverride?: Auth
+  authOverride?: Auth,
+  options?: OAuthRedirectResolveOptions
 ): Promise<OAuthSignInResult | null> {
   try {
     const urlError = parseOAuthRedirectUrlError();
@@ -488,7 +502,7 @@ async function completeOAuthRedirectOnce(
     const credential = await getRedirectResult(auth);
     if (credential?.user) {
       const info = getAdditionalUserInfo(credential);
-      const displayName = await maybePersistOAuthDisplayName(credential);
+      const displayName = resolveOAuthDisplayName(credential);
       oauthLog.log('redirect:result', {
         uid: credential.user.uid,
         email: getOAuthUserEmail(credential.user),
@@ -505,8 +519,11 @@ async function completeOAuthRedirectOnce(
     }
 
     // Redirect may hydrate currentUser shortly after getRedirectResult returns null.
-    const waitMs = redirectWaitMs(auth);
-    const user = waitMs > 0 ? await waitForOAuthUser(waitMs) : null;
+    const waitMs = redirectWaitMs(auth, options);
+    const waitOptions = {
+      trustAnySignedInUser: options?.trustAnySignedInUser ?? true,
+    };
+    const user = waitMs > 0 ? await waitForOAuthUser(waitMs, waitOptions) : null;
     if (user) {
       oauthLog.log('redirect:currentUser-fallback', {
         uid: user.uid,
@@ -545,9 +562,11 @@ async function completeOAuthRedirectOnce(
   }
 }
 
-function getRedirectResultPromise(): Promise<OAuthSignInResult | null> {
+function getRedirectResultPromise(
+  options?: OAuthRedirectResolveOptions
+): Promise<OAuthSignInResult | null> {
   if (typeof window === 'undefined') {
-    return completeOAuthRedirectOnce();
+    return completeOAuthRedirectOnce(undefined, options);
   }
 
   const globalWindow = window as typeof window & {
@@ -555,7 +574,7 @@ function getRedirectResultPromise(): Promise<OAuthSignInResult | null> {
   };
 
   if (!globalWindow[REDIRECT_PROMISE_KEY]) {
-    globalWindow[REDIRECT_PROMISE_KEY] = completeOAuthRedirectOnce();
+    globalWindow[REDIRECT_PROMISE_KEY] = completeOAuthRedirectOnce(undefined, options);
   }
 
   return globalWindow[REDIRECT_PROMISE_KEY];
@@ -565,8 +584,10 @@ function getRedirectResultPromise(): Promise<OAuthSignInResult | null> {
  * Call once on onboarding mount after redirect-based OAuth.
  * Singleton — safe under React Strict Mode double-mount and HMR.
  */
-export async function completeOAuthRedirectIfNeeded(): Promise<OAuthSignInResult | null> {
-  return getRedirectResultPromise();
+export async function completeOAuthRedirectIfNeeded(
+  options?: OAuthRedirectResolveOptions
+): Promise<OAuthSignInResult | null> {
+  return getRedirectResultPromise(options);
 }
 
 /** Start capturing redirect result as early as possible on page load. */
@@ -604,9 +625,19 @@ export function clearOAuthRedirectCapture(): void {
  * Resolve OAuth user after redirect — single path via completeOAuthRedirectIfNeeded
  * (getRedirectResult + one auth-state wait; no stacked fallbacks).
  */
-export async function resolveOAuthSignInAfterRedirect(): Promise<OAuthSignInResult | null> {
+export async function resolveOAuthSignInAfterRedirect(
+  options?: OAuthRedirectResolveOptions
+): Promise<OAuthSignInResult | null> {
+  if (
+    typeof window !== 'undefined' &&
+    !isOAuthRedirectRecoverable() &&
+    !isLikelyOAuthRedirectReturn()
+  ) {
+    return null;
+  }
+
   await getAuthInstance();
-  const result = await completeOAuthRedirectIfNeeded();
+  const result = await completeOAuthRedirectIfNeeded(options);
   if (!result) {
     oauthLog.warn('redirect:no-user');
   }

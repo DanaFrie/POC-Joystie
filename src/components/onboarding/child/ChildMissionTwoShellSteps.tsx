@@ -5,6 +5,8 @@ import { ChildDoriContinueFooter } from '@/components/onboarding/child/ChildDori
 import { ChildDoriMediaFrame } from '@/components/onboarding/child/ChildDoriMediaFrame';
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_DORI_CONTINUE_FOOTER } from '@/constants/child-onboarding-layout';
 import {
@@ -24,13 +26,19 @@ export function ChildMissionTwoNotebookStep({
 }: ChildDoriNotebookShellStepProps) {
   const layout = CHILD_MISSION_TWO_NOTEBOOK;
   const bubble = layout.bubble;
+  const scaleY = useFunnelProportionalTopPx;
+  const bubbleTopPx = scaleY(bubble.top);
 
   return (
-    <div className="relative h-full w-full overflow-visible bg-transparent">
+    <FunnelStepRoot
+      fitViewport
+      aria-label="הפתעות טובות"
+      className="overflow-visible bg-transparent"
+    >
       <OnboardingMintGlow />
 
       <ChildSpeechBubble
-        top={bubble.top}
+        top={bubbleTopPx}
         width={bubble.width}
         left={bubble.left}
         tailLeft={bubble.tailLeft}
@@ -53,7 +61,7 @@ export function ChildMissionTwoNotebookStep({
       </ChildDoriMediaFrame>
 
       <ChildDoriContinueFooter frame={CHILD_DORI_CONTINUE_FOOTER} onClick={onContinue} />
-    </div>
+    </FunnelStepRoot>
   );
 }
 
@@ -66,13 +74,22 @@ export function ChildMissionTwoChangeIntroStep({ onContinue }: ChildMissionTwoCh
   const layout = CHILD_MISSION_TWO_CHANGE;
   const bubble = layout.bubble;
   const media = layout.media;
+  const scaleY = useFunnelProportionalTopPx;
+  const bubbleTopPx = scaleY(bubble.top);
+  const mediaTopPx = scaleY(media.top);
+  const mediaWidthPx = scaleY(media.width);
+  const mediaHeightPx = scaleY(media.height);
 
   return (
-    <div className="relative h-full w-full overflow-visible bg-transparent">
+    <FunnelStepRoot
+      fitViewport
+      aria-label="השינוי הראשון"
+      className="overflow-visible bg-transparent"
+    >
       <OnboardingMintGlow />
 
       <ChildSpeechBubble
-        top={bubble.top}
+        top={bubbleTopPx}
         width={bubble.width}
         left={bubble.left}
         tailLeft={bubble.tailLeft}
@@ -90,10 +107,10 @@ export function ChildMissionTwoChangeIntroStep({ onContinue }: ChildMissionTwoCh
       <div
         className="pointer-events-none absolute z-[2] overflow-hidden"
         style={{
-          left: media.left,
-          top: media.top,
-          width: media.width,
-          height: media.height,
+          left: `calc(50% - ${mediaWidthPx / 2}px)`,
+          top: mediaTopPx,
+          width: mediaWidthPx,
+          height: mediaHeightPx,
         }}
       >
         <OnboardingLazyImage
@@ -105,6 +122,6 @@ export function ChildMissionTwoChangeIntroStep({ onContinue }: ChildMissionTwoCh
       </div>
 
       <ChildDoriContinueFooter frame={CHILD_DORI_CONTINUE_FOOTER} onClick={onContinue} />
-    </div>
+    </FunnelStepRoot>
   );
 }

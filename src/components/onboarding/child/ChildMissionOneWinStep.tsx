@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChildTurquoiseFooter } from '@/components/onboarding/child/ChildTurquoiseFooter';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import {
   CHILD_HAPPY_TRANSITION_MS,
@@ -22,6 +24,7 @@ export function ChildMissionOneWinStep({
 }) {
   const layout = CHILD_MISSION_ONE_WIN;
   const happy = layout.happyHero;
+  const scaleY = useFunnelProportionalTopPx;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [continuing, setContinuing] = useState(false);
   const [pageOpacity, setPageOpacity] = useState(1);
@@ -29,6 +32,15 @@ export function ChildMissionOneWinStep({
   const [imageOpacity, setImageOpacity] = useState(0);
   const onContinueRef = useRef(onContinue);
   onContinueRef.current = onContinue;
+
+  const contentTopPx = scaleY(layout.content.top);
+  const contentGapPx = scaleY(layout.content.gap);
+  const headerGapPx = scaleY(layout.header.gap);
+  const checkSizePx = scaleY(layout.check.size);
+  const heroWidthPx = scaleY(layout.hero.width);
+  const heroHeightPx = scaleY(layout.hero.height);
+  const happyWidthPx = scaleY(happy.width);
+  const happyHeightPx = scaleY(happy.height);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -58,26 +70,28 @@ export function ChildMissionOneWinStep({
   const pageTransition = `opacity ${CHILD_HAPPY_TRANSITION_MS}ms ease-out`;
 
   return (
-    <div
-      className="relative h-full w-full overflow-hidden bg-transparent"
+    <FunnelStepRoot
+      fitViewport
+      aria-label="סיום משימה 1"
+      className="overflow-hidden bg-transparent"
       style={{ opacity: pageOpacity, transition: pageTransition }}
     >
       <section
-        className="absolute left-1/2 z-10 flex -translate-x-1/2 flex-col items-center"
+        className="absolute z-10 flex flex-col items-center"
         style={{
-          top: layout.content.top,
+          left: `calc(50% - ${layout.content.width / 2}px)`,
+          top: contentTopPx,
           width: layout.content.width,
-          gap: layout.content.gap,
+          gap: contentGapPx,
         }}
-        aria-label="סיום משימה 1"
       >
         <div
           className="flex w-full flex-col items-center"
-          style={{ gap: layout.header.gap }}
+          style={{ gap: headerGapPx }}
         >
           <div
             className="relative shrink-0"
-            style={{ width: layout.check.size, height: layout.check.size }}
+            style={{ width: checkSizePx, height: checkSizePx }}
           >
             <OnboardingLazyImage
               src={ONBOARDING_COMPLETION_CHECK_IMAGE}
@@ -115,7 +129,7 @@ export function ChildMissionOneWinStep({
 
         <div
           className="relative flex shrink-0 items-center justify-center"
-          style={{ width: layout.hero.width, height: layout.hero.height }}
+          style={{ width: heroWidthPx, height: heroHeightPx }}
         >
           <video
             ref={videoRef}
@@ -134,8 +148,8 @@ export function ChildMissionOneWinStep({
             alt=""
             className="relative z-[1] object-cover object-center"
             style={{
-              width: happy.width,
-              height: happy.height,
+              width: happyWidthPx,
+              height: happyHeightPx,
               aspectRatio: happy.aspectRatio,
               opacity: imageOpacity,
               transition: heroTransition,
@@ -150,6 +164,6 @@ export function ChildMissionOneWinStep({
           המשך
         </ChildTurquoiseFooter>
       ) : null}
-    </div>
+    </FunnelStepRoot>
   );
 }

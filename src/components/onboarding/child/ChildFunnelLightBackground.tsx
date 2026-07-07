@@ -11,13 +11,13 @@ export function ChildFunnelLightBackground({
   const bleedStyle = useFunnelFullBleed();
 
   return (
-    <div
-      className="pointer-events-none z-0"
-      style={{
-        ...bleedStyle,
-        background: `linear-gradient(180deg, #E1E1E1 0%, #FFFFFF ${whiteStopPercent}%)`,
-      }}
-      aria-hidden
-    />
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-visible" aria-hidden>
+      <div
+        style={{
+          ...bleedStyle,
+          background: `linear-gradient(180deg, #E1E1E1 0%, #FFFFFF ${whiteStopPercent}%)`,
+        }}
+      />
+    </div>
   );
 }

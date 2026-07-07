@@ -7,20 +7,41 @@ import { FunnelStepBackground } from '@/components/ui/funnel-layout';
 
 type OnboardingKingdomEllipsesBackdropProps = {
   mintGlow?: boolean;
+  /** Kingdom + ellipses layers (child screen 3+). */
+  showKingdom?: boolean;
+  /** Wrap kingdom group in `v03-funnel-enter-0` on first reveal. */
+  kingdomEnter?: boolean;
+  /** In-canvas grid — off on child kingdom phases 2–4. */
+  showGrid?: boolean;
 };
 
 /**
- * Kingdom hero + ellipses 387/388 — top-anchored @ 812px Figma canvas;
- * green bleed extends on tall viewports (S20); clipped on short (SE).
+ * Green + grid + optional mint / kingdom / ellipses — top-anchored @ 812px Figma canvas.
+ * `showKingdom={false}` → mint-only (child screen 2, parent mint steps).
  */
 export function OnboardingKingdomEllipsesBackdrop({
   mintGlow = true,
+  showKingdom = true,
+  kingdomEnter = false,
+  showGrid = true,
 }: OnboardingKingdomEllipsesBackdropProps) {
-  return (
-    <FunnelStepBackground preserveCanvasHeight showGrid>
+  const kingdomLayers = (
+    <>
       <OnboardingKingdom />
       <OnboardingEllipses />
+    </>
+  );
+
+  return (
+    <FunnelStepBackground preserveCanvasHeight showGrid={showGrid}>
       {mintGlow ? <OnboardingMintGlow /> : null}
+      {showKingdom ? (
+        kingdomEnter ? (
+          <div className="v03-funnel-enter-0">{kingdomLayers}</div>
+        ) : (
+          kingdomLayers
+        )
+      ) : null}
     </FunnelStepBackground>
   );
 }

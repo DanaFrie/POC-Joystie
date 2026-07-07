@@ -8,7 +8,11 @@ import {
   CHILD_CASTLE_CHANGE_CONFIRM,
 } from '@/constants/child-post-game-layout';
 import { CHILD_CASTLE_CHANGE_CARD_LABEL } from '@/lib/onboarding/childPostGameCopy';
-import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
+import {
+  funnelProportionalTopPx,
+  useFunnelFullBleed,
+  useFunnelViewportMetrics,
+} from '@/components/ui/FunnelViewportContext';
 
 type ChildCastleChangeConfirmOverlayProps = {
   changeTitle: string;
@@ -28,6 +32,10 @@ export function ChildCastleChangeConfirmOverlay({
 }: ChildCastleChangeConfirmOverlayProps) {
   const layout = CHILD_CASTLE_CHANGE_CONFIRM;
   const bleedStyle = useFunnelFullBleed();
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const scaleY = (figmaY: number) => funnelProportionalTopPx(figmaY, usableCanvasHeightPx);
+  const cardStackTopPx = scaleY(layout.cardStackTop);
+  const sectionGapPx = scaleY(layout.sectionGap);
   const [mounted, setMounted] = useState(visible);
   const [entered, setEntered] = useState(false);
 
@@ -73,10 +81,10 @@ export function ChildCastleChangeConfirmOverlay({
         <div
           className="absolute flex flex-col items-center"
           style={{
-            top: layout.cardStackTop,
+            top: cardStackTopPx,
             left: layout.left,
             width: CHILD_CASTLE_CHANGE_CARD_STACK.width,
-            gap: layout.sectionGap,
+            gap: sectionGapPx,
           }}
         >
           <ChildCastleChangeCardStack>

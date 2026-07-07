@@ -1,5 +1,6 @@
 'use client';
 
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { SIGNUP_CHILD_INVITE_WAITING_LOGO } from '@/constants/onboarding-figma';
 import {
   SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX,
@@ -20,6 +21,8 @@ export function OnboardingWaitingCenterContent({
   ariaLabel,
   showLogo = true,
 }: OnboardingWaitingCenterContentProps) {
+  const contentTopPx = useFunnelProportionalTopPx(SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX);
+
   return (
     <div
       dir="rtl"
@@ -29,13 +32,13 @@ export function OnboardingWaitingCenterContent({
       <div
         className="absolute left-1/2 z-10 flex -translate-x-1/2 flex-col items-center"
         style={{
-          top: SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX,
+          top: contentTopPx,
           width: SIGNUP_CHILD_INVITE_WAITING_TEXT_W_PX,
           gap: SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX,
         }}
       >
         <p
-          className="v03-funnel-enter-0 w-full text-center font-simpler text-2xl font-black leading-[30px] text-white"
+          className="w-full text-center font-simpler text-2xl font-black leading-[30px] text-white transition-opacity duration-300"
           style={{
             letterSpacing: '-0.36px',
             textShadow: '0 0 20px rgba(255, 255, 255, 0.5)',
@@ -49,7 +52,7 @@ export function OnboardingWaitingCenterContent({
           <img
             src={SIGNUP_CHILD_INVITE_WAITING_LOGO}
             alt=""
-            className="v03-funnel-enter-1 shrink-0 object-cover"
+            className="shrink-0 object-cover"
             style={{
               width: SIGNUP_CHILD_INVITE_WAITING_LOGO_PX,
               height: SIGNUP_CHILD_INVITE_WAITING_LOGO_PX,

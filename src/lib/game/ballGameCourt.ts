@@ -11,7 +11,83 @@ export const BALL_GAME_PADDLE_HEIGHT_PX = 11;
 export const BALL_GAME_COURT_BALL_SIZE = 44;
 
 export type BallGameLayout = typeof CHILD_BALL_GAME | typeof PARENT_BALL_GAME;
-export function ballGamePlayCourt(layout: BallGameLayout) {
+
+/** Runtime layout with Y positions/heights scaled to visible canvas (812 @ full). */
+export type ScaledBallGameLayout = {
+  bg: { left: number; top: number; width: number; height: number };
+  parentLabel: { top: number; left: number; width: number };
+  childLabel: { top: number };
+  centerLine: { top: number; width: number };
+  childPaddle: { top: number; left: number; width: number; height: number };
+  parentPaddle: { top: number; left: number; width: number; height: number };
+  status: { top: number; width: number };
+  court: { top: number; left: number; width: number; height: number };
+  fireball: { width: number; height: number };
+  scoreRing: { top: number; left: number; size: number };
+  score: { top: number; width: number };
+};
+
+/** Scale Figma Y coords + vertical sizes for fitViewport ball-game (child + parent). */
+export function scaleBallGameLayout(
+  layout: BallGameLayout,
+  scaleY: (figmaY: number) => number
+): ScaledBallGameLayout {
+  return {
+    bg: {
+      left: layout.bg.left,
+      top: scaleY(layout.bg.top),
+      width: layout.bg.width,
+      height: scaleY(layout.bg.height),
+    },
+    parentLabel: {
+      top: scaleY(layout.parentLabel.top),
+      left: layout.parentLabel.left,
+      width: layout.parentLabel.width,
+    },
+    childLabel: { top: scaleY(layout.childLabel.top) },
+    centerLine: {
+      top: scaleY(layout.centerLine.top),
+      width: layout.centerLine.width,
+    },
+    childPaddle: {
+      top: scaleY(layout.childPaddle.top),
+      left: layout.childPaddle.left,
+      width: layout.childPaddle.width,
+      height: scaleY(layout.childPaddle.height),
+    },
+    parentPaddle: {
+      top: scaleY(layout.parentPaddle.top),
+      left: layout.parentPaddle.left,
+      width: layout.parentPaddle.width,
+      height: scaleY(layout.parentPaddle.height),
+    },
+    status: {
+      top: scaleY(layout.status.top),
+      width: layout.status.width,
+    },
+    court: {
+      top: scaleY(layout.court.top),
+      left: layout.court.left,
+      width: layout.court.width,
+      height: scaleY(layout.court.height),
+    },
+    fireball: {
+      width: scaleY(layout.fireball.width),
+      height: scaleY(layout.fireball.height),
+    },
+    scoreRing: {
+      top: scaleY(layout.scoreRing.top),
+      left: layout.scoreRing.left,
+      size: scaleY(layout.scoreRing.size),
+    },
+    score: {
+      top: scaleY(layout.score.top),
+      width: layout.score.width,
+    },
+  };
+}
+
+export function ballGamePlayCourt(layout: BallGameLayout | ScaledBallGameLayout) {
   const innerTop = Math.min(
     layout.parentPaddle.top + layout.parentPaddle.height,
     layout.childPaddle.top + layout.childPaddle.height
@@ -25,7 +101,7 @@ export function ballGamePlayCourt(layout: BallGameLayout) {
   };
 }
 
-export function ballGamePaddleWidthNorm(layout: BallGameLayout): number {
+export function ballGamePaddleWidthNorm(layout: BallGameLayout | ScaledBallGameLayout): number {
   return BALL_GAME_PADDLE_WIDTH_PX / ballGamePlayCourt(layout).width;
 }
 
@@ -35,7 +111,7 @@ function clampPaddleCenterX(x: number, paddleWidth: number): number {
 }
 
 export function paddlePixelRect(
-  layout: BallGameLayout,
+  layout: BallGameLayout | ScaledBallGameLayout,
   paddleRole: 'parent' | 'child',
   centerXNorm: number,
   paddleWidthNorm: number
@@ -52,7 +128,7 @@ export function paddlePixelRect(
   };
 }
 
-export function ballRadiusNorm(layout: BallGameLayout) {
+export function ballRadiusNorm(layout: BallGameLayout | ScaledBallGameLayout) {
   const court = ballGamePlayCourt(layout);
   const half = BALL_GAME_COURT_BALL_SIZE / 2;
   return {
@@ -63,7 +139,7 @@ export function ballRadiusNorm(layout: BallGameLayout) {
 
 /** Shared-court collision line — parent: paddle top; child: paddle bottom. */
 export function paddleSurfaceY(
-  layout: BallGameLayout,
+  layout: BallGameLayout | ScaledBallGameLayout,
   role: 'parent' | 'child'
 ): number {
   const court = ballGamePlayCourt(layout);
@@ -74,7 +150,7 @@ export function paddleSurfaceY(
 }
 
 export function paddleCenterY(
-  layout: BallGameLayout,
+  layout: BallGameLayout | ScaledBallGameLayout,
   role: 'parent' | 'child'
 ): number {
   const court = ballGamePlayCourt(layout);

@@ -1,17 +1,18 @@
 import type { CSSProperties } from 'react';
 
-/** Figma 13367:4107 — speech bubble tail. */
+/** Shared speech-bubble tail polygon (34×27 viewBox) — child onboarding screens. */
 export function ChildDoriSpeechTail({
   className = '',
   style,
+  width = 34,
 }: {
   className?: string;
   style?: CSSProperties;
+  width?: number;
 }) {
   return (
     <svg
-      width="34"
-      height="27"
+      width={width}
       viewBox="0 0 34 27"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
@@ -22,7 +23,7 @@ export function ChildDoriSpeechTail({
       <foreignObject x="-17.3255" y="-22.8186" width="67.854" height="60.7504">
         <div
           style={{
-            backdropFilter: 'blur(11.41px)',
+            backdropFilter: 'blur(11.409310340881348px)',
             clipPath: 'url(#bgblur_0_13367_4107_clip_path)',
             height: '100%',
             width: '100%',

@@ -2,31 +2,27 @@
 
 import { useRouter } from 'next/navigation';
 import { useParentChildProgress } from '@/hooks/useParentChildProgress';
-import { resetOnboardingChildProgress, readOnboardingChildProgress } from '@/lib/onboarding/childProgress';
+import { resetOnboardingChildProgress } from '@/lib/onboarding/childProgress';
+import { resetOnboardingParentProgress } from '@/lib/onboarding/parentProgress';
 import { flushSync } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChildrenPhoneCountStep } from '@/components/onboarding/children-count/ChildrenPhoneCountStep';
 import { ChildrenDetailsStep } from '@/components/onboarding/children-details/ChildrenDetailsStep';
 import { ChildrenScreenTimeStep } from '@/components/onboarding/screen-time/ChildrenScreenTimeStep';
 import { ScreenTimeCalculatingStep } from '@/components/onboarding/screen-time/ScreenTimeCalculatingStep';
-import { OnboardingAccentFooter } from '@/components/onboarding/OnboardingAccentFooter';
 import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
-import {
-  ONBOARDING_BLUR_FOOTER_HEIGHT_PX,
-  OnboardingBlurFooter,
-} from '@/components/onboarding/OnboardingBlurFooter';
-import { OnboardingFooterCta } from '@/components/onboarding/OnboardingFooterCta';
-import { OnboardingFunnelScrollBody } from '@/components/onboarding/OnboardingFunnelScrollBody';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
+import { OnboardingBlurFooter } from '@/components/onboarding/OnboardingBlurFooter';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
 import { OnboardingRevealBleedBackground } from '@/components/onboarding/OnboardingRevealBleedBackground';
 import { ParentOnboardingCompletionStep } from '@/components/onboarding/parent/ParentOnboardingCompletionStep';
 import {
   ParentGamePostWinFlow,
   type ParentPostGamePhase,
 } from '@/components/onboarding/parent/ParentGamePostWinFlow';
-import { ParentRoleCard } from '@/components/onboarding/parent-role/ParentRoleCard';
+import { ParentRoleStep } from '@/components/onboarding/parent-role/ParentRoleStep';
 import { ParentSubscriptionStep } from '@/components/onboarding/parent/ParentSubscriptionStep';
 import { PickFirstChildStep } from '@/components/onboarding/pick-child/PickFirstChildStep';
 import {
@@ -43,20 +39,21 @@ import {
   type SignupFormValues,
 } from '@/components/onboarding/signup/OnboardingSignupForm';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
-import { SignupHowItWorksPill } from '@/components/onboarding/signup/SignupHowItWorksPill';
 import { SignupIntroStep } from '@/components/onboarding/signup/SignupIntroStep';
 import { SignupOAuthTermsSheet } from '@/components/onboarding/signup/SignupOAuthTermsSheet';
-import { ONBOARDING_PARENT_IMAGES } from '@/constants/onboarding-figma';
 import { getBondingChildName, getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName, setBondingChildGender, setBondingChildName } from '@/lib/onboarding/bondingInvite';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
-import type { SignupChildInviteWaitingVariant } from '@/constants/signup-child-invite-layout';
-import { SIGNUP_FORM_CONTENT_MARGIN_TOP_PX } from '@/constants/signup-layout';
+import {
+  PICK_FIRST_CHILD_HEADER_TOP_PX,
+} from '@/constants/pick-first-child-layout';
+import {
+  SIGNUP_FORM_SCROLL_PAD_TOP_PX,
+} from '@/constants/signup-layout';
 import {
   SIGNUP_JOURNEY_STAGE_COUNT,
   type SignupJourneyStageIndex,
 } from '@/constants/signup-journey';
-import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
   ONBOARDING_CHILDREN_PHONE_MIN,
   setOnboardingChildrenPhoneCount,
@@ -140,6 +137,17 @@ import {
   shouldShowOAuthSignupWelcome,
 } from '@/lib/onboarding/parentFlowSession';
 import { createContextLogger } from '@/utils/logger';
+import {
+  FunnelStepFooter,
+  FunnelStepForeground,
+  FunnelStepMain,
+  FunnelStepRoot,
+  FunnelStepSection,
+} from '@/components/ui/funnel-layout';
+import {
+  getFunnelScrollFrameBottomInsetPx,
+  FUNNEL_FOREGROUND_PAD_BOTTOM_PX,
+} from '@/constants/funnel-vertical-layout';
 
 const logger = createContextLogger('OnboardingParentFlow');
 
@@ -170,13 +178,6 @@ type ParentFlowStep =
   | 'parentPostGame'
   | 'onboardingComplete'
   | 'subscription';
-
-/** Parent funnel screens that show the fixed grid (Figma). */
-const PARENT_FUNNEL_GRID_STEPS = new Set<ParentFlowStep>([
-  'signupIntro',
-  'calculating',
-  'childInviteWaiting',
-]);
 
 const POST_SIGNUP_STEPS: ParentFlowStep[] = [
   'signupWelcome',
@@ -274,7 +275,8 @@ export function OnboardingParentFlow({
   const postSignupIntroNavigatedRef = useRef(false);
   const funnelScrollRef = useRef<HTMLDivElement>(null);
   const signupScrollRef = useRef<HTMLDivElement>(null);
-  const [signupScrollTop, setSignupScrollTop] = useState(0);
+  const signupFormPadTopPx = useFunnelProportionalTopPx(SIGNUP_FORM_SCROLL_PAD_TOP_PX);
+  const pickChildPadTopPx = useFunnelProportionalTopPx(PICK_FIRST_CHILD_HEADER_TOP_PX);
   const [oauthDialogOpen, setOauthDialogOpen] = useState<'google' | 'apple' | null>(
     null
   );
@@ -314,12 +316,18 @@ export function OnboardingParentFlow({
   );
   const [subscriptionPlan, setSubscriptionPlan] =
     useState<OnboardingSubscriptionPlan | null>(null);
-  const [childLinkOpenedWaiting, setChildLinkOpenedWaiting] = useState(false);
   const [waitingSessionStartedAt, setWaitingSessionStartedAt] = useState<string | null>(
     null
   );
   const [parentPostGamePhase, setParentPostGamePhase] =
     useState<ParentPostGamePhase>('waitingChildChange');
+  const [parentPostGameParentId, setParentPostGameParentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void getCurrentUserIdAsync().then((uid) => {
+      if (uid) setParentPostGameParentId(uid);
+    });
+  }, []);
 
   const funnelScrollOverflows = useScrollOverflow(funnelScrollRef, [
     step,
@@ -349,10 +357,6 @@ export function OnboardingParentFlow({
     if (fromPick) return fromPick;
     return getBondingChildGender() ?? getSelectedFirstChildGender();
   }, [pickOptions, selectedChildIndex]);
-  const inviteWaitingVariant: SignupChildInviteWaitingVariant = childLinkOpenedWaiting
-    ? 'companionPick'
-    : 'linkOpen';
-
   useOnboardingLightFunnel(isRevealStep(step) || step === 'onboardingComplete');
 
   useEffect(() => {
@@ -661,7 +665,6 @@ export function OnboardingParentFlow({
 
   useEffect(() => {
     if (step !== 'signupForm') return;
-    setSignupScrollTop(0);
     signupScrollRef.current?.scrollTo(0, 0);
   }, [step]);
 
@@ -669,10 +672,6 @@ export function OnboardingParentFlow({
     if (step !== 'subscription') return;
     setSubscriptionPlan(null);
   }, [step]);
-
-  const onChildLinkOpened = useCallback(() => {
-    setChildLinkOpenedWaiting(true);
-  }, []);
 
   const onMissionReady = useCallback(() => {
     if (stepRef.current === 'childInviteWaiting') {
@@ -683,45 +682,30 @@ export function OnboardingParentFlow({
   const parentWaitingStep = step === 'childInviteWaiting' ? step : null;
 
   const onInviteShared = useCallback(() => {
+    if (stepRef.current === 'childInviteWaiting') return;
+
     const sessionStart = new Date().toISOString();
     setWaitingSessionStartedAt(sessionStart);
-    void (async () => {
-      const parentId = await getCurrentUserIdAsync();
-      if (parentId) {
-        try {
-          await resetOnboardingChildProgress(parentId);
-        } catch {
-          // RTDB rules may block in some envs
-        }
-      }
-      setChildLinkOpenedWaiting(false);
-      setStep('childInviteWaiting');
-    })();
-  }, []);
+    setStep('childInviteWaiting');
 
-  useParentChildProgress({
-    enabled: parentWaitingStep !== null,
-    parentStep: parentWaitingStep,
-    waitingSessionStartedAt,
-    onLinkOpened: onChildLinkOpened,
-    onMissionReady,
-  });
-
-  useEffect(() => {
-    if (step !== 'childInviteWaiting') return;
     void (async () => {
       const parentId = await getCurrentUserIdAsync();
       if (!parentId) return;
       try {
-        const progress = await readOnboardingChildProgress(parentId);
-        if (progress?.linkOpened) {
-          setChildLinkOpenedWaiting(true);
-        }
+        await resetOnboardingChildProgress(parentId);
+        await resetOnboardingParentProgress(parentId);
       } catch {
-        // RTDB may be unavailable in some envs
+        // RTDB rules may block in some envs
       }
     })();
-  }, [step, waitingSessionStartedAt]);
+  }, []);
+
+  const { inviteWaitingVariant } = useParentChildProgress({
+    enabled: parentWaitingStep !== null,
+    parentStep: parentWaitingStep,
+    waitingSessionStartedAt,
+    onMissionReady,
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -1094,8 +1078,6 @@ export function OnboardingParentFlow({
     !(accountCreated && step === 'signupWelcome') &&
     !(accountCreated && step === 'signupIntro' && journeyStage === 0);
 
-  const showParentFunnelGrid = PARENT_FUNNEL_GRID_STEPS.has(step);
-
   /** After Google/Apple auth returns — waiting layout until account persist finishes. */
   if (oauthFinishing !== null && !accountCreated && !isRegistering) {
     return (
@@ -1103,7 +1085,7 @@ export function OnboardingParentFlow({
         <OnboardingGrid />
         <OnboardingWaitingScreenShell zIndex={20} ariaBusy>
           <OnboardingWaitingCenterContent
-            headline="מתחברים..."
+            headline="מתחברים"
             ariaLabel="מתחברים לחשבון"
           />
         </OnboardingWaitingScreenShell>
@@ -1127,7 +1109,7 @@ export function OnboardingParentFlow({
         {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <div
           key={step}
-          className="v03-funnel-screen absolute inset-0 z-[10] overflow-x-hidden overflow-y-visible"
+          className="v03-funnel-screen absolute inset-0 z-[10] flex min-h-0 flex-col overflow-hidden"
         >
           <ParentSubscriptionStep
             selectedPlan={subscriptionPlan}
@@ -1155,6 +1137,7 @@ export function OnboardingParentFlow({
         onConfirmReady={() => {}}
         onRetry={() => {}}
         onFlowComplete={() => setStep('subscription')}
+        parentId={parentPostGameParentId}
       />
     );
   }
@@ -1165,15 +1148,9 @@ export function OnboardingParentFlow({
         {showBackButton && (
           <OnboardingBackButton tone="light" onClick={handleBack} />
         )}
-        <OnboardingFunnelStepSlot stepKey={step}>
-          <ParentOnboardingCompletionStep />
+        <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
+          <ParentOnboardingCompletionStep onContinue={() => setStep('subscription')} />
         </OnboardingFunnelStepSlot>
-        <OnboardingBlurFooter
-          blur={false}
-          onClick={() => setStep('subscription')}
-        >
-          המשך
-        </OnboardingBlurFooter>
       </>
     );
   }
@@ -1181,8 +1158,10 @@ export function OnboardingParentFlow({
   if (step === 'childInviteWaiting') {
     return (
       <>
-        {showParentFunnelGrid && <OnboardingGrid />}
+        <OnboardingMintGridBackdrop showGrid />
         <OnboardingWaitingScreenShell
+          skipMintGlow
+          staticLayout
           showBackButton={
             showBackButton ? <OnboardingBackButton onClick={handleBack} /> : undefined
           }
@@ -1200,19 +1179,32 @@ export function OnboardingParentFlow({
   if (step === 'childInviteShare') {
     return (
       <>
-        <OnboardingMintGlow />
+        <OnboardingMintGridBackdrop showGrid={false} />
         {showBackButton && <OnboardingBackButton onClick={handleBack} />}
-        <div
-          key={step}
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-hidden"
-          style={{ height: V03_SCREEN_HEIGHT }}
-        >
-          <SignupChildInviteShareStep
-            childName={selectedChildName}
-            childGender={selectedChildGender}
-            onShared={onInviteShared}
-          />
-        </div>
+        <OnboardingFunnelStepSlot stepKey="childInviteShare" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="שיתוף הזמנה לילד">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={0}
+              fitViewport
+            >
+              <FunnelStepMain center className="relative min-h-0 w-full flex-1">
+                <SignupChildInviteShareStep
+                  flow
+                  childName={selectedChildName}
+                  childGender={selectedChildGender}
+                  onShared={onInviteShared}
+                />
+              </FunnelStepMain>
+              <div
+                className="w-full shrink-0"
+                style={{ height: 32 }}
+                aria-hidden
+              />
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
       </>
     );
   }
@@ -1220,19 +1212,27 @@ export function OnboardingParentFlow({
   if (step === 'childInviteIntro') {
     return (
       <>
-        <OnboardingMintGlow />
+        <OnboardingMintGridBackdrop showGrid={false} />
         {showBackButton && <OnboardingBackButton onClick={handleBack} />}
-        <div
-          key={step}
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-hidden"
-          style={{ height: V03_SCREEN_HEIGHT }}
-        >
-          <SignupChildInviteIntroStep
-            childName={selectedChildName}
-            onTogetherNow={() => setStep('childInviteShare')}
-            onRemindLater={handleRemindLater}
-          />
-        </div>
+        <OnboardingFunnelStepSlot stepKey="childInviteIntro" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="הצטרפות ילד — התחלה">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
+              fitViewport
+            >
+              <FunnelStepMain className="min-h-0 w-full flex-1 overflow-hidden">
+                <SignupChildInviteIntroStep
+                  flow
+                  childName={selectedChildName}
+                  onTogetherNow={() => setStep('childInviteShare')}
+                  onRemindLater={handleRemindLater}
+                />
+              </FunnelStepMain>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
       </>
     );
   }
@@ -1240,23 +1240,39 @@ export function OnboardingParentFlow({
   if (step === 'pickChild') {
     return (
       <>
-        <OnboardingMintGlow />
-        <OnboardingFunnelScrollBody scrollRef={funnelScrollRef}>
-          {showBackButton && (
-            <OnboardingBackButton scrollWithContent onClick={handleBack} />
-          )}
-          <PickFirstChildStep
-            options={pickOptions}
-            selectedIndex={selectedChildIndex}
-            onSelectIndex={setSelectedChildIndex}
-          />
-        </OnboardingFunnelScrollBody>
-        <OnboardingBlurFooter
-          blur={funnelScrollOverflows}
-          onClick={handlePickChildContinue}
-        >
-          המשך
-        </OnboardingBlurFooter>
+        <OnboardingMintGridBackdrop showGrid={false} />
+        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
+        <OnboardingFunnelStepSlot stepKey="pickChild" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="בחירת ילד ראשון">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={pickChildPadTopPx}
+              padBottomPx={getFunnelScrollFrameBottomInsetPx()}
+              fitViewport
+            >
+              <FunnelStepMain
+                scroll
+                scrollRef={funnelScrollRef}
+                className="relative min-h-0 w-full flex-1"
+              >
+                <PickFirstChildStep
+                  options={pickOptions}
+                  selectedIndex={selectedChildIndex}
+                  onSelectIndex={setSelectedChildIndex}
+                />
+              </FunnelStepMain>
+              <FunnelStepFooter
+                className="v03-funnel-enter-2"
+                variant="secondary"
+                overlay
+                blur={funnelScrollOverflows}
+                onClick={handlePickChildContinue}
+              >
+                המשך
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
       </>
     );
   }
@@ -1264,20 +1280,17 @@ export function OnboardingParentFlow({
   if (step === 'signupWelcome') {
     return (
       <>
-        <OnboardingMintGlow />
-        <div
-          key={step}
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-visible"
-          style={{ height: V03_SCREEN_HEIGHT }}
-        >
-          <SignupHeroFrame scrollTop={0} />
-          <SignupOAuthTermsSheet
-            termsAccepted={oauthTermsAccepted}
-            onTermsAcceptedChange={handleOAuthTermsAcceptedChange}
-            termsError={oauthTermsError}
-            onContinue={handleWelcomeContinue}
-          />
-        </div>
+        <OnboardingFunnelStepSlot stepKey="signupWelcome" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="ברוכים הבאים">
+            <SignupHeroFrame />
+            <SignupOAuthTermsSheet
+              termsAccepted={oauthTermsAccepted}
+              onTermsAcceptedChange={handleOAuthTermsAcceptedChange}
+              termsError={oauthTermsError}
+              onContinue={handleWelcomeContinue}
+            />
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
       </>
     );
   }
@@ -1285,23 +1298,34 @@ export function OnboardingParentFlow({
   if (step === 'signupIntro') {
     return (
       <>
-        {showParentFunnelGrid && <OnboardingGrid />}
-        <OnboardingMintGlow />
+        <OnboardingMintGridBackdrop showGrid />
         {showBackButton && <OnboardingBackButton onClick={handleBack} />}
-        <SignupHowItWorksPill />
-        <div
-          key={step}
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-hidden"
-          style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
-        >
-          <SignupIntroStep
-            stage={journeyStage}
-            onStageChange={setJourneyStage}
-          />
-        </div>
-        <OnboardingBlurFooter blur={false} onClick={handleIntroContinue}>
-          המשך
-        </OnboardingBlurFooter>
+        <OnboardingFunnelStepSlot stepKey="signupIntro" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="איך זה עובד">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={0}
+              fitViewport
+            >
+              <FunnelStepMain className="relative flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden">
+                <SignupIntroStep
+                  flow
+                  stage={journeyStage}
+                  onStageChange={setJourneyStage}
+                />
+              </FunnelStepMain>
+              <FunnelStepFooter
+                className="v03-funnel-enter-3"
+                variant="secondary"
+                blur={false}
+                onClick={handleIntroContinue}
+              >
+                המשך
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
       </>
     );
   }
@@ -1309,50 +1333,47 @@ export function OnboardingParentFlow({
   if (step === 'signupForm') {
     return (
       <>
-        <OnboardingMintGlow />
-        <div
-          key={step}
-          dir="rtl"
-          className="v03-funnel-screen absolute inset-x-0 top-0 z-[10] overflow-visible"
-          style={{ bottom: ONBOARDING_BLUR_FOOTER_HEIGHT_PX }}
-        >
-          <div
-            ref={signupScrollRef}
-            className="absolute inset-0 isolate overflow-y-auto v03-scroll-hidden"
-            onScroll={() =>
-              setSignupScrollTop(signupScrollRef.current?.scrollTop ?? 0)
-            }
-          >
-            {showBackButton && (
-              <OnboardingBackButton scrollWithContent onClick={handleBack} />
-            )}
-            <SignupHeroFrame scrollTop={signupScrollTop} />
-            <div
-              className="relative z-[20] mx-auto flex w-v03-content flex-col items-stretch gap-5 pb-8"
-              style={{ marginTop: SIGNUP_FORM_CONTENT_MARGIN_TOP_PX }}
+        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
+        <OnboardingFunnelStepSlot stepKey="signupForm" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="הרשמה">
+            <SignupHeroFrame />
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={signupFormPadTopPx}
+              padBottomPx={getFunnelScrollFrameBottomInsetPx({ showLoginLink: true })}
+              fitViewport
             >
-              <OnboardingSignupForm
-                values={values}
-                errors={errors}
-                onChange={handleChange}
-                onTermsAcceptedChange={handleTermsAcceptedChange}
-                onOAuthGoogle={() => handleOAuth('google')}
-                onOAuthApple={() => handleOAuth('apple')}
-                oauthDisabled={isRegistering}
-                oauthPickerOpen={oauthDialogOpen}
-              />
-            </div>
-          </div>
-        </div>
-        <OnboardingAccentFooter
-          type="button"
-          onClick={handleRegister}
-          disabled={isRegistering || oauthDialogOpen !== null}
-          showLoginLink
-          blur={signupScrollOverflows}
-        >
-          {isRegistering ? 'נרשמים...' : 'הרשמה'}
-        </OnboardingAccentFooter>
+              <FunnelStepMain
+                scroll
+                scrollRef={signupScrollRef}
+                className="relative min-h-0 w-full flex-1"
+              >
+                <div className="relative z-[20] mx-auto flex w-v03-content flex-col items-stretch gap-5">
+                  <OnboardingSignupForm
+                    values={values}
+                    errors={errors}
+                    onChange={handleChange}
+                    onTermsAcceptedChange={handleTermsAcceptedChange}
+                    onOAuthGoogle={() => handleOAuth('google')}
+                    onOAuthApple={() => handleOAuth('apple')}
+                    oauthDisabled={isRegistering}
+                    oauthPickerOpen={oauthDialogOpen}
+                  />
+                </div>
+              </FunnelStepMain>
+              <FunnelStepFooter
+                variant="accent"
+                showLoginLink
+                overlay
+                blur={signupScrollOverflows}
+                disabled={isRegistering || oauthDialogOpen !== null}
+                onClick={handleRegister}
+              >
+                {isRegistering ? 'נרשמים...' : 'הרשמה'}
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
       </>
     );
   }
@@ -1364,133 +1385,178 @@ export function OnboardingParentFlow({
         <OnboardingBackButton tone="light" onClick={handleBack} />
         <OnboardingFunnelStepSlot
           stepKey={step}
-          innerClassName={
-            step === 'revealIntro' ? 'v03-reveal-intro-scope' : ''
-          }
+          clipOverflow
+          innerClassName={step === 'revealIntro' ? 'v03-reveal-intro-scope' : ''}
         >
-          <OnboardingRevealStepContent step={step as RevealFlowStep} />
+          <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={0}
+              fitViewport
+            >
+              <FunnelStepMain className="relative min-h-0 w-full flex-1 overflow-x-hidden overflow-y-hidden">
+                <OnboardingRevealStepContent step={step as RevealFlowStep} />
+              </FunnelStepMain>
+              <FunnelStepFooter
+                className={revealFooterFadeClass}
+                variant="secondary"
+                blur={false}
+                overlay={false}
+                onClick={handleRevealContinue}
+              >
+                המשך
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
         </OnboardingFunnelStepSlot>
-        <OnboardingBlurFooter
-          key={step}
-          blur={false}
-          className={revealFooterFadeClass}
-          onClick={handleRevealContinue}
-        >
-          המשך
-        </OnboardingBlurFooter>
       </>
     );
   }
 
-  const scrollableParentStep = step === 'details' || step === 'screenTime';
-  const useBlurFooter = scrollableParentStep;
-  const showChrome = step !== 'calculating';
+  if (step === 'calculating') {
+    return (
+      <>
+        <OnboardingMintGridBackdrop showGrid />
+        <OnboardingFunnelStepSlot stepKey="calculating">
+          <FunnelStepRoot fitViewport aria-label="מחשבים זמן מסך">
+            <FunnelStepForeground
+              distribution="center"
+              padTopPx={0}
+              padBottomPx={0}
+              fitViewport
+            >
+              <ScreenTimeCalculatingStep
+                flow
+                onComplete={() => setStep('revealIntro')}
+              />
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
+      </>
+    );
+  }
 
-  const parentStepContent = (
-    <>
-      {step === 'role' && (
-        <section
-          className="absolute right-v03-gutter top-[97px] z-[10] flex w-v03-content flex-col items-end gap-[35px]"
-          aria-label="בחירת תפקיד הורה"
-        >
-          <header className="flex w-full flex-col items-end justify-center gap-1 px-[15px]">
-            <h1 className="w-full text-right font-simpler text-[40px] font-black leading-[44px] text-white">
-              היי, נעים מאוד!
-            </h1>
-            <p className="w-[293px] text-right font-simpler text-[24px] font-normal leading-[30px] text-white">
-              שמחים להכיר, עם מי אנחנו מדברים?
-            </p>
-          </header>
+  if (step === 'details' || step === 'screenTime') {
+    return (
+      <>
+        <OnboardingMintGridBackdrop showGrid={false} />
+        {showBackButton && step === 'details' && (
+          <OnboardingBackButton onClick={handleBack} />
+        )}
+        <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label={step === 'details' ? 'פרטי ילדים' : 'שעות מסך יומיות'}>
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={getFunnelScrollFrameBottomInsetPx()}
+              fitViewport
+            >
+              <FunnelStepMain
+                scroll
+                scrollRef={funnelScrollRef}
+                className="relative min-h-0 w-full flex-1"
+              >
+                {showBackButton && step === 'screenTime' && (
+                  <OnboardingBackButton scrollWithContent onClick={handleBack} />
+                )}
+                {step === 'details' ? (
+                  <ChildrenDetailsStep
+                    children={children}
+                    nameErrors={childNameErrors}
+                    onChildrenChange={(next) => {
+                      setChildren(next);
+                      setChildNameErrors(getChildrenHebrewNameErrors(next));
+                    }}
+                  />
+                ) : (
+                  <ChildrenScreenTimeStep
+                    children={children}
+                    entries={screenTimes}
+                    onEntriesChange={setScreenTimes}
+                  />
+                )}
+              </FunnelStepMain>
+              <FunnelStepFooter
+                className="v03-funnel-enter-2"
+                variant="secondary"
+                overlay
+                blur={funnelScrollOverflows}
+                disabled={step === 'details' && !childrenDetailsComplete(children)}
+                onClick={handleParentContinue}
+              >
+                המשך
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
+      </>
+    );
+  }
 
-          <div className="flex w-full flex-col gap-[15px]">
-            <ParentRoleCard
-              label="אני האמא"
-              imageSrc={ONBOARDING_PARENT_IMAGES.mother}
-              imageAlt="אמא"
-              selected={role === 'mother'}
-              onSelect={() => setRole('mother')}
-            />
-            <ParentRoleCard
-              label="אני האבא"
-              imageSrc={ONBOARDING_PARENT_IMAGES.father}
-              imageAlt="אבא"
-              selected={role === 'father'}
-              onSelect={() => setRole('father')}
-            />
-          </div>
-        </section>
-      )}
+  if (step === 'role') {
+    return (
+      <>
+        <OnboardingMintGridBackdrop showGrid={false} />
+        <OnboardingBackButton onClick={handleBack} />
+        <OnboardingFunnelStepSlot stepKey="role" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="בחירת תפקיד הורה">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={0}
+              fitViewport
+            >
+              <FunnelStepSection>
+                <ParentRoleStep role={role} onRoleChange={setRole} />
+              </FunnelStepSection>
+              <FunnelStepFooter
+                className="v03-funnel-enter-2"
+                variant="secondary"
+                showLoginLink
+                blur={false}
+                disabled={!role}
+                onClick={handleParentContinue}
+              >
+                המשך
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
+      </>
+    );
+  }
 
-      {step === 'phoneCount' && (
-        <ChildrenPhoneCountStep count={count} onCountChange={setCount} />
-      )}
+  if (step === 'phoneCount') {
+    return (
+      <>
+        <OnboardingMintGridBackdrop showGrid={false} />
+        <OnboardingBackButton onClick={handleBack} />
+        <OnboardingFunnelStepSlot stepKey="phoneCount" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="מספר ילדים עם טלפון">
+            <FunnelStepForeground
+              distribution="between"
+              padTopPx={0}
+              padBottomPx={0}
+              fitViewport
+            >
+              <FunnelStepSection>
+                <ChildrenPhoneCountStep count={count} onCountChange={setCount} />
+              </FunnelStepSection>
+              <FunnelStepFooter
+                className="v03-funnel-enter-3"
+                variant="secondary"
+                blur={false}
+                onClick={handleParentContinue}
+              >
+                המשך
+              </FunnelStepFooter>
+            </FunnelStepForeground>
+          </FunnelStepRoot>
+        </OnboardingFunnelStepSlot>
+      </>
+    );
+  }
 
-      {step === 'details' && (
-        <ChildrenDetailsStep
-          children={children}
-          nameErrors={childNameErrors}
-          onChildrenChange={(next) => {
-            setChildren(next);
-            setChildNameErrors(getChildrenHebrewNameErrors(next));
-          }}
-        />
-      )}
-
-      {step === 'screenTime' && (
-        <ChildrenScreenTimeStep
-          children={children}
-          entries={screenTimes}
-          onEntriesChange={setScreenTimes}
-        />
-      )}
-
-      {step === 'calculating' && (
-        <ScreenTimeCalculatingStep onComplete={() => setStep('revealIntro')} />
-      )}
-    </>
-  );
-
-  return (
-    <>
-      {showParentFunnelGrid && <OnboardingGrid />}
-      <OnboardingMintGlow />
-
-      {scrollableParentStep ? (
-        <OnboardingFunnelScrollBody scrollRef={funnelScrollRef}>
-          {showChrome && (
-            <OnboardingBackButton scrollWithContent onClick={handleBack} />
-          )}
-          {parentStepContent}
-        </OnboardingFunnelScrollBody>
-      ) : (
-        <>
-          <OnboardingFunnelStepSlot stepKey={step}>
-            {parentStepContent}
-          </OnboardingFunnelStepSlot>
-          {showChrome && <OnboardingBackButton onClick={handleBack} />}
-        </>
-      )}
-
-      {showChrome &&
-        (useBlurFooter ? (
-          <OnboardingBlurFooter
-            blur={funnelScrollOverflows}
-            disabled={step === 'details' && !childrenDetailsComplete(children)}
-            onClick={handleParentContinue}
-          >
-            המשך
-          </OnboardingBlurFooter>
-        ) : (
-          <OnboardingFooterCta
-            variant="secondary"
-            layout={step === 'role' ? 'landing' : 'stacked'}
-            disabled={step === 'role' && !role}
-            showLoginLink={step === 'role'}
-            onClick={handleParentContinue}
-          >
-            המשך
-          </OnboardingFooterCta>
-        ))}
-    </>
-  );
+  return null;
 }

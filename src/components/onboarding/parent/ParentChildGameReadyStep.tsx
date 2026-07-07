@@ -2,6 +2,8 @@
 
 import { BallGameCourtLayer } from '@/components/onboarding/game/BallGameCourtLayer';
 import { BallGameParentReadyScreen } from '@/components/onboarding/game/BallGameParentReadyScreen';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useScaledBallGameLayout } from '@/hooks/useScaledBallGameLayout';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
 
 type ParentChildGameReadyStepProps = {
@@ -16,16 +18,18 @@ export function ParentChildGameReadyStep({
 }: ParentChildGameReadyStepProps) {
   const role = getOnboardingParentRole();
   const parentGender = role ? parentRoleToGender(role) : 'male';
+  const layout = useScaledBallGameLayout('parent');
 
   return (
-    <div dir="rtl" className="relative h-full w-full overflow-hidden bg-transparent">
+    <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
       <BallGameCourtLayer
         role="parent"
+        layout={layout}
         parentGender={parentGender}
         childName={childName}
         score={0}
       />
       <BallGameParentReadyScreen childName={childName} onConfirm={onReady} />
-    </div>
+    </FunnelStepRoot>
   );
 }

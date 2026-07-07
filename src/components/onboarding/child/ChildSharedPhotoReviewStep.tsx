@@ -8,7 +8,7 @@ import {
   ChildSharedPhotoPrimaryButton,
   ChildSharedPhotoSecondaryButton,
 } from '@/components/onboarding/child/ChildSharedPhotoFooter';
-import { ChildSharedPhotoRetakeIcon } from '@/components/onboarding/child/ChildSharedPhotoIcons';
+import { ChildSelfieCaptureCameraIcon } from '@/components/onboarding/child/ChildSharedPhotoIcons';
 import {
   CHILD_SHARED_PHOTO_LIKED_LABEL,
   CHILD_SHARED_PHOTO_RETAKE_LABEL,
@@ -36,7 +36,10 @@ export function ChildSharedPhotoReviewStep({
           <ChildSharedPhotoPrimaryButton onClick={onLiked}>
             {CHILD_SHARED_PHOTO_LIKED_LABEL}
           </ChildSharedPhotoPrimaryButton>
-          <ChildSharedPhotoSecondaryButton onClick={onRetake} icon={<ChildSharedPhotoRetakeIcon />}>
+          <ChildSharedPhotoSecondaryButton
+            onClick={onRetake}
+            icon={<ChildSelfieCaptureCameraIcon stroke="white" />}
+          >
             {CHILD_SHARED_PHOTO_RETAKE_LABEL}
           </ChildSharedPhotoSecondaryButton>
           {onSkip ? (

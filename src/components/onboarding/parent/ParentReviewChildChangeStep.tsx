@@ -3,9 +3,16 @@
 import { ParentPostGameChangeConfirmIcon } from '@/components/onboarding/parent/ParentPostGameChangeConfirmIcon';
 import { ParentPostGameGreenBackground } from '@/components/onboarding/parent/ParentPostGameGreenBackground';
 import {
+  FunnelStepForeground,
+  FunnelStepRoot,
+  FunnelStepSection,
+} from '@/components/ui/funnel-layout';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
+import {
   PARENT_CONFIRM_CHILD_CHANGE,
   PARENT_POST_GAME_DEMO_CHILD_CHANGE,
 } from '@/constants/parent-post-game-layout';
+import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
   PARENT_REVIEW_APPROVE_LABEL,
   PARENT_REVIEW_SUGGEST_MORE_DIVIDER,
@@ -32,27 +39,25 @@ export function ParentReviewChildChangeStep({
 }: ParentReviewChildChangeStepProps) {
   const layout = PARENT_CONFIRM_CHILD_CHANGE;
   const titleId = 'parent-confirm-child-change-title';
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const gapScale = usableCanvasHeightPx / V03_SCREEN_HEIGHT;
+  const sectionGap = Math.max(16, Math.round(layout.sectionGap * gapScale));
+  const heroGap = Math.max(16, Math.round(layout.heroGap * gapScale));
+  const bottomGap = Math.max(12, Math.round(layout.bottomSectionGap * gapScale));
 
   return (
-    <div dir="rtl" className="relative h-full w-full overflow-hidden">
+    <FunnelStepRoot fitViewport className="overflow-hidden" aria-label="אישור שינוי">
       <ParentPostGameGreenBackground />
 
-      <div
-        className="absolute inset-x-0 z-10 flex flex-col justify-between px-v03-gutter"
-        style={{
-          top: layout.contentTop,
-          bottom: layout.contentBottom,
-        }}
-        aria-labelledby={titleId}
+      <FunnelStepForeground
+        fitViewport
+        distribution="between"
+        padTopPx={layout.contentTop}
+        padBottomPx={layout.contentBottom}
       >
-        <div
-          className="flex w-full flex-col items-stretch"
-          style={{ gap: layout.sectionGap }}
-        >
-          <div
-            className="flex w-full flex-col items-center"
-            style={{ gap: layout.heroGap }}
-          >
+        <FunnelStepSection className="flex flex-col items-stretch">
+          <div className="flex w-full flex-col items-stretch" style={{ gap: sectionGap }}>
+          <div className="flex w-full flex-col items-center" style={{ gap: heroGap }}>
             <ParentPostGameChangeConfirmIcon />
             <h1
               id={titleId}
@@ -105,9 +110,11 @@ export function ParentReviewChildChangeStep({
           <button type="button" onClick={onApprove} className={layout.primaryButtonClass}>
             {PARENT_REVIEW_APPROVE_LABEL}
           </button>
-        </div>
+          </div>
+        </FunnelStepSection>
 
-        <div className="flex w-full flex-col" style={{ gap: layout.bottomSectionGap }}>
+        <FunnelStepSection className="flex flex-col">
+          <div className="flex w-full flex-col" style={{ gap: bottomGap }}>
           <div className="flex w-full items-center gap-5">
             <div className="h-px flex-1 bg-[#90A79F]/70" aria-hidden />
             <span className="font-simpler text-[14px] font-normal uppercase leading-5 text-[#90A79F]">
@@ -118,8 +125,9 @@ export function ParentReviewChildChangeStep({
           <button type="button" onClick={onSuggestMore} className={layout.secondaryButtonClass}>
             {PARENT_REVIEW_SUGGEST_MORE_LABEL}
           </button>
-        </div>
-      </div>
-    </div>
+          </div>
+        </FunnelStepSection>
+      </FunnelStepForeground>
+    </FunnelStepRoot>
   );
 }

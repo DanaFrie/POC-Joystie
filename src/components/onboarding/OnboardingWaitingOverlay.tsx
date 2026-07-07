@@ -1,5 +1,6 @@
 'use client';
 
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { SIGNUP_CHILD_INVITE_WAITING_LOGO } from '@/constants/onboarding-figma';
 import {
   SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX,
@@ -18,6 +19,8 @@ export function OnboardingWaitingOverlay({
   headline,
   className = '',
 }: OnboardingWaitingOverlayProps) {
+  const contentTopPx = useFunnelProportionalTopPx(SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX);
+
   return (
     <div
       dir="rtl"
@@ -28,7 +31,7 @@ export function OnboardingWaitingOverlay({
       <div
         className="absolute left-1/2 z-10 flex -translate-x-1/2 flex-col items-center"
         style={{
-          top: SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX,
+          top: contentTopPx,
           width: SIGNUP_CHILD_INVITE_WAITING_TEXT_W_PX,
           gap: SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX,
         }}

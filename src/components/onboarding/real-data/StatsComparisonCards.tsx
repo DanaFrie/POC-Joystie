@@ -4,12 +4,16 @@ import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { ONBOARDING_FAMILY_LINK_ICON } from '@/constants/onboarding-figma';
 import { JoystieComparisonHeaderIcon } from '@/components/onboarding/real-data/JoystieComparisonHeaderIcon';
-import { REVEAL_REAL_DATA_CARDS_GAP_PX } from '@/constants/reveal-real-data-layout';
+import { REVEAL_REAL_DATA_CARDS_CLUSTER_W_PX, REVEAL_REAL_DATA_CARDS_GAP_PX } from '@/constants/reveal-real-data-layout';
 
 const CARD_W_PX = 159;
 const CARD_H_PX = 169;
 const CARD_PAD_PX = 11.53;
 const HEADER_GAP_PX = 8.07;
+/** Teal glow — inside chart frame, bottom-left behind bars (Figma ellipse). */
+const JOYSTIE_CHART_GLOW_SIZE_PX = 88;
+const JOYSTIE_CHART_GLOW_LEFT_PX = 8;
+const JOYSTIE_CHART_GLOW_BOTTOM_PX = 6;
 
 const JOYSTIE_BAR_HEIGHTS = [25.37, 31.71, 26.52, 23.64] as const;
 const JOYSTIE_DAY_LABELS = ['א׳', 'ב׳', 'ג׳', 'ד׳'] as const;
@@ -186,26 +190,29 @@ function FamilyLinkChart() {
   );
 }
 
+/** Grid lines aligned to y-axis rows (Figma frame 1430108613) */
+const JOYSTIE_GRID_LINE_TOPS_PX = [
+  JOYSTIE_CHART.yAxisTwoHours.top,
+  JOYSTIE_CHART.yAxisOneHour.top,
+  JOYSTIE_CHART.yAxisZero.top,
+] as const;
+
 function JoystieChartGridLines() {
   return (
-    <div
-      className="absolute flex flex-col items-start justify-between"
-      style={{
-        left: JOYSTIE_CHART.bgLayerLeftPx,
-        bottom: JOYSTIE_CHART.barsBottomPx,
-        width: JOYSTIE_CHART.bgLayerWidthPx,
-        height: JOYSTIE_CHART.barsHeightPx,
-      }}
-      aria-hidden
-    >
-      {[0, 1, 2].map((i) => (
+    <div className="pointer-events-none absolute inset-0 z-[1]" aria-hidden>
+      {JOYSTIE_GRID_LINE_TOPS_PX.map((topPx, i) => (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={`joystie-chart-line-${i}`}
           src="/onboarding/joystie-chart-line-3.png"
           alt=""
-          className="block h-px w-full max-w-full object-cover object-left opacity-50"
-          width={100}
+          className="absolute block h-px opacity-50"
+          style={{
+            top: topPx,
+            left: JOYSTIE_CHART.bgLayerLeftPx,
+            width: JOYSTIE_CHART.bgLayerWidthPx,
+          }}
+          width={JOYSTIE_CHART.bgLayerWidthPx}
           height={1}
           draggable={false}
         />
@@ -216,18 +223,19 @@ function JoystieChartGridLines() {
 
 function JoystieChartBars() {
   return (
-    <>
-      <JoystieChartGridLines />
+    <div
+      className="absolute inset-0 z-[2]"
+      style={{ bottom: JOYSTIE_CHART.barsBottomPx }}
+      aria-hidden
+    >
       <div
         dir="rtl"
-        className="absolute flex items-end justify-between"
+        className="absolute bottom-0 flex items-end justify-between"
         style={{
           left: JOYSTIE_CHART.fgLayerLeftPx,
-          bottom: JOYSTIE_CHART.barsBottomPx,
           width: JOYSTIE_CHART.fgLayerWidthPx,
           height: JOYSTIE_CHART.barsHeightPx,
         }}
-        aria-hidden
       >
         {JOYSTIE_BAR_HEIGHTS.map((height, i) => (
           <div
@@ -241,7 +249,7 @@ function JoystieChartBars() {
           />
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -342,7 +350,7 @@ function JoystieStatsCard({ className }: { className?: string }) {
       </div>
 
       <div
-        className="relative overflow-hidden rounded-[16.14px] bg-[#092523] outline outline-[2.88px] outline-white"
+        className="relative box-border overflow-hidden rounded-[16.14px] border-[2.88px] border-solid border-white bg-[#092523]"
         style={{
           width: CARD_W_PX,
           height: CARD_H_PX,
@@ -351,13 +359,13 @@ function JoystieStatsCard({ className }: { className?: string }) {
         }}
       >
         <div
-          className="pointer-events-none absolute rounded-full bg-[#00ffb3]/70"
+          className="pointer-events-none absolute z-0 rounded-full bg-[#00ffb3]/70"
           style={{
-            width: 105,
-            height: 105,
-            left: -30,
-            top: 118.86,
-            filter: 'blur(50px)',
+            width: JOYSTIE_CHART_GLOW_SIZE_PX,
+            height: JOYSTIE_CHART_GLOW_SIZE_PX,
+            left: JOYSTIE_CHART_GLOW_LEFT_PX,
+            bottom: JOYSTIE_CHART_GLOW_BOTTOM_PX,
+            filter: 'blur(40px)',
           }}
           aria-hidden
         />
@@ -388,14 +396,15 @@ function JoystieStatsCard({ className }: { className?: string }) {
         </div>
 
         <JoystieChartYAxis />
+        <JoystieChartGridLines />
         <JoystieChartBars />
 
         <ChartDayLabels
           labels={JOYSTIE_DAY_LABELS}
-          className="absolute font-rubik text-[10px] font-normal text-[#f3f3f3]"
+          className="absolute z-[3] font-rubik text-[10px] font-normal text-[#f3f3f3]"
           style={{
             left: JOYSTIE_CHART.xLabelsLeftPx,
-            top: JOYSTIE_CHART.xLabelsTopPx,
+            bottom: 6,
             width: JOYSTIE_CHART.xLabelsWidthPx,
           }}
         />
@@ -438,7 +447,7 @@ function FamilyLinkStatsCard({ className }: { className?: string }) {
       </div>
 
       <div
-        className="relative overflow-hidden rounded-[16.14px] bg-[#f3f3f3] outline outline-[0.58px] outline-[#dfdfdf]"
+        className="relative box-border overflow-hidden rounded-[16.14px] border border-solid border-[#dfdfdf] bg-[#f3f3f3]"
         style={{
           width: CARD_W_PX,
           height: CARD_H_PX,
@@ -478,12 +487,15 @@ function FamilyLinkStatsCard({ className }: { className?: string }) {
 export function StatsComparisonCards() {
   return (
     <div
-      className="mx-auto flex w-full max-w-v03-content justify-center"
-      style={{ minHeight: 245 }}
+      className="mx-auto flex max-w-full justify-center overflow-hidden"
+      style={{
+        width: REVEAL_REAL_DATA_CARDS_CLUSTER_W_PX,
+        minHeight: 245,
+      }}
     >
       <div
         dir="ltr"
-        className="inline-flex items-start justify-center"
+        className="inline-flex max-w-full items-start justify-center overflow-hidden"
         style={{ gap: REVEAL_REAL_DATA_CARDS_GAP_PX }}
       >
         <JoystieStatsCard className="v03-funnel-enter-reveal-2" />

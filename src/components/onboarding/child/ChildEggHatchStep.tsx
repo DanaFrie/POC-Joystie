@@ -2,13 +2,20 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
-import { useFunnelHeroBleedInsets } from '@/components/ui/FunnelViewportContext';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import {
+  useFunnelHeroBleedInsets,
+  useFunnelProportionalTopPx,
+} from '@/components/ui/FunnelViewportContext';
 import {
   CHILD_EGG_HATCH_SEGMENT_COUNT,
   CHILD_ONBOARDING_ASSETS,
 } from '@/constants/child-onboarding-assets';
 import {
   CHILD_EGG_INTRO_FRAME,
+  CHILD_EGG_ARROW_TO_HINT_GAP_PX,
+  CHILD_EGG_EGG_TO_ARROW_GAP_PX,
+  CHILD_EGG_INTRO_TO_EGG_GAP_PX,
   CHILD_EGG_VIDEO_FRAME,
 } from '@/constants/child-onboarding-layout';
 import { useSegmentedVideoTap } from '@/hooks/useSegmentedVideoTap';
@@ -30,7 +37,7 @@ function eggHeadlineStart(gender: 'boy' | 'girl') {
 
 /**
  * Screens 5–5b — Figma 13147:5625 + 5626.
- * Intro stays mounted; egg video advances one segment per tap at normal speed.
+ * Light background (flow shell) · 100vh fixed stack · egg @ top 295.
  */
 export function ChildEggHatchStep({
   childGender = 'boy',
@@ -41,6 +48,18 @@ export function ChildEggHatchStep({
   const eggFrame = CHILD_EGG_VIDEO_FRAME;
   const { bleedX, bleedY, width: bleedWidth } = useFunnelHeroBleedInsets();
   const [hintPulse, setHintPulse] = useState(false);
+
+  const scaleY = useFunnelProportionalTopPx;
+
+  const eggTopPx = scaleY(eggFrame.top);
+  const introToEggGapPx = scaleY(CHILD_EGG_INTRO_TO_EGG_GAP_PX);
+  const introBottomPx = eggTopPx - introToEggGapPx;
+  const eggHeightPx = scaleY(eggFrame.height);
+  const eggBottomPx = eggTopPx + eggHeightPx;
+  const arrowTopPx = eggBottomPx + scaleY(CHILD_EGG_EGG_TO_ARROW_GAP_PX);
+  const arrowHeightPx = scaleY(intro.arrow.height);
+  const hintTopPx = arrowTopPx + arrowHeightPx + scaleY(CHILD_EGG_ARROW_TO_HINT_GAP_PX);
+  const glowLayerHeightPx = eggTopPx + eggHeightPx * 0.45 + bleedY;
 
   const {
     videoRef,
@@ -71,19 +90,19 @@ export function ChildEggHatchStep({
   const glowLayerWidth = Math.max(intro.glow.width, bleedWidth + bleedX * 2);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-transparent">
+    <FunnelStepRoot fitViewport aria-label="ביצת הדרקון" className="overflow-hidden bg-transparent">
       {onBack ? (
         <OnboardingBackButton tone="light" onClick={onBack} />
       ) : null}
 
+      {/* Egg video — one layer behind purple wash */}
       <div
-        className="absolute z-[3] overflow-hidden"
+        className="absolute z-[2] overflow-hidden"
         style={{
           left: eggFrame.left,
-          top: eggFrame.top,
+          top: eggTopPx,
           width: eggFrame.width,
-          height: eggFrame.height,
-          aspectRatio: eggFrame.aspectRatio,
+          height: eggHeightPx,
         }}
       >
         <video
@@ -96,22 +115,19 @@ export function ChildEggHatchStep({
           onCanPlay={markVideoReady}
           onLoadedMetadata={markVideoReady}
           className="pointer-events-none absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-200"
-          style={{
-            opacity: videoReady ? 1 : 0,
-            aspectRatio: eggFrame.aspectRatio,
-          }}
+          style={{ opacity: videoReady ? 1 : 0 }}
           aria-hidden
         />
       </div>
 
-      {/* Ellipse 482 — foreground wash over video */}
+      {/* Ellipse 482 — in front of egg video, under copy */}
       <div
-        className="pointer-events-none absolute z-[8] overflow-visible"
+        className="pointer-events-none absolute z-[6] overflow-visible"
         style={{
           top: -bleedY,
           left: intro.glow.left - bleedX,
           width: glowLayerWidth,
-          height: intro.glow.height + bleedY,
+          height: glowLayerHeightPx + bleedY,
         }}
         aria-hidden
       >
@@ -140,7 +156,8 @@ export function ChildEggHatchStep({
         className="pointer-events-none absolute z-10 flex flex-col items-center"
         style={{
           left: intro.left,
-          top: intro.top,
+          top: introBottomPx,
+          transform: 'translateY(-100%)',
           width: intro.width,
           gap: intro.contentGap,
         }}
@@ -162,10 +179,10 @@ export function ChildEggHatchStep({
       </div>
 
       <p
-        className={`pointer-events-none absolute left-1/2 z-10 w-[161px] -translate-x-1/2 -translate-y-1/2 text-center font-simpler text-[24px] font-bold leading-[30px] tracking-[-0.36px] text-v03-green-900 ${
+        className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-center font-simpler text-[24px] font-bold leading-[30px] tracking-[-0.36px] text-v03-green-900 ${
           hintPulse ? 'egg-hint-pulse' : ''
         }`}
-        style={{ top: intro.hintTop }}
+        style={{ top: hintTopPx, width: intro.hintWidth }}
       >
         {eggTapHint(childGender)}
       </p>
@@ -174,7 +191,9 @@ export function ChildEggHatchStep({
         className="pointer-events-none absolute z-10"
         style={{
           left: intro.arrow.left,
-          top: intro.arrow.top,
+          top: arrowTopPx,
+          width: intro.arrow.width,
+          height: arrowHeightPx,
         }}
       />
 
@@ -185,12 +204,12 @@ export function ChildEggHatchStep({
         className="absolute z-20 cursor-pointer border-0 bg-transparent p-0"
         style={{
           left: eggFrame.left,
-          top: eggFrame.top,
+          top: eggTopPx,
           width: eggFrame.width,
-          height: eggFrame.height,
+          height: eggHeightPx,
         }}
         aria-label="לחץ על ביצת הדרקון"
       />
-    </div>
+    </FunnelStepRoot>
   );
 }

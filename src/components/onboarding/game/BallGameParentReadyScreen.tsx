@@ -16,7 +16,7 @@ type BallGameParentReadyScreenProps = {
   busy?: boolean;
 };
 
-/** Figma 13245:19151 / 13530:5655 — blurred court + slider card on `/game`. */
+/** Figma 13245:19151 / 13530:5655 — dim court + slider card on `/game`. */
 export function BallGameParentReadyScreen({
   childName,
   confirmLabel = 'יאללה, אני מוכן!',
@@ -32,7 +32,7 @@ export function BallGameParentReadyScreen({
   };
 
   return (
-    <BallGameBlurFrame blurStrength="slider" zIndex={45} aria-labelledby="ball-game-ready-title">
+    <BallGameBlurFrame zIndex={45} aria-labelledby="ball-game-ready-title">
       <BallGameSliderCard
         footer={
           <button
@@ -57,9 +57,6 @@ export function BallGameParentReadyScreen({
 
         {/* Frame 1597882502 — copy */}
         <div className="flex w-full flex-col items-center gap-[15px] self-stretch">
-          <p className="w-full text-center font-assistant text-[16px] font-normal leading-[135%] tracking-[-0.24px] text-white">
-            משחק לחיזוק שיתוף הפעולה
-          </p>
           <div className="flex w-full flex-col items-center justify-center gap-1 self-stretch px-[15px]">
             <h2
               id="ball-game-ready-title"

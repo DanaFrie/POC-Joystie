@@ -7,9 +7,10 @@ function centerX(width: number): number {
   return (V03_SCREEN_WIDTH - width) / 2;
 }
 
-/** Shared Dori video frame — Figma 13147:5622 / 5624. */
+/** Shared Dori video frame — Figma 13147:5622 / 5624; runtime X via `calc(50% - size/2)`. */
 export const CHILD_DORI_MEDIA_FRAME = {
-  left: 27,
+  /** @deprecated Figma @ 375 only — use `calc(50% - width/2)` in components. */
+  left: centerX(324),
   top: 271,
   width: 324,
   height: 324,
@@ -18,10 +19,12 @@ export const CHILD_DORI_MEDIA_FRAME = {
   edgeSide: 27,
 } as const;
 
-/** Bottom continue column — Figma @ left 79 top 678. */
+/** Shared continue footer top @ 812 — fixed; media derives from this on screens 6, 8+. */
+export const CHILD_DORI_CONTINUE_TOP_PX = 678;
+
+/** Bottom continue column — Figma @ top 678; X via `calc(50% - width/2)` in component. */
 export const CHILD_DORI_CONTINUE_FOOTER = {
-  left: 79,
-  top: 678,
+  top: CHILD_DORI_CONTINUE_TOP_PX,
   width: 217,
   gap: CHILD_CONTINUE_GLOW.labelGap,
 } as const;
@@ -36,13 +39,20 @@ export const CHILD_ONBOARDING_LOGO = {
   height: 78,
 } as const;
 
+/** Shared speech-bubble tail — Figma polygon @ left 32, width 34, flush on bottom border. */
+export const CHILD_DORI_SPEECH_TAIL = {
+  left: 32,
+  width: 34,
+  borderOverlap: 0,
+} as const;
+
 /** Figma 13367:4097 — screen 4 content frame (327×540 @ left 24, top 253). */
 export const CHILD_COMPANION_PICK_FRAME = {
   left: 24,
   top: 253,
   width: 327,
   height: 540,
-  contentGap: 86,
+  contentGap: 65,
   headlineGap: 3,
   headline: {
     line1FontSize: 24,
@@ -54,23 +64,23 @@ export const CHILD_COMPANION_PICK_FRAME = {
   },
   speechBubble: {
     width: 265,
-    left: 55,
-    top: 97,
-    paddingTop: 16.7,
-    paddingBottom: 12.99,
-    paddingLeft: 20.89,
-    paddingRight: 20.89,
-    gap: 20.89,
+    /** Figma — 7px from right edge of 327px content column. */
+    right: 7,
+    top: 87,
+    paddingTop: 16.697,
+    paddingBottom: 12.986,
+    paddingLeft: 20.888,
+    paddingRight: 20.888,
+    gap: 20.888,
     borderRadius: 16,
-    outline: '2px solid #FFF',
+    border: '2px solid #FFF',
     background: 'rgba(255, 255, 255, 0.10)',
-    backdropBlur: 11.41,
-    boxShadow:
-      '0 5.493237495422363px 5.493237495422363px rgba(0, 0, 0, 0.25)',
-    tailLeft: 34.22,
-    tailTop: 62,
+    backdropBlur: 11.409310340881348,
+    boxShadow: '0 5.493px 5.493px 0 rgba(0, 0, 0, 0.25)',
     fontSize: 24,
-    lineHeight: 30,
+    lineHeightRegular: 1.25,
+    lineHeightBold: 30,
+    letterSpacing: -0.36,
   },
   companion: {
     size: 269,
@@ -104,40 +114,94 @@ export const CHILD_COMPANION_PICK_FRAME = {
 /** @deprecated Use CHILD_COMPANION_PICK_FRAME */
 export const CHILD_DORI_OVERLAY = CHILD_COMPANION_PICK_FRAME;
 
-/** Screen 5 — egg intro copy (Figma 13147:5625). */
+/** Screen 5 — egg intro copy (Figma 13147:5625). @ 812 canvas. */
+export const CHILD_EGG_VIDEO_TOP_PX = 295;
+
+/** Intro block height budget — eyebrow + gaps + title lines (~134px rendered). */
+export const CHILD_EGG_INTRO_BLOCK_H_PX = 134;
+
+/** Gap between intro block bottom and egg video top. */
+export const CHILD_EGG_INTRO_TO_EGG_GAP_PX = 34;
+
+/** Gap between egg video bottom and arrow tip (top of arrow SVG). */
+export const CHILD_EGG_EGG_TO_ARROW_GAP_PX = 18.08;
+
+/** Gap between arrow bottom and tap-hint center Y. */
+export const CHILD_EGG_ARROW_TO_HINT_GAP_PX = 50;
+
+/** Rendered egg video height from frame width + Figma aspect (125×118). */
+export function getChildEggVideoRenderedHeightPx(
+  width: number = CHILD_EGG_VIDEO_FRAME.width
+): number {
+  return width * (118 / 125);
+}
+
+export function getChildEggVideoBottomPx(): number {
+  return CHILD_EGG_VIDEO_TOP_PX + CHILD_EGG_VIDEO_FRAME.height;
+}
+
 export const CHILD_EGG_INTRO_FRAME = {
-  top: 170,
+  top: CHILD_EGG_VIDEO_TOP_PX - CHILD_EGG_INTRO_TO_EGG_GAP_PX - CHILD_EGG_INTRO_BLOCK_H_PX,
   width: 323,
   left: 26,
   contentGap: 11,
   titleGap: 2,
-  /** «תלחץ על הביצה!» — Figma center y ≈ 747 on 812 canvas. */
-  hintTop: 747,
-  arrow: { left: 180, top: 661, width: 13, height: 36 },
+  hintWidth: 161,
+  arrow: { left: 180, width: 13, height: 36 },
   /** Ellipse 482 — covers upper canvas (status-bar zone omitted in app). */
   glow: { left: -116, top: 0, width: 602, height: 124 },
 } as const;
 
 /** Screen 5 — egg video (Figma 12945:12023). */
 export const CHILD_EGG_VIDEO_FRAME = {
-  top: 338,
+  top: CHILD_EGG_VIDEO_TOP_PX,
   left: 26,
   width: 323,
   height: 304.919,
   aspectRatio: '125 / 118',
 } as const;
 
-/** Shared speech-bubble tail — Figma polygon @ left 32, 2px on border. */
-export const CHILD_DORI_SPEECH_TAIL = {
-  left: 32,
-  borderOverlap: 0,
-} as const;
+/** Derived @ 812 — hint center Y and arrow top from egg frame (no overlap). */
+export function getChildEggHatchBelowEggLayout() {
+  const eggBottom = getChildEggVideoBottomPx();
+  const arrowTop = eggBottom + CHILD_EGG_EGG_TO_ARROW_GAP_PX;
+  const hintTop =
+    arrowTop +
+    CHILD_EGG_INTRO_FRAME.arrow.height +
+    CHILD_EGG_ARROW_TO_HINT_GAP_PX;
+  return { arrowTop, hintTop, eggBottom };
+}
+
+/** Shared Dori shell — bubble top @ 812 (screens 6 & 8). */
+export const CHILD_DORI_SHELL_BUBBLE_TOP_PX = 84;
+
+/** Screen 6 — Dori revealed (Figma 13656:6594). */
+export const CHILD_DORI_REVEALED_BUBBLE_TOP_PX = CHILD_DORI_SHELL_BUBBLE_TOP_PX;
+
+/**
+ * Gap media bottom → continue footer top @ 812.
+ * Anchors media from the fixed footer so spacing stays proportional on every screen.
+ */
+export const CHILD_DORI_MEDIA_TO_CONTINUE_GAP_PX =
+  CHILD_DORI_CONTINUE_TOP_PX -
+  CHILD_DORI_MEDIA_FRAME.top -
+  CHILD_DORI_MEDIA_FRAME.height;
+
+/** Media top @ 812 — derived from fixed continue footer (screens 6, 8+). */
+export function getChildDoriMediaTopPx(): number {
+  return (
+    CHILD_DORI_CONTINUE_TOP_PX -
+    CHILD_DORI_MEDIA_TO_CONTINUE_GAP_PX -
+    CHILD_DORI_MEDIA_FRAME.height
+  );
+}
 
 /** Screen 6 — Dori hero + continue (Figma 13656:6594). */
 export const CHILD_DORI_REVEALED = {
   media: CHILD_DORI_MEDIA_FRAME,
+  mediaTop: getChildDoriMediaTopPx(),
   bubble: {
-    top: 132,
+    top: CHILD_DORI_REVEALED_BUBBLE_TOP_PX,
     width: 265,
     left: centerX(265),
     tailLeft: CHILD_DORI_SPEECH_TAIL.left,
@@ -151,8 +215,9 @@ export const CHILD_DORI_REVEALED = {
 /** Screen 8 — mission intro (Figma 13656:6740). */
 export const CHILD_DORI_MISSION_INTRO = {
   media: CHILD_DORI_MEDIA_FRAME,
+  mediaTop: getChildDoriMediaTopPx(),
   bubble: {
-    top: 84,
+    top: CHILD_DORI_SHELL_BUBBLE_TOP_PX,
     width: 327,
     left: centerX(327),
     tailLeft: CHILD_DORI_SPEECH_TAIL.left,
@@ -200,7 +265,7 @@ export const CHILD_BALL_GAME = {
   childLabel: { top: 748 },
   centerLine: { top: 396, width: 365 },
   childPaddle: { top: 728, left: centerX(92), width: 92, height: 11 },
-  parentPaddle: { top: 73, left: centerX(92), width: 92, height: 11 },
+  parentPaddle: { top: 85, left: centerX(92), width: 92, height: 11 },
   status: { top: 308, width: 332 },
   /** Touch court — maps physics 0..1 across full width, rival paddle bottom → self paddle top. */
   court: { top: 84, left: 24, width: 327, height: 644 },
@@ -214,11 +279,22 @@ export const CHILD_BALL_GAME = {
   score: { top: 356, width: 200 },
 } as const;
 
+/** Ball game — Ellipse 385 mint glow, bottom-left bleed (Figma @ 812). */
+export const BALL_GAME_MINT_ELLIPSE = {
+  left: -98,
+  /** Visible disc top @ full 812 canvas. */
+  top: 757,
+  size: 272,
+  /** Extends below canvas bottom @ 812. */
+  bleedBelow: 217,
+  blur: 150,
+} as const;
+
 /** Parent ball game — flipped vs child (Figma 13245:21258). */
 export const PARENT_BALL_GAME = {
   ...CHILD_BALL_GAME,
   parentLabel: { top: 748, left: centerX(92), width: 92 },
   childLabel: { top: 32 },
-  childPaddle: { top: 73, left: centerX(92), width: 92, height: 11 },
+  childPaddle: { top: 85, left: centerX(92), width: 92, height: 11 },
   parentPaddle: { top: 728, left: centerX(92), width: 92, height: 11 },
 } as const;

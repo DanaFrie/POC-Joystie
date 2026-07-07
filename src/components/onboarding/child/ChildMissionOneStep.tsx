@@ -1,6 +1,7 @@
 'use client';
 
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+import { FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_MISSION_ONE } from '@/constants/child-onboarding-layout';
 
@@ -15,18 +16,24 @@ export function ChildMissionOneStep({
   const layout = CHILD_MISSION_ONE;
   const frame = layout.fireballFrame;
   const image = frame.image;
+  const scaleY = useFunnelProportionalTopPx;
   const parentLabel = parentGender === 'female' ? 'אמא' : 'אבא';
 
-  return (
-    <div className="relative h-full w-full overflow-hidden bg-transparent">
-      <OnboardingMintGlow />
+  const fireballTopPx = scaleY(frame.top);
+  const contentTopPx = scaleY(layout.content.top);
+  const imageWidthPx = scaleY(image.width);
+  const imageHeightPx = scaleY(image.height);
+  const contentGapPx = scaleY(layout.content.gap);
+  const textBlockGapPx = scaleY(19);
 
+  return (
+    <FunnelStepRoot fitViewport aria-label="משימה 1" className="overflow-visible bg-transparent">
       <div
         className="pointer-events-none absolute z-[2] inline-flex flex-col items-center"
         style={{
           left: frame.left,
-          top: frame.top,
-          padding: `0 0 ${frame.paddingBottom}px ${frame.paddingLeft}px`,
+          top: fireballTopPx,
+          padding: `0 0 ${scaleY(frame.paddingBottom)}px ${frame.paddingLeft}px`,
           transform: `rotate(${frame.rotationDeg}deg)`,
           transformOrigin: 'center center',
         }}
@@ -34,8 +41,8 @@ export function ChildMissionOneStep({
       >
         <div
           style={{
-            width: image.width,
-            height: image.height,
+            width: imageWidthPx,
+            height: imageHeightPx,
             aspectRatio: `${59} / ${71}`,
             backgroundImage: `url(${CHILD_ONBOARDING_ASSETS.fireball})`,
             backgroundPosition: `${image.backgroundPositionX}px ${image.backgroundPositionY}px`,
@@ -48,13 +55,13 @@ export function ChildMissionOneStep({
       <div
         className="absolute z-10 flex flex-col items-center"
         style={{
-          left: layout.content.left,
-          top: layout.content.top,
+          left: `calc(50% - ${layout.content.width / 2}px)`,
+          top: contentTopPx,
           width: layout.content.width,
-          gap: layout.content.gap,
+          gap: contentGapPx,
         }}
       >
-        <div className="flex w-full flex-col items-center gap-[19px]">
+        <div className="flex w-full flex-col items-center" style={{ gap: textBlockGapPx }}>
           <div className="rounded-[16px] bg-v03-green-700 px-[19px] py-[10px]">
             <p className="text-center font-simpler text-[18px] font-bold leading-[1.2] text-white">
               משימה מס׳ 1
@@ -82,6 +89,6 @@ export function ChildMissionOneStep({
             : `קדימה, אני ו${parentLabel} מוכנים!`}
         </button>
       </div>
-    </div>
+    </FunnelStepRoot>
   );
 }

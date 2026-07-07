@@ -3,6 +3,8 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { ChildDoriSpeechTail } from '@/components/onboarding/child/ChildDoriSpeechTail';
 
+import { CHILD_DORI_SPEECH_TAIL } from '@/constants/child-onboarding-layout';
+
 const BUBBLE_STYLE = {
   paddingLeft: 20,
   paddingRight: 20,
@@ -12,8 +14,6 @@ const BUBBLE_STYLE = {
   backdropBlur: 11.41,
   boxShadow: '0 5.493px 5.493px rgba(0, 0, 0, 0.25)',
 } as const;
-
-const TAIL_WIDTH = 34;
 
 export type ChildSpeechBubbleAppearance = {
   paddingLeft?: number;
@@ -35,7 +35,7 @@ export function ChildSpeechBubble({
   width,
   top,
   left,
-  tailLeft = 32,
+  tailLeft = CHILD_DORI_SPEECH_TAIL.left,
   tailRight,
   tailBorderOverlap = 0,
   tailPosition = 'bottom',
@@ -112,7 +112,7 @@ export function ChildSpeechBubble({
       {children}
       <ChildDoriSpeechTail
         className="pointer-events-none absolute"
-        style={{ ...tailStyle, width: TAIL_WIDTH }}
+        style={{ ...tailStyle, width: CHILD_DORI_SPEECH_TAIL.width }}
       />
     </div>
   );

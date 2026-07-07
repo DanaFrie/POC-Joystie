@@ -3,10 +3,14 @@
 import type { CSSProperties } from 'react';
 import { ChildCompanionOverlay } from '@/components/onboarding/child/ChildCompanionOverlay';
 import { ChildOnboardingLogo } from '@/components/onboarding/child/ChildOnboardingLogo';
-import { OnboardingEllipses } from '@/components/onboarding/OnboardingEllipses';
-import { OnboardingKingdom } from '@/components/onboarding/OnboardingKingdom';
-import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
-import { FunnelStepBackground, FunnelStepRoot } from '@/components/ui/funnel-layout';
+import { OnboardingKingdomEllipsesBackdrop } from '@/components/onboarding/OnboardingKingdomEllipsesBackdrop';
+import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
+import {
+  FunnelStepFooter,
+  FunnelStepForeground,
+  FunnelStepRoot,
+  FunnelStepSection,
+} from '@/components/ui/funnel-layout';
 import { CHILD_ONBOARDING_ENTER_VARS } from '@/constants/child-onboarding-figma';
 
 export type ChildKingdomPhase = 'mintGlow' | 'kingdomLanding' | 'companionPick';
@@ -18,7 +22,7 @@ type ChildKingdomPhaseStepProps = {
 
 /**
  * Screens 2–4 — layers accumulate without remounting prior layers.
- * 2: mint glow only · 3: kingdom + ellipses (group fade) · 4: logo + companion (stagger).
+ * 2: mint glow only · 3: kingdom + ellipses (fade) · 4: logo + companion (100vh foreground).
  */
 export function ChildKingdomPhaseStep({
   phase,
@@ -28,31 +32,44 @@ export function ChildKingdomPhaseStep({
   const showCompanion = phase === 'companionPick';
 
   return (
-    <FunnelStepRoot fitViewport className="bg-transparent">
-      <div
-        className="relative h-full w-full overflow-visible bg-transparent"
-        style={CHILD_ONBOARDING_ENTER_VARS as CSSProperties}
-      >
-        <FunnelStepBackground preserveCanvasHeight showGrid>
-        <OnboardingMintGlow />
+    <FunnelStepRoot
+      fitViewport
+      className="bg-transparent"
+      style={CHILD_ONBOARDING_ENTER_VARS as CSSProperties}
+    >
+      {showKingdom ? (
+        <OnboardingKingdomEllipsesBackdrop
+          mintGlow
+          showKingdom
+          kingdomEnter
+          showGrid={false}
+        />
+      ) : (
+        <OnboardingMintGridBackdrop showGrid={false} />
+      )}
 
-        {showKingdom ? (
-          <div className="v03-funnel-enter-0">
-            <OnboardingKingdom />
-            <OnboardingEllipses />
-          </div>
-        ) : null}
-      </FunnelStepBackground>
+      {phase === 'kingdomLanding' ? <ChildOnboardingLogo /> : null}
 
       {showCompanion ? (
-        <>
-          <div className="v03-funnel-enter-0">
-            <ChildOnboardingLogo />
+        <FunnelStepForeground
+          distribution="between"
+          padTopPx={0}
+          padBottomPx={0}
+          fitViewport
+        >
+          <FunnelStepSection>
+            <ChildOnboardingLogo flow />
+          </FunnelStepSection>
+
+          <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
+            <ChildCompanionOverlay flow />
           </div>
-          <ChildCompanionOverlay onContinue={onCompanionContinue} />
-        </>
+
+          <FunnelStepFooter blur={false} onClick={onCompanionContinue}>
+            המשך
+          </FunnelStepFooter>
+        </FunnelStepForeground>
       ) : null}
-      </div>
     </FunnelStepRoot>
   );
 }

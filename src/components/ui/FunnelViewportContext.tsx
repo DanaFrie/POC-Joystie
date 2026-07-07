@@ -76,6 +76,20 @@ export function useFunnelLayoutReady() {
   return useContext(FunnelViewportContext).layoutReady;
 }
 
+/** Scale a Figma Y coordinate to the visible canvas height (812 @ full, less on SE). */
+export function funnelProportionalTopPx(
+  figmaTopPx: number,
+  usableCanvasHeightPx: number
+): number {
+  return (figmaTopPx / V03_SCREEN_HEIGHT) * usableCanvasHeightPx;
+}
+
+/** Scale a Figma Y coordinate to the visible canvas height (812 @ full, less on SE). */
+export function useFunnelProportionalTopPx(figmaTopPx: number): number {
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  return funnelProportionalTopPx(figmaTopPx, usableCanvasHeightPx);
+}
+
 /**
  * Expand a top hero into funnel letterbox gaps (contain scaling).
  * Returns canvas-space absolute position + size covering viewport width and top bleed.
@@ -94,12 +108,12 @@ export function useFunnelHeroBleed(baseHeightPx: number): CSSProperties {
 
 /** Canvas-space letterbox insets for bleed layers (heroes, ellipses, footer blur). */
 export function useFunnelHeroBleedInsets() {
-  const { scale, offsetX, offsetY, designWidth, viewportHeight } =
+  const { scale, offsetX, offsetY, designWidth, viewportHeight, canvasHeightPx } =
     useFunnelViewportMetrics();
   const bleedX = offsetX / scale;
   const bleedY = offsetY / scale;
   const width = designWidth;
-  const scaledH = V03_SCREEN_HEIGHT * scale;
+  const scaledH = canvasHeightPx * scale;
   const bottomBleed = Math.max(0, (viewportHeight - offsetY - scaledH) / scale);
 
   return { bleedX, bleedY, width, bottomBleed };
@@ -118,14 +132,27 @@ export function useFunnelBleedBarStyle(shellTopPx: number): CSSProperties {
   };
 }
 
+/** Bottom-anchored frosted bar — for overlay footers on fitViewport scroll steps. */
+export function useFunnelBleedBarBottomStyle(shellHeightPx: number): CSSProperties {
+  const { bleedX, width, bottomBleed } = useFunnelHeroBleedInsets();
+
+  return {
+    position: 'absolute',
+    bottom: -bottomBleed,
+    left: -bleedX,
+    width,
+    height: shellHeightPx,
+  };
+}
+
 /** Fill letterbox gaps (contain scaling) — reveal light funnel background. */
 export function useFunnelFullBleed(): CSSProperties {
-  const { scale, offsetX, offsetY, designWidth, viewportHeight } =
+  const { scale, offsetX, offsetY, designWidth, viewportHeight, canvasHeightPx } =
     useFunnelViewportMetrics();
   const bleedX = offsetX / scale;
   const bleedY = offsetY / scale;
   const width = designWidth;
-  const scaledH = V03_SCREEN_HEIGHT * scale;
+  const scaledH = canvasHeightPx * scale;
   const bottomBleed = Math.max(0, (viewportHeight - offsetY - scaledH) / scale);
 
   return {
@@ -133,6 +160,6 @@ export function useFunnelFullBleed(): CSSProperties {
     top: -bleedY,
     left: -bleedX,
     width,
-    height: V03_SCREEN_HEIGHT + bleedY + bottomBleed,
+    height: canvasHeightPx + bleedY + bottomBleed,
   };
 }

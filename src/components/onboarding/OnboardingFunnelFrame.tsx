@@ -12,9 +12,14 @@ import {
 import { useFunnelDesktop } from '@/components/ui/FunnelViewportContext';
 
 /** Grid on landing is rendered in `OnboardingLanding`; parent flow adds per-step grid. */
-const ROUTES_WITHOUT_GRID = ['/onboarding', '/onboarding/child'];
+function isChildOnboardingRoute(pathname: string | null) {
+  return pathname === '/onboarding/child' || (pathname?.startsWith('/onboarding/child/') ?? false);
+}
+
+const ROUTES_WITHOUT_GRID = ['/onboarding'];
 /** Child funnel manages its own bleed layers per step. */
-const ROUTES_WITH_OWN_BLEED = ['/onboarding/child'];
+/** Ball game — own grid texture + mint ellipse (`BallGameFunnelBackground`). */
+const GAME_FUNNEL_ROUTES = ['/game', '/game/child'];
 const LIGHT_FUNNEL_ROUTES: string[] = [];
 
 function OnboardingFunnelContent({ children }: { children: ReactNode }) {
@@ -39,18 +44,21 @@ export function OnboardingFunnelFrame({
   className?: string;
 }) {
   const pathname = usePathname();
+  const isGameRoute = GAME_FUNNEL_ROUTES.includes(pathname ?? '');
   const surface = LIGHT_FUNNEL_ROUTES.includes(pathname ?? '')
     ? 'light'
     : 'dark';
-  const showGrid = !ROUTES_WITHOUT_GRID.includes(pathname ?? '');
+  const isChildRoute = isChildOnboardingRoute(pathname);
+  const showGrid =
+    !ROUTES_WITHOUT_GRID.includes(pathname ?? '') && !isChildRoute && !isGameRoute;
   const showBleedBackground =
-    surface === 'dark' && !ROUTES_WITH_OWN_BLEED.includes(pathname ?? '');
+    surface === 'dark' && !isChildRoute && !isGameRoute;
 
   return (
     <FunnelViewport
       surface={surface}
       scaleMode="scroll"
-      ignoreSafeArea={false}
+      ignoreSafeArea={isGameRoute}
       className={`font-simpler text-v03-text-on-dark ${className}`}
     >
       <div className="relative h-full w-full">

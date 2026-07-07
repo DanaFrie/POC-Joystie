@@ -10,6 +10,7 @@ export default function ConditionalNavigation() {
   if (
     pathname === '/' ||
     pathname?.startsWith('/child') ||
+    pathname?.startsWith('/game') ||
     pathname === '/signup' ||
     pathname === '/onboarding' ||
     pathname?.startsWith('/onboarding/') ||

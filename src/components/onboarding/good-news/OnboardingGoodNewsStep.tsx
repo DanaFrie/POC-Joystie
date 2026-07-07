@@ -2,61 +2,60 @@
 
 import { GoodNewsPercentArrow } from '@/components/onboarding/good-news/GoodNewsPercentArrow';
 import { GoodNewsPhoneMockup } from '@/components/onboarding/good-news/GoodNewsPhoneMockup';
-import { ONBOARDING_BLUR_FOOTER_RESERVE_CLASS } from '@/components/onboarding/OnboardingBlurFooter';
+import { useFunnelProportionalTopPx, useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
   REVEAL_PHONE_BLOCK_HEIGHT_PX,
   REVEAL_PHONE_BLOCK_TOP_PX,
 } from '@/constants/reveal-phone-layout';
+import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 
-const HORIZONTAL_INSET_PX = 24;
 const COPY_BLOCK_WIDTH_PX = 327;
 const PERCENT_ARROW_GAP_PX = 12;
 const LOWER_BLOCK_GAP_PX = 15;
 
 /** Figma — upper (phone + eyebrow) + lower (headline + 55%). */
 export function OnboardingGoodNewsStep() {
-  const lowerBlockTop =
-    REVEAL_PHONE_BLOCK_TOP_PX + REVEAL_PHONE_BLOCK_HEIGHT_PX + LOWER_BLOCK_GAP_PX;
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const phoneBlockTop = useFunnelProportionalTopPx(REVEAL_PHONE_BLOCK_TOP_PX);
+  const phoneBlockHeight =
+    (REVEAL_PHONE_BLOCK_HEIGHT_PX / V03_SCREEN_HEIGHT) * usableCanvasHeightPx;
 
   return (
     <section
-      className={`absolute inset-0 z-[10] overflow-y-auto v03-scroll-hidden ${ONBOARDING_BLUR_FOOTER_RESERVE_CLASS}`}
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden"
       aria-label="החדשות הטובות"
     >
-      {/* Upper block — phone centered; eyebrow in lower third */}
       <div
-        className="absolute inset-x-0 z-[1]"
+        className="relative flex shrink-0 flex-col items-center px-v03-gutter"
         style={{
-          top: REVEAL_PHONE_BLOCK_TOP_PX,
-          height: REVEAL_PHONE_BLOCK_HEIGHT_PX,
-          paddingLeft: HORIZONTAL_INSET_PX,
-          paddingRight: HORIZONTAL_INSET_PX,
+          paddingTop: phoneBlockTop,
+          minHeight: phoneBlockHeight + phoneBlockTop,
         }}
       >
-        <div className="relative mx-auto h-full w-full max-w-v03-content">
-          <div className="v03-funnel-enter-reveal-0 flex h-full w-full justify-center">
-            <GoodNewsPhoneMockup />
-          </div>
-          <p
-            className="v03-funnel-enter-reveal-1 absolute inset-x-0 z-[2] flex items-center justify-center text-center font-simpler text-[24px] font-normal leading-[30px] text-v03-text-on-light"
-            style={{
-              top: '66.6667%',
-              height: '33.3333%',
-            }}
+        <div className="relative mx-auto w-full max-w-v03-content">
+          <div
+            className="relative mx-auto flex justify-center"
+            style={{ height: REVEAL_PHONE_BLOCK_HEIGHT_PX }}
           >
-            החדשות הטובות הן:
-          </p>
+            <div className="v03-funnel-enter-reveal-0 flex h-full w-full justify-center">
+              <GoodNewsPhoneMockup />
+            </div>
+            <p
+              className="v03-funnel-enter-reveal-1 absolute inset-x-0 z-[2] flex items-center justify-center text-center font-simpler text-[24px] font-normal leading-[30px] text-v03-text-on-light"
+              style={{
+                top: '66.6667%',
+                height: '33.3333%',
+              }}
+            >
+              החדשות הטובות הן:
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Lower block — headline + 55% */}
       <div
-        className="absolute inset-x-0 z-[1] flex flex-col items-center gap-[35px]"
-        style={{
-          top: lowerBlockTop,
-          paddingLeft: HORIZONTAL_INSET_PX,
-          paddingRight: HORIZONTAL_INSET_PX,
-        }}
+        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-[35px] px-v03-gutter pb-2"
+        style={{ marginTop: LOWER_BLOCK_GAP_PX }}
       >
         <div
           className="flex w-full flex-col items-center gap-[35px]"

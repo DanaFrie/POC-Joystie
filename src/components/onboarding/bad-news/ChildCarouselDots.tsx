@@ -14,7 +14,7 @@ export function ChildCarouselDots({
 
   return (
     <div
-      className={`inline-flex items-center justify-center gap-[9px] ${className}`}
+      className={`inline-flex h-3 items-center justify-center gap-[9px] ${className}`}
       role="tablist"
       aria-label="ילדים"
     >

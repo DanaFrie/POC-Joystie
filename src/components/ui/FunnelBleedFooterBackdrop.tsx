@@ -10,14 +10,19 @@ type FunnelBleedFooterBackdropProps = {
 /** Frosted bar spanning full viewport width + bottom letterbox (in-canvas coords). */
 export function FunnelBleedFooterBackdrop({
   shellTopPx,
-  className = 'bg-white/10 backdrop-blur-[5px]',
+  className = '',
 }: FunnelBleedFooterBackdropProps) {
   const style = useFunnelBleedBarStyle(shellTopPx);
 
   return (
     <div
       className={`pointer-events-none absolute z-[44] ${className}`}
-      style={style}
+      style={{
+        ...style,
+        backgroundColor: 'rgba(255, 255, 255, 0.10)',
+        backdropFilter: 'blur(5px)',
+        WebkitBackdropFilter: 'blur(5px)',
+      }}
       aria-hidden
     />
   );

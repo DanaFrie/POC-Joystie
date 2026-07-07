@@ -8,13 +8,9 @@ export function ParentPostGameGreenBackground() {
   const bleedStyle = useFunnelFullBleed();
 
   return (
-    <>
-      <div
-        className="pointer-events-none z-0 bg-v03-green-900"
-        style={bleedStyle}
-        aria-hidden
-      />
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-visible" aria-hidden>
+      <div className="bg-v03-green-900" style={bleedStyle} />
       <OnboardingMintGlow />
-    </>
+    </div>
   );
 }

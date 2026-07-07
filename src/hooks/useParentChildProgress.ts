@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { SignupChildInviteWaitingVariant } from '@/constants/signup-child-invite-layout';
 import { subscribeParentBondingInviteProgress } from '@/lib/onboarding/bondingInviteProgress';
 import {
   readOnboardingChildProgress,
   subscribeOnboardingChildProgress,
   type OnboardingChildProgress,
 } from '@/lib/onboarding/childProgress';
+import { inviteWaitingVariantFromProgress } from '@/lib/onboarding/parentInviteWaitingCopy';
 import { getCurrentUserId } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -21,7 +23,6 @@ type UseParentChildProgressOptions = {
   parentStep: ParentWaitingStep | null;
   /** ISO time when parent shared the invite — ignores stale Firestore milestones. */
   waitingSessionStartedAt?: string | null;
-  onLinkOpened?: () => void;
   onWelcomeReached?: () => void;
   onMissionReady?: () => void;
 };
@@ -51,12 +52,26 @@ function milestoneIsFresh(
   return at > sessionStartedAt;
 }
 
+function milestoneAt(
+  progress: OnboardingChildProgress,
+  flag: keyof OnboardingChildProgress,
+  atKey: keyof OnboardingChildProgress
+): string | undefined {
+  if (!progress[flag]) return undefined;
+  const at = progress[atKey];
+  if (typeof at === 'string' && at) return at;
+  return typeof progress.updatedAt === 'string' ? progress.updatedAt : undefined;
+}
+
 function isLinkOpenedForSession(
   progress: OnboardingChildProgress,
   sessionStartedAt: string | null | undefined
 ): boolean {
   if (!progress.linkOpened) return false;
-  return milestoneIsFresh(progress.linkOpenedAt, sessionStartedAt);
+  return milestoneIsFresh(
+    milestoneAt(progress, 'linkOpened', 'linkOpenedAt'),
+    sessionStartedAt
+  );
 }
 
 function isMissionReadyForSession(
@@ -73,7 +88,6 @@ function applyProgress(
   parentStep: ParentWaitingStep | null,
   sessionStartedAt: string | null | undefined,
   callbacks: {
-    onLinkOpened?: () => void;
     onWelcomeReached?: () => void;
     onMissionReady?: () => void;
   }
@@ -86,7 +100,6 @@ function applyProgress(
     parentStep === 'childInviteWaiting'
   ) {
     fired.link = true;
-    callbacks.onLinkOpened?.();
   }
 
   if (progress.welcomeReached && !fired.welcome) {
@@ -110,19 +123,23 @@ export function useParentChildProgress({
   enabled,
   parentStep,
   waitingSessionStartedAt,
-  onLinkOpened,
   onWelcomeReached,
   onMissionReady,
 }: UseParentChildProgressOptions) {
-  const callbacksRef = useRef({ onLinkOpened, onWelcomeReached, onMissionReady });
-  callbacksRef.current = { onLinkOpened, onWelcomeReached, onMissionReady };
+  const callbacksRef = useRef({ onWelcomeReached, onMissionReady });
+  callbacksRef.current = { onWelcomeReached, onMissionReady };
   const parentStepRef = useRef(parentStep);
   parentStepRef.current = parentStep;
   const sessionStartedAtRef = useRef(waitingSessionStartedAt);
   sessionStartedAtRef.current = waitingSessionStartedAt;
+  const [inviteWaitingVariant, setInviteWaitingVariant] =
+    useState<SignupChildInviteWaitingVariant>('linkOpen');
 
   useEffect(() => {
-    if (!enabled || !parentStep) return;
+    if (!enabled || !parentStep) {
+      setInviteWaitingVariant('linkOpen');
+      return;
+    }
 
     let disposed = false;
     let rtdbUnsub: (() => void) | undefined;
@@ -134,8 +151,14 @@ export function useParentChildProgress({
 
     const handleSources = () => {
       if (disposed) return;
+      const merged = mergeProgress(firestoreProgress, rtdbProgress);
+      setInviteWaitingVariant(
+        inviteWaitingVariantFromProgress(
+          Boolean(merged && isLinkOpenedForSession(merged, sessionStartedAtRef.current))
+        )
+      );
       applyProgress(
-        mergeProgress(firestoreProgress, rtdbProgress),
+        merged,
         fired,
         parentStepRef.current,
         sessionStartedAtRef.current,
@@ -183,5 +206,7 @@ export function useParentChildProgress({
       rtdbUnsub?.();
       if (pollId) window.clearInterval(pollId);
     };
-  }, [enabled, parentStep, waitingSessionStartedAt]);
+  }, [enabled, parentStep]);
+
+  return { inviteWaitingVariant };
 }

@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { CumulativeScreenTimeCard } from '@/components/onboarding/bad-news/CumulativeScreenTimeCard';
 import { ChildCarouselDots } from '@/components/onboarding/bad-news/ChildCarouselDots';
-import { ONBOARDING_BLUR_FOOTER_RESERVE_CLASS } from '@/components/onboarding/OnboardingBlurFooter';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
   ONBOARDING_BAD_NEWS_HERO_FALLBACK,
   ONBOARDING_BAD_NEWS_HERO_IMAGE,
 } from '@/constants/onboarding-figma';
+import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
   getChildCumulativeProjections,
   type ChildCumulativeProjection,
@@ -21,7 +22,20 @@ const CAROUSEL_START_MS = 600 + 720 + 400;
 const headlineClass =
   'w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-v03-text-on-light';
 
+/** Figma @ 812 — scales down on short viewports so dots stay above the footer. */
+const BAD_NEWS_HERO_PX = 150;
+const BAD_NEWS_SECTION_GAP_PX = 24;
+const BAD_NEWS_CARD_BLOCK_GAP_PX = 10;
+const BAD_NEWS_DOTS_BOTTOM_PAD_PX = 20;
+
 export function OnboardingBadNewsStep() {
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const vhScale = usableCanvasHeightPx / V03_SCREEN_HEIGHT;
+  const heroPx = Math.max(120, Math.round(BAD_NEWS_HERO_PX * vhScale));
+  const sectionGapPx = Math.max(16, Math.round(BAD_NEWS_SECTION_GAP_PX * vhScale));
+  const cardBlockGapPx = Math.max(8, Math.round(BAD_NEWS_CARD_BLOCK_GAP_PX * vhScale));
+  const dotsBottomPadPx = Math.max(12, Math.round(BAD_NEWS_DOTS_BOTTOM_PAD_PX * vhScale));
+
   const [heroSrc, setHeroSrc] = useState<string>(ONBOARDING_BAD_NEWS_HERO_IMAGE);
   const [children, setChildren] = useState<ChildCumulativeProjection[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -69,18 +83,22 @@ export function OnboardingBadNewsStep() {
 
   return (
     <section
-      className={`absolute inset-0 z-[10] flex flex-col items-center overflow-y-auto px-v03-gutter v03-scroll-hidden ${ONBOARDING_BLUR_FOOTER_RESERVE_CLASS}`}
+      className="flex h-full min-h-0 w-full flex-col items-center px-v03-gutter"
       aria-label="החדשות הפחות טובות"
     >
-      <div className="flex w-full max-w-v03-content flex-col items-center gap-[65px] pb-6 pt-[72px]">
-        <div className="flex w-full flex-col items-center gap-[9px]">
+      <div
+        className="flex min-h-0 w-full max-w-v03-content flex-1 flex-col items-center justify-start py-2"
+        style={{ gap: sectionGapPx, paddingBottom: dotsBottomPadPx }}
+      >
+        <div className="flex w-full shrink-0 flex-col items-center gap-[9px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={heroSrc}
             alt=""
-            width={150}
-            height={150}
-            className="v03-funnel-enter-reveal-0 h-[150px] w-[150px] shrink-0 object-contain"
+            width={heroPx}
+            height={heroPx}
+            className="v03-funnel-enter-reveal-0 shrink-0 object-contain"
+            style={{ width: heroPx, height: heroPx }}
             onError={() => {
               if (heroSrc !== ONBOARDING_BAD_NEWS_HERO_FALLBACK) {
                 setHeroSrc(ONBOARDING_BAD_NEWS_HERO_FALLBACK);
@@ -101,7 +119,10 @@ export function OnboardingBadNewsStep() {
           </div>
         </div>
 
-        <div className="flex w-full flex-col items-center gap-[10px]">
+        <div
+          className="flex w-full shrink-0 flex-col items-center"
+          style={{ gap: cardBlockGapPx }}
+        >
           <p className="v03-funnel-enter-reveal-3 w-full text-center font-simpler text-[20px] font-normal leading-6 text-[#6d6d6d]">
             לפי החישוב, עד גיל 18:
           </p>
@@ -118,7 +139,7 @@ export function OnboardingBadNewsStep() {
             )}
           </div>
 
-          <div className="v03-funnel-enter-reveal-5 flex w-full justify-center">
+          <div className="v03-funnel-enter-reveal-5 flex w-full shrink-0 justify-center overflow-visible py-1">
             <ChildCarouselDots
               count={children.length}
               activeIndex={activeIndex}
