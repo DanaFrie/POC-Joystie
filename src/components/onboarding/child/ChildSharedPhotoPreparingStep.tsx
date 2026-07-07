@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { ChildPostGameFunnelShell } from '@/components/onboarding/child/ChildPostGameFunnelShell';
 import { ScreenTimeProgressRing } from '@/components/onboarding/screen-time/ScreenTimeProgressRing';
 import {
@@ -8,22 +9,29 @@ import {
 } from '@/components/ui/funnel-layout';
 import { CHILD_SHARED_PHOTO_PREPARING_MS } from '@/constants/child-post-game-layout';
 import { CHILD_SHARED_PHOTO_PREPARING_SUBTITLE } from '@/lib/onboarding/childPostGameCopy';
-import { useEffect, useRef, useState } from 'react';
 
 type ChildSharedPhotoPreparingStepProps = {
   onComplete: () => void;
-  /** Cloud compose / face upload — loader waits for this + min display time. */
+  /** Cloud compose task — loader waits for this + min display time. */
   task?: Promise<unknown> | null;
+  /** When set (0–100), ring follows service progress instead of time-only easing. */
+  progressPercent?: number | null;
 };
 
-/** Figma loading — ring runs until `task` completes (min display time). */
+/** Figma loading — ring tracks cloud task progress when provided. */
 export function ChildSharedPhotoPreparingStep({
   onComplete,
   task = null,
+  progressPercent = null,
 }: ChildSharedPhotoPreparingStepProps) {
   const [percent, setPercent] = useState(0);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    if (progressPercent == null) return;
+    setPercent(progressPercent);
+  }, [progressPercent]);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +48,12 @@ export function ChildSharedPhotoPreparingStep({
       if (!cancelled) onCompleteRef.current();
     })();
 
+    if (progressPercent != null) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const tick = (now: number) => {
       if (cancelled) return;
       const t = Math.min(1, (now - start) / CHILD_SHARED_PHOTO_PREPARING_MS);
@@ -53,7 +67,7 @@ export function ChildSharedPhotoPreparingStep({
       cancelled = true;
       cancelAnimationFrame(raf);
     };
-  }, [task]);
+  }, [progressPercent, task]);
 
   return (
     <ChildPostGameFunnelShell ellipse="upper" showGrid>

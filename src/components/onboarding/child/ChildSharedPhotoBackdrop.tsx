@@ -30,19 +30,22 @@ export function ChildSharedPhotoBackdrop({
         style={fullBleedStyle}
         aria-hidden
       />
-      <OnboardingLazyImage
-        src={CHILD_ONBOARDING_ASSETS.castleDoriSelfie}
-        alt=""
-        className="pointer-events-none absolute z-0 object-cover"
-        style={{ ...coverStyle, objectPosition: 'center bottom' }}
-        priority
-      />
+      {!photoSrc ? (
+        <OnboardingLazyImage
+          src={CHILD_ONBOARDING_ASSETS.castleDoriSelfie}
+          alt=""
+          className="pointer-events-none absolute z-0 object-cover"
+          style={{ ...coverStyle, objectPosition: 'center bottom' }}
+          priority
+        />
+      ) : null}
 
       {photoSrc ? (
         <OnboardingLazyImage
           src={photoSrc}
           alt=""
-          className="pointer-events-none absolute inset-0 z-[1] object-cover object-center"
+          className="pointer-events-none absolute z-[1] object-cover"
+          style={{ ...coverStyle, objectPosition: 'center bottom' }}
           priority
         />
       ) : (

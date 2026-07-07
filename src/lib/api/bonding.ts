@@ -3,10 +3,11 @@
  */
 import { getFunctionsInstance } from '@/lib/firebase';
 import { readOnboardingBondingPublic } from '@/lib/game/bondingPublic';
+import {
+  recordLocalBondingInvite,
+  resolveLocalBondingInvite,
+} from '@/lib/onboarding/localBondingInvite';
 import { httpsCallable } from 'firebase/functions';
-import { buildWhatsAppShareUrl } from '@/lib/share/whatsapp';
-import { getBondingShareBaseUrl } from '@/lib/share/bondingBaseUrl';
-import { generateOnboardingChildUrl } from '@/utils/url-encoding';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
 
@@ -27,36 +28,39 @@ export interface RecordBondingInviteResult {
   whatsappShareUrl: string;
 }
 
-/**
- * Client-side WhatsApp URL (same pattern as server).
- */
-export function getWhatsAppShareUrlForChild(params: {
+export interface ResolveBondingInviteResult {
+  inviteId: string;
   parentId: string;
-  childId?: string;
-  challengeId?: string;
-  childName?: string;
-  parentName?: string;
-  parentGender?: 'female' | 'male';
-  baseUrl?: string;
-}): { childUrl: string; whatsappShareUrl: string } {
-  const childUrl = generateOnboardingChildUrl(
-    params.parentId,
-    params.childId,
-    params.challengeId,
-    params.baseUrl ?? getBondingShareBaseUrl()
+  childId: string | null;
+  challengeId: string | null;
+  childName: string | null;
+  parentName: string | null;
+}
+
+export async function resolveBondingInvite(
+  inviteId: string
+): Promise<ResolveBondingInviteResult> {
+  if (isLocalDevHost()) {
+    logger.log('resolveBondingInvite (local RTDB)', { inviteId });
+    return resolveLocalBondingInvite(inviteId);
+  }
+  const functions = await getFunctionsInstance();
+  const fn = httpsCallable<{ inviteId: string }, ResolveBondingInviteResult>(
+    functions,
+    'resolveBondingInvite'
   );
-  const whatsappShareUrl = buildWhatsAppShareUrl({
-    childUrl,
-    childName: params.childName,
-    parentName: params.parentName,
-    parentGender: params.parentGender,
-  });
-  return { childUrl, whatsappShareUrl };
+  logger.log('resolveBondingInvite', { inviteId });
+  const { data } = await fn({ inviteId });
+  return data;
 }
 
 export async function recordBondingInvite(
   input: RecordBondingInviteInput
 ): Promise<RecordBondingInviteResult> {
+  if (isLocalDevHost()) {
+    logger.log('recordBondingInvite (local RTDB)', { childId: input.childId });
+    return recordLocalBondingInvite(input);
+  }
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<RecordBondingInviteInput, RecordBondingInviteResult>(
     functions,
@@ -68,6 +72,7 @@ export async function recordBondingInvite(
 }
 
 export async function markBondingWhatsAppShared(inviteId: string): Promise<void> {
+  if (isLocalDevHost()) return;
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<{ inviteId: string }, { ok: boolean }>(
     functions,

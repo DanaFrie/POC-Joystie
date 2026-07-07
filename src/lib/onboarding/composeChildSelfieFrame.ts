@@ -155,7 +155,7 @@ function drawHoleRings(
   ctx.restore();
 }
 
-/** Live camera — circular child (left) + parent (right) face crops only. */
+/** Live camera — parent face (screen left hole) + child face (screen right hole). */
 export async function captureLiveSelfieFaces(
   video: HTMLVideoElement,
   layout = CHILD_SELFIE_PATTERN,

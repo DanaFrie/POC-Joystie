@@ -13,6 +13,8 @@ export interface FirestoreBondingInvite {
   challengeId?: string;
   childName?: string;
   parentName?: string;
+  /** ISO timestamp — invite link TTL (default 14 days from createdAt). */
+  expiresAt?: string;
   childUrl: string;
   whatsappShareUrl: string;
   status: BondingInviteStatus;

@@ -1,29 +1,23 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { OnboardingChildFlow } from '@/components/onboarding/OnboardingChildFlow';
 import { ChildInvalidInviteStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
 import { useChildBondingBootstrap } from '@/hooks/useChildBondingBootstrap';
-import { decodeParentToken } from '@/utils/url-encoding';
+import { useChildInviteAccess } from '@/hooks/useChildInviteAccess';
 
 export const dynamic = 'force-dynamic';
 
 function OnboardingChildPageInner() {
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const access = useChildInviteAccess();
 
-  const tokenIssue = useMemo(() => {
-    if (!token) return null;
-    const decoded = decodeParentToken(token);
-    if (!decoded) return 'invalid' as const;
-    if (decoded.isExpired) return 'expired' as const;
+  useChildBondingBootstrap(access.status === 'ready' ? access : null);
+
+  if (access.status === 'loading') {
     return null;
-  }, [token]);
+  }
 
-  useChildBondingBootstrap();
-
-  if (tokenIssue === 'invalid') {
+  if (access.status === 'invalid') {
     return (
       <ChildInvalidInviteStep
         title="הקישור לא תקין"
@@ -32,7 +26,7 @@ function OnboardingChildPageInner() {
     );
   }
 
-  if (tokenIssue === 'expired') {
+  if (access.status === 'expired') {
     return (
       <ChildInvalidInviteStep
         title="הקישור פג תוקף"
@@ -41,10 +35,19 @@ function OnboardingChildPageInner() {
     );
   }
 
+  if (access.status === 'missing') {
+    return (
+      <ChildInvalidInviteStep
+        title="הקישור לא תקין"
+        detail="בקשו מההורה לשלוח שוב את הלינק."
+      />
+    );
+  }
+
   return <OnboardingChildFlow />;
 }
 
-/** `/onboarding/child` — kid onboarding funnel (bonding token). */
+/** `/onboarding/child` — kid onboarding funnel (bonding invite). */
 export default function OnboardingChildPage() {
   return (
     <Suspense fallback={null}>

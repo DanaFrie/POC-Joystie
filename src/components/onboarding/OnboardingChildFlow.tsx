@@ -82,7 +82,7 @@ import { usePostGameSync } from '@/hooks/usePostGameSync';
 
 import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
 
-import { buildGameChildUrlWithToken, decodeParentToken, parseBondingInviteQueryParams } from '@/utils/url-encoding';
+import { buildGameChildUrlWithInvite, parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 
 
@@ -120,13 +120,7 @@ type PostEggPhase =
 
   | 'missionThreeSelfieIntro'
 
-  | 'selfiePattern'
-
-  | 'sharedPhotoReview'
-
-  | 'sharedPhotoShare'
-
-  | 'preparingSharedPhoto';
+  | 'selfiePattern';
 
 
 
@@ -161,9 +155,6 @@ function childFlowStepKey(step: ChildFlowStep): string {
   if (step === 'contractCelebration') return 'contractCelebration';
   if (step === 'missionThreeSelfieIntro') return 'missionThreeSelfieIntro';
   if (step === 'selfiePattern') return 'selfiePattern';
-  if (step === 'sharedPhotoReview') return 'sharedPhotoReview';
-  if (step === 'sharedPhotoShare') return 'sharedPhotoShare';
-  if (step === 'preparingSharedPhoto') return 'preparingSharedPhoto';
 
   if (step === 'mintGlow' || step === 'kingdomLanding' || step === 'companionPick') {
 
@@ -222,7 +213,7 @@ function readInitialChildStep(): ChildFlowStep {
 
 
 
-/** `/onboarding/child` — kid funnel (bonding token + ball game). */
+/** `/onboarding/child` — kid funnel (bonding invite + ball game). */
 
 export function OnboardingChildFlow() {
 
@@ -247,9 +238,7 @@ export function OnboardingChildFlow() {
 
   const parentGender = bonding?.parentGender ?? urlMeta.parentGender ?? 'male';
 
-  const token = searchParams.get('token');
-  const decodedParent = token ? decodeParentToken(token) : null;
-  const parentId = bonding?.parentId ?? decodedParent?.parentId ?? null;
+  const parentId = bonding?.parentId ?? null;
 
   const postGameSyncEnabled =
     Boolean(parentId) &&
@@ -258,7 +247,8 @@ export function OnboardingChildFlow() {
       step === 'waitingParentApproval' ||
       step === 'parentSuggestedChange' ||
       step === 'contractCelebration' ||
-      step === 'missionThreeSelfieIntro');
+      step === 'missionThreeSelfieIntro' ||
+      step === 'selfiePattern');
 
   const postGame = usePostGameSync({
     parentId,
@@ -292,11 +282,6 @@ export function OnboardingChildFlow() {
           step === 'contractCelebration'
         ) {
           setStep('missionThreeSelfieIntro');
-        }
-        break;
-      case 'preparingSharedPhoto':
-        if (step === 'selfiePattern' || step === 'missionThreeSelfieIntro') {
-          setStep('preparingSharedPhoto');
         }
         break;
       default:
@@ -365,25 +350,25 @@ export function OnboardingChildFlow() {
   }, [step]);
 
   const goToBallGame = useCallback(() => {
-    const token = new URLSearchParams(window.location.search).get('token');
-    const url = token ? buildGameChildUrlWithToken(token) : '/game/child';
-    const parentIdForMilestone =
-      bonding?.parentId ?? (token ? decodeParentToken(token)?.parentId : null);
+    const inviteId =
+      bonding?.inviteId ?? new URLSearchParams(window.location.search).get('invite');
+    const url = inviteId ? buildGameChildUrlWithInvite(inviteId) : '/game/child';
 
-    if (parentIdForMilestone) {
-      void signalChildOnboardingMilestone(parentIdForMilestone, 'mission_ready').catch(() => {});
+    if (bonding?.parentId) {
+      void signalChildOnboardingMilestone(bonding.parentId, 'mission_ready').catch(() => {});
     }
 
     startGameTransition(() => {
       router.push(url);
     });
-  }, [bonding?.parentId, router]);
+  }, [bonding?.inviteId, bonding?.parentId, router]);
 
   useEffect(() => {
     if (step !== 'doriMissionIntro' && step !== 'doriTransition') return;
-    const token = new URLSearchParams(window.location.search).get('token');
-    router.prefetch(token ? buildGameChildUrlWithToken(token) : '/game/child');
-  }, [router, step]);
+    const inviteId =
+      bonding?.inviteId ?? new URLSearchParams(window.location.search).get('invite');
+    router.prefetch(inviteId ? buildGameChildUrlWithInvite(inviteId) : '/game/child');
+  }, [bonding?.inviteId, router, step]);
 
 
 
@@ -600,6 +585,7 @@ export function OnboardingChildFlow() {
         {step === 'selfiePattern' ? (
           <ChildSelfieMissionFlow
             childName={childName}
+            childGender={childGender}
             parentName={parentName}
             parentGender={parentGender}
             parentId={parentId}

@@ -7,7 +7,7 @@ import {
   type ChildBondingContext,
 } from '@/lib/onboarding/childBondingContext';
 
-/** Reactive bonding context — updates after `useChildBondingBootstrap` resolves the token. */
+/** Reactive bonding context — updates after `useChildBondingBootstrap` resolves the invite. */
 export function useChildBondingContext(): ChildBondingContext | null {
   const [ctx, setCtx] = useState<ChildBondingContext | null>(() =>
     typeof window !== 'undefined' ? getChildBondingContext() : null

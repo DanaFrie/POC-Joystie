@@ -11,17 +11,15 @@ import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunn
 import { ChildMintFunnelBackground } from '@/components/onboarding/game/ChildMintFunnelBackground';
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 import { useOnboardingGame } from '@/hooks/useOnboardingGame';
-import { decodeParentToken, parseBondingInviteQueryParams } from '@/utils/url-encoding';
+import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 function ChildGameInner() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
   const bonding = useChildBondingContext();
   const urlMeta = parseBondingInviteQueryParams(searchParams);
-  const decoded = token ? decodeParentToken(token) : null;
 
-  const parentId = bonding?.parentId ?? decoded?.parentId ?? null;
-  const inviteId = bonding?.inviteId;
+  const parentId = bonding?.parentId ?? null;
+  const inviteId = bonding?.inviteId ?? searchParams.get('invite') ?? undefined;
   const childName = bonding?.childName;
   const parentName = bonding?.parentName;
 

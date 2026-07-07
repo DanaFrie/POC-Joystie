@@ -7,6 +7,7 @@ import {
   recordBondingInvite,
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
+  resolveBondingInvite,
   resolveBondingGameRoom,
   reportChildOnboardingMilestone,
   getChildOnboardingProgress,
@@ -18,6 +19,7 @@ import {
   completeGameOnboarding,
   endOnboardingGameRoom,
 } from './game/rooms';
+import { generateSelfie } from './selfie/generateSelfie';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -39,6 +41,7 @@ export {
   recordBondingInvite,
   markBondingWhatsAppShared,
   markBondingChildLinkOpened,
+  resolveBondingInvite,
   resolveBondingGameRoom,
   reportChildOnboardingMilestone,
   getChildOnboardingProgress,
@@ -47,6 +50,7 @@ export {
   getGameOnboardingStatus,
   completeGameOnboarding,
   endOnboardingGameRoom,
+  generateSelfie,
 };
 
 // Define secret for Cloud Run service URL

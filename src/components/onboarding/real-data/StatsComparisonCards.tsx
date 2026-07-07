@@ -470,8 +470,11 @@ function FamilyLinkStatsCard({ className }: { className?: string }) {
             <div className="text-center font-simpler text-xs font-normal leading-none text-[#787878]">
               ממוצע זמן מסך יומי
             </div>
-            <div className="text-center font-simpler text-lg font-semibold leading-none text-[#545454]">
-              1 שע׳ 44 דק׳
+            <div
+              dir="rtl"
+              className="text-center font-simpler text-lg font-semibold leading-none text-[#545454]"
+            >
+              <span dir="ltr">1</span> שע׳ <span dir="ltr">44</span> דק׳
             </div>
           </div>
         </div>

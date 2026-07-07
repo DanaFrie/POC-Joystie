@@ -6,8 +6,7 @@ export type PostGameChildSyncStep =
   | 'waitingParentApproval'
   | 'parentSuggestedChange'
   | 'contractCelebration'
-  | 'missionThreeSelfieIntro'
-  | 'preparingSharedPhoto';
+  | 'missionThreeSelfieIntro';
 
 export type PostGameMergedProgress = {
   child: OnboardingChildProgress | null;
@@ -92,7 +91,7 @@ export function deriveChildPostGameStep(
   if (!child?.changeSelected) return null;
 
   if (child.selfieMissionDone) {
-    return 'preparingSharedPhoto';
+    return null;
   }
 
   if (

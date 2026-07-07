@@ -6,6 +6,7 @@ import type { FirestoreBondingInvite } from './types';
 
 const baseUrlSecret = defineSecret('SERVICE_FUNCTION_BASE_URL');
 const COLLECTION = 'bonding_invites';
+const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 function getDb() {
   return admin.firestore();
@@ -15,20 +16,21 @@ function getBaseUrl(): string {
   return baseUrlSecret.value() || 'https://joystie.com';
 }
 
-function buildChildPathUrl(
-  parentId: string,
-  childId?: string,
-  challengeId?: string
-): string {
-  const expiresAt = Date.now() + 14 * 24 * 60 * 60 * 1000;
-  const parts = [parentId, childId || '', challengeId || '', expiresAt.toString()];
-  const compact = parts.join('|');
-  const encoded = Buffer.from(compact, 'utf8')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-  return `${getBaseUrl()}/onboarding/child?token=${encoded}`;
+function buildChildInviteUrl(inviteId: string): string {
+  return `${getBaseUrl()}/onboarding/child?invite=${encodeURIComponent(inviteId)}`;
+}
+
+function getInviteExpiresAtMs(data: FirestoreBondingInvite): number {
+  if (data.expiresAt) {
+    const parsed = Date.parse(data.expiresAt);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  const created = Date.parse(data.createdAt);
+  return (Number.isNaN(created) ? Date.now() : created) + INVITE_TTL_MS;
+}
+
+function isInviteExpired(data: FirestoreBondingInvite): boolean {
+  return Date.now() > getInviteExpiresAtMs(data);
 }
 
 export const recordBondingInvite = functions.https.onCall(
@@ -49,7 +51,10 @@ export const recordBondingInvite = functions.https.onCall(
       parentGender?: 'female' | 'male';
     };
 
-    const childUrl = buildChildPathUrl(parentId, childId, challengeId);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + INVITE_TTL_MS);
+    const ref = getDb().collection(COLLECTION).doc();
+    const childUrl = buildChildInviteUrl(ref.id);
     const whatsappShareUrl = buildWhatsAppShareUrl({
       childUrl,
       childName,
@@ -57,13 +62,13 @@ export const recordBondingInvite = functions.https.onCall(
       parentGender,
     });
 
-    const now = new Date();
     const doc: Omit<FirestoreBondingInvite, 'id'> = {
       parentId,
       childId,
       challengeId,
       ...(childName ? { childName: String(childName) } : {}),
       ...(parentName ? { parentName: String(parentName) } : {}),
+      expiresAt: expiresAt.toISOString(),
       childUrl,
       whatsappShareUrl,
       status: 'pending_share',
@@ -71,11 +76,41 @@ export const recordBondingInvite = functions.https.onCall(
       updatedAt: now.toISOString(),
     };
 
-    const ref = await getDb().collection(COLLECTION).add(doc);
+    await ref.set(doc);
     return {
       inviteId: ref.id,
       childUrl,
       whatsappShareUrl,
+    };
+  }
+);
+
+/** Child device — resolve short `?invite=` link (no auth; invite id is the secret). */
+export const resolveBondingInvite = functions.https.onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    const { inviteId } = request.data as { inviteId?: string };
+    if (!inviteId?.trim()) {
+      throw new functions.https.HttpsError('invalid-argument', 'inviteId required');
+    }
+
+    const snap = await getDb().collection(COLLECTION).doc(inviteId.trim()).get();
+    if (!snap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Invite not found');
+    }
+
+    const data = snap.data() as FirestoreBondingInvite;
+    if (isInviteExpired(data)) {
+      throw new functions.https.HttpsError('failed-precondition', 'Invite expired');
+    }
+
+    return {
+      inviteId: snap.id,
+      parentId: data.parentId,
+      childId: data.childId ?? null,
+      challengeId: data.challengeId ?? null,
+      childName: data.childName ?? null,
+      parentName: data.parentName ?? null,
     };
   }
 );

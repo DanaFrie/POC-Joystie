@@ -20,7 +20,7 @@ export const childOnboardingFigmaLinks = {
   ballGameScoreRing: `${FILE}?node-id=13656-7722&m=dev`,
 } as const;
 
-/** Placeholder child name until parent token is wired. */
+/** Placeholder child name until bonding invite meta is loaded. */
 export const CHILD_ONBOARDING_PLACEHOLDER_NAME = 'יואב' as const;
 
 export const CHILD_ONBOARDING_HERO_VIDEO = '/phone_hover_power.mp4' as const;

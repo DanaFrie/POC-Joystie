@@ -19,9 +19,6 @@ const CHILD_REVIEW_PREVIOUS: Record<string, string> = {
   contractCelebration: 'waitingParentApproval',
   missionThreeSelfieIntro: 'contractCelebration',
   selfiePattern: 'missionThreeSelfieIntro',
-  preparingSharedPhoto: 'selfiePattern',
-  sharedPhotoReview: 'preparingSharedPhoto',
-  sharedPhotoShare: 'sharedPhotoReview',
 };
 
 export function getChildReviewPreviousStep(step: string): string | null {

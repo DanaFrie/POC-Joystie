@@ -22,6 +22,9 @@ const PERSISTED_STEPS = new Set([
   'contractCelebration',
   'missionThreeSelfieIntro',
   'selfiePattern',
+]);
+
+const LEGACY_SELFIE_SUBSTEPS = new Set([
   'preparingSharedPhoto',
   'sharedPhotoReview',
   'sharedPhotoShare',
@@ -34,6 +37,7 @@ export function isPersistedChildFlowStep(step: string | null): step is string {
 export function readPersistedChildFlowStep(): string | null {
   if (typeof window === 'undefined') return null;
   const raw = sessionStorage.getItem(ONBOARDING_CHILD_FLOW_STEP_KEY);
+  if (raw && LEGACY_SELFIE_SUBSTEPS.has(raw)) return 'selfiePattern';
   return isPersistedChildFlowStep(raw) ? raw : null;
 }
 

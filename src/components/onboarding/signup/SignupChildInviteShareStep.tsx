@@ -47,7 +47,7 @@ export function SignupChildInviteShareStep({
   const [preparing, setPreparing] = useState(false);
 
   const ensureInvite = async (): Promise<string> => {
-    if (childUrl && childUrl.includes('token=')) return childUrl;
+    if (childUrl && childUrl.includes('invite=')) return childUrl;
     setPreparing(true);
     setShareError(null);
     try {
@@ -68,7 +68,7 @@ export function SignupChildInviteShareStep({
   };
 
   useEffect(() => {
-    if (childUrl?.includes('token=')) return;
+    if (childUrl?.includes('invite=')) return;
     void ensureInvite().catch(() => {
       // shareError set inside ensureInvite
     });
@@ -76,10 +76,10 @@ export function SignupChildInviteShareStep({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per child
   }, [childName]);
 
-  const inviteReady = Boolean(childUrl?.includes('token='));
+  const inviteReady = Boolean(childUrl?.includes('invite='));
 
   const handleWhatsApp = () => {
-    if (!childUrl?.includes('token=')) return;
+    if (!childUrl?.includes('invite=')) return;
 
     // Advance immediately so session start precedes child opening the link.
     onShared?.();

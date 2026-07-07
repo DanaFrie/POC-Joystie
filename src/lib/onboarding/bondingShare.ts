@@ -1,8 +1,4 @@
-import {
-  getWhatsAppShareUrlForChild,
-  markBondingWhatsAppShared,
-  recordBondingInvite,
-} from '@/lib/api/bonding';
+import { markBondingWhatsAppShared, recordBondingInvite } from '@/lib/api/bonding';
 import { getUser } from '@/lib/api/users';
 import { getOnboardingFirstChildIndex } from '@/lib/onboarding/pickFirstChild';
 import { getOnboardingChildIds } from '@/lib/onboarding/persistOnboardingAccount';
@@ -34,12 +30,6 @@ export function clearOnboardingBondingInviteId() {
   if (typeof window !== 'undefined') {
     sessionStorage.removeItem(INVITE_ID_KEY);
   }
-}
-
-function isLocalDevHost(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  return host === 'localhost' || host === '127.0.0.1';
 }
 
 function getSelectedChildId(): string | undefined {
@@ -75,13 +65,11 @@ async function resolveParentName(parentId: string): Promise<string | undefined> 
   }
 }
 
-/**
- * Record bonding invite (Cloud Function) or fall back to client-side URL.
- */
+/** Record bonding invite via Cloud Function and build `?invite=` child URL. */
 export async function prepareBondingInvite(params: {
   childName: string;
   childGender?: 'boy' | 'girl';
-}): Promise<{ childUrl: string; inviteId?: string }> {
+}): Promise<{ childUrl: string; inviteId: string }> {
   const parentId = await getCurrentUserId();
   if (!parentId) {
     throw new Error('יש להירשם לפני שיתוף ההזמנה');
@@ -99,63 +87,32 @@ export async function prepareBondingInvite(params: {
     parentGender,
   };
 
-  const finalizeChildUrl = (rawUrl: string) => {
-    const onOrigin = rewriteOnboardingChildUrlToCurrentOrigin(rawUrl);
-    return withBondingInviteQueryParams(onOrigin, inviteMeta);
-  };
+  const result = await recordBondingInvite({
+    childId,
+    childName: params.childName,
+    parentName,
+    parentGender,
+    baseUrl,
+  });
 
-  const applyClientFallback = async () => {
-    clearOnboardingBondingInviteId();
-    const fallback = getWhatsAppShareUrlForChild({
-      parentId,
-      childId,
+  const childUrl = withBondingInviteQueryParams(
+    rewriteOnboardingChildUrlToCurrentOrigin(result.childUrl),
+    inviteMeta
+  );
+
+  setBondingChildUrl(childUrl);
+  setBondingChildName(params.childName);
+  setOnboardingBondingInviteId(result.inviteId);
+
+  if (parentName) {
+    await publishOnboardingBondingMeta(parentId, {
       childName: params.childName,
       parentName,
       parentGender,
-      baseUrl,
-    });
-    const childUrl = finalizeChildUrl(fallback.childUrl);
-    setBondingChildUrl(childUrl);
-    setBondingChildName(params.childName);
-    if (parentName) {
-      await publishOnboardingBondingMeta(parentId, {
-        childName: params.childName,
-        parentName,
-        parentGender,
-      }).catch((e) => logger.warn('publishOnboardingBondingMeta failed', e));
-    }
-    return { childUrl };
-  };
-
-  if (isLocalDevHost()) {
-    logger.log('local dev — client bonding URL (skip recordBondingInvite CORS)');
-    return applyClientFallback();
+    }).catch((e) => logger.warn('publishOnboardingBondingMeta failed', e));
   }
 
-  try {
-    const result = await recordBondingInvite({
-      childId,
-      childName: params.childName,
-      parentName,
-      parentGender,
-      baseUrl,
-    });
-    const childUrl = finalizeChildUrl(result.childUrl);
-    setBondingChildUrl(childUrl);
-    setBondingChildName(params.childName);
-    setOnboardingBondingInviteId(result.inviteId);
-    if (parentName) {
-      await publishOnboardingBondingMeta(parentId, {
-        childName: params.childName,
-        parentName,
-        parentGender,
-      }).catch((e) => logger.warn('publishOnboardingBondingMeta failed', e));
-    }
-    return { childUrl, inviteId: result.inviteId };
-  } catch (error) {
-    logger.warn('recordBondingInvite failed, using client URL:', error);
-    return applyClientFallback();
-  }
+  return { childUrl, inviteId: result.inviteId };
 }
 
 export function shareBondingViaWhatsApp(params: {

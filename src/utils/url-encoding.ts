@@ -1,5 +1,4 @@
-// URL encoding/decoding utility for child pages with parent identifier
-// Uses compact delimiter-based encoding to minimize token size
+// URL encoding/decoding for v0.2 child setup/redemption (`/child?token=`)
 import { clientConfig } from '@/config/client.config';
 import {
   parseBondingInviteQueryParams,
@@ -13,88 +12,69 @@ const logger = createContextLogger('URL Encoding');
 export { parseBondingInviteQueryParams, withBondingInviteQueryParams };
 
 /**
- * Encode parent ID, child ID, and optional challenge ID into compact URL-safe token
+ * Encode parent ID, child ID, and optional challenge ID into compact URL-safe token.
  * Format: base64url(parentId|childId|challengeId|expiresAt)
- * Uses pipe delimiter for compact encoding (no JSON overhead)
+ * Used by `/child` setup + redemption only.
  */
 export function encodeParentToken(
-  parentId: string, 
-  childId?: string, 
+  parentId: string,
+  childId?: string,
   challengeId?: string
 ): string {
-  const expiresAt = Date.now() + (clientConfig.token.expirationDays * 24 * 60 * 60 * 1000);
-  
-  // Compact format: parentId|childId|challengeId|expiresAt
-  // Empty values use empty string (not null) to keep it compact
-  const parts = [
-    parentId,
-    childId || '',
-    challengeId || '',
-    expiresAt.toString()
-  ];
-  
+  const expiresAt = Date.now() + clientConfig.token.expirationDays * 24 * 60 * 60 * 1000;
+
+  const parts = [parentId, childId || '', challengeId || '', expiresAt.toString()];
   const compact = parts.join('|');
-  // Use base64url encoding (URL-safe)
   const encoded = btoa(compact)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
-  
+
   return encoded;
 }
 
-/**
- * Decode parent token from URL and validate expiration
- * Uses compact pipe-delimited format: parentId|childId|challengeId|expiresAt
- */
-export function decodeParentToken(token: string): { 
-  parentId: string; 
-  childId: string | null; 
+/** Decode `/child?token=` and validate expiration. */
+export function decodeParentToken(token: string): {
+  parentId: string;
+  childId: string | null;
   challengeId: string | null;
   timestamp: number;
   expiresAt: number;
   isExpired: boolean;
 } | null {
   try {
-    // Restore base64url to base64
-    const base64 = token
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    
-    // Add padding if needed
+    const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    
     const decoded = atob(padded);
-    
-    // Parse compact pipe-delimited format: parentId|childId|challengeId|expiresAt
+
     if (!decoded.includes('|')) {
-      return null; // Invalid format
+      return null;
     }
-    
+
     const parts = decoded.split('|');
     if (parts.length !== 4) {
-      return null; // Invalid format - must have exactly 4 parts
+      return null;
     }
-    
+
     const parentId = parts[0];
     const childId = parts[1] || null;
     const challengeId = parts[2] || null;
     const expiresAt = parseInt(parts[3], 10);
-    
+
     if (!parentId || !expiresAt || isNaN(expiresAt)) {
-      return null; // Invalid data
+      return null;
     }
-    
+
     const now = Date.now();
     const isExpired = now > expiresAt;
-    
+
     return {
       parentId,
       childId,
       challengeId,
       timestamp: Date.now(),
       expiresAt,
-      isExpired
+      isExpired,
     };
   } catch (error) {
     logger.error('Error decoding parent token:', error);
@@ -102,27 +82,13 @@ export function decodeParentToken(token: string): {
   }
 }
 
-/** Base path for unified child flow (setup + redemption same URL) */
 const CHILD_PATH = '/child';
 
 /** v0.3 onboarding funnel — child invite from parent bonding share */
 export const ONBOARDING_CHILD_PATH = '/onboarding/child';
 
-function buildChildTokenUrl(
-  parentId: string,
-  childId: string | undefined,
-  challengeId: string | undefined,
-  baseUrl: string | undefined,
-  path: string
-): string {
-  const token = encodeParentToken(parentId, childId, challengeId);
-  const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}${path}?token=${token}`;
-}
-
 /**
- * Generate the single child URL (setup and redemption use the same link).
- * After setup the child keeps this link; on redemption day it shows the redemption funnel.
+ * Generate the v0.2 child URL (setup and redemption use the same link).
  */
 export function generateChildUrl(
   parentId: string,
@@ -130,54 +96,34 @@ export function generateChildUrl(
   challengeId?: string,
   baseUrl?: string
 ): string {
-  return buildChildTokenUrl(parentId, childId, challengeId, baseUrl, CHILD_PATH);
-}
-
-/** Child invite URL for parent onboarding bonding share (`/onboarding/child`). */
-export function generateOnboardingChildUrl(
-  parentId: string,
-  childId?: string,
-  challengeId?: string,
-  baseUrl?: string
-): string {
-  return buildChildTokenUrl(parentId, childId, challengeId, baseUrl, ONBOARDING_CHILD_PATH);
+  const token = encodeParentToken(parentId, childId, challengeId);
+  const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}${CHILD_PATH}?token=${encodeURIComponent(token)}`;
 }
 
 /**
- * Rebuild child invite URL on the current origin (keeps `token=`).
- * Use when a stored link points at another host (e.g. joystie.com vs localhost).
+ * Rebuild bonding child invite URL on the current origin (keeps `invite=` + cn/cg/pn/pg).
  */
 export function rewriteOnboardingChildUrlToCurrentOrigin(urlOrToken: string): string {
   if (typeof window === 'undefined' || !urlOrToken.trim()) return urlOrToken;
 
   try {
-    let token: string | null = null;
-    if (urlOrToken.includes('token=')) {
-      const parsed = new URL(urlOrToken, window.location.origin);
-      token = parsed.searchParams.get('token');
-    } else if (!urlOrToken.includes('/') && !urlOrToken.includes('?')) {
-      token = urlOrToken.trim();
-    }
-    if (!token) return urlOrToken;
-    const base = `${window.location.origin}${ONBOARDING_CHILD_PATH}?token=${encodeURIComponent(token)}`;
-    if (urlOrToken.includes('token=')) {
-      return preserveBondingInviteQueryParams(urlOrToken, base);
-    }
-    return base;
+    const parsed = new URL(urlOrToken, window.location.origin);
+    const inviteId = parsed.searchParams.get('invite');
+    if (!inviteId) return urlOrToken;
+    const base = `${window.location.origin}${ONBOARDING_CHILD_PATH}?invite=${encodeURIComponent(inviteId)}`;
+    return preserveBondingInviteQueryParams(urlOrToken, base);
   } catch {
     return urlOrToken;
   }
 }
 
-/** Child ball-game route with the same bonding token + invite query params. */
-export function buildGameChildUrlWithToken(token: string): string {
-  const encoded = encodeURIComponent(token);
+/** Ball-game route — carries bonding `invite` + display query params. */
+export function buildGameChildUrlWithInvite(inviteId: string): string {
+  const encoded = encodeURIComponent(inviteId);
   if (typeof window === 'undefined') {
-    return `/game/child?token=${encoded}`;
+    return `/game/child?invite=${encoded}`;
   }
-  const base = `${window.location.origin}/game/child?token=${encoded}`;
-  if (typeof window !== 'undefined') {
-    return preserveBondingInviteQueryParams(window.location.href, base);
-  }
-  return base;
+  const base = `${window.location.origin}/game/child?invite=${encoded}`;
+  return preserveBondingInviteQueryParams(window.location.href, base);
 }

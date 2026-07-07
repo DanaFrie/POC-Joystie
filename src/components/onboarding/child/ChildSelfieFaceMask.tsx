@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
+import { useFunnelBleedBarStyle } from '@/components/ui/FunnelViewportContext';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
 export type SelfieFaceHole = {
@@ -34,7 +34,7 @@ export function ChildSelfieFaceMask({
   showFrost = true,
   showRings = true,
 }: ChildSelfieFaceMaskProps) {
-  const bleedStyle = useFunnelFullBleed();
+  const coverStyle = useFunnelBleedBarStyle(0);
   const uid = useId().replace(/:/g, '');
   const maskId = `child-selfie-mask-${uid}`;
 
@@ -42,17 +42,15 @@ export function ChildSelfieFaceMask({
 
   return (
     <div
-      className="pointer-events-none absolute z-10"
-      style={bleedStyle}
+      className="pointer-events-none absolute z-10 overflow-hidden"
+      style={coverStyle}
       aria-hidden
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width={V03_SCREEN_WIDTH}
-        height={V03_SCREEN_HEIGHT}
         viewBox={`0 0 ${V03_SCREEN_WIDTH} ${V03_SCREEN_HEIGHT}`}
         fill="none"
-        className="size-full"
+        className="absolute inset-0 size-full"
         preserveAspectRatio="none"
       >
         <defs>

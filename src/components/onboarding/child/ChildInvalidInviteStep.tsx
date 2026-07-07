@@ -8,7 +8,7 @@ type ChildInvalidInviteStepProps = {
   detail?: string;
 };
 
-/** Shown when `?token=` is missing, invalid, or expired. */
+/** Shown when `?invite=` is missing, invalid, or expired. */
 export function ChildInvalidInviteStep({ title, detail }: ChildInvalidInviteStepProps) {
   return (
     <>
