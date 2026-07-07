@@ -98,7 +98,6 @@ export function ParentGamePostWinFlow({
   const cleanupStarted = useRef(false);
   const [fadeOpacity, setFadeOpacity] = useState(0);
   const [localAdditionalChange, setLocalAdditionalChange] = useState(false);
-  const [approveOverride, setApproveOverride] = useState(false);
   const [awaitingChildOnProposal, setAwaitingChildOnProposal] = useState(false);
   const syncEnabled = Boolean(parentId) && phase !== 'game' && phase !== 'winFadeOut';
   const postGame = usePostGameSync({
@@ -141,7 +140,7 @@ export function ParentGamePostWinFlow({
   }, [phase, onPhaseChange, onWinFadeComplete]);
 
   useEffect(() => {
-    if (!syncEnabled || approveOverride || !postGame.parentPhase) return;
+    if (!syncEnabled || !postGame.parentPhase) return;
 
     // Parent tapped "הציע שינוי נוסף" — local picker until שליחה.
     if (localAdditionalChange && phase === 'additionalChange') {
@@ -182,7 +181,6 @@ export function ParentGamePostWinFlow({
   }, [
     syncEnabled,
     localAdditionalChange,
-    approveOverride,
     awaitingChildOnProposal,
     postGame.parentPhase,
     phase,
@@ -233,13 +231,10 @@ export function ParentGamePostWinFlow({
   );
 
   const handleApproveChildChange = useCallback(() => {
-    if (syncEnabled) {
-      setApproveOverride(true);
-      onPhaseChange('waitingDoriSelfie');
-      void postGame.approveChildChange();
-      return;
-    }
     onPhaseChange('waitingDoriSelfie');
+    if (syncEnabled) {
+      void postGame.approveChildChange();
+    }
   }, [syncEnabled, postGame, onPhaseChange]);
 
   const handleSuggestMore = useCallback(() => {
