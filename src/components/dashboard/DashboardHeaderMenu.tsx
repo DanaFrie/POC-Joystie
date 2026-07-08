@@ -45,7 +45,21 @@ export function DashboardHeaderMenu() {
             aria-label="סגור תפריט"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 top-12 z-50 min-w-[180px] overflow-hidden rounded-[18px] border border-white/20 bg-v03-green-900/95 shadow-v03-display backdrop-blur-md">
+          <div className="absolute right-0 top-12 z-50 min-w-[180px] overflow-hidden rounded-[18px] border border-white/20 bg-v03-green-900/95 shadow-v03-display backdrop-blur-md">
+            <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-3 text-right font-simpler text-[15px] font-bold text-white transition hover:bg-white/10"
+            >
+              דשבורד הורה
+            </Link>
+            <Link
+              href="/dashboard/child"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-3 text-right font-simpler text-[15px] font-bold text-white transition hover:bg-white/10"
+            >
+              דשבורד ילד
+            </Link>
             <Link
               href="/help"
               onClick={() => setOpen(false)}

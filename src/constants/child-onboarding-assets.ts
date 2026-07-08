@@ -37,6 +37,10 @@ export const CHILD_ONBOARDING_ASSETS = {
   motherChildDori: '/onboarding/child/mother-child-dori.webp',
   /** Mission 3 intro — father + child with Dori. */
   fatherChildDori: '/onboarding/child/father-child-dori.webp',
+  /** Mission 3 — default share result when skipping selfie (boy). */
+  defaultSelfieBoy: '/onboarding/child/default-selfie-boy.webp',
+  /** Mission 3 — default share result when skipping selfie (girl). */
+  defaultSelfieGirl: '/onboarding/child/default-selfie-girl.webp',
   /** Castle change celebration — Figma 13702:9497 + confetti overlay. */
   confettiPurple: '/onboarding/child/confeti-purple.gif',
   /** Castle change celebration — Figma 13702:9497 */

@@ -31,7 +31,8 @@ export default function ConditionalMainWrapper({
     pathname?.startsWith('/signup/') ||
     pathname?.startsWith('/child') ||
     pathname === '/help' ||
-    pathname === '/dashboard';
+    pathname === '/dashboard' ||
+    pathname?.startsWith('/dashboard/');
 
   const useLegacyBg = needsLegacyV02Surface(pathname);
   const useLegacyFonts = needsLegacyV02Fonts(pathname);

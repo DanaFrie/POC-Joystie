@@ -20,7 +20,8 @@ export default function ConditionalNavigation() {
     pathname === '/forgot-password' ||
     pathname === '/reset-password' ||
     pathname === '/help' ||
-    pathname === '/dashboard'
+    pathname === '/dashboard' ||
+    pathname?.startsWith('/dashboard/')
   ) {
     return null;
   }

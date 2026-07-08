@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChildSelfiePatternStep } from '@/components/onboarding/child/ChildSelfiePatternStep';
 import type { SelfieCapturedFaces } from '@/components/onboarding/child/ChildSelfiePatternStep';
 import { ChildSharedPhotoPreparingStep } from '@/components/onboarding/child/ChildSharedPhotoPreparingStep';
 import { ChildSharedPhotoReviewStep } from '@/components/onboarding/child/ChildSharedPhotoReviewStep';
 import { ChildSharedPhotoShareStep } from '@/components/onboarding/child/ChildSharedPhotoShareStep';
-import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
+import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
 import { generateSelfieImage } from '@/lib/api/selfie';
 import { createContextLogger } from '@/utils/logger';
 
@@ -38,12 +39,11 @@ export function ChildSelfieMissionFlow({
 }: ChildSelfieMissionFlowProps) {
   void parentId;
 
+  const router = useRouter();
+
   const skipPhotoSrc = useMemo(
-    () =>
-      parentGender === 'female'
-        ? CHILD_ONBOARDING_ASSETS.motherChildDori
-        : CHILD_ONBOARDING_ASSETS.fatherChildDori,
-    [parentGender],
+    () => defaultSelfieAssetForChild(childGender),
+    [childGender],
   );
 
   const [phase, setPhase] = useState<SelfieMissionPhase>('pattern');
@@ -53,6 +53,17 @@ export function ChildSelfieMissionFlow({
   const [photoSrc, setPhotoSrc] = useState<string | null>(null);
   const photoSrcRef = useRef<string | null>(null);
   const shareSignaledRef = useRef(false);
+
+  const goToShareWithoutPhoto = useCallback(() => {
+    setUploadTask(null);
+    setServiceProgress(0);
+    if (photoSrcRef.current?.startsWith('blob:')) {
+      URL.revokeObjectURL(photoSrcRef.current);
+    }
+    photoSrcRef.current = skipPhotoSrc;
+    setPhotoSrc(skipPhotoSrc);
+    setPhase('share');
+  }, [skipPhotoSrc]);
 
   const goToShare = useCallback(() => {
     setUploadTask(null);
@@ -143,7 +154,7 @@ export function ChildSelfieMissionFlow({
         parentGender={parentGender}
         onFacesReady={handleFacesReady}
         onPreviewComplete={() => setPhase('preparing')}
-        onSkipWithoutPhoto={goToShare}
+        onSkipWithoutPhoto={goToShareWithoutPhoto}
       />
     );
   }
@@ -173,7 +184,7 @@ export function ChildSelfieMissionFlow({
     <ChildSharedPhotoShareStep
       photoSrc={photoSrc}
       onShare={() => {}}
-      onWallet={() => {}}
+      onWallet={() => router.push('/dashboard/child')}
     />
   );
 }

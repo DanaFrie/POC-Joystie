@@ -367,6 +367,37 @@ body.layout-root:has(.v03-funnel-root) > div.relative {
   overflow: visible;
 }
 
+/* Dashboard routes — true 100vw bleed (no FunnelViewport 375 artboard) */
+html.layout-root:has(.v03-dashboard-root),
+body.layout-root:has(.v03-dashboard-root) {
+  height: 100%;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  overscroll-behavior: none;
+  background-color: #061c1e !important;
+  background-image: none !important;
+}
+
+/* Same breakout trick as funnel: fixed dashboard root spans the viewport */
+body.layout-root:has(.v03-dashboard-root) > div.relative {
+  min-height: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.v03-dashboard-root {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+}
+
 .v03-funnel-root {
   width: 100vw;
   height: 100dvh;

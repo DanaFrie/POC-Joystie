@@ -708,7 +708,8 @@ export const CHILD_SHARED_PHOTO_SHARE = {
     left: 44,
     top: 86,
     width: 299,
-    height: 108.231,
+    /** Room for 2 text lines + mint scribble (vector SVG). */
+    height: 150,
     textWidth: 299,
     textHeight: 88,
     fontSize: 40,

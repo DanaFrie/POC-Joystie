@@ -66,8 +66,8 @@ export function ChildSharedPhotoPrimaryButton({
       }}
     >
       <span className="inline-flex items-center gap-[6.69px]">
-        <span>{children}</span>
         {icon}
+        <span>{children}</span>
       </span>
     </button>
   );
@@ -101,8 +101,8 @@ export function ChildSharedPhotoSecondaryButton({
       }}
     >
       <span className="inline-flex items-center gap-[6.69px]">
-        <span>{children}</span>
         {icon}
+        <span>{children}</span>
       </span>
     </button>
   );

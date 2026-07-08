@@ -244,13 +244,12 @@ export function ParentGamePostWinFlow({
 
   const handleCompletionContinue = useCallback(() => {
     sessionStorage.removeItem(ONBOARDING_PARENT_GAME_WON_KEY);
+    sessionStorage.removeItem(FLOW_STEP_STORAGE_KEY);
     if (onFlowComplete) {
-      sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'subscription');
       onFlowComplete();
       return;
     }
-    sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'subscription');
-    router.push('/onboarding');
+    router.replace('/dashboard?subscription=1');
   }, [router, onFlowComplete]);
 
   if (phase === 'onboardingComplete') {

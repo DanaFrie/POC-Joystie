@@ -61,7 +61,7 @@ export function ChildSharedPhotoBackdrop({
         style={{ left: logo.left, top: logo.top, width: logo.width }}
         aria-hidden
       >
-        <JoystieWordmarkLogo className="h-auto w-full" />
+        <JoystieWordmarkLogo tone="dark" className="h-auto w-full" />
       </div>
 
       <div className="relative z-10 flex h-full min-h-0 flex-col">{children}</div>

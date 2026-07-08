@@ -26,7 +26,6 @@ import { useSelfieCameraStream } from '@/hooks/useSelfieCameraStream';
 import { captureLiveSelfieFaces } from '@/lib/onboarding/composeChildSelfieFrame';
 import {
   CHILD_SELFIE_PATTERN_CAPTURE_LABEL,
-  CHILD_SHARED_PHOTO_SKIP_LABEL,
 } from '@/lib/onboarding/childPostGameCopy';
 import { resolveParentCourtLabel } from '@/lib/onboarding/childBondingLabels';
 
@@ -112,7 +111,6 @@ export function ChildSelfiePatternStep({
   } = useSelfieCameraStream();
   const [previewUrls, setPreviewUrls] = useState<{ child: string; parent: string } | null>(null);
   const [previewFading, setPreviewFading] = useState(false);
-  const [showSkipCard, setShowSkipCard] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
   const capturedRef = useRef(false);
@@ -125,7 +123,7 @@ export function ChildSelfiePatternStep({
   const streamActive = status === 'active' && Boolean(stream) && !previewUrls;
   const useLiveCamera = streamActive && videoReady;
   const showBlurredHoles = (!useLiveCamera && !previewUrls) || cameraWarming;
-  const showDisappointed = (status === 'denied' && !retryBusy) || showSkipCard;
+  const showDisappointed = status === 'denied' && !retryBusy;
   const capture = layout.captureButton;
   const childHole = layout.childHole;
   const parentHole = layout.parentHole;
@@ -167,7 +165,6 @@ export function ChildSelfiePatternStep({
   }, [previewUrls, previewTiming.fadeMs, previewTiming.holdMs]);
 
   const handleRetryCamera = useCallback(async () => {
-    setShowSkipCard(false);
     setPreviewFading(false);
     setCapturing(false);
     capturedRef.current = false;
@@ -339,15 +336,6 @@ export function ChildSelfiePatternStep({
                 <ChildSelfieCaptureCameraIcon size={18} />
               </span>
             </button>
-            {onSkipWithoutPhoto ? (
-              <button
-                type="button"
-                onClick={() => setShowSkipCard(true)}
-                className="font-simpler text-[14px] font-normal leading-[17.5px] tracking-[-0.21px] text-white/80 underline decoration-solid underline-offset-2"
-              >
-                {CHILD_SHARED_PHOTO_SKIP_LABEL}
-              </button>
-            ) : null}
           </FunnelStepSection>
         </FunnelStepForeground>
       ) : null}

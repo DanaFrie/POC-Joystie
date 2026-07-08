@@ -1,115 +1,84 @@
 'use client';
 
+import { useState } from 'react';
+import Image from 'next/image';
 import type { WeekDay } from '@/types/dashboard';
-import { PARENT_DASHBOARD_COLORS } from '@/constants/parent-dashboard-layout';
-import { formatScreenTimeGoalHours } from '@/utils/formatting';
+import {
+  PARENT_DASHBOARD_ASSETS,
+  PARENT_DASHBOARD_COLORS,
+} from '@/constants/parent-dashboard-layout';
 
-type DashboardWeekTrackerProps = {
-  week: WeekDay[];
-  dailyScreenTimeGoal: number;
-  childName?: string;
+/** Visual order right→left in RTL layout when using flex row with dir=rtl: א…ש */
+const DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'] as const;
+
+export type ChangeCardMock = {
+  id: string;
+  title: string;
+  changeText: string;
+  initialChecked?: boolean[];
 };
 
-function dayLetter(dayName: string): string {
-  const map: Record<string, string> = {
-    'א׳': 'א',
-    'ב׳': 'ב',
-    'ג׳': 'ג',
-    'ד׳': 'ד',
-    'ה׳': 'ה',
-    'ו׳': 'ו',
-    'ש׳': 'ש',
-  };
-  return map[dayName] || dayName.charAt(0);
-}
+type DayToggleCircleProps = {
+  letter: string;
+  checked: boolean;
+  onToggle: () => void;
+};
 
-function isDone(status: WeekDay['status']): boolean {
-  return status === 'success' || status === 'warning' || status === 'awaiting_approval';
-}
-
-function DayCircle({ day }: { day: WeekDay }) {
-  const done = isDone(day.status);
-  const minutes = Math.round((day.screenTimeUsed || 0) * 60);
-
+function DayToggleCircle({ letter, checked, onToggle }: DayToggleCircleProps) {
   return (
     <div className="relative flex h-[73px] flex-col items-center justify-center gap-2">
       <span className="font-simpler text-[12px] font-bold leading-[15.6px] text-white">
-        {dayLetter(day.dayName)}
+        {letter}
       </span>
 
-      {done ? (
-        <div
-          className="relative flex h-[32.5px] w-[32.5px] items-center justify-center rounded-full shadow-[0_3.4px_3.4px_rgba(0,0,0,0.25)]"
-          style={{ background: PARENT_DASHBOARD_COLORS.purpleDone }}
-        >
-          <svg width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden>
-            <path
-              d="M1 5.5L5 9.5L13 1.5"
-              stroke="white"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-      ) : day.isRedemptionDay ? (
-        <div
-          className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-sm"
-          style={{
-            background: PARENT_DASHBOARD_COLORS.mintBright,
-            color: PARENT_DASHBOARD_COLORS.canvas,
-          }}
-        >
-          🎉
-        </div>
-      ) : (
-        <div
-          className="h-[30px] w-[30px] rounded-full border-[1.25px] border-[#888888]"
-          style={{ background: PARENT_DASHBOARD_COLORS.dayPending }}
-        />
-      )}
-
-      {done && minutes > 0 && (
-        <span className="text-center font-simpler text-[12px] font-light leading-4 text-white">
-          {minutes}
-          <br />
-          דק׳
-        </span>
-      )}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="relative flex shrink-0 items-center justify-center"
+        style={
+          checked
+            ? { width: 32.5, height: 32.5 }
+            : {
+                display: 'flex',
+                width: 30,
+                height: 30,
+                padding: 6.25,
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: 6.25,
+                flexShrink: 0,
+                borderRadius: 321.429,
+                border: '1.25px solid #888',
+                background: '#3A514A',
+                boxSizing: 'border-box',
+              }
+        }
+        aria-pressed={checked}
+        aria-label={checked ? `בטל סימון יום ${letter}` : `סמן יום ${letter}`}
+      >
+        {checked ? (
+          <Image
+            src={PARENT_DASHBOARD_ASSETS.completionCheck}
+            alt=""
+            width={33}
+            height={33}
+            className="pointer-events-none size-[32.5px]"
+            unoptimized
+          />
+        ) : null}
+      </button>
     </div>
   );
 }
 
-export function DashboardWeekTracker({
-  week,
-  dailyScreenTimeGoal,
-  childName,
-}: DashboardWeekTrackerProps) {
-  const goalLabel =
-    dailyScreenTimeGoal > 0
-      ? `לעמוד ביעד של ${formatScreenTimeGoalHours(dailyScreenTimeGoal)} זמן מסך ביום`
-      : 'יעד האתגר יופיע כאן כשהאתגר יתחיל';
+type ChangeCardProps = {
+  title: string;
+  changeText: string;
+  checkedDays: boolean[];
+  onToggleDay: (index: number) => void;
+};
 
-  if (week.length === 0) {
-    return (
-      <section
-        className="w-full rounded-[32px] px-[18px] py-[25px]"
-        style={{
-          background: PARENT_DASHBOARD_COLORS.cardBg,
-          outline: `1px solid ${PARENT_DASHBOARD_COLORS.cardOutline}`,
-          outlineOffset: -1,
-        }}
-      >
-        <p className="text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-          {childName ? `השבוע של ${childName}` : 'מעקב שבועי'}
-        </p>
-        <p className="mt-3 text-center font-simpler text-[14px] text-[#B9C9CB]">
-          הגרף יופיע כשהאתגר יתחיל
-        </p>
-      </section>
-    );
-  }
-
+function ChangeCard({ title, changeText, checkedDays, onToggleDay }: ChangeCardProps) {
   return (
     <section
       className="w-full rounded-[32px] px-[18px] pb-5 pt-[25px]"
@@ -119,26 +88,104 @@ export function DashboardWeekTracker({
         outlineOffset: -1,
       }}
     >
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-          {childName ? `השבוע של ${childName}` : 'היעד השבועי'}
+      <div className="flex w-full flex-col items-center gap-2">
+        <p className="w-full px-2 text-center font-simpler text-[16px] font-normal leading-[21.6px] text-white">
+          {title}
         </p>
-        <p className="text-center font-simpler text-[24px] font-black leading-[30px] text-white">
-          {goalLabel}
+        <p className="w-full px-2 text-center font-simpler text-[20px] font-black leading-[25px] text-white">
+          {changeText}
         </p>
       </div>
 
-      <div
-        className="my-5 h-px w-full"
-        style={{ background: '#586D66' }}
-        aria-hidden
-      />
+      <div className="my-5 h-0 w-full outline outline-1 outline-[#586D66] -outline-offset-[0.5px]" aria-hidden />
 
-      <div className="flex items-start justify-between gap-1">
-        {[...week].reverse().map((day, index) => (
-          <DayCircle key={`${day.date}-${index}`} day={day} />
+      <div className="flex w-full items-center justify-between">
+        {DAY_LETTERS.map((letter, dayIndex) => (
+          <DayToggleCircle
+            key={letter}
+            letter={letter}
+            checked={Boolean(checkedDays[dayIndex])}
+            onToggle={() => onToggleDay(dayIndex)}
+          />
         ))}
       </div>
     </section>
+  );
+}
+
+type DashboardWeekTrackerProps = {
+  week: WeekDay[];
+  dailyScreenTimeGoal: number;
+  childName?: string;
+  changeText?: string;
+  cards?: ChangeCardMock[];
+};
+
+function defaultCards(childName?: string, changeText?: string): ChangeCardMock[] {
+  const name = childName || 'הילד';
+  return [
+    {
+      id: 'change-1',
+      title: `השינוי הראשון של ${name}`,
+      changeText: changeText || 'לנסות ללכת לישון בשעה קצת יותר מוקדמת',
+      initialChecked: [true, true, true, false, false, false, false],
+    },
+    {
+      id: 'change-2',
+      title: `השינוי השני של ${name}`,
+      changeText: 'להפחית את כמות המסכים לפני שינה',
+      initialChecked: [true, false, false, false, false, false, false],
+    },
+  ];
+}
+
+export function DashboardWeekTracker({
+  childName,
+  changeText,
+  week: _week,
+  dailyScreenTimeGoal: _goal,
+  cards: cardsProp,
+}: DashboardWeekTrackerProps) {
+  const cards = cardsProp ?? defaultCards(childName, changeText);
+
+  const [checkedByCard, setCheckedByCard] = useState<Record<string, boolean[]>>(() => {
+    const initial: Record<string, boolean[]> = {};
+    cards.forEach((card) => {
+      initial[card.id] = card.initialChecked ?? [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+      ];
+    });
+    return initial;
+  });
+
+  const toggleDay = (cardId: string, dayIndex: number) => {
+    setCheckedByCard((prev) => {
+      const current = prev[cardId] ?? [false, false, false, false, false, false, false];
+      const next = [...current];
+      next[dayIndex] = !next[dayIndex];
+      return { ...prev, [cardId]: next };
+    });
+  };
+
+  return (
+    <div className="flex w-full flex-col gap-3">
+      {cards.map((card) => (
+        <ChangeCard
+          key={card.id}
+          title={card.title}
+          changeText={card.changeText}
+          checkedDays={
+            checkedByCard[card.id] ?? [false, false, false, false, false, false, false]
+          }
+          onToggleDay={(dayIndex) => toggleDay(card.id, dayIndex)}
+        />
+      ))}
+    </div>
   );
 }

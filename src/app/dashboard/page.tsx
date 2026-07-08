@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   DashboardLoadingState,
   ParentDashboardScreen,
@@ -72,6 +72,13 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [openSubscription] = useState(() => searchParams.get('subscription') === '1');
+
+  useEffect(() => {
+    if (searchParams.get('subscription') !== '1') return;
+    router.replace('/dashboard', { scroll: false });
+  }, [searchParams, router]);
 
   const [setupUrl, setSetupUrl] = useState('');
   const [uploadUrl, setUploadUrl] = useState('');
@@ -341,7 +348,7 @@ export default function DashboardPage() {
   };
 
   if (isLoading || !dashboardData) {
-    return <DashboardLoadingState label="טוען נתונים..." />;
+    return <DashboardLoadingState />;
   }
 
   if (error) {
@@ -388,6 +395,7 @@ export default function DashboardPage() {
       onRejectWeeklyUpload={handleRejectWeeklyUpload}
       showCompleteModal={showCompleteModal}
       onCloseCompleteModal={handleCloseCompleteModal}
+      initialSubscriptionOpen={openSubscription}
     />
   );
 }

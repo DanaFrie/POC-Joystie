@@ -44,7 +44,10 @@ export function ChildSharedPhotoShareStep({
           height: frame.height,
         }}
       >
-        <div className="relative overflow-visible" style={{ width: frame.width, height: frame.height }}>
+        <div
+          className="relative overflow-visible"
+          style={{ width: frame.width, minHeight: frame.height }}
+        >
           <h1
             className="mx-auto flex flex-col text-center font-simpler font-black text-white"
             style={{
@@ -67,6 +70,7 @@ export function ChildSharedPhotoShareStep({
             left={underline.left}
             width={underline.width}
             height={underline.height}
+            strokeWidth={underline.strokeWidth}
           />
         </div>
       </div>

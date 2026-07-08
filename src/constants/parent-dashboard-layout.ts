@@ -1,11 +1,11 @@
 /**
- * Parent dashboard — Figma 13465:6179
- * @see https://www.figma.com/design/JzP4ygtXS3V7KSXiPro7hA/Joystie---Platform?node-id=13465-6179&m=dev
+ * Parent dashboard — Figma 13655:11338
+ * @see https://www.figma.com/design/JzP4ygtXS3V7KSXiPro7hA/Joystie---Platform?node-id=13655-11338&m=dev
  */
 const FILE =
   'https://www.figma.com/design/JzP4ygtXS3V7KSXiPro7hA/Joystie---Platform';
 
-export const PARENT_DASHBOARD_FIGMA = `${FILE}?node-id=13465-6179&m=dev` as const;
+export const PARENT_DASHBOARD_FIGMA = `${FILE}?node-id=13655-11338&m=dev` as const;
 
 export const PARENT_DASHBOARD_COLORS = {
   canvas: '#061C1E',
@@ -25,15 +25,20 @@ export const PARENT_DASHBOARD_COLORS = {
 } as const;
 
 export const PARENT_DASHBOARD_ASSETS = {
-  /** Optional — companion bleed; falls back to dori-money-sit */
-  companion: '/onboarding/child/dori-money-sit.webp',
-  savingsCardBg: '/dashboard/savings-card-bg.webp',
+  challengeBanner: '/dashboard/dori-fly.webp',
+  agreementThumb: '/signup/journey/agreements.webp',
+  completionCheck: '/onboarding/parent/completion-check.svg',
 } as const;
 
 export const PARENT_DASHBOARD_LAYOUT = {
   topBarHeight: 56,
-  contentGap: 28,
+  contentGap: 45,
+  contentTop: 97,
   sectionGap: 12,
+  frame1Gap: 15,
+  frame2Gap: 8,
+  frame3Gap: 12,
   ringSize: 219,
   cardRadius: 32,
+  contentWidth: 328,
 } as const;

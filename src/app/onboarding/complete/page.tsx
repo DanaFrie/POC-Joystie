@@ -8,7 +8,7 @@ export default function OnboardingCompleteRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/dashboard');
+    router.replace('/dashboard?subscription=1');
   }, [router]);
 
   return null;

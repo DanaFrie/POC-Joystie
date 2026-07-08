@@ -1,23 +1,25 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import Image from 'next/image';
-import { DashboardFigmaBackground } from '@/components/dashboard/DashboardFigmaBackground';
+import { useEffect, useState } from 'react';
+import { DashboardFigmaBackground, DashboardBottomGlows } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
-import { DashboardScreenTimeRing } from '@/components/dashboard/DashboardScreenTimeRing';
-import { DashboardSavingsCard } from '@/components/dashboard/DashboardSavingsCard';
+import { DashboardDailyAverageCard } from '@/components/dashboard/DashboardDailyAverageCard';
+import { DashboardChallengeBanner } from '@/components/dashboard/DashboardChallengeBanner';
 import { DashboardWeekTracker } from '@/components/dashboard/DashboardWeekTracker';
-import { DashboardComboBanner } from '@/components/dashboard/DashboardComboBanner';
 import { DashboardContractSection } from '@/components/dashboard/DashboardContractSection';
-import { DashboardNotificationsSheet } from '@/components/dashboard/DashboardNotificationsSheet';
-import NotificationsPanel from '@/components/dashboard/NotificationsPanel';
+import { DashboardSubscriptionOverlay } from '@/components/dashboard/DashboardSubscriptionOverlay';
 import CompleteContent from '@/components/onboarding/CompleteContent';
+import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
+import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
+import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
+import { FunnelViewport } from '@/components/ui/FunnelViewport';
 import {
-  PARENT_DASHBOARD_ASSETS,
   PARENT_DASHBOARD_COLORS,
   PARENT_DASHBOARD_LAYOUT,
 } from '@/constants/parent-dashboard-layout';
+import { usePostGameSync } from '@/hooks/usePostGameSync';
+import { postGameChildChangeText } from '@/lib/onboarding/postGameSync';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 
@@ -36,40 +38,33 @@ type ParentDashboardScreenProps = {
   onRejectWeeklyUpload: () => Promise<void>;
   showCompleteModal: boolean;
   onCloseCompleteModal: () => void;
+  /** Open subscription popup on load (e.g. after onboarding completion). */
+  initialSubscriptionOpen?: boolean;
 };
 
-function DashboardLoadingState({ label }: { label: string }) {
+const DASHBOARD_LOADING_HEADLINE = 'אנחנו בדרך';
+
+/** Waiting-style loader for parent + child dashboard data fetch. */
+export function DashboardLoadingState() {
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center"
+      className="absolute inset-0 overflow-hidden"
       style={{ background: PARENT_DASHBOARD_COLORS.canvas }}
+      role="status"
+      aria-live="polite"
+      aria-busy
     >
-      <div className="text-center">
-        <p className="mb-4 font-simpler text-[18px] font-bold text-white">{label}</p>
-        <div
-          className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-          style={{ borderColor: `${PARENT_DASHBOARD_COLORS.mintBright} transparent transparent transparent` }}
-        />
-      </div>
+      <FunnelViewport surface="dark" scaleMode="scroll" className="font-simpler text-v03-text-on-dark">
+        <OnboardingGrid />
+        <OnboardingWaitingScreenShell zIndex={20} ariaBusy staticLayout>
+          <OnboardingWaitingCenterContent
+            headline={DASHBOARD_LOADING_HEADLINE}
+            ariaLabel={DASHBOARD_LOADING_HEADLINE}
+          />
+        </OnboardingWaitingScreenShell>
+      </FunnelViewport>
     </div>
   );
-}
-
-function countNotificationAlerts(props: {
-  noChallengeExists?: boolean;
-  consultationCompleted?: boolean;
-  challengeNotStarted?: boolean;
-  weeklyUploadStatus?: string;
-  showCopyButton?: boolean;
-}): number {
-  let count = 0;
-  if (props.noChallengeExists) count += 1;
-  if (props.consultationCompleted === false) count += 1;
-  if (props.consultationCompleted === true && props.challengeNotStarted) count += 1;
-  if (props.weeklyUploadStatus === 'pending') count += 1;
-  if (props.weeklyUploadStatus === 'approved') count += 1;
-  if (props.showCopyButton) count += 1;
-  return count;
 }
 
 export function ParentDashboardScreen({
@@ -77,30 +72,18 @@ export function ParentDashboardScreen({
   displayWeek,
   weeklyUpload,
   setupUrl,
-  uploadUrl,
   redemptionUrl,
-  consultationCompleted,
   noChallengeExists,
   onApproveWeeklyUpload,
   onRejectWeeklyUpload,
   showCompleteModal,
   onCloseCompleteModal,
+  initialSubscriptionOpen = false,
 }: ParentDashboardScreenProps) {
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-
   const childName = dashboardData.child.name;
   const parentName = dashboardData.parent.name || 'הורה';
   const hasChallenge = !noChallengeExists && Boolean(childName);
-
   const weeklyEarned = dashboardData.weeklyTotals?.coinsEarned ?? 0;
-  const weeklyBudget = dashboardData.challenge.weeklyBudget ?? 0;
-
-  const today = dashboardData.today;
-  const goalHours = today?.screenTimeGoal ?? dashboardData.challenge.dailyScreenTimeGoal ?? 0;
-  const usedHours = today?.screenTimeUsed ?? 0;
-  const hasGoal = goalHours > 0;
-  const savedMinutes = hasGoal ? Math.max(0, (goalHours - usedHours) * 60) : 0;
-  const goalMinutes = hasGoal ? goalHours * 60 : 0;
 
   const childSetupCompleted = Boolean(
     dashboardData.child.nickname &&
@@ -111,134 +94,91 @@ export function ParentDashboardScreen({
   let shareUrl = redemptionUrl;
   if (!childSetupCompleted && setupUrl) shareUrl = setupUrl;
 
-  const notificationCount = useMemo(
-    () =>
-      countNotificationAlerts({
-        noChallengeExists,
-        consultationCompleted: consultationCompleted ?? undefined,
-        challengeNotStarted: dashboardData.challengeNotStarted,
-        weeklyUploadStatus: weeklyUpload?.status,
-        showCopyButton: Boolean(hasChallenge && shareUrl && weeklyUpload?.status !== 'approved'),
-      }),
-    [
-      noChallengeExists,
-      consultationCompleted,
-      dashboardData.challengeNotStarted,
-      weeklyUpload?.status,
-      hasChallenge,
-      shareUrl,
-    ]
-  );
+  const { merged } = usePostGameSync({
+    parentId: dashboardData.parent.id,
+    role: 'parent',
+    enabled: Boolean(dashboardData.parent.id),
+  });
 
-  const panelProps = {
-    challengeNotStarted: dashboardData.challengeNotStarted,
-    challengeStartDate: dashboardData.challengeStartDate,
-    childName: dashboardData.child.name,
-    childGender: dashboardData.child.gender,
-    parentName: dashboardData.parent.name,
-    parentGender: dashboardData.parent.gender,
-    setupUrl,
-    uploadUrl,
-    redemptionUrl,
-    weeklyUpload,
-    childSetupCompleted,
-    consultationCompleted: consultationCompleted ?? undefined,
-    noChallengeExists,
-  };
+  const changeText =
+    postGameChildChangeText(merged) ||
+    'לנסות ללכת לישון בשעה קצת יותר מוקדמת';
+
+  const [subscriptionOpen, setSubscriptionOpen] = useState(initialSubscriptionOpen);
+
+  useEffect(() => {
+    if (initialSubscriptionOpen) setSubscriptionOpen(true);
+  }, [initialSubscriptionOpen]);
+
+  const closeSubscription = () => setSubscriptionOpen(false);
 
   return (
     <div
-      className="absolute inset-0 flex flex-col overflow-hidden"
+      className="absolute inset-0 flex h-full w-full min-w-0 max-w-none flex-col overflow-hidden"
       style={{ background: PARENT_DASHBOARD_COLORS.canvas }}
       dir="rtl"
     >
-      <DashboardFigmaBackground />
+      <DashboardFigmaBackground showBottomGlows={false} />
 
-      <DashboardTopBar
-        balance={weeklyEarned}
-        notificationCount={notificationCount}
-        onNotificationsClick={() => setNotificationsOpen(true)}
-        menuSlot={<DashboardHeaderMenu />}
-      />
+      <DashboardTopBar balance={weeklyEarned} menuSlot={<DashboardHeaderMenu />} />
 
-      <div className="relative min-h-0 flex-1 overflow-y-auto v03-scroll-hidden pb-10">
-        {hasChallenge && (
-          <div className="pointer-events-none absolute -left-6 top-[180px] z-[1] opacity-90">
-            <Image
-              src={PARENT_DASHBOARD_ASSETS.companion}
-              alt=""
-              width={152}
-              height={152}
-              className="rotate-[9deg] object-contain"
-              unoptimized
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto v03-scroll-hidden">
+        <div className="relative min-h-full w-full max-w-[100vw] overflow-x-hidden pb-10">
+          <DashboardBottomGlows />
+
+          <div
+            className="relative z-[2] mx-auto flex w-full max-w-full flex-col items-center"
+            style={{
+              width: 328,
+              maxWidth: '100%',
+              gap: 45,
+              paddingTop: PARENT_DASHBOARD_LAYOUT.contentTop,
+            }}
+          >
+            {/* Frame 1 — daily average + start challenge */}
+            <div
+              className="flex w-full flex-col items-center"
+              style={{ gap: PARENT_DASHBOARD_LAYOUT.frame1Gap }}
+            >
+              <DashboardDailyAverageCard childName={childName || 'יואב'} week={displayWeek} />
+              <DashboardChallengeBanner
+                childName={childName || 'יואב'}
+                reductionPercent={55}
+                onClick={() => setSubscriptionOpen(true)}
+              />
+            </div>
+
+            {/* Frame 2 — contract */}
+            <DashboardContractSection
+              childName={childName || 'יואב'}
+              parentName={parentName}
+              shareUrl={shareUrl || '#'}
+              weeklyUpload={weeklyUpload}
+              variant="parent"
+              onApprove={hasChallenge ? onApproveWeeklyUpload : undefined}
+              onReject={hasChallenge ? onRejectWeeklyUpload : undefined}
             />
-          </div>
-        )}
 
-        <div
-          className="relative z-[2] mx-auto flex w-full max-w-[328px] flex-col items-center px-[23px] pt-4"
-          style={{ gap: PARENT_DASHBOARD_LAYOUT.contentGap }}
-        >
-          <div className="flex w-full flex-col items-center" style={{ gap: 28 }}>
-            <DashboardScreenTimeRing
-              savedMinutes={savedMinutes}
-              goalMinutes={goalMinutes}
-              hasGoal={hasGoal}
-            />
-
-            <div className="flex w-full max-w-[225px] flex-col items-center gap-2 text-center">
-              <h1
-                className="font-simpler text-[20px] font-black"
-                style={{ color: PARENT_DASHBOARD_COLORS.textPrimary }}
-              >
-                היי {parentName}!
-              </h1>
-              <p
-                className="font-simpler text-[16px] font-normal leading-[19.2px]"
-                style={{ color: PARENT_DASHBOARD_COLORS.textPrimary }}
-              >
-                {hasChallenge
-                  ? `כאן תראו את ההתקדמות של ${childName} בזמן מסך ובחיסכון!`
-                  : 'כשתגדירו אתגר ראשון, כאן יופיעו הנתונים של הילד.'}
-              </p>
+            {/* Frame 3 — change graph cards */}
+            <div
+              className="flex w-full flex-col items-center"
+              style={{ gap: PARENT_DASHBOARD_LAYOUT.frame3Gap }}
+            >
+              <DashboardWeekTracker
+                week={displayWeek}
+                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
+                childName={childName || 'יואב'}
+                changeText={changeText}
+              />
             </div>
           </div>
-
-          <DashboardSavingsCard balance={weeklyEarned} childName={childName} />
-
-          <div className="flex w-full flex-col" style={{ gap: PARENT_DASHBOARD_LAYOUT.sectionGap }}>
-            <DashboardWeekTracker
-              week={displayWeek}
-              dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-              childName={childName}
-            />
-
-            <DashboardComboBanner weeklyBudget={weeklyBudget} />
-
-            {noChallengeExists && (
-              <div className="w-full">
-                <NotificationsPanel variant="dark" {...panelProps} />
-              </div>
-            )}
-          </div>
-
-          {hasChallenge && (
-            <DashboardContractSection
-              childName={childName}
-              parentName={parentName}
-              shareUrl={shareUrl}
-              weeklyUpload={weeklyUpload}
-              onApprove={onApproveWeeklyUpload}
-              onReject={onRejectWeeklyUpload}
-            />
-          )}
         </div>
       </div>
 
-      <DashboardNotificationsSheet
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-        {...panelProps}
+      <DashboardSubscriptionOverlay
+        visible={subscriptionOpen}
+        onClose={closeSubscription}
+        onContinue={closeSubscription}
       />
 
       {showCompleteModal && (
@@ -273,5 +213,3 @@ export function ParentDashboardScreen({
     </div>
   );
 }
-
-export { DashboardLoadingState };

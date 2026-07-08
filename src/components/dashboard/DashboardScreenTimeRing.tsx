@@ -6,6 +6,10 @@ type DashboardScreenTimeRingProps = {
   savedMinutes: number;
   goalMinutes: number;
   hasGoal: boolean;
+  /** Child dashboard uses "שחסכתי"; parent uses "שחסכנו" */
+  variant?: 'parent' | 'child';
+  /** Dim ring + copy (locked wallet) */
+  dimmed?: boolean;
 };
 
 function formatMinutesLabel(minutes: number): string {
@@ -21,6 +25,8 @@ export function DashboardScreenTimeRing({
   savedMinutes,
   goalMinutes,
   hasGoal,
+  variant = 'parent',
+  dimmed = false,
 }: DashboardScreenTimeRingProps) {
   const size = 219;
   const stroke = 14;
@@ -31,8 +37,25 @@ export function DashboardScreenTimeRing({
     hasGoal && goalMinutes > 0 ? Math.min(1, Math.max(0, savedMinutes / goalMinutes)) : 0;
   const dashOffset = circumference * (1 - progress);
 
+  const savedLabel = variant === 'child' ? (
+    <>
+      זמן מסך
+      <br />
+      שחסכתי היום
+    </>
+  ) : (
+    <>
+      זמן מסך
+      <br />
+      שחסכנו היום
+    </>
+  );
+
   return (
-    <div className="relative mx-auto" style={{ width: size, height: size }}>
+    <div
+      className="relative mx-auto"
+      style={{ width: size, height: size, opacity: dimmed ? 0.4 : 1 }}
+    >
       <svg width={size} height={size} className="-rotate-90" aria-hidden>
         <circle
           cx={size / 2}
@@ -58,24 +81,24 @@ export function DashboardScreenTimeRing({
         )}
       </svg>
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+      <div className="absolute left-[60.5px] top-[52px] flex w-[99px] flex-col items-center gap-[11px] text-center">
         <p
-          className="mb-2 font-simpler text-[16px] font-semibold leading-[18px]"
+          className="font-simpler text-[16px] font-semibold leading-[18px]"
           style={{ color: PARENT_DASHBOARD_COLORS.mint }}
         >
-          זמן מסך
-          <br />
-          שחסכנו היום
+          {savedLabel}
         </p>
-        <p className="font-simpler text-[34px] font-black leading-[40px] text-white">
-          {formatMinutesLabel(savedMinutes)}
-        </p>
-        <p
-          className="mt-1 font-simpler text-[13px] font-normal leading-[17px]"
-          style={{ color: PARENT_DASHBOARD_COLORS.textMuted }}
-        >
-          {hasGoal ? `מתוך יעד של ${formatMinutesLabel(goalMinutes)}` : 'עדיין לא נקבע יעד'}
-        </p>
+        <div className="flex flex-col items-start">
+          <p className="font-simpler text-[34px] font-black leading-[39.84px] text-white">
+            {formatMinutesLabel(savedMinutes)}
+          </p>
+          <p
+            className="w-full text-center font-simpler text-[13px] font-normal leading-[16.9px]"
+            style={{ color: PARENT_DASHBOARD_COLORS.textMuted }}
+          >
+            {hasGoal ? `מתוך יעד של ${formatMinutesLabel(goalMinutes)}` : 'עדיין לא נקבע יעד'}
+          </p>
+        </div>
       </div>
     </div>
   );

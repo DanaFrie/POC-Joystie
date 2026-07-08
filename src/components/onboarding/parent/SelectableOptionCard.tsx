@@ -15,6 +15,11 @@ type SelectableOptionCardProps = {
   textLayout?: 'fixed' | 'flex';
   /** Hebrew copy alignment inside the text column */
   textAlign?: 'end' | 'center';
+  /**
+   * `white` — default pick-child / change options.
+   * `accent` — subscription plans: `1.5px solid #00FFB3`.
+   */
+  borderTone?: 'white' | 'accent';
   children: ReactNode;
 };
 
@@ -31,9 +36,18 @@ export function SelectableOptionCard({
   contentGap = 4,
   textLayout = 'fixed',
   textAlign = 'end',
+  borderTone = 'white',
   children,
 }: SelectableOptionCardProps) {
   const glow = ONBOARDING_SELECTABLE_OPTION.selectedGlow;
+  const outlineClass =
+    borderTone === 'accent'
+      ? selected
+        ? 'outline outline-[1.5px] outline-offset-[-1.5px] outline-[#00FFB3]'
+        : 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white/25 hover:outline-white/40'
+      : selected
+        ? 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white'
+        : 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white/25 hover:outline-white/40';
 
   return (
     <button
@@ -42,11 +56,7 @@ export function SelectableOptionCard({
       role="radio"
       aria-checked={selected}
       onClick={onSelect}
-      className={`relative flex w-full items-center justify-between overflow-hidden bg-white/5 transition ${
-        selected
-          ? 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white'
-          : 'outline outline-[1.5px] outline-offset-[-1.5px] outline-white/25 hover:outline-white/40'
-      }`}
+      className={`relative flex w-full items-center justify-between overflow-hidden bg-white/5 transition ${outlineClass}`}
       style={{
         borderRadius,
         padding: `${paddingY}px ${paddingX}px`,

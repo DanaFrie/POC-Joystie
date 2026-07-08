@@ -1136,7 +1136,10 @@ export function OnboardingParentFlow({
         onArenaPointer={() => {}}
         onConfirmReady={() => {}}
         onRetry={() => {}}
-        onFlowComplete={() => setStep('subscription')}
+        onFlowComplete={() => {
+          clearParentFlowSession();
+          router.replace('/dashboard?subscription=1');
+        }}
         parentId={parentPostGameParentId}
       />
     );
@@ -1149,7 +1152,12 @@ export function OnboardingParentFlow({
           <OnboardingBackButton tone="light" onClick={handleBack} />
         )}
         <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
-          <ParentOnboardingCompletionStep onContinue={() => setStep('subscription')} />
+          <ParentOnboardingCompletionStep
+            onContinue={() => {
+              clearParentFlowSession();
+              router.replace('/dashboard?subscription=1');
+            }}
+          />
         </OnboardingFunnelStepSlot>
       </>
     );

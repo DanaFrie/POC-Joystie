@@ -1,8 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import type { WeeklyUpload } from '@/types/firestore';
-import { PARENT_DASHBOARD_COLORS } from '@/constants/parent-dashboard-layout';
+import {
+  PARENT_DASHBOARD_ASSETS,
+  PARENT_DASHBOARD_COLORS,
+} from '@/constants/parent-dashboard-layout';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('DashboardContractSection');
@@ -12,6 +16,7 @@ type DashboardContractSectionProps = {
   parentName?: string;
   shareUrl?: string;
   weeklyUpload?: WeeklyUpload | null;
+  variant?: 'parent' | 'child';
   onApprove?: () => Promise<void>;
   onReject?: () => Promise<void>;
 };
@@ -21,15 +26,35 @@ export function DashboardContractSection({
   parentName,
   shareUrl,
   weeklyUpload,
+  variant = 'parent',
   onApprove,
   onReject,
 }: DashboardContractSectionProps) {
   const [copied, setCopied] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  const screenshotUrl =
-    weeklyUpload?.screenshotUrl || null;
+  const screenshotUrl = weeklyUpload?.screenshotUrl || null;
   const isPending = weeklyUpload?.status === 'pending';
+  const viewUrl = screenshotUrl || PARENT_DASHBOARD_ASSETS.agreementThumb;
+
+  const sectionTitle =
+    variant === 'child'
+      ? parentName
+        ? `החוזה שלי עם ${parentName}`
+        : 'החוזה שלי'
+      : childName
+        ? `החוזה שלי עם ${childName}`
+        : 'החוזה שלי';
+
+  const sharePrimaryClass =
+    variant === 'child'
+      ? 'bg-[#1BECAE] text-[#092125]'
+      : 'bg-white text-[#092125]';
+
+  const viewButtonClass =
+    variant === 'child'
+      ? 'bg-white text-[#092125]'
+      : 'border-[0.84px] border-white bg-transparent text-white';
 
   const handleShare = async () => {
     if (!shareUrl) return;
@@ -63,52 +88,43 @@ export function DashboardContractSection({
   };
 
   return (
-    <section className="w-full">
-      <p className="mb-2 text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white">
-        {parentName ? `החוזה עם ${childName}` : `החוזה של ${childName}`}
-      </p>
+    <section className="flex w-full flex-col items-end justify-center gap-2 py-2">
+      <div className="flex w-full items-center justify-center px-2.5">
+        <p className="flex-1 text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white">
+          {sectionTitle}
+        </p>
+      </div>
 
       <div
-        className="rounded-[32px] px-[18px] py-[25px]"
+        className="flex w-full flex-col items-center justify-center rounded-[32px] px-[18px] py-[25px]"
         style={{
           background: PARENT_DASHBOARD_COLORS.cardBg,
           outline: `1px solid ${PARENT_DASHBOARD_COLORS.cardOutline}`,
           outlineOffset: -1,
         }}
       >
-        <div className="flex items-start gap-5">
-          <div className="flex flex-1 flex-col gap-3">
+        <div className="flex w-full items-start justify-center gap-[15px]">
+          <div className="flex flex-1 flex-col items-start gap-3">
             <button
               type="button"
               onClick={handleShare}
               disabled={!shareUrl}
-              className="h-10 rounded-[18px] font-simpler text-[13px] font-bold leading-[18px] text-[#092125] shadow-[1.7px_1.7px_16.7px_rgba(109,109,109,0.15)] disabled:opacity-40"
-              style={{ background: PARENT_DASHBOARD_COLORS.mintBright }}
+              className={`flex h-[40.16px] w-full items-center justify-center rounded-[15.06px] px-[12.55px] py-[6.69px] font-simpler text-[13.39px] font-bold leading-[18.07px] shadow-[1.67px_1.67px_16.73px_rgba(109,109,109,0.15)] disabled:opacity-40 ${sharePrimaryClass}`}
             >
-              {copied ? 'הועתק!' : 'לשיתוף הקישור'}
+              {copied ? 'הועתק!' : 'לשיתוף התמונה'}
             </button>
 
-            {screenshotUrl ? (
-              <a
-                href={screenshotUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 items-center justify-center rounded-[18px] bg-white font-simpler text-[13px] font-bold leading-[18px] text-[#092125] shadow-[1.7px_1.7px_16.7px_rgba(109,109,109,0.15)]"
-              >
-                לצפייה בתמונה
-              </a>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="flex h-10 items-center justify-center rounded-[18px] bg-white/40 font-simpler text-[13px] font-bold leading-[18px] text-[#092125]/50"
-              >
-                לצפייה בתמונה
-              </button>
-            )}
+            <a
+              href={viewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`flex h-[40.16px] w-full items-center justify-center rounded-[15.06px] px-[12.55px] py-[6.69px] font-simpler text-[13.39px] font-bold leading-[18.07px] shadow-[1.67px_1.67px_16.73px_rgba(109,109,109,0.15)] ${viewButtonClass}`}
+            >
+              לצפייה בתמונה
+            </a>
 
-            {isPending && onApprove && onReject && (
-              <div className="flex gap-2 pt-1">
+            {variant === 'parent' && isPending && onApprove && onReject && (
+              <div className="flex w-full gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleReject}
@@ -129,15 +145,33 @@ export function DashboardContractSection({
             )}
           </div>
 
-          <div className="relative h-[97px] w-[85px] shrink-0 overflow-hidden rounded-[12px] border border-white/60 bg-[#093532]">
-            {screenshotUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={screenshotUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl opacity-40">
-                📱
-              </div>
-            )}
+          <div
+            className="relative h-[96.64px] w-[85px] shrink-0 overflow-hidden rounded-[12.44px]"
+            style={{ outline: '0.62px solid white', outlineOffset: -0.62 }}
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(0, 0, 0, 0) 15%, rgba(0, 0, 0, 0.40) 85%)',
+              }}
+              aria-hidden
+            />
+            <Image
+              src={PARENT_DASHBOARD_ASSETS.agreementThumb}
+              alt=""
+              width={62}
+              height={62}
+              className="absolute object-cover"
+              style={{
+                width: 61.599,
+                height: 61.599,
+                aspectRatio: '1 / 1',
+                top: 17.5,
+                left: 12,
+              }}
+              unoptimized
+            />
           </div>
         </div>
       </div>
