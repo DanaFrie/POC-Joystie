@@ -1,7 +1,10 @@
+import { ensureUserProfileForLogin } from '@/lib/auth/ensureUserProfile';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
 import { hydrateOnboardingChildrenFromUser } from '@/lib/onboarding/hydrateChildrenFromUser';
 import { markOnboardingAccountCreated } from '@/lib/onboarding/persistOnboardingAccount';
 import type { FirestoreUser } from '@/types/firestore';
+import { createSession } from '@/utils/session';
+
 export function isUserOnboardingComplete(user: FirestoreUser): boolean {
   return user.onboarding === true;
 }
@@ -10,7 +13,7 @@ export function getPostLoginPath(user: FirestoreUser): '/dashboard' | '/onboardi
   return isUserOnboardingComplete(user) ? '/dashboard' : '/onboarding';
 }
 
-/** Persist funnel step before navigating to onboarding intro carousel. */
+/** Persist funnel step before navigating to onboarding intro carousel (signupIntro / intoSignup1). */
 export function prepareOnboardingIntroReturn(): void {
   if (typeof window === 'undefined') return;
   markOnboardingAccountCreated();
@@ -21,13 +24,25 @@ export function navigateAfterLogin(
   user: FirestoreUser,
   router: { push: (path: string) => void }
 ): void {
+  hydrateOnboardingChildrenFromUser(user);
+
   if (isUserOnboardingComplete(user)) {
     router.push('/dashboard');
     return;
   }
-  hydrateOnboardingChildrenFromUser(user);
+
   prepareOnboardingIntroReturn();
   router.push('/onboarding');
+}
+
+/** Shared post-auth routing for login and returning OAuth sign-up users. */
+export async function finishAuthenticatedUserNavigation(
+  uid: string,
+  router: { push: (path: string) => void }
+): Promise<void> {
+  createSession(uid);
+  const userData = await ensureUserProfileForLogin(uid);
+  navigateAfterLogin(userData, router);
 }
 export function redirectToLoginForExistingAccount(
   router: { push: (path: string) => void },

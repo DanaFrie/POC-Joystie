@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { SelectableOptionRadio } from '@/components/onboarding/parent/SelectableOptionRadio';
+import { SelectableOptionTick } from '@/components/onboarding/parent/SelectableOptionTick';
 import { ONBOARDING_SELECTABLE_OPTION } from '@/constants/onboarding-selectable-option';
 
 type SelectableOptionCardProps = {
@@ -20,6 +21,12 @@ type SelectableOptionCardProps = {
    * `accent` — subscription plans: `1.5px solid #00FFB3`.
    */
   borderTone?: 'white' | 'accent';
+  /** Mint glow behind selected state (default true). */
+  showSelectedGlow?: boolean;
+  /** `radio` single-select · `tick` multi-select goals */
+  indicator?: 'radio' | 'tick';
+  /** Centered mint ellipse for compact 2-col cards */
+  compactGlow?: boolean;
   children: ReactNode;
 };
 
@@ -37,6 +44,9 @@ export function SelectableOptionCard({
   textLayout = 'fixed',
   textAlign = 'end',
   borderTone = 'white',
+  showSelectedGlow = true,
+  indicator = 'radio',
+  compactGlow = false,
   children,
 }: SelectableOptionCardProps) {
   const glow = ONBOARDING_SELECTABLE_OPTION.selectedGlow;
@@ -53,7 +63,7 @@ export function SelectableOptionCard({
     <button
       type="button"
       dir="ltr"
-      role="radio"
+      role={indicator === 'tick' ? 'checkbox' : 'radio'}
       aria-checked={selected}
       onClick={onSelect}
       className={`relative flex w-full items-center justify-between overflow-hidden bg-white/5 transition ${outlineClass}`}
@@ -62,22 +72,38 @@ export function SelectableOptionCard({
         padding: `${paddingY}px ${paddingX}px`,
       }}
     >
-      {selected ? (
+      {selected && showSelectedGlow ? (
         <div
           className="pointer-events-none absolute rounded-full"
-          style={{
-            left: glow.left,
-            top: glow.top,
-            width: glow.width,
-            height: glow.height,
-            background: glow.background,
-            filter: `blur(${glow.blur})`,
-          }}
+          style={
+            compactGlow
+              ? {
+                  left: '50%',
+                  top: '50%',
+                  width: 56,
+                  height: 56,
+                  transform: 'translate(-50%, -50%)',
+                  background: glow.background,
+                  filter: 'blur(28px)',
+                }
+              : {
+                  left: glow.left,
+                  top: glow.top,
+                  width: glow.width,
+                  height: glow.height,
+                  background: glow.background,
+                  filter: `blur(${glow.blur})`,
+                }
+          }
           aria-hidden
         />
       ) : null}
 
-      <SelectableOptionRadio selected={selected} />
+      {indicator === 'tick' ? (
+        <SelectableOptionTick selected={selected} />
+      ) : (
+        <SelectableOptionRadio selected={selected} />
+      )}
 
       <div
         dir="rtl"

@@ -13,16 +13,22 @@ export interface Child {
   gender?: 'boy' | 'girl';
   nickname?: string;
   moneyGoals?: string[];
+  changes?: string[];
+  changeDayChecks?: boolean[][];
+  baselineDailyMinutes?: number;
 }
 
 export interface Challenge {
-  selectedBudget: number; // תקציב נבחר
-  weeklyBudget: number; // תקציב שבועי (שווה לתקציב הנבחר)
-  dailyBudget: number;
-  dailyScreenTimeGoal: number;
+  selectedBudget: number;
+  weeklyBudget: number;
+  dailyBudget?: number;
+  dailyScreenTimeGoal?: number;
+  hourlyRate?: number;
+  moneyGoals?: string[];
   weekNumber: number;
-  totalWeeks: number;
-  startDate?: string; // Optional - set by admin after consultation approval
+  totalWeeks?: number;
+  startDate?: string;
+  challengeDays?: number;
   isActive: boolean;
 }
 
@@ -98,8 +104,7 @@ export interface DashboardState {
   weeklyUpload?: WeeklyUploadSummary; // Weekly upload summary
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
-  consultationCompleted?: boolean; // Whether advisor consultation was approved (set by admin)
-  activeChallengeId?: string; // For "show complete modal once" per challenge
+  activeChallengeId?: string;
 }
 
 

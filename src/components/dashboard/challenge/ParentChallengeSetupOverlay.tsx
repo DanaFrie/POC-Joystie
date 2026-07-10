@@ -1,23 +1,32 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ChallengeBody,
+  ChallengeCardHero,
+  ChallengeEyebrow,
+  ChallengeTitle,
+} from '@/components/dashboard/challenge/ChallengeCardPrimitives';
 import {
   DashboardBlurCardOverlay,
   OverlayPrimaryButton,
-  OverlaySecondaryButton,
 } from '@/components/dashboard/challenge/DashboardBlurCardOverlay';
 import { BudgetStepper } from '@/components/dashboard/challenge/BudgetStepper';
-import { ChallengeConversionRateControl } from '@/components/dashboard/challenge/ChallengeConversionRateControl';
+import { ChallengeParentDealSentCard } from '@/components/dashboard/challenge/ChallengeParentDealSentCard';
 import {
   V03_CHALLENGE_BUDGET,
   V03_CHALLENGE_HOURLY_RATE,
 } from '@/constants/v03-challenge';
 import {
+  V03_CHALLENGE_SETUP_ASSETS,
+  V03_CHALLENGE_SETUP_LAYOUT,
+} from '@/constants/v03-challenge-layout';
+import {
   challengeStartDateFromSetup,
   projectedRemainingAtEstimatedUsage,
   redemptionOpenDateFromStart,
   roundMoney,
-  weeklyHourAllowance,
+  V03_CHALLENGE_DAYS,
 } from '@/lib/challenge/v03ChallengeMath';
 import { formatNumber } from '@/utils/formatting';
 
@@ -33,21 +42,23 @@ export type ParentChallengeSetupResult = {
 type ParentChallengeSetupOverlayProps = {
   visible: boolean;
   childName: string;
-  /** Estimated daily screen hours — last challenge average, or onboarding. */
   estimatedDailyHours: number;
   onClose: () => void;
   onSubmit: (result: ParentChallengeSetupResult) => void;
 };
 
-type SetupStep = 'preview' | 'budget' | 'rate' | 'note';
+type SetupStep = 'intro' | 'configure' | 'sent';
 
 function formatHeDate(d: Date): string {
-  return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  const weekday = d.toLocaleDateString('he-IL', { weekday: 'long' });
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = String(d.getFullYear()).slice(-2);
+  return `${weekday} ${day}/${month}/${year}`;
 }
 
 /**
- * Parent challenge setup — paid state card on blurred dashboard.
- * Steps: preview → budget → ₪/hour → savings note → submit.
+ * Parent challenge setup — intro → live configure (budget + rate + savings) → sent summary.
  */
 export function ParentChallengeSetupOverlay({
   visible,
@@ -56,9 +67,16 @@ export function ParentChallengeSetupOverlay({
   onClose,
   onSubmit,
 }: ParentChallengeSetupOverlayProps) {
-  const [step, setStep] = useState<SetupStep>('preview');
+  const [step, setStep] = useState<SetupStep>('intro');
   const [weeklyBudget, setWeeklyBudget] = useState<number>(V03_CHALLENGE_BUDGET.default);
   const [hourlyRate, setHourlyRate] = useState<number>(V03_CHALLENGE_HOURLY_RATE.default);
+
+  useEffect(() => {
+    if (!visible) return;
+    setStep('intro');
+    setWeeklyBudget(V03_CHALLENGE_BUDGET.default);
+    setHourlyRate(V03_CHALLENGE_HOURLY_RATE.default);
+  }, [visible]);
 
   const projected = useMemo(
     () =>
@@ -72,13 +90,13 @@ export function ParentChallengeSetupOverlay({
     [weeklyBudget, hourlyRate, estimatedDailyHours]
   );
 
-  const allowanceHours = roundMoney(weeklyHourAllowance(weeklyBudget, hourlyRate), 1);
+  const estimatedWeeklyHours = roundMoney(estimatedDailyHours * V03_CHALLENGE_DAYS, 1);
+
   const startDate = challengeStartDateFromSetup();
   const redemptionOpen = redemptionOpenDateFromStart(startDate);
-
   const titleId = 'parent-challenge-setup-title';
 
-  const handleSubmit = () => {
+  const handleConfirmSend = () => {
     onSubmit({
       weeklyBudget,
       hourlyRate,
@@ -91,141 +109,133 @@ export function ParentChallengeSetupOverlay({
 
   const footer = (() => {
     switch (step) {
-      case 'preview':
+      case 'intro':
         return (
-          <div className="flex w-full flex-col gap-2">
-            <OverlayPrimaryButton onClick={() => setStep('budget')}>המשך</OverlayPrimaryButton>
-            <OverlaySecondaryButton onClick={onClose}>סגור</OverlaySecondaryButton>
-          </div>
+          <OverlayPrimaryButton onClick={() => setStep('configure')}>
+            בואו נגדיר את השבוע
+          </OverlayPrimaryButton>
         );
-      case 'budget':
+      case 'configure':
         return (
-          <div className="flex w-full flex-col gap-2">
-            <OverlayPrimaryButton onClick={() => setStep('rate')}>המשך</OverlayPrimaryButton>
-            <OverlaySecondaryButton onClick={() => setStep('preview')}>חזרה</OverlaySecondaryButton>
-          </div>
+          <OverlayPrimaryButton onClick={() => setStep('sent')}>
+            שליחה ל{childName}
+          </OverlayPrimaryButton>
         );
-      case 'rate':
+      case 'sent':
         return (
-          <div className="flex w-full flex-col gap-2">
-            <OverlayPrimaryButton onClick={() => setStep('note')}>המשך</OverlayPrimaryButton>
-            <OverlaySecondaryButton onClick={() => setStep('budget')}>חזרה</OverlaySecondaryButton>
-          </div>
-        );
-      case 'note':
-        return (
-          <div className="flex w-full flex-col gap-2">
-            <OverlayPrimaryButton onClick={handleSubmit}>טעינת כרטיס והתחלת אתגר</OverlayPrimaryButton>
-            <OverlaySecondaryButton onClick={() => setStep('rate')}>חזרה</OverlaySecondaryButton>
-          </div>
+          <OverlayPrimaryButton onClick={handleConfirmSend}>מעולה, נתחיל!</OverlayPrimaryButton>
         );
     }
   })();
 
   return (
-    <DashboardBlurCardOverlay visible={visible} titleId={titleId} footer={footer} compact>
-      {step === 'preview' && (
+    <DashboardBlurCardOverlay
+      visible={visible}
+      titleId={titleId}
+      footer={footer}
+      onClose={onClose}
+      compact
+    >
+      {step === 'intro' && (
         <>
-          <p className="w-full text-center font-simpler text-[14px] font-semibold leading-[18px] text-[#00E7A2]">
-            הגדרת אתגר מסך
-          </p>
-          <h2
-            id={titleId}
-            className="w-full text-center font-simpler text-[26px] font-black leading-[30px] tracking-[-0.4px] text-white"
-          >
-            טוענים כסף לכרטיס של {childName}
-          </h2>
-          <div className="flex w-full flex-col gap-3 text-center font-simpler text-[15px] font-normal leading-[22px] text-white/80">
-            <p>
-              הכסף על הכרטיס וירטואלי — אין ארנק אמיתי. בסוף השבוע תפדו יחד, פנים אל פנים.
-            </p>
-            <p>
-              כל שעת מסך יורדת מהכרטיס. ככל ש{childName} יחסוך זמן מסך — יישאר יותר לפדיון.
-            </p>
-            <p>
-              האתגר: 6 ימים מ־{formatHeDate(startDate)}. פדיון מה־{formatHeDate(redemptionOpen)}{' '}
-              ואילך (צילום מסך שבועי).
-            </p>
+          <ChallengeCardHero
+            src={V03_CHALLENGE_SETUP_ASSETS.parentHero}
+            frameWidth={V03_CHALLENGE_SETUP_LAYOUT.parentHero.width}
+            frameHeight={V03_CHALLENGE_SETUP_LAYOUT.parentHero.height}
+          />
+          <ChallengeEyebrow>הדיל השבועי</ChallengeEyebrow>
+          <ChallengeTitle id={titleId}>
+            בואו נטען את דמי הכיס של {childName} לארנק
+          </ChallengeTitle>
+          <div className="flex w-full flex-col gap-3">
+            <ChallengeBody>
+              בשלב הבא תגדירו את הדיל:
+            </ChallengeBody>
+            <ul
+              className="w-full list-disc space-y-1 pr-5 text-right font-simpler text-[15px] leading-[22px] text-white/85 marker:text-white/60"
+              dir="rtl"
+            >
+              <li>כמה דמי כיס נטענים לארנק?</li>
+              <li>כמה כסף שווה כל שימוש בשעת מסך?</li>
+            </ul>
+            <ChallengeBody>
+              ככל ש{childName} ישמור על פחות זמן מסך, יישאר יותר כסף בארנק. זה העיקרון שעוזר לבחור
+              בחוכמה.
+            </ChallengeBody>
+            <ChallengeBody>
+              הארנק וירטואלי, בסוף השבוע מעלים צילום מסך של גרף השימוש במסך ובוחרים יחד מה לעשות
+              עם הכסף שנשאר בארנק.
+            </ChallengeBody>
           </div>
         </>
       )}
 
-      {step === 'budget' && (
+      {step === 'configure' && (
         <>
-          <p className="w-full text-center font-simpler text-[14px] font-semibold leading-[18px] text-[#00E7A2]">
-            תקציב שבועי
-          </p>
-          <h2
-            id={titleId}
-            className="w-full text-center font-simpler text-[26px] font-black leading-[30px] text-white"
-          >
-            כמה טוענים לכרטיס?
-          </h2>
-          <BudgetStepper
-            value={weeklyBudget}
-            min={V03_CHALLENGE_BUDGET.min}
-            max={V03_CHALLENGE_BUDGET.max}
-            step={V03_CHALLENGE_BUDGET.step}
-            onChange={setWeeklyBudget}
-          />
-          <p className="text-center font-simpler text-[14px] text-white/60">₪ לתקציב השבועי</p>
-        </>
-      )}
+          <ChallengeEyebrow>הגדרת הדיל</ChallengeEyebrow>
+          <ChallengeTitle id={titleId}>שחקו עם המספרים</ChallengeTitle>
+          <ChallengeBody>
+            קבעו כמה דמי כיס נכנסים לארנק וכמה כסף צפוי להישאר בו בסוף השבוע.
+          </ChallengeBody>
 
-      {step === 'rate' && (
-        <>
-          <p className="w-full text-center font-simpler text-[14px] font-semibold leading-[18px] text-[#00E7A2]">
-            המרת זמן־כסף
-          </p>
-          <h2
-            id={titleId}
-            className="w-full text-center font-simpler text-[24px] font-black leading-[28px] text-white"
-          >
-            מחיר שעת מסך
-          </h2>
-          <ChallengeConversionRateControl
-            minutes={60}
-            hourlyRate={hourlyRate}
-            onHourlyRateChange={setHourlyRate}
-            minRate={V03_CHALLENGE_HOURLY_RATE.min}
-            maxRate={V03_CHALLENGE_HOURLY_RATE.max}
-          />
-          <p className="text-center font-simpler text-[13px] leading-[18px] text-white/55">
-            עם ₪{formatNumber(weeklyBudget, 0)} ו־₪{formatNumber(hourlyRate, 0)} לשעה — יש על הכרטיס
-            כ־{formatNumber(allowanceHours)} שעות מסך לשבוע.
-          </p>
-        </>
-      )}
+          <div className="flex w-full flex-col items-center gap-2">
+            <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
+              התאימו את דמי הכיס השבועיים
+            </p>
+            <BudgetStepper
+              value={weeklyBudget}
+              min={V03_CHALLENGE_BUDGET.min}
+              max={V03_CHALLENGE_BUDGET.max}
+              step={V03_CHALLENGE_BUDGET.step}
+              onChange={setWeeklyBudget}
+            />
+          </div>
 
-      {step === 'note' && (
-        <>
-          <p className="w-full text-center font-simpler text-[14px] font-semibold leading-[18px] text-[#00E7A2]">
-            הערכת חסכון
-          </p>
-          <h2
-            id={titleId}
-            className="w-full text-center font-simpler text-[24px] font-black leading-[28px] text-white"
-          >
-            כמה יכול להישאר על הכרטיס?
-          </h2>
-          <div className="flex w-full flex-col gap-3 rounded-[16px] bg-white/5 px-4 py-4 outline outline-1 outline-white/15">
-            <Row label="תקציב שבועי" value={`₪${formatNumber(weeklyBudget, 0)}`} />
-            <Row label="₪ / שעת מסך" value={`₪${formatNumber(hourlyRate, 0)}`} />
+          <div className="flex w-full flex-col items-center gap-2">
+            <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
+              עלות שעת מסך
+            </p>
+            <BudgetStepper
+              value={hourlyRate}
+              min={V03_CHALLENGE_HOURLY_RATE.min}
+              max={V03_CHALLENGE_HOURLY_RATE.max}
+              step={V03_CHALLENGE_HOURLY_RATE.step}
+              decimals={1}
+              onChange={setHourlyRate}
+            />
+          </div>
+
+          <div className="flex w-full flex-col gap-2 rounded-[16px] bg-white/5 px-4 py-4 outline outline-1 outline-white/15">
             <Row
-              label="ממוצע יומי משוער"
-              value={`${formatNumber(estimatedDailyHours)} שע׳`}
+              label="שעות שבועיות על פי הערכה שלך"
+              value={`~${formatNumber(estimatedWeeklyHours)} שע׳`}
             />
             <div className="h-px w-full bg-white/10" />
             <Row
-              label="צפי יתרה אחרי 6 ימים"
+              label={`כמה כסף יישמר ל${childName}?`}
               value={`₪${formatNumber(projected)}`}
               emphasize
             />
           </div>
-          <p className="text-center font-simpler text-[13px] leading-[18px] text-white/55">
-            לפי ממוצע יומי מאונבורדינג / אתגר קודם. אם {childName} יוריד זמן מסך — יישאר יותר.
-            המימוש אחרי צילום מסך שבועי.
-          </p>
+        </>
+      )}
+
+      {step === 'sent' && (
+        <>
+          <ChallengeCardHero
+            src={V03_CHALLENGE_SETUP_ASSETS.parentSentHero}
+            frameWidth={V03_CHALLENGE_SETUP_LAYOUT.parentSentHero.width}
+            frameHeight={V03_CHALLENGE_SETUP_LAYOUT.parentSentHero.height}
+          />
+          <ChallengeEyebrow>נשלח ל{childName}</ChallengeEyebrow>
+          <ChallengeTitle id={titleId}>השבוע עומד להתחיל!</ChallengeTitle>
+
+          <ChallengeParentDealSentCard
+            childName={childName}
+            weeklyBudget={weeklyBudget}
+            hourlyRate={hourlyRate}
+            startDateLabel={formatHeDate(startDate)}
+          />
         </>
       )}
     </DashboardBlurCardOverlay>
@@ -245,7 +255,7 @@ function Row({
     <div className="flex w-full items-center justify-between gap-3" dir="rtl">
       <span
         className={`font-simpler text-[14px] ${
-          emphasize ? 'font-bold text-[#00E7A2]' : 'font-normal text-white/70'
+          emphasize ? 'font-bold text-white' : 'font-normal text-white/70'
         }`}
       >
         {label}

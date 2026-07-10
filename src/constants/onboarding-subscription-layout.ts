@@ -155,8 +155,14 @@ export function getSubscriptionCompactMetrics(usableCanvasHeightPx: number) {
   const planCardH = estimatePlanCardHeightPx(planPaddingY, planContentGap);
   const plansBlockH = planCardH * 2 + planGap;
   const footerReservePx = getSubscriptionFooterReservePx();
-  /** Foreground gap between main column and footer. */
-  const mainToFooterGap = FUNNEL_SECTION_GAP_MIN_PX;
+  /**
+   * Gap between last plan card and trial CTA — Figma ~36px @ 812;
+   * keep a hard floor on SE so the button never sits on the card.
+   */
+  const plansToCtaGap = Math.max(
+    veryTight ? 16 : tight ? 20 : 24,
+    Math.round(36 * layoutScale)
+  );
 
   const figmaHeroH = Math.round(ONBOARDING_SUBSCRIPTION.hero.height * layoutScale);
 
@@ -168,7 +174,7 @@ export function getSubscriptionCompactMetrics(usableCanvasHeightPx: number) {
     usableCanvasHeightPx -
       footerReservePx -
       plansBlockH -
-      mainToFooterGap -
+      plansToCtaGap -
       sectionGap
   );
 
@@ -213,6 +219,7 @@ export function getSubscriptionCompactMetrics(usableCanvasHeightPx: number) {
     planPaddingX: Math.max(18, Math.round(ONBOARDING_SUBSCRIPTION.planCard.paddingX * layoutScale)),
     planGap,
     planContentGap,
+    plansToCtaGap,
     planTitleSize: Math.max(16, Math.round(20 * layoutScale)),
     planPriceSize: Math.max(13, Math.round(16 * layoutScale)),
     closeTopPx: Math.round(26 * layoutScale),

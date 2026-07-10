@@ -22,7 +22,6 @@ interface NotificationsPanelProps {
   weeklyUpload?: WeeklyUpload | null;
   onOpenWeeklyReview?: () => void;
   childSetupCompleted?: boolean;
-  consultationCompleted?: boolean;
   noChallengeExists?: boolean;
 }
 
@@ -70,7 +69,6 @@ export default function NotificationsPanel({
   redemptionUrl,
   weeklyUpload,
   childSetupCompleted,
-  consultationCompleted,
   noChallengeExists,
 }: NotificationsPanelProps) {
   const [copied, setCopied] = useState(false);
@@ -106,7 +104,7 @@ export default function NotificationsPanel({
   const sendVerb = parentGenderValue === 'female' ? 'שלחי' : 'שלח';
 
   const hasNotifications =
-    noChallengeExists || consultationCompleted === false || (consultationCompleted === true && challengeNotStarted);
+    noChallengeExists || Boolean(challengeNotStarted && challengeStartDate);
 
   const handleCopyUrl = async (url: string) => {
     if (!url) return;
@@ -148,14 +146,7 @@ export default function NotificationsPanel({
         </div>
       )}
 
-      {consultationCompleted === false && !noChallengeExists && (
-        <div className={`${s.card} mb-2`}>
-          <h3 className={s.heading}>בקרוב ניפגש</h3>
-          <p className={s.body}>לאחר השיחה עם המומחה שלנו, תוכלו להתחיל באתגר.</p>
-        </div>
-      )}
-
-      {consultationCompleted === true && challengeNotStarted && challengeStartDate && (
+      {challengeNotStarted && challengeStartDate && (
         <div className={`${s.cardAccent} mb-2`}>
           <h3 className={s.heading}>{getRelativeDayText(challengeStartDate)} האתגר מתחיל! 🎉</h3>
           <p className={s.body}>התכוננו להתחלה מרגשת!</p>

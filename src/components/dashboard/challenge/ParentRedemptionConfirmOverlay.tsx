@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import {
   DashboardBlurCardOverlay,
   OverlayPrimaryButton,
-  OverlaySecondaryButton,
 } from '@/components/dashboard/challenge/DashboardBlurCardOverlay';
 import { HoursStepper } from '@/components/dashboard/challenge/HoursStepper';
 import { remainingOnCard, roundMoney } from '@/lib/challenge/v03ChallengeMath';
@@ -52,50 +51,48 @@ export function ParentRedemptionConfirmOverlay({
       visible={visible}
       titleId={titleId}
       compact
+      onClose={onClose}
       footer={
-        <div className="flex w-full flex-col gap-2">
-          <OverlayPrimaryButton
-            onClick={() =>
-              onConfirm({
-                totalScreenHours: totalHours,
-                redeemAmount,
-              })
-            }
-          >
-            אישור פדיון ₪{formatNumber(redeemAmount)}
-          </OverlayPrimaryButton>
-          <OverlaySecondaryButton onClick={onClose}>סגור</OverlaySecondaryButton>
-        </div>
+        <OverlayPrimaryButton
+          onClick={() =>
+            onConfirm({
+              totalScreenHours: totalHours,
+              redeemAmount,
+            })
+          }
+        >
+          אישור השבוע · ₪{formatNumber(redeemAmount)}
+        </OverlayPrimaryButton>
       }
     >
-      <p className="w-full text-center font-simpler text-[14px] font-semibold text-[#00E7A2]">
-        אישור פדיון
+      <p className="w-full text-center font-simpler text-[14px] font-semibold text-white">
+        אישור השבוע
       </p>
       <h2 id={titleId} className="w-full text-center font-simpler text-[24px] font-black text-white">
-        סיכום 6 הימים של {childName}
+        זמן המסך של {childName}
       </h2>
 
       <div className="flex w-full flex-col items-center gap-2">
-        <p className="text-center font-simpler text-[14px] text-white/70">
-          סה״כ שעות מסך (ניתן לערוך ידנית)
+        <p className="text-center font-simpler text-[14px] leading-[20px] text-white/70">
+          אלו זמני המסך שזיהינו אצל {childName} השבוע. אתם יכולים לערוך ידנית ולאחר מכן לאשר
         </p>
         <HoursStepper valueHours={totalHours} onChange={setTotalHours} />
         <p className="text-center font-simpler text-[14px] text-white/60">שעות · 6 ימים</p>
       </div>
 
       <div className="flex w-full flex-col gap-3 rounded-[16px] bg-white/5 px-4 py-4 outline outline-1 outline-white/15">
-        <Row label="נטען לכרטיס" value={`₪${formatNumber(weeklyBudget, 0)}`} />
-        <Row label="₪ / שעת מסך" value={`₪${formatNumber(hourlyRate, 0)}`} />
+        <Row label="דמי כיס בארנק" value={`₪${formatNumber(weeklyBudget, 0)}`} />
+        <Row label="עלות שעת מסך" value={`₪${formatNumber(hourlyRate, 0)}`} />
         <Row
-          label="יורד מהכרטיס"
+          label="כסף מהארנק (זמן מסך)"
           value={`₪${formatNumber(roundMoney(totalHours * hourlyRate))}`}
         />
         <div className="h-px w-full bg-white/10" />
-        <Row label="סכום לפדיון" value={`₪${formatNumber(redeemAmount)}`} emphasize />
+        <Row label="כסף שנשאר בארנק" value={`₪${formatNumber(redeemAmount)}`} emphasize />
       </div>
 
       <p className="text-center font-simpler text-[13px] leading-[18px] text-white/55">
-        המימוש בפועל הוא פנים אל פנים עם {childName}. אחרי אישור אפשר לפתוח אתגר חדש.
+        אחרי אישור {childName} יבחר מה לעשות עם הכסף בארנק ותוכלו לפתוח דיל חדש!
       </p>
     </DashboardBlurCardOverlay>
   );

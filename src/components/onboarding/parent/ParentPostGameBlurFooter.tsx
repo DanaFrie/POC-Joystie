@@ -1,10 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import {
-  useFunnelBleedBarStyle,
-  useFunnelViewportMetrics,
-} from '@/components/ui/FunnelViewportContext';
+import { FunnelBleedFooterBackdrop } from '@/components/ui/FunnelBleedFooterBackdrop';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
   FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
   FUNNEL_FOOTER_SHELL_PAD_TOP_PX,
@@ -16,31 +14,19 @@ const FOOTER_GUTTER_BREAKOUT_STYLE = {
   width: 'calc(100% + 2 * var(--v03-gutter))',
 } as const;
 
-/** Figma stacked footer — white 10% frost over scrolling post-game content. */
-const WHITE_FROST_STYLE = {
-  backgroundColor: 'rgba(255, 255, 255, 0.10)',
-  backdropFilter: 'blur(5px)',
-  WebkitBackdropFilter: 'blur(5px)',
-} as const;
-
 type ParentPostGameBlurFooterProps = {
   children: ReactNode;
 };
 
-/** White frosted footer — canvas-anchored overlay; content scrolls underneath. */
+/** White frosted footer — canvas-anchored overlay; blur bleeds into bottom safe area. */
 export function ParentPostGameBlurFooter({ children }: ParentPostGameBlurFooterProps) {
   const { usableCanvasHeightPx } = useFunnelViewportMetrics();
   const shellHeightPx = getFunnelStackedFooterShellHeightPx();
   const shellTopPx = usableCanvasHeightPx - shellHeightPx;
-  const blurBackdropStyle = useFunnelBleedBarStyle(shellTopPx);
 
   return (
     <>
-      <div
-        className="pointer-events-none absolute z-[44]"
-        style={{ ...blurBackdropStyle, ...WHITE_FROST_STYLE }}
-        aria-hidden
-      />
+      <FunnelBleedFooterBackdrop shellTopPx={shellTopPx} />
 
       <div
         className="absolute z-[45] flex w-full flex-col items-center justify-end gap-[15px]"

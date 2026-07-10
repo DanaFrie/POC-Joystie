@@ -221,7 +221,7 @@ export function OnboardingChildFlow() {
 
   const searchParams = useSearchParams();
 
-  const urlMeta = parseBondingInviteQueryParams(searchParams);
+  const urlMeta = parseBondingInviteQueryParams(searchParams ?? new URLSearchParams());
 
   const bonding = useChildBondingContext();
 

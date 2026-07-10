@@ -1,16 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ChallengeBody,
+  ChallengeCardHero,
+  ChallengeEyebrow,
+  ChallengeTitle,
+} from '@/components/dashboard/challenge/ChallengeCardPrimitives';
+import { ChallengeGlowContinueButton } from '@/components/dashboard/challenge/ChallengeGlowContinueButton';
+import { ChallengeCollapsibleGoalsList } from '@/components/dashboard/challenge/ChallengeCollapsibleGoalsList';
+import { ChallengeDealWalletPreview } from '@/components/dashboard/challenge/ChallengeDealWalletPreview';
 import {
   DashboardBlurCardOverlay,
-  OverlayPrimaryButton,
-  OverlaySecondaryButton,
 } from '@/components/dashboard/challenge/DashboardBlurCardOverlay';
 import { V03_MONEY_GOAL_OPTIONS } from '@/constants/v03-challenge';
-import { formatNumber } from '@/utils/formatting';
+import {
+  V03_CHALLENGE_SETUP_ASSETS,
+  V03_CHALLENGE_SETUP_LAYOUT,
+} from '@/constants/v03-challenge-layout';
 
 export type ChildChallengeSetupResult = {
   moneyGoals: string[];
+  customGoal?: string;
 };
 
 type ChildChallengeSetupOverlayProps = {
@@ -23,11 +34,8 @@ type ChildChallengeSetupOverlayProps = {
   onSubmit: (result: ChildChallengeSetupResult) => void;
 };
 
-type ChildSetupStep = 'summary' | 'goals';
+type ChildSetupStep = 'goals' | 'deal';
 
-/**
- * Child challenge accept — summary of parent deal, then money-goal pick (v0.2 goals, v0.3 card).
- */
 export function ChildChallengeSetupOverlay({
   visible,
   childName,
@@ -37,9 +45,27 @@ export function ChildChallengeSetupOverlay({
   onClose,
   onSubmit,
 }: ChildChallengeSetupOverlayProps) {
-  const [step, setStep] = useState<ChildSetupStep>('summary');
+  const [step, setStep] = useState<ChildSetupStep>('goals');
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
+  const [customGoalText, setCustomGoalText] = useState('');
+  const [goalsListOpen, setGoalsListOpen] = useState(false);
+  const [exiting, setExiting] = useState(false);
   const titleId = 'child-challenge-setup-title';
+  const submittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!visible) {
+      setExiting(false);
+      submittedRef.current = false;
+      return;
+    }
+    setStep('goals');
+    setSelectedGoals([]);
+    setCustomGoalText('');
+    setGoalsListOpen(false);
+    setExiting(false);
+    submittedRef.current = false;
+  }, [visible]);
 
   const toggleGoal = (id: string) => {
     setSelectedGoals((prev) =>
@@ -47,94 +73,127 @@ export function ChildChallengeSetupOverlay({
     );
   };
 
+  const handleConfirmDeal = useCallback(() => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    const trimmedCustom = customGoalText.trim();
+    onSubmit({
+      moneyGoals: selectedGoals,
+      customGoal: trimmedCustom || undefined,
+    });
+    setExiting(true);
+  }, [customGoalText, selectedGoals, onSubmit]);
+
+  const handleExitComplete = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const hasGoals = selectedGoals.length > 0 || customGoalText.trim().length > 0;
+
+  const goalChipLabels: string[] = [
+    ...selectedGoals.flatMap((id) => {
+      const label = V03_MONEY_GOAL_OPTIONS.find((o) => o.id === id)?.label;
+      return label ? [label] : [];
+    }),
+    ...(customGoalText.trim() ? [customGoalText.trim()] : []),
+  ];
+
   const footer =
-    step === 'summary' ? (
-      <div className="flex w-full flex-col gap-2">
-        <OverlayPrimaryButton onClick={() => setStep('goals')}>הבנתי, בוחרים מטרה</OverlayPrimaryButton>
-        <OverlaySecondaryButton onClick={onClose}>סגור</OverlaySecondaryButton>
-      </div>
+    step === 'goals' ? (
+      <ChallengeGlowContinueButton
+        enabled={hasGoals}
+        onClick={() => setStep('deal')}
+        label="המשך לדיל"
+      />
     ) : (
-      <div className="flex w-full flex-col gap-2">
-        <OverlayPrimaryButton
-          disabled={selectedGoals.length === 0}
-          onClick={() => onSubmit({ moneyGoals: selectedGoals })}
-        >
-          מתחילים את האתגר
-        </OverlayPrimaryButton>
-        <OverlaySecondaryButton onClick={() => setStep('summary')}>חזרה</OverlaySecondaryButton>
-      </div>
+      <ChallengeGlowContinueButton enabled onClick={handleConfirmDeal} label="בואו נתחיל!" />
     );
 
   return (
-    <DashboardBlurCardOverlay visible={visible} titleId={titleId} footer={footer} compact>
-      {step === 'summary' && (
+    <DashboardBlurCardOverlay
+      visible={visible}
+      titleId={titleId}
+      footer={footer}
+      onClose={onClose}
+      compact
+      fillViewport={step === 'goals' && !goalsListOpen}
+      exiting={exiting}
+      onExitComplete={handleExitComplete}
+    >
+      {step === 'goals' && (
         <>
-          <p className="w-full text-center font-simpler text-[14px] font-semibold leading-[18px] text-[#00E7A2]">
-            הדיל עם {parentLabel}
-          </p>
-          <h2
-            id={titleId}
-            className="w-full text-center font-simpler text-[26px] font-black leading-[30px] text-white"
-          >
-            היי {childName} — הכסף כבר על הכרטיס
-          </h2>
-          <div className="flex w-full flex-col gap-3 rounded-[16px] bg-white/5 px-4 py-4 outline outline-1 outline-white/15">
-            <SummaryRow label="נטען לכרטיס" value={`₪${formatNumber(weeklyBudget, 0)}`} />
-            <SummaryRow label="שעת מסך עולה" value={`₪${formatNumber(hourlyRate, 0)}`} />
+          <div className="flex w-full flex-col items-center gap-[15px]">
+            <ChallengeCardHero
+              src={V03_CHALLENGE_SETUP_ASSETS.childHero}
+              frameWidth={V03_CHALLENGE_SETUP_LAYOUT.childHero.width}
+              frameHeight={V03_CHALLENGE_SETUP_LAYOUT.childHero.height}
+            />
+            <ChallengeEyebrow>הפתעה טובה מ{parentLabel}</ChallengeEyebrow>
+            <ChallengeTitle id={titleId}>
+              {childName}, למה כדאי לשמור על הכסף בארנק השבוע?
+            </ChallengeTitle>
+            <ChallengeBody>
+              בחר/י מה הכי מתאים לך, ככה תזכור למה שווה לשמור על דמי הכיס בארנק.
+            </ChallengeBody>
           </div>
-          <p className="text-center font-simpler text-[14px] leading-[20px] text-white/75">
-            כל שעת מסך יורדת מהכרטיס. ככל שתשמרו על פחות זמן מסך — יישאר יותר לפדיון בסוף השבוע
-            (אחרי צילום מסך).
-          </p>
+
+          <ChallengeCollapsibleGoalsList
+            options={V03_MONEY_GOAL_OPTIONS}
+            selectedIds={selectedGoals}
+            onToggle={toggleGoal}
+            expanded={goalsListOpen}
+            onExpandedChange={setGoalsListOpen}
+          />
+
+          <div className="flex w-full flex-col gap-[15px]">
+            <div className="flex w-full items-center gap-2 px-1">
+              <div className="h-px flex-1 border-t border-dashed border-white/25" aria-hidden />
+              <span className="shrink-0 font-simpler text-[12px] font-normal tracking-[0.12em] text-white/50">
+                או
+              </span>
+              <div className="h-px flex-1 border-t border-dashed border-white/25" aria-hidden />
+            </div>
+
+            <textarea
+              value={customGoalText}
+              onChange={(event) => setCustomGoalText(event.target.value)}
+              placeholder="כתוב/י מטרה משלך…"
+              rows={3}
+              dir="rtl"
+              className="min-h-[80px] w-full resize-none rounded-[16px] border border-white bg-white/[0.05] px-3 py-3 text-right font-simpler text-[14px] font-normal leading-[20px] text-white placeholder:text-white/40 focus:outline-none focus:outline-offset-0"
+              aria-label="מטרה חופשית"
+            />
+          </div>
         </>
       )}
 
-      {step === 'goals' && (
+      {step === 'deal' && (
         <>
-          <p className="w-full text-center font-simpler text-[14px] font-semibold leading-[18px] text-[#00E7A2]">
-            מטרות לכסף
-          </p>
-          <h2
-            id={titleId}
-            className="w-full text-center font-simpler text-[24px] font-black leading-[28px] text-white"
-          >
-            למה כדאי לחסוך?
-          </h2>
-          <div className="grid w-full grid-cols-2 gap-2">
-            {V03_MONEY_GOAL_OPTIONS.map((option) => {
-              const selected = selectedGoals.includes(option.id);
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => toggleGoal(option.id)}
-                  className={`relative rounded-[14px] px-2 py-3 text-center font-simpler text-[13px] font-bold leading-[16px] transition ${
-                    selected
-                      ? 'bg-[#00FFB3] text-[#092125] outline outline-[1.5px] outline-[#00FFB3]'
-                      : 'bg-white/5 text-white outline outline-1 outline-white/20 hover:outline-white/40'
-                  }`}
+          <ChallengeEyebrow>הדיל שלך</ChallengeEyebrow>
+          <ChallengeTitle id={titleId}>דמי הכיס כבר בארנק שלך</ChallengeTitle>
+
+          <ChallengeDealWalletPreview weeklyBudget={weeklyBudget} hourlyRate={hourlyRate} />
+
+          <ChallengeBody>
+            כל שעת מסך שווה כסף מתוך דמי הכיס שבארנק שלך.
+            <br />
+            פחות זמן מסך זה יותר כסף בארנק שתוכל לנצל בסוף השבוע.
+          </ChallengeBody>
+
+          {goalChipLabels.length > 0 ? (
+            <div className="flex w-full flex-wrap justify-center gap-1.5">
+              {goalChipLabels.map((label, index) => (
+                <span
+                  key={`${label}-${index}`}
+                  className="rounded-full bg-white/10 px-3 py-1 font-simpler text-[12px] font-semibold text-white/90"
                 >
-                  {option.label}
-                  {selected && (
-                    <span className="absolute left-1.5 top-1 text-[12px]" aria-hidden>
-                      ✓
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </>
       )}
     </DashboardBlurCardOverlay>
-  );
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex w-full items-center justify-between gap-3" dir="rtl">
-      <span className="font-simpler text-[14px] text-white/70">{label}</span>
-      <span className="font-simpler text-[18px] font-black text-white">{value}</span>
-    </div>
   );
 }

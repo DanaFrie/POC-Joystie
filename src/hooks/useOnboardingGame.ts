@@ -11,7 +11,7 @@ import {
 import { isGameWon } from '@/lib/game/onboarding';
 import { useGameSession } from '@/hooks/useGameSession';
 import { getOnboardingBondingInviteId } from '@/lib/onboarding/bondingShare';
-import { getBondingChildName, getSelectedFirstChildName } from '@/lib/onboarding/bondingInvite';
+import { getBondingChildName, getBondingChildGender, getSelectedFirstChildName } from '@/lib/onboarding/bondingInvite';
 import {
   getChildBondingContext,
   setChildBondingContext,
@@ -129,6 +129,7 @@ export function useOnboardingGame({
       try {
         await publishOnboardingBondingPublic(uid, {
           childName: resolvedChildName,
+          childGender: getBondingChildGender() ?? undefined,
           parentName: courtParentName,
           parentGender: gender,
           roomId: session.roomId,

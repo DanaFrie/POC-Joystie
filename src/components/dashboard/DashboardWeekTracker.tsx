@@ -1,15 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import type { WeekDay } from '@/types/dashboard';
 import {
   PARENT_DASHBOARD_ASSETS,
   PARENT_DASHBOARD_COLORS,
 } from '@/constants/parent-dashboard-layout';
+import { updateChild } from '@/lib/api/children';
+import {
+  emptyDayChecks,
+  matrixToChangeDayCheckRows,
+} from '@/lib/onboarding/changeDayChecks';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('DashboardWeekTracker');
 
 /** Visual order right→left in RTL layout when using flex row with dir=rtl: א…ש */
 const DAY_LETTERS = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'] as const;
+
+function emptyChecks(): boolean[] {
+  return emptyDayChecks();
+}
 
 export type ChangeCardMock = {
   id: string;
@@ -115,63 +127,98 @@ function ChangeCard({ title, changeText, checkedDays, onToggleDay }: ChangeCardP
 
 type DashboardWeekTrackerProps = {
   week: WeekDay[];
-  dailyScreenTimeGoal: number;
+  dailyScreenTimeGoal?: number;
   childName?: string;
+  childId?: string;
+  parentId?: string;
+  changes?: string[];
+  changeDayChecks?: boolean[][];
   changeText?: string;
   cards?: ChangeCardMock[];
 };
 
-function defaultCards(childName?: string, changeText?: string): ChangeCardMock[] {
+function buildCardsFromChanges(
+  childName: string | undefined,
+  changes: string[] | undefined,
+  changeDayChecks: boolean[][] | undefined,
+  fallbackChangeText?: string
+): ChangeCardMock[] {
   const name = childName || 'הילד';
-  return [
-    {
-      id: 'change-1',
-      title: `השינוי הראשון של ${name}`,
-      changeText: changeText || 'לנסות ללכת לישון בשעה קצת יותר מוקדמת',
-      initialChecked: [true, true, true, false, false, false, false],
-    },
-    {
-      id: 'change-2',
-      title: `השינוי השני של ${name}`,
-      changeText: 'להפחית את כמות המסכים לפני שינה',
-      initialChecked: [true, false, false, false, false, false, false],
-    },
-  ];
+  const texts =
+    changes && changes.length > 0
+      ? changes.slice(0, 2)
+      : fallbackChangeText
+        ? [fallbackChangeText]
+        : [];
+
+  return texts.map((text, index) => ({
+    id: `change-${index}`,
+    title: index === 0 ? `השינוי הראשון של ${name}` : `השינוי השני של ${name}`,
+    changeText: text,
+    initialChecked: changeDayChecks?.[index] ?? emptyChecks(),
+  }));
 }
 
 export function DashboardWeekTracker({
   childName,
+  childId,
+  parentId,
+  changes,
+  changeDayChecks,
   changeText,
   week: _week,
   dailyScreenTimeGoal: _goal,
   cards: cardsProp,
 }: DashboardWeekTrackerProps) {
-  const cards = cardsProp ?? defaultCards(childName, changeText);
+  const cards = cardsProp ?? buildCardsFromChanges(childName, changes, changeDayChecks, changeText);
 
   const [checkedByCard, setCheckedByCard] = useState<Record<string, boolean[]>>(() => {
     const initial: Record<string, boolean[]> = {};
     cards.forEach((card) => {
-      initial[card.id] = card.initialChecked ?? [
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-      ];
+      initial[card.id] = card.initialChecked ?? emptyChecks();
     });
     return initial;
   });
 
+  useEffect(() => {
+    const next: Record<string, boolean[]> = {};
+    cards.forEach((card) => {
+      next[card.id] = card.initialChecked ?? emptyChecks();
+    });
+    setCheckedByCard(next);
+    // Re-hydrate when Firestore child changes load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [childId, changes?.join('|'), JSON.stringify(changeDayChecks)]);
+
+  const persistChecks = useCallback(
+    async (nextByCard: Record<string, boolean[]>) => {
+      if (!childId || !parentId || cards.length === 0) return;
+      const matrix = cards.map((card) => nextByCard[card.id] ?? emptyChecks());
+      try {
+        await updateChild(
+          childId,
+          { changeDayChecks: matrixToChangeDayCheckRows(matrix) },
+          parentId
+        );
+      } catch (error) {
+        logger.warn('Failed to persist change day checks:', error);
+      }
+    },
+    [childId, parentId, cards]
+  );
+
   const toggleDay = (cardId: string, dayIndex: number) => {
     setCheckedByCard((prev) => {
-      const current = prev[cardId] ?? [false, false, false, false, false, false, false];
+      const current = prev[cardId] ?? emptyChecks();
       const next = [...current];
       next[dayIndex] = !next[dayIndex];
-      return { ...prev, [cardId]: next };
+      const nextState = { ...prev, [cardId]: next };
+      void persistChecks(nextState);
+      return nextState;
     });
   };
+
+  if (cards.length === 0) return null;
 
   return (
     <div className="flex w-full flex-col gap-3">
@@ -180,9 +227,7 @@ export function DashboardWeekTracker({
           key={card.id}
           title={card.title}
           changeText={card.changeText}
-          checkedDays={
-            checkedByCard[card.id] ?? [false, false, false, false, false, false, false]
-          }
+          checkedDays={checkedByCard[card.id] ?? emptyChecks()}
           onToggleDay={(dayIndex) => toggleDay(card.id, dayIndex)}
         />
       ))}

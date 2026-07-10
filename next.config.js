@@ -116,6 +116,10 @@ const nextConfig = {
   // Disable server-side rendering for pages that use tesseract.js
   experimental: {
     serverComponentsExternalPackages: ['tesseract.js'],
+    // Windows: parallel page-data workers can race and leave
+    // .next/server/pages/_document.js missing (nft.json only).
+    cpus: 1,
+    workerThreads: false,
   },
   // Exclude functions directory from TypeScript checking (it has its own tsconfig)
   typescript: {

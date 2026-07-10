@@ -30,7 +30,7 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
   useEffect(() => {
     if (!access || access.status !== 'ready') return;
 
-    const urlMeta = parseBondingInviteQueryParams(searchParams);
+    const urlMeta = parseBondingInviteQueryParams(searchParams ?? new URLSearchParams());
     let childName = urlMeta.childName ?? '';
     let childGender = urlMeta.childGender;
     let parentName = urlMeta.parentName ?? 'אבא';
@@ -58,6 +58,9 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
       const meta = await readOnboardingBondingMeta(access.parentId);
       if (meta) {
         if (meta.childName) childName = meta.childName;
+        if (meta.childGender === 'boy' || meta.childGender === 'girl') {
+          childGender = meta.childGender;
+        }
         if (meta.parentName) parentName = meta.parentName;
         if (meta.parentGender) parentGender = meta.parentGender;
       }
@@ -77,6 +80,9 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
       const pub = await readOnboardingBondingPublic(access.parentId);
       if (pub) {
         if (pub.childName) childName = pub.childName;
+        if (pub.childGender === 'boy' || pub.childGender === 'girl') {
+          childGender = pub.childGender;
+        }
         if (pub.parentName) parentName = pub.parentName;
         if (pub.parentGender) parentGender = pub.parentGender;
       }

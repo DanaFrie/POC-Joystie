@@ -1,8 +1,8 @@
 import type { GamePlayerRole } from '@/types/game';
 
-/** Base serve speed — +30% prior tuning, +15% start boost (paddle boost unchanged). */
-export const BALL_START_VY = 0.25116;
-export const BALL_START_VX = 0.1794;
+/** Base serve speed — prior tuning +20% start boost. */
+export const BALL_START_VY = 0.301392;
+export const BALL_START_VX = 0.21528;
 
 /** Shared-court Y velocity sign → player who should receive the ball next. */
 export function ballTowardFromVy(vy: number): GamePlayerRole {

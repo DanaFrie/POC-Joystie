@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "emulators:billing": "firebase emulators:start --only functions,firestore",
     "dev:sync": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-secrets-to-env.ps1 && npm run dev",
     "sync-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-secrets-to-env.ps1",
     "delete-secrets": "powershell -ExecutionPolicy Bypass -File ./scripts/delete-apphosting-secrets.ps1",

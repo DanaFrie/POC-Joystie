@@ -10,6 +10,7 @@ const logger = createContextLogger('BondingPublic');
 
 export type OnboardingBondingMetaRecord = {
   childName: string;
+  childGender?: 'boy' | 'girl';
   parentName: string;
   parentGender?: 'female' | 'male';
   updatedAt: string;
@@ -62,6 +63,7 @@ export async function publishOnboardingBondingPublic(
   await set(ref(db, publicPathFor(parentId)), payload);
   await set(ref(db, metaPathFor(parentId)), {
     childName: record.childName,
+    childGender: record.childGender,
     parentName: record.parentName,
     parentGender: record.parentGender,
     updatedAt: payload.updatedAt,

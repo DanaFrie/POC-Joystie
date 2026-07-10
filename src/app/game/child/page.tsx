@@ -16,10 +16,10 @@ import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 function ChildGameInner() {
   const searchParams = useSearchParams();
   const bonding = useChildBondingContext();
-  const urlMeta = parseBondingInviteQueryParams(searchParams);
+  const urlMeta = parseBondingInviteQueryParams(searchParams ?? new URLSearchParams());
 
   const parentId = bonding?.parentId ?? null;
-  const inviteId = bonding?.inviteId ?? searchParams.get('invite') ?? undefined;
+  const inviteId = bonding?.inviteId ?? searchParams?.get('invite') ?? undefined;
   const childName = bonding?.childName;
   const parentName = bonding?.parentName;
 

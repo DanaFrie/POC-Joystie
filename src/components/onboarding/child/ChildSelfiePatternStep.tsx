@@ -123,7 +123,9 @@ export function ChildSelfiePatternStep({
   const streamActive = status === 'active' && Boolean(stream) && !previewUrls;
   const useLiveCamera = streamActive && videoReady;
   const showBlurredHoles = (!useLiveCamera && !previewUrls) || cameraWarming;
-  const showDisappointed = status === 'denied' && !retryBusy;
+  // Keep the card mounted while retrying so the click's user gesture reaches getUserMedia.
+  const showDisappointed =
+    status === 'denied' || (retryBusy && status !== 'active');
   const capture = layout.captureButton;
   const childHole = layout.childHole;
   const parentHole = layout.parentHole;
@@ -176,12 +178,13 @@ export function ChildSelfiePatternStep({
 
     setRetryBusy(true);
     try {
-      releaseCamera();
+      // Do not call releaseCamera() first — it bumps the request seq and can
+      // cancel this gesture-scoped getUserMedia before the prompt appears.
       await requestCamera();
     } finally {
       setRetryBusy(false);
     }
-  }, [releaseCamera, requestCamera]);
+  }, [requestCamera]);
 
   const handleSkipDecline = useCallback(() => {
     releaseCamera();

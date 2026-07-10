@@ -10,10 +10,17 @@ import {
 type DashboardConversionBarProps = {
   savedMinutes: number;
   balance: number;
+  /** Override center money label (e.g. challenge deal rate). */
+  moneyLabel?: string;
 };
 
 /** Figma 13652:17670 — conversion time → money bar */
-export function DashboardConversionBar({ savedMinutes, balance }: DashboardConversionBarProps) {
+export function DashboardConversionBar({
+  savedMinutes,
+  balance,
+  moneyLabel,
+}: DashboardConversionBarProps) {
+  const moneyText = moneyLabel ?? `המרה ל-${formatNumber(balance, 0)} ₪`;
   return (
     <div
       className="relative h-14 w-full overflow-visible"
@@ -52,7 +59,7 @@ export function DashboardConversionBar({ savedMinutes, balance }: DashboardConve
           lineHeight: '14px',
         }}
       >
-        {`המרה ל-${formatNumber(balance, 0)} ₪`}
+        {moneyText}
       </p>
 
       {/* Minutes toggle — inset from right */}
@@ -116,33 +123,49 @@ export function DashboardConversionBar({ savedMinutes, balance }: DashboardConve
 
 type DashboardChildStartCtaProps = {
   onClick?: () => void;
+  label?: string;
+  disabled?: boolean;
 };
 
-export function DashboardChildStartCta({ onClick }: DashboardChildStartCtaProps) {
+export function DashboardChildStartCta({
+  onClick,
+  label = 'הגדרת הדיל הראשון בארנק שלי',
+  disabled = false,
+}: DashboardChildStartCtaProps) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-[55px] w-full items-center justify-center rounded-[22px] bg-[#00FFB3] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-[#092125] shadow-[2px_2px_20px_rgba(109,109,109,0.15)]"
+      disabled={disabled}
+      className={`flex h-[55px] w-full items-center justify-center rounded-[22px] bg-[#00FFB3] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-[#092125] shadow-[2px_2px_20px_rgba(109,109,109,0.15)] ${
+        disabled ? 'cursor-not-allowed opacity-45' : ''
+      }`}
     >
-      להתחלת אתגר המסך הראשון שלי
+      {label}
     </button>
   );
 }
 
 type DashboardChildGreetingProps = {
   childName: string;
+  /** Hide the pre-deal wallet teaser once the child confirmed the deal. */
+  showWalletTeaser?: boolean;
 };
 
-export function DashboardChildGreeting({ childName }: DashboardChildGreetingProps) {
+export function DashboardChildGreeting({
+  childName,
+  showWalletTeaser = true,
+}: DashboardChildGreetingProps) {
   return (
     <div className="flex w-[197px] flex-col items-center gap-0.5 text-center text-[#F6F7F6]">
       <h1 className="w-full font-simpler text-[24px] font-black leading-[27.6px]">
         היי {childName}!
       </h1>
-      <p className="w-[225px] font-simpler text-[16px] font-normal leading-[21.6px]">
-        כשתיפתח הגישה לארנק, כאן יופיע החסכון שלנו בזמן מסך ובכסף!
-      </p>
+      {showWalletTeaser ? (
+        <p className="w-[225px] font-simpler text-[16px] font-normal leading-[21.6px]">
+          כשתיפתח הגישה לארנק, כאן יופיע החסכון שלנו בזמן מסך ובכסף!
+        </p>
+      ) : null}
     </div>
   );
 }

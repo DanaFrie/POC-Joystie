@@ -17,7 +17,6 @@ type DashboardNotificationsSheetProps = {
   redemptionUrl?: string;
   weeklyUpload?: WeeklyUpload | null;
   childSetupCompleted?: boolean;
-  consultationCompleted?: boolean;
   noChallengeExists?: boolean;
 };
 

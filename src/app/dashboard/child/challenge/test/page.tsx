@@ -21,7 +21,7 @@ export default function ChildChallengeSetupTestPage() {
 
   return (
     <ChallengeTestShell
-      title="TEST · אישור אתגר (ילד)"
+      title="TEST · אישור דיל (ילד)"
       subtitle="/dashboard/child/challenge/test"
       childName={childName}
       averageMinutes={Math.round(estimatedDailyHours * 60)}
@@ -38,10 +38,10 @@ export default function ChildChallengeSetupTestPage() {
             onClick={() => setOpen(true)}
             className="rounded-[22px] bg-[#00FFB3] px-8 py-3 font-simpler text-[16px] font-bold text-[#092125]"
           >
-            פתיחת כרטיס הילד
+            פתיחת הדיל
           </button>
           <p className="text-center font-simpler text-[13px] text-white/60">
-            דיל: ₪{formatNumber(weeklyBudget, 0)} · ₪{formatNumber(hourlyRate, 0)}/שעה
+            דמי כיס: ₪{formatNumber(weeklyBudget, 0)} · ₪{formatNumber(hourlyRate, 0)} כסף לשעה מהארנק
           </p>
         </div>
       )}

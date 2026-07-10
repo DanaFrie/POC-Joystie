@@ -112,11 +112,11 @@ export function ParentAdditionalChangeStep({
     parentPostGameBlurFooterScrollPadPx() + getFunnelScrollContentEndPadPx();
 
   return (
-    <FunnelStepRoot fitViewport className="flex h-full flex-col overflow-hidden">
+    <FunnelStepRoot fitViewport className="flex h-full flex-col">
       <ParentPostGameGreenBackground />
       <OnboardingBackButton onClick={onBack} />
 
-      <div className="relative z-10 min-h-0 flex-1 overflow-hidden">
+      <div className="relative z-10 min-h-0 flex-1">
         <div
           ref={scrollRef}
           className="h-full overflow-y-auto overscroll-contain v03-scroll-hidden"

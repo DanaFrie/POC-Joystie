@@ -7,6 +7,8 @@ type DashboardDailyAverageCardProps = {
   childName: string;
   week: WeekDay[];
   weekOverWeekPercent?: number | null;
+  /** When set, overrides week-derived average (baseline / last redemption). */
+  averageMinutes?: number;
 };
 
 function averageDailyMinutes(week: WeekDay[]): number {
@@ -43,11 +45,12 @@ export function DashboardDailyAverageCard({
   childName,
   week,
   weekOverWeekPercent = null,
+  averageMinutes: averageMinutesProp,
 }: DashboardDailyAverageCardProps) {
-  const averageMinutes = averageDailyMinutes(week);
+  const averageMinutes = averageMinutesProp ?? averageDailyMinutes(week);
   const comparison =
-    weekOverWeekPercent == null
-      ? "0% ביחס לשבוע שעבר"
+    weekOverWeekPercent == null || weekOverWeekPercent === 0
+      ? '0% ביחס לשבוע שעבר'
       : `${weekOverWeekPercent > 0 ? '+' : ''}${weekOverWeekPercent}% ביחס לשבוע שעבר`;
 
   return (

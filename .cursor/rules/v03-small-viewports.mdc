@@ -14,7 +14,7 @@ alwaysApply: true
 **Readable 1:1 Figma layout beats squeezing everything on screen.**
 
 1. **Canvas:** Keep layers at **375×812** Figma coordinates. Do not shrink tap targets, inputs, or icons below their designed size to fit a short viewport.
-2. **Scroll, don't squeeze:** When content exceeds the visible area, enable **vertical scroll** (`overflow-y-auto`, `OnboardingFunnelScrollBody`, step scroll regions). Prefer hidden scrollbars (`v03-scroll-hidden`) in funnel flows.
+2. **Scroll, don't squeeze:** When content exceeds the visible area, enable **vertical scroll** in the step main region (`FunnelStepMain` / `overflow-y-auto`). Prefer hidden scrollbars (`v03-scroll-hidden`).
 3. **Scale:** Use `scaleMode="scroll"` on funnel routes. **Short** viewports: width-fit at ≥1:1 on 375px-wide phones — scroll instead of height-shrink. **Tall** viewports (e.g. iPhone 12 Pro): slight height-fit when width-fit would overflow — **no page scroll** if the 812px canvas fits. Narrow phones (&lt;375px) may scale down horizontally only.
 4. **Placement:** Top-align the artboard. Do not vertically center and shrink to fit.
 5. **Margins (see below):** Keep Figma **24px side gutters** (`px-v03-gutter`, `left-v03-gutter` + `w-v03-content`). Safe-area insets are **viewport padding**, not canvas margin.
@@ -30,7 +30,7 @@ alwaysApply: true
 | **Horizontal letterbox** | none | `offsetX = 0` — canvas is edge-to-edge; no side bars. |
 | **Top safe area** | `env(safe-area-inset-top)` | **Padding** on the scroll container — stays fixed while content scrolls (notch / Dynamic Island). |
 | **Bottom safe area** | `env(safe-area-inset-bottom)` | **Padding** on the scroll container + fixed footers / sheets that already use `safe-area-inset-bottom`. |
-| **Footer reserve** | blur footer height | Scroll regions use `OnboardingFunnelScrollBody` `bottom` reserve so CTAs are not covered. |
+| **Footer reserve** | CTA / blur footer height | Scroll main so CTAs are not covered (`FunnelStepFooter`, `ONBOARDING_BLUR_FOOTER_*`). |
 
 **Do not** shrink gutters or content width to “fit” short screens. **Do not** add page-level horizontal margin outside the 375px canvas.
 
@@ -43,18 +43,12 @@ iPhone SE (1st–3rd), iPhone 12/13 mini, iPhone 4/5, Galaxy A / older Android �
 | Layer | Action |
 |-------|--------|
 | `FunnelViewport` | `scaleMode="scroll"` — adaptive scale; `overflow-y-auto` only when `needsVerticalScroll` |
-| Scrollable steps | `OnboardingFunnelScrollBody` + footer reserve (`ONBOARDING_BLUR_FOOTER_*`) |
-| Fixed / hero steps | Ensure step or parent scroll region covers overflow; avoid `overflow-hidden` without a scroll sibling |
+| Step layout | Canonical stack in `v03-funnel-layout` — `FunnelStepRoot fitViewport` + foreground/footer |
+| Scrollable steps | Scroll inside `FunnelStepMain` (or equivalent); reserve space for footer CTAs |
+| Fixed / hero steps | Avoid `overflow-hidden` without a scroll sibling when content can overflow |
 | Portals / bleed math | `useFunnelViewportMetrics()` — `scale` reflects width-fit, not height-fit |
 | Mount flash | `FunnelViewport` defers canvas children until `layoutReady`; portaled layers gate on `useFunnelLayoutReady()` |
-| 100vh foreground | `src/components/ui/funnel-layout/*` + `funnel-vertical-layout.ts` — migrate screens in batches (Step 1: primitives only) |
 
-## 100vh foreground stack (migration)
+## Scope
 
-- **Background:** `FunnelStepBackground` — absolute bleed, not in flex flow.
-- **Foreground:** `FunnelStepForeground` + `FunnelStepMain` + `FunnelStepFooter` — `h-full`, `justify-between`, scroll in main when needed.
-- **Do not** migrate all screens at once — pilot → bulk by `FunnelStepTemplate`.
-
-## Landing / marketing
-
-The home page is **not** a fixed 375×812 funnel — responsive layout there is unchanged. This rule applies to **funnel routes** (`/onboarding/*`, `/login`, bonding, payment gate).
+Applies to **funnel routes** (`/onboarding/*`, `/login`, bonding, payment gate). Landing `/` is responsive (not 375×812). Dashboard uses `100dvh` — not this artboard scale model.

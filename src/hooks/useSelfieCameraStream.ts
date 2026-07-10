@@ -37,9 +37,16 @@ export function useSelfieCameraStream() {
   const streamRef = useRef<MediaStream | null>(null);
   const requestSeqRef = useRef(0);
   const autoRetriedRef = useRef(false);
+  const autoRetryTimerRef = useRef<number | null>(null);
   const [status, setStatus] = useState<SelfieCameraStatus>('idle');
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [videoReady, setVideoReady] = useState(false);
+
+  const clearAutoRetryTimer = useCallback(() => {
+    if (autoRetryTimerRef.current == null) return;
+    window.clearTimeout(autoRetryTimerRef.current);
+    autoRetryTimerRef.current = null;
+  }, []);
 
   const bindVideoElement = useCallback((video: HTMLVideoElement | null) => {
     videoRef.current = video;
@@ -61,23 +68,27 @@ export function useSelfieCameraStream() {
   }, []);
 
   const releaseCamera = useCallback(() => {
+    clearAutoRetryTimer();
     requestSeqRef.current += 1;
     autoRetriedRef.current = false;
     stopStreamTracks();
-  }, [stopStreamTracks]);
+  }, [clearAutoRetryTimer, stopStreamTracks]);
 
   const requestCamera = useCallback(async () => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       setStatus('denied');
-      return;
+      return false;
     }
 
+    clearAutoRetryTimer();
     const requestId = ++requestSeqRef.current;
+    autoRetriedRef.current = false;
     setStatus('pending');
     setVideoReady(false);
     stopStreamTracks();
 
     try {
+      // Invoke getUserMedia in the same turn as a user gesture when called from retry.
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
@@ -89,10 +100,9 @@ export function useSelfieCameraStream() {
 
       if (requestId !== requestSeqRef.current) {
         mediaStream.getTracks().forEach((track) => track.stop());
-        return;
+        return false;
       }
 
-      autoRetriedRef.current = false;
       streamRef.current = mediaStream;
       setStream(mediaStream);
       setStatus('active');
@@ -101,27 +111,30 @@ export function useSelfieCameraStream() {
       if (video) {
         attachStreamToVideo(video, mediaStream);
       }
+      return true;
     } catch (error) {
-      if (requestId !== requestSeqRef.current) return;
+      if (requestId !== requestSeqRef.current) return false;
 
       if (isPermissionDeniedError(error)) {
         setStatus('denied');
-        return;
+        return false;
       }
 
       // Strict Mode unmount/remount can interrupt the first request — retry once.
       if (!autoRetriedRef.current) {
         autoRetriedRef.current = true;
-        window.setTimeout(() => {
+        autoRetryTimerRef.current = window.setTimeout(() => {
+          autoRetryTimerRef.current = null;
           if (requestId !== requestSeqRef.current) return;
           void requestCamera();
         }, 300);
-        return;
+        return false;
       }
 
       setStatus('denied');
+      return false;
     }
-  }, [stopStreamTracks]);
+  }, [clearAutoRetryTimer, stopStreamTracks]);
 
   const markVideoReady = useCallback(() => {
     setVideoReady(true);

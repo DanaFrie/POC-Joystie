@@ -22,8 +22,8 @@ function ResetPasswordPageContent() {
 
   useEffect(() => {
     const validateActionCode = async () => {
-      const oobCode = searchParams.get('oobCode');
-      const mode = searchParams.get('mode');
+      const oobCode = searchParams?.get('oobCode');
+      const mode = searchParams?.get('mode');
 
       if (!oobCode || mode !== 'resetPassword') {
         setValidationError('קישור לא תקין או פג תוקף. אנא בקשו קישור חדש.');
@@ -64,7 +64,7 @@ function ResetPasswordPageContent() {
       return;
     }
 
-    const oobCode = searchParams.get('oobCode');
+    const oobCode = searchParams?.get('oobCode');
     if (!oobCode) {
       setError('קישור לא תקין');
       return;

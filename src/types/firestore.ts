@@ -8,6 +8,44 @@ export type UserKidAgeScreenTime = {
   dailyScreenTimeHours: number;
 };
 
+export type SubscriptionStatus =
+  | 'freemium'
+  | 'checkout_pending'
+  | 'trialing'
+  | 'payment_failed'
+  | 'active'
+  | 'canceled';
+
+export type FirestoreUserSubscription = {
+  provider: 'cardcom' | 'none';
+  status: SubscriptionStatus;
+  plan?: 'annual' | 'monthly';
+  trialEndsAt?: string;
+  lowProfileId?: string;
+  returnValue?: string;
+  cardcomVerifiedAt?: string;
+  /** True after webhook stored token in `billing_tokens/{uid}` (server-only). */
+  hasStoredToken?: boolean;
+  /** Last 4 digits for UI — not the charge token. */
+  cardLast4?: string;
+  lastError?: string;
+  updatedAt?: string;
+};
+
+/** Server-only — written by `cardcomWebhook`; use Admin SDK / Cloud Functions to charge. */
+export type FirestoreBillingToken = {
+  provider: 'cardcom';
+  token: string;
+  tokenExDate?: string;
+  cardMonth?: number;
+  cardYear?: number;
+  tokenApprovalNumber?: string;
+  last4?: string;
+  lowProfileId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export interface FirestoreUser {
   id: string; // Document ID (same as Firebase Auth UID)
   email: string;
@@ -21,6 +59,14 @@ export interface FirestoreUser {
   signupDate: string; // ISO timestamp
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
+  /** Cardcom trial / subscription — set after payment gate. */
+  subscription?: FirestoreUserSubscription;
+  /** Unlocks challenge flows for parent + child after successful trial checkout. */
+  challengeUnlocked?: boolean;
+  /** Selected / created child after onboarding completion. */
+  primaryChildId?: string;
+  /** Latest bonding invite id (Firestore `bonding_invites`). */
+  bondingInviteId?: string;
 }
 
 export interface FirestoreChild {
@@ -29,10 +75,21 @@ export interface FirestoreChild {
   name: string;
   age: string;
   gender: 'boy' | 'girl';
-  deviceType: 'ios' | 'android';
+  /** Legacy v0.2 — omit on v0.3 create. */
+  deviceType?: 'ios' | 'android';
   profilePicture?: string;
   nickname?: string;
+  /** @deprecated Prefer challenge.moneyGoals — kept for legacy child-accept flows. */
   moneyGoals?: string[];
+  /** Behavior changes from onboarding (1–2). */
+  changes?: string[];
+  /**
+   * Per-change day checkmarks (7 days, Sun→Sat).
+   * Stored as `{ days: boolean[] }[]` — Firestore rejects nested arrays.
+   */
+  changeDayChecks?: Array<{ days: boolean[] }>;
+  /** Onboarding slider assumption — daily screen minutes for dashboard baseline. */
+  baselineDailyMinutes?: number;
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
@@ -89,26 +146,31 @@ export interface FirestoreChallenge {
   id: string; // Document ID
   parentId: string; // Reference to users collection
   childId: string; // Reference to children collection
-  motivationReason?: 'balance' | 'education' | 'communication'; // למה אתם עושים את זה?
-  selectedBudget: number; // תקציב נבחר (100%)
-  dailyBudget: number; // תקציב יומי
-  dailyScreenTimeGoal: number; // שעות זמן מסך יומי
+  motivationReason?: 'balance' | 'education' | 'communication';
+  selectedBudget: number;
+  /** @deprecated v0.3 — not written on new challenges. */
+  dailyBudget?: number;
+  /** @deprecated v0.3 — not written on new challenges. */
+  dailyScreenTimeGoal?: number;
+  /** v0.3 — ₪ per screen hour (loss-aversion rate). */
+  hourlyRate?: number;
+  /** Child money goals for this weekly deal (can change week to week). */
+  moneyGoals?: string[];
   weekNumber: number;
-  totalWeeks: number;
-  startDate?: string; // ISO date - set by admin after consultation approval
-  challengeDays: number; // מספר ימי האתגר (6 ימים)
+  /** @deprecated v0.3 — not written on new challenges. */
+  totalWeeks?: number;
+  startDate?: string;
+  challengeDays: number; // 6
   isActive: boolean;
-  consultationCompleted?: boolean; // Whether consultation with advisor has been completed
-  /** כל נתוני ההעלאות היומיות של השבוע – בתוך המסמך (ללא אוסף daily_uploads) */
   weekUploads?: ChallengeDayUpload[];
-  // Weekly upload (single upload on redemption day)
+  /** Results — weekly OCR / settlement upload. */
   weeklyUpload?: WeeklyUpload;
-  // Redemption data (set when redemption is completed)
-  redemptionAmount?: number; // Final amount redeemed
-  redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save'; // Redemption option selected
-  redeemedAt?: string; // ISO timestamp when redemption was completed
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
+  /** Redemption — set when week is settled. */
+  redemptionAmount?: number;
+  redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save';
+  redeemedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FirestoreDailyUpload {

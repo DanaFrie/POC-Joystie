@@ -20,6 +20,7 @@ import {
   endOnboardingGameRoom,
 } from './game/rooms';
 import { generateSelfie } from './selfie/generateSelfie';
+import { createCardcomTrialCheckout, cardcomWebhook } from './billing/cardcom/handlers';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -51,6 +52,8 @@ export {
   completeGameOnboarding,
   endOnboardingGameRoom,
   generateSelfie,
+  createCardcomTrialCheckout,
+  cardcomWebhook,
 };
 
 // Define secret for Cloud Run service URL
@@ -172,22 +175,7 @@ export const processScreenshot = functions.https.onCall(
  */
 
 // Determine service account based on project ID
-// In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
-export function getServiceAccount(): string {
-  const projectId = process.env.GCLOUD_PROJECT;
-  const serviceAccount = projectId === 'joystie-poc-prod'
-    ? 'firebase-adminsdk-fbsvc@joystie-poc-prod.iam.gserviceaccount.com'
-    : 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com';
-  
-  // Log for debugging - this will appear in Cloud Functions logs
-  console.log('[getServiceAccount] Project ID:', projectId);
-  console.log('[getServiceAccount] Selected service account:', serviceAccount);
-  console.log('[getServiceAccount] Environment variable:', {
-    GCLOUD_PROJECT: process.env.GCLOUD_PROJECT
-  });
-  
-  return serviceAccount;
-};
+export { getServiceAccount } from './serviceAccount';
 
 
 // Scheduled function for first day notification - NOT DEPLOYED

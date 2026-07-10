@@ -1,17 +1,17 @@
 /** v0.3 challenge setup / redemption — paid-state UX defaults + child money goals. */
 
 export const V03_CHALLENGE_BUDGET = {
-  min: 20,
-  max: 300,
-  step: 10,
-  default: 100,
+  min: 1,
+  max: 200,
+  step: 1,
+  default: 40,
 } as const;
 
 export const V03_CHALLENGE_HOURLY_RATE = {
-  min: 5,
+  min: 0.1,
   max: 50,
-  step: 1,
-  default: 20,
+  step: 0.1,
+  default: 1.5,
 } as const;
 
 /** Fallback when onboarding screen-time / last-challenge average is missing. */

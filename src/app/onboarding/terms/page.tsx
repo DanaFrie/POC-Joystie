@@ -1,7 +1,6 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import { OnboardingTermsScreen } from '@/components/legal/OnboardingTermsScreen';
-
-export default function OnboardingTermsPage() {
-  return <OnboardingTermsScreen />;
+/** Legacy path — keep bookmarks working. */
+export default function OnboardingTermsRedirectPage() {
+  redirect('/terms');
 }

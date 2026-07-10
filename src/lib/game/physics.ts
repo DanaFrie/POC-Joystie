@@ -35,9 +35,10 @@ export const PHYSICS_SUBSTEPS = 4;
 /** @deprecated use GAME_WIN_SCORE from @/constants/game */
 export const WIN_SCORE = GAME_WIN_SCORE;
 
-const MIN_SPEED = 0.1794;
+const MIN_SPEED = 0.21528;
 const MAX_SPEED = 0.5;
-const PADDLE_BOOST = 1.04;
+/** Per-hit speed multiplier — +5% vs prior 1.04. */
+const PADDLE_BOOST = 1.092;
 const PADDLE_ANGLE_GAIN = 0.28;
 const PADDLE_ANGLE_JITTER = 0.06;
 

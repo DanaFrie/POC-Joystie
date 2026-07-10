@@ -19,11 +19,10 @@ export default function ChildRedemptionTestPage() {
   const childName = 'יואב';
   const { weeklyBudget, hourlyRate, estimatedDailyHours, ocrTotalMinutes } =
     CHALLENGE_TEST_DEFAULTS;
-  const suggestedHours = ocrTotalMinutes / 60;
 
   return (
     <ChallengeTestShell
-      title="TEST · פדיון (ילד)"
+      title="TEST · בדיקת שבוע (ילד)"
       subtitle="/dashboard/child/redemption/test"
       childName={childName}
       averageMinutes={Math.round(estimatedDailyHours * 60)}
@@ -40,10 +39,10 @@ export default function ChildRedemptionTestPage() {
             onClick={() => setOpen(true)}
             className="rounded-[22px] bg-[#00FFB3] px-8 py-3 font-simpler text-[16px] font-bold text-[#092125]"
           >
-            פתיחת פדיון
+            פתיחת בדיקת השבוע
           </button>
           <p className="text-center font-simpler text-[13px] text-white/60">
-            תקציב ₪{formatNumber(weeklyBudget, 0)} · OCR מדומה {formatNumber(suggestedHours)} שע׳
+            דמי כיס ₪{formatNumber(weeklyBudget, 0)} · העלאת צילום אמיתית (+ נפילה לדוגמה אם אין OCR)
           </p>
         </div>
       )}
@@ -51,9 +50,10 @@ export default function ChildRedemptionTestPage() {
       <ChildRedemptionOverlay
         visible={open}
         childName={childName}
+        parentLabel="אמא"
         weeklyBudget={weeklyBudget}
         hourlyRate={hourlyRate}
-        suggestedTotalHours={suggestedHours}
+        fallbackOcrMinutes={ocrTotalMinutes}
         onClose={() => setOpen(false)}
         onComplete={(result) => {
           setLastResult(result);

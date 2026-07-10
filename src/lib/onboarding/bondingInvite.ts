@@ -7,11 +7,11 @@ const BONDING_CHILD_NAME_KEY = 'onboardingBondingChildName';
 const BONDING_CHILD_GENDER_KEY = 'onboardingBondingChildGender';
 
 export function getSelectedFirstChildName(): string {
-  const bonded = getBondingChildName();
-  if (bonded) return bonded;
   const options = getSignupPickChildOptions();
   const index = getOnboardingFirstChildIndex() ?? 0;
-  return options[index]?.name?.trim() || 'הילד/ה';
+  const fromPick = options[index]?.name?.trim();
+  if (fromPick) return fromPick;
+  return getBondingChildName() || 'הילד/ה';
 }
 
 export function getSelectedFirstChildGender(): 'boy' | 'girl' {
@@ -38,6 +38,21 @@ export function getBondingChildName(): string | null {
   const stored = readOnboardingJson<string>(BONDING_CHILD_NAME_KEY);
   if (typeof stored === 'string' && stored.trim()) return stored.trim();
   return null;
+}
+
+function removeOnboardingKey(key: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+/** Drop cached invite URL so the next share rebuilds for the current child. */
+export function clearBondingChildUrl() {
+  removeOnboardingKey(BONDING_CHILD_URL_KEY);
 }
 
 export function setBondingChildUrl(url: string) {

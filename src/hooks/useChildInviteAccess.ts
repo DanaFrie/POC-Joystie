@@ -21,7 +21,7 @@ export type ChildInviteAccess =
 /** Validate `?invite=` on `/onboarding/child`. */
 export function useChildInviteAccess(): ChildInviteAccess {
   const searchParams = useSearchParams();
-  const inviteId = searchParams.get('invite')?.trim() || '';
+  const inviteId = searchParams?.get('invite')?.trim() || '';
 
   const [access, setAccess] = useState<ChildInviteAccess>(
     inviteId ? { status: 'loading' } : { status: 'missing' }

@@ -11,7 +11,16 @@ type BudgetStepperProps = {
   onChange: (value: number) => void;
   /** Prefix shown before the value (default ₪). */
   prefix?: string;
+  /** Decimal places for display and step rounding (default 0). */
+  decimals?: number;
 };
+
+function roundToStep(value: number, step: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  const rounded = Math.round(value * factor) / factor;
+  const stepped = Math.round(rounded / step) * step;
+  return Math.round(stepped * factor) / factor;
+}
 
 function CircleButton({
   label,
@@ -47,9 +56,14 @@ export function BudgetStepper({
   step,
   onChange,
   prefix = '₪',
+  decimals = 0,
 }: BudgetStepperProps) {
   const atMin = value <= min;
   const atMax = value >= max;
+
+  const bump = (delta: number) => {
+    onChange(roundToStep(Math.min(max, Math.max(min, value + delta)), step, decimals));
+  };
 
   return (
     <div
@@ -61,7 +75,7 @@ export function BudgetStepper({
       <CircleButton
         label="הוספה"
         disabled={atMax}
-        onClick={() => onChange(Math.min(max, value + step))}
+        onClick={() => bump(step)}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path
@@ -79,13 +93,13 @@ export function BudgetStepper({
         aria-atomic="true"
       >
         {prefix}
-        {formatNumber(value, 0)}
+        {formatNumber(value, decimals)}
       </span>
 
       <CircleButton
         label="הפחתה"
         disabled={atMin}
-        onClick={() => onChange(Math.max(min, value - step))}
+        onClick={() => bump(-step)}
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
           <path d="M5 12h14" stroke="white" strokeWidth="2" strokeLinecap="round" />

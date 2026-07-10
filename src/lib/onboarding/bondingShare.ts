@@ -1,10 +1,12 @@
 import { markBondingWhatsAppShared, recordBondingInvite } from '@/lib/api/bonding';
-import { getUser } from '@/lib/api/users';
+import { getUser, updateUser } from '@/lib/api/users';
 import { getOnboardingFirstChildIndex } from '@/lib/onboarding/pickFirstChild';
 import { getOnboardingChildIds } from '@/lib/onboarding/persistOnboardingAccount';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
-import { setBondingChildUrl, setBondingChildName } from '@/lib/onboarding/bondingInvite';
+import { setBondingChildUrl, setBondingChildName, setBondingChildGender } from '@/lib/onboarding/bondingInvite';
 import { publishOnboardingBondingMeta } from '@/lib/game/bondingPublic';
+import { resetOnboardingChildProgress } from '@/lib/onboarding/childProgress';
+import { resetOnboardingParentProgress } from '@/lib/onboarding/parentProgress';
 import { getBondingShareBaseUrl } from '@/lib/share/bondingBaseUrl';
 import { openWhatsAppChildInvite } from '@/lib/share/whatsapp';
 import { getCurrentUserId } from '@/utils/auth';
@@ -102,11 +104,27 @@ export async function prepareBondingInvite(params: {
 
   setBondingChildUrl(childUrl);
   setBondingChildName(params.childName);
+  if (params.childGender) setBondingChildGender(params.childGender);
   setOnboardingBondingInviteId(result.inviteId);
+
+  try {
+    await updateUser(parentId, { bondingInviteId: result.inviteId });
+  } catch (error) {
+    logger.warn('Could not persist bondingInviteId on user:', error);
+  }
+
+  // Fresh invite — clear prior child milestones before share (not after WhatsApp).
+  try {
+    await resetOnboardingChildProgress(parentId);
+    await resetOnboardingParentProgress(parentId);
+  } catch (error) {
+    logger.warn('reset onboarding progress before invite failed', error);
+  }
 
   if (parentName) {
     await publishOnboardingBondingMeta(parentId, {
       childName: params.childName,
+      childGender: params.childGender,
       parentName,
       parentGender,
     }).catch((e) => logger.warn('publishOnboardingBondingMeta failed', e));

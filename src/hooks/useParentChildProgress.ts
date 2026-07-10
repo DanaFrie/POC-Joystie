@@ -112,7 +112,7 @@ function applyProgress(
     !fired.mission &&
     parentStep === 'childInviteWaiting'
   ) {
-    if (!isLinkOpenedForSession(progress, sessionStartedAt) && !fired.link) return;
+    // mission_ready is enough — do not require a fresh link_opened (reset/share races).
     fired.mission = true;
     callbacks.onMissionReady?.();
   }

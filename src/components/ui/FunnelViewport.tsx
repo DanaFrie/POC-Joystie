@@ -308,7 +308,7 @@ export function FunnelViewport({
             aria-hidden
           />
         ) : null}
-        {layoutReady ? (
+        {layoutReady && !isDesktop ? (
           isScrollMode ? (
             <div
               className="relative shrink-0"

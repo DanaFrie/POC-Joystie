@@ -23,7 +23,7 @@ export default function ParentChallengeSetupTestPage() {
 
   return (
     <ChallengeTestShell
-      title="TEST · הגדרת אתגר (הורה)"
+      title="TEST · הגדרת דיל (הורה)"
       subtitle="/dashboard/challenge/test"
       childName={childName}
       averageMinutes={Math.round(estimatedDailyHours * 60)}
@@ -40,11 +40,11 @@ export default function ParentChallengeSetupTestPage() {
             onClick={() => setOpen(true)}
             className="rounded-[22px] bg-[#00FFB3] px-8 py-3 font-simpler text-[16px] font-bold text-[#092125]"
           >
-            פתיחת כרטיס ההגדרה
+            פתיחת הגדרת הדיל
           </button>
           {lastResult ? (
             <p className="text-center font-simpler text-[13px] text-white/60">
-              צפי יתרה ₪{formatNumber(lastResult.projectedRemaining)} · תקציב ₪
+              כמה כסף יישאר בארנק ₪{formatNumber(lastResult.projectedRemaining)} · דמי כיס ₪
               {formatNumber(lastResult.weeklyBudget, 0)}
             </p>
           ) : null}

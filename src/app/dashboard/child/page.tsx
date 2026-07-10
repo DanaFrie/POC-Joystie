@@ -1,41 +1,32 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLoadingState } from '@/components/dashboard/ParentDashboardScreen';
 import { ChildDashboardScreen } from '@/components/dashboard/ChildDashboardScreen';
+import { ChildDashboardErrorState } from '@/components/dashboard/ChildDashboardErrorState';
 import type { DashboardState } from '@/types/dashboard';
+import { useDashboardSubscribeMode } from '@/hooks/useDashboardSubscribeMode';
 import { isLoggedIn, updateLastActivity } from '@/utils/session';
 import { getDashboardData } from '@/lib/api/dashboard';
 import { generateChildUrl } from '@/utils/url-encoding';
 import { getActiveChallenge } from '@/lib/api/challenges';
+import { validateChildDashboardToken } from '@/lib/auth/childDashboardToken';
 import { createContextLogger } from '@/utils/logger';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange } from '@/utils/auth';
 
 const logger = createContextLogger('DashboardChild');
 
 const emptyDashboardState: DashboardState = {
-  parent: {
-    name: '',
-    id: '',
-    googleAuth: {},
-    profilePicture: '',
-  },
-  child: {
-    name: '',
-    id: '',
-    profilePicture: '',
-    gender: 'boy',
-  },
+  parent: { name: '', id: '', googleAuth: {}, profilePicture: '' },
+  child: { name: '', id: '', profilePicture: '', gender: 'boy' },
   challenge: {
     selectedBudget: 0,
     weeklyBudget: 0,
-    dailyBudget: 0,
-    dailyScreenTimeGoal: 0,
     weekNumber: 0,
-    totalWeeks: 0,
     startDate: '',
     isActive: false,
+    challengeDays: 6,
   },
   today: {
     date: '',
@@ -58,148 +49,166 @@ const emptyDashboardState: DashboardState = {
   },
 };
 
-export default function DashboardChildPage() {
+function DashboardChildPageContent() {
   const [dashboardData, setDashboardData] = useState<DashboardState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const [setupUrl, setSetupUrl] = useState('');
-  const [redemptionUrl, setRedemptionUrl] = useState('');
-  const [noChallengeExists, setNoChallengeExists] = useState(false);
+  const searchParams = useSearchParams();
+  const token = searchParams?.get('token')?.trim() || '';
+  const [shareUrl, setShareUrl] = useState('');
+  const [noChallengeExists, setNoChallengeExists] = useState(true);
+  const [tokenChallengeEnabled, setTokenChallengeEnabled] = useState<boolean | null>(null);
+  const [accessMode, setAccessMode] = useState<'token' | 'parent' | null>(null);
+  const parentSubscribe = useDashboardSubscribeMode();
+  const challengeEnabled =
+    tokenChallengeEnabled != null ? tokenChallengeEnabled : parentSubscribe.challengeEnabled;
+
+  const loadForParentId = useCallback(async (parentId: string, force = false) => {
+    if (force) {
+      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+      dataCache.invalidate(cacheKeys.dashboard(parentId));
+    }
+
+    const data = await getDashboardData(parentId, !force);
+    if (data) {
+      setDashboardData(data);
+      setNoChallengeExists(!data.challenge.isActive || !data.activeChallengeId);
+      const challenge = await getActiveChallenge(parentId, false);
+      setShareUrl(
+        challenge
+          ? generateChildUrl(parentId, challenge.childId)
+          : generateChildUrl(parentId, data.child.id || undefined)
+      );
+      return;
+    }
+
+    const { getUser } = await import('@/lib/api/users');
+    const user = await getUser(parentId, false);
+    if (!user) {
+      throw new Error('לא נמצאו נתוני הורה');
+    }
+
+    setDashboardData({
+      ...emptyDashboardState,
+      parent: {
+        name: user.firstName || 'הורה',
+        id: user.id,
+        googleAuth: {},
+        profilePicture: '',
+        gender: user.gender,
+      },
+      child: {
+        name: '',
+        id: user.primaryChildId || '',
+        profilePicture: '',
+        gender: 'boy',
+      },
+    });
+    setNoChallengeExists(true);
+    setShareUrl(generateChildUrl(parentId, user.primaryChildId || undefined));
+  }, []);
+
+  const loadDashboard = useCallback(
+    async (force = false) => {
+      if (token) {
+        const access = await validateChildDashboardToken(token);
+        if (!access.isValid || !access.parentId) {
+          setError(access.error || 'כתובת לא תקינה');
+          setDashboardData(null);
+          return;
+        }
+        setAccessMode('token');
+        setTokenChallengeEnabled(Boolean(access.challengeEnabled));
+        await loadForParentId(access.parentId, force);
+        return;
+      }
+
+      const userId = await getCurrentUserIdAsync();
+      if (!userId) {
+        setError('יש לפתוח את הקישור שקיבלת מההורה, או להתחבר כהורה.');
+        setDashboardData(null);
+        return;
+      }
+
+      setAccessMode('parent');
+      setTokenChallengeEnabled(null);
+      await loadForParentId(userId, force);
+    },
+    [token, loadForParentId]
+  );
 
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null;
+    // Token access — no parent Auth required.
+    if (token) return;
 
+    let unsubscribe: (() => void) | null = null;
     const checkAuth = async () => {
       try {
         unsubscribe = await onAuthStateChange(async (user) => {
           if (!user) {
-            router.push('/login');
-            return;
+            // Stay on page with error — do not bounce child to parent login.
+            if (!isLoggedIn()) {
+              setError('יש לפתוח את הקישור שקיבלת מההורה, או להתחבר כהורה.');
+            }
+          } else {
+            updateLastActivity();
           }
-          updateLastActivity();
         });
       } catch {
-        if (!isLoggedIn()) router.push('/login');
+        if (!isLoggedIn()) {
+          setError('יש לפתוח את הקישור שקיבלת מההורה, או להתחבר כהורה.');
+        }
       }
     };
-
-    checkAuth();
+    void checkAuth();
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [router]);
+  }, [token, router]);
 
   const hasLoadedRef = useRef(false);
   useEffect(() => {
     if (hasLoadedRef.current) return;
-
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        hasLoadedRef.current = true;
-        const userId = await getCurrentUserIdAsync();
-        if (!userId) {
-          router.push('/login');
-          return;
-        }
-
-        const data = await getDashboardData(userId);
-        if (data) {
-          setDashboardData(data);
-        } else {
-          const { getUser } = await import('@/lib/api/users');
-          const user = await getUser(userId);
-          if (user) {
-            setDashboardData({
-              ...emptyDashboardState,
-              parent: {
-                name: user.firstName || 'הורה',
-                id: user.id,
-                googleAuth: {},
-                profilePicture: '',
-                gender: user.gender,
-              },
-              child: { name: '', id: '', profilePicture: '', gender: 'boy' },
-            });
-            setNoChallengeExists(true);
-          } else {
-            router.push('/login');
-          }
-        }
-      } catch (err: unknown) {
+    hasLoadedRef.current = true;
+    setIsLoading(true);
+    loadDashboard()
+      .catch((err: unknown) => {
         logger.error('Error loading child dashboard:', err);
         setError(err instanceof Error ? err.message : 'שגיאה בטעינת הנתונים');
         hasLoadedRef.current = false;
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      })
+      .finally(() => setIsLoading(false));
+  }, [loadDashboard]);
 
-    load();
-  }, [router]);
+  const refresh = useCallback(async () => {
+    await loadDashboard(true);
+  }, [loadDashboard]);
 
-  useEffect(() => {
-    const generateUrls = async () => {
-      try {
-        const userId = await getCurrentUserIdAsync();
-        const base = typeof window !== 'undefined' ? window.location.origin : '';
-        if (userId) {
-          const challenge = await getActiveChallenge(userId);
-          if (challenge) {
-            const childUrl = generateChildUrl(userId, challenge.childId, challenge.id);
-            setSetupUrl(childUrl);
-            setRedemptionUrl(childUrl);
-          } else {
-            const childUrl = generateChildUrl(userId);
-            setSetupUrl(childUrl);
-            setRedemptionUrl(childUrl);
-          }
-        } else {
-          setSetupUrl(`${base}/child`);
-          setRedemptionUrl(`${base}/child`);
-        }
-      } catch {
-        const base = typeof window !== 'undefined' ? window.location.origin : '';
-        setSetupUrl(`${base}/child`);
-        setRedemptionUrl(`${base}/child`);
-      }
-    };
-
-    if (isLoggedIn()) generateUrls();
-  }, []);
-
-  if (isLoading || !dashboardData) {
+  if (isLoading) {
     return <DashboardLoadingState />;
   }
 
-  if (error) {
-    return (
-      <div
-        className="absolute inset-0 flex items-center justify-center px-v03-gutter"
-        style={{ background: '#061C1E' }}
-      >
-        <p className="font-simpler text-white">{error}</p>
-      </div>
-    );
+  if (error || !dashboardData) {
+    return <ChildDashboardErrorState detail={error} />;
   }
-
-  const childSetupCompleted = Boolean(
-    dashboardData.child.nickname &&
-      dashboardData.child.moneyGoals &&
-      dashboardData.child.moneyGoals.length > 0
-  );
-
-  let shareUrl = redemptionUrl;
-  if (!childSetupCompleted && setupUrl) shareUrl = setupUrl;
 
   return (
     <ChildDashboardScreen
       dashboardData={dashboardData}
       shareUrl={shareUrl}
       noChallengeExists={noChallengeExists}
-      openGateOnMount={false}
-      onStartChallenge={() => router.push('/dashboard')}
+      challengeEnabled={challengeEnabled}
+      onRefresh={refresh}
+      accessMode={accessMode ?? undefined}
     />
+  );
+}
+
+export default function DashboardChildPage() {
+  return (
+    <Suspense fallback={<DashboardLoadingState />}>
+      <DashboardChildPageContent />
+    </Suspense>
   );
 }

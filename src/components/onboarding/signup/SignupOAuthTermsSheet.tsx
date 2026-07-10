@@ -49,7 +49,7 @@ function TermsToggle({
       <span className="flex-1 text-right font-simpler text-[16px] font-normal leading-[21.6px] text-[#E3EDEA]">
         קראתי ואני מאשר/ת את{' '}
         <Link
-          href="/onboarding/terms"
+          href="/terms"
           className="underline decoration-solid underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >

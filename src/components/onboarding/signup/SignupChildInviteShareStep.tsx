@@ -20,10 +20,30 @@ import {
 import { getBondingChildUrl } from '@/lib/onboarding/bondingInvite';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
 import { buildWhatsAppChildInviteMessage } from '@/lib/share/whatsapp';
+import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 function getParentGenderForMessage(): 'female' | 'male' {
   const role = getOnboardingParentRole();
   return role ? parentRoleToGender(role) : 'male';
+}
+
+/** True when cached invite URL already matches this child name/gender. */
+function inviteMatchesChild(
+  url: string,
+  childName: string,
+  childGender?: 'boy' | 'girl'
+): boolean {
+  if (!url.includes('invite=')) return false;
+  try {
+    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://joystie.com');
+    const meta = parseBondingInviteQueryParams(parsed.searchParams);
+    if (meta.childName?.trim() !== childName.trim()) return false;
+    if (childGender && meta.childGender && meta.childGender !== childGender) return false;
+    if (childGender && !meta.childGender) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 type SignupChildInviteShareStepProps = {
@@ -42,12 +62,15 @@ export function SignupChildInviteShareStep({
   flow = false,
 }: SignupChildInviteShareStepProps) {
   const [copied, setCopied] = useState(false);
-  const [childUrl, setChildUrl] = useState(() => getBondingChildUrl());
+  const [childUrl, setChildUrl] = useState(() => {
+    const cached = getBondingChildUrl();
+    return inviteMatchesChild(cached, childName, childGender) ? cached : '';
+  });
   const [shareError, setShareError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
 
   const ensureInvite = async (): Promise<string> => {
-    if (childUrl && childUrl.includes('invite=')) return childUrl;
+    if (inviteMatchesChild(childUrl, childName, childGender)) return childUrl;
     setPreparing(true);
     setShareError(null);
     try {
@@ -68,18 +91,19 @@ export function SignupChildInviteShareStep({
   };
 
   useEffect(() => {
-    if (childUrl?.includes('invite=')) return;
+    if (inviteMatchesChild(childUrl, childName, childGender)) return;
+    setChildUrl('');
     void ensureInvite().catch(() => {
       // shareError set inside ensureInvite
     });
-    // Preload invite so WhatsApp opens in the same user-gesture (Safari/iOS).
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per child
-  }, [childName]);
+    // Rebuild when name/gender change — never reuse a stale cn/cg invite.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- ensureInvite closes over latest props
+  }, [childName, childGender]);
 
-  const inviteReady = Boolean(childUrl?.includes('invite='));
+  const inviteReady = inviteMatchesChild(childUrl, childName, childGender);
 
   const handleWhatsApp = () => {
-    if (!childUrl?.includes('invite=')) return;
+    if (!inviteReady) return;
 
     // Advance immediately so session start precedes child opening the link.
     onShared?.();

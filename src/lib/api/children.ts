@@ -16,18 +16,30 @@ export async function createChild(
 ): Promise<string> {
   try {
     const { collection, doc, setDoc } = await import('firebase/firestore');
+    const { matrixToChangeDayCheckRows, changeDayChecksToMatrix } = await import(
+      '@/lib/onboarding/changeDayChecks'
+    );
     const db = await getFirestoreInstance();
     const childrenRef = collection(db, CHILDREN_COLLECTION);
     const childRef = doc(childrenRef);
     const now = new Date().toISOString();
-    
+
+    // Guard: never write boolean[][] — Firestore rejects nested arrays.
+    let changeDayChecks = childData.changeDayChecks;
+    if (changeDayChecks?.length && Array.isArray(changeDayChecks[0])) {
+      changeDayChecks = matrixToChangeDayCheckRows(
+        changeDayChecksToMatrix(changeDayChecks as unknown as boolean[][])
+      );
+    }
+
     const child: FirestoreChild = {
       id: childRef.id,
       ...childData,
+      ...(changeDayChecks ? { changeDayChecks } : {}),
       createdAt: now,
       updatedAt: now,
     };
-    
+
     await setDoc(childRef, child);
     return childRef.id;
   } catch (error) {
@@ -143,16 +155,15 @@ export async function updateChild(
     if (!documentExists && parentId) {
       logger.log('Document does not exist, attempting to create with minimal data...');
       const now = new Date().toISOString();
-      const createPayload: any = {
+      const createPayload: Record<string, unknown> = {
         id: childId,
         parentId: parentId,
-        name: '', // Will be updated later if needed
+        name: '',
         age: '',
         gender: 'boy' as const,
-        deviceType: 'ios' as const,
         createdAt: now,
         updatedAt: now,
-        ...updates, // Include nickname and moneyGoals if provided
+        ...updates,
       };
       logger.log('Create payload:', JSON.stringify(createPayload, null, 2));
       try {
@@ -195,6 +206,56 @@ export async function updateChild(
     logger.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     throw new Error('שגיאה בעדכון נתוני הילד.');
   }
+}
+
+/**
+ * Ensure a child document exists for onboarding users (kidsAges only, no children doc yet).
+ * Prefers user.primaryChildId, else first existing child, else creates from kidsAges[0].
+ */
+export async function ensureChildForParent(parentId: string): Promise<FirestoreChild> {
+  const existing = await getChildrenByParent(parentId);
+  const { getUser } = await import('./users');
+  const user = await getUser(parentId, false);
+
+  if (user?.primaryChildId) {
+    const primary = existing.find((c) => c.id === user.primaryChildId);
+    if (primary) return primary;
+    const byId = await getChild(user.primaryChildId, false);
+    if (byId) return byId;
+  }
+
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  const kid = user?.kidsAges?.[0];
+
+  const childId = await createChild({
+    parentId,
+    name: kid?.name?.trim() || 'ילד/ה',
+    age: kid?.age || '',
+    gender: kid?.gender === 'girl' ? 'girl' : 'boy',
+    baselineDailyMinutes:
+      typeof kid?.dailyScreenTimeHours === 'number'
+        ? Math.round(kid.dailyScreenTimeHours * 60)
+        : undefined,
+  });
+
+  const child = await getChild(childId, false);
+  if (!child) {
+    throw new Error('שגיאה ביצירת פרופיל ילד.');
+  }
+
+  try {
+    await import('./users').then(({ updateUser }) =>
+      updateUser(parentId, { primaryChildId: childId })
+    );
+  } catch {
+    // non-critical
+  }
+
+  logger.log(`Created child ${childId} for parent ${parentId}`);
+  return child;
 }
 
 /**

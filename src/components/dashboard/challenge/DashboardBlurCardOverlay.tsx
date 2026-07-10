@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BallGameSliderCard, BALL_GAME_SLIDER_CTA_CLASS } from '@/components/onboarding/game/BallGameSliderCard';
 
 type DashboardBlurCardOverlayProps = {
@@ -9,6 +10,15 @@ type DashboardBlurCardOverlayProps = {
   children: ReactNode;
   footer: ReactNode;
   compact?: boolean;
+  onClose?: () => void;
+  onBack?: () => void;
+  /** When true, card fills viewport with auto vertical spacing between sections. */
+  fillViewport?: boolean;
+  /** When true, inner card allows tilted goal tiles to bleed slightly outside. */
+  contentBleed?: boolean;
+  /** When true, card + backdrop fade out (e.g. post-celebration). */
+  exiting?: boolean;
+  onExitComplete?: () => void;
 };
 
 /**
@@ -21,26 +31,71 @@ export function DashboardBlurCardOverlay({
   children,
   footer,
   compact = false,
+  onClose,
+  onBack,
+  fillViewport = false,
+  contentBleed = false,
+  exiting = false,
+  onExitComplete,
 }: DashboardBlurCardOverlayProps) {
-  if (!visible) return null;
+  const [mounted, setMounted] = useState(visible);
+  const onExitCompleteRef = useRef(onExitComplete);
+  onExitCompleteRef.current = onExitComplete;
+
+  useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setMounted(false), 700);
+    return () => window.clearTimeout(timer);
+  }, [visible]);
+
+  // Only depend on `exiting` — unstable onExitComplete identities were re-arming
+  // the timer on every parent re-render and re-submitting the challenge forever.
+  useEffect(() => {
+    if (!exiting) return;
+    const timer = window.setTimeout(() => onExitCompleteRef.current?.(), 700);
+    return () => window.clearTimeout(timer);
+  }, [exiting]);
+
+  if (!mounted) return null;
+
+  const shellOpacity = exiting ? 0 : 1;
 
   return (
     <div
-      className="v03-scroll-hidden absolute inset-0 z-[60] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto px-v03-gutter"
+      className="v03-scroll-hidden absolute inset-0 z-[60] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto px-v03-gutter transition-opacity duration-700 ease-out"
       style={{
         background: 'rgba(0, 0, 0, 0.35)',
         backdropFilter: 'blur(15px)',
         WebkitBackdropFilter: 'blur(15px)',
         paddingTop: 'max(24px, env(safe-area-inset-top))',
         paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+        opacity: shellOpacity,
       }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      <BallGameSliderCard footer={footer} compact={compact}>
-        {children}
-      </BallGameSliderCard>
+      <div
+        className="relative transition-all duration-700 ease-out"
+        style={{
+          opacity: shellOpacity,
+          transform: exiting ? 'scale(0.96) translateY(12px)' : 'scale(1) translateY(0)',
+        }}
+      >
+        <BallGameSliderCard
+          footer={footer}
+          compact={compact}
+          onClose={onClose}
+          onBack={onBack}
+          fillViewport={fillViewport}
+          contentBleed={contentBleed}
+        >
+          {children}
+        </BallGameSliderCard>
+      </div>
     </div>
   );
 }
@@ -66,23 +121,6 @@ export function OverlayPrimaryButton({
       onClick={onClick}
       disabled={disabled}
       className={BALL_GAME_SLIDER_CTA_CLASS}
-    >
-      {children}
-    </button>
-  );
-}
-
-type OverlaySecondaryButtonProps = {
-  children: ReactNode;
-  onClick?: () => void;
-};
-
-export function OverlaySecondaryButton({ children, onClick }: OverlaySecondaryButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex h-[48px] w-full shrink-0 items-center justify-center gap-2 self-stretch rounded-[22px] border border-white/25 bg-transparent px-[15px] py-2 font-simpler text-[16px] font-bold leading-[21.6px] text-white transition hover:bg-white/5"
     >
       {children}
     </button>

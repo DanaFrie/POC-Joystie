@@ -25,7 +25,7 @@ const __dirname = dirname(__filename);
 config({ path: join(__dirname, '..', '.env.local') });
 
 const CLIENT_CONFIG = {
-  token: { expirationDays: 14 },
+  token: { expirationDays: 30 },
   challenge: {
     totalWeeks: 4,
     challengeDays: 6,
@@ -63,20 +63,8 @@ function getChallengeStartDate() {
   return start;
 }
 
-function encodeParentToken(parentId, childId, challengeId) {
-  const expiresAt = Date.now() + CLIENT_CONFIG.token.expirationDays * 24 * 60 * 60 * 1000;
-  const parts = [parentId, childId || '', challengeId || '', expiresAt.toString()];
-  const compact = parts.join('|');
-  return Buffer.from(compact, 'utf8')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
-
-function generateChildUrl(parentId, childId, challengeId, baseUrl = 'http://localhost:3000') {
-  const token = encodeParentToken(parentId, childId, challengeId);
-  return `${baseUrl}/child?token=${token}`;
+function generateChildUrl(baseUrl = 'http://localhost:3000') {
+  return `${baseUrl}/dashboard/child?subscribe=1`;
 }
 
 async function main() {
@@ -165,7 +153,6 @@ async function main() {
       challengeDays: CLIENT_CONFIG.challenge.challengeDays,
       startDate: startDate.toISOString(),
       isActive: true,
-      consultationCompleted: true,
       // אין weeklyUpload – העלאה עדיין לא בוצעה
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -173,7 +160,7 @@ async function main() {
     await setDoc(challengeRef, challengeData);
     console.log('   ✅ אתגר נוצר (פעיל, ללא weeklyUpload – ממתין להעלאה)');
 
-    const childUrl = generateChildUrl(userId, childId, challengeId);
+    const childUrl = generateChildUrl();
     console.log('\n' + '='.repeat(50));
     console.log('✅ סימולציה הושלמה בהצלחה\n');
     console.log('🔐 התחברות הורה (דשבורד):');

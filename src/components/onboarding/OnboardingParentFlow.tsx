@@ -2,8 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useParentChildProgress } from '@/hooks/useParentChildProgress';
-import { resetOnboardingChildProgress } from '@/lib/onboarding/childProgress';
-import { resetOnboardingParentProgress } from '@/lib/onboarding/parentProgress';
 import { flushSync } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChildrenPhoneCountStep } from '@/components/onboarding/children-count/ChildrenPhoneCountStep';
@@ -12,7 +10,6 @@ import { ChildrenScreenTimeStep } from '@/components/onboarding/screen-time/Chil
 import { ScreenTimeCalculatingStep } from '@/components/onboarding/screen-time/ScreenTimeCalculatingStep';
 import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
-import { OnboardingBlurFooter } from '@/components/onboarding/OnboardingBlurFooter';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
@@ -41,7 +38,8 @@ import {
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
 import { SignupIntroStep } from '@/components/onboarding/signup/SignupIntroStep';
 import { SignupOAuthTermsSheet } from '@/components/onboarding/signup/SignupOAuthTermsSheet';
-import { getBondingChildName, getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName, setBondingChildGender, setBondingChildName } from '@/lib/onboarding/bondingInvite';
+import { getBondingChildName, getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName, setBondingChildGender, setBondingChildName, clearBondingChildUrl } from '@/lib/onboarding/bondingInvite';
+import { clearOnboardingBondingInviteId } from '@/lib/onboarding/bondingShare';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
 import {
@@ -104,14 +102,16 @@ import {
 } from '@/lib/onboarding/oauthSession';
 import { recoverOAuthRedirectSignIn } from '@/lib/onboarding/oauthRedirectRecovery';
 import { hydrateOnboardingChildrenFromUser } from '@/lib/onboarding/hydrateChildrenFromUser';
-import { checkAuthEmailExists } from '@/lib/api/auth';
 import { getUser } from '@/lib/api/users';
 import {
+  finishAuthenticatedUserNavigation,
+  getLoginPath,
   redirectToLoginForExistingAccount,
 } from '@/lib/auth/postLoginNavigation';
+import { resolveSignupEmailAccountStatus } from '@/lib/auth/signupAccountStatus';
 import { validateOnboardingSignupForm } from '@/lib/onboarding/validateSignupForm';
 import { getAuthInstance } from '@/lib/firebase';
-import { signUp, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
+import { signUp, signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
 import {
   getRestrictedOAuthMessage,
   isLikelyOAuthRedirectReturn,
@@ -125,8 +125,8 @@ import {
   userMatchesOAuthProvider,
 } from '@/utils/auth-oauth';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
-import { createSession } from '@/utils/session';
 import { useScrollOverflow } from '@/hooks/useScrollOverflow';
+import { finishParentOnboardingAndGoToDashboard } from '@/lib/onboarding/finishParentOnboarding';
 import {
   FLOW_STEP_STORAGE_KEY,
   LANDING_ACTIVE_KEY,
@@ -346,11 +346,9 @@ export function OnboardingParentFlow({
   ]);
 
   const selectedChildName = useMemo(() => {
-    const bonded = getBondingChildName();
-    if (bonded) return bonded;
     const fromPick = pickOptions[selectedChildIndex]?.name?.trim();
     if (fromPick) return fromPick;
-    return getSelectedFirstChildName();
+    return getBondingChildName() || getSelectedFirstChildName();
   }, [pickOptions, selectedChildIndex]);
   const selectedChildGender = useMemo(() => {
     const fromPick = pickOptions[selectedChildIndex]?.gender;
@@ -621,11 +619,15 @@ export function OnboardingParentFlow({
       if (!outcome.result.isNewUser) {
         clearOAuthSessionFlags();
         setOauthFinishing(null);
-        createSession(outcome.result.user.uid);
-        redirectToLoginForExistingAccount(
-          router,
-          getOAuthUserEmail(outcome.result.user)
-        );
+        try {
+          await finishAuthenticatedUserNavigation(outcome.result.user.uid, router);
+        } catch (error) {
+          logger.error('OAuth existing-user routing failed:', error);
+          setErrors({
+            _general: getAuthErrorFromUnknown(error),
+          });
+          setStep('signupForm');
+        }
         return;
       }
 
@@ -673,6 +675,13 @@ export function OnboardingParentFlow({
     setSubscriptionPlan(null);
   }, [step]);
 
+  // Start waiting-session clock when invite is shown — before WhatsApp — so child
+  // milestones after prepareBondingInvite are not treated as stale.
+  useEffect(() => {
+    if (step !== 'childInviteShare') return;
+    setWaitingSessionStartedAt(new Date().toISOString());
+  }, [step]);
+
   const onMissionReady = useCallback(() => {
     if (stepRef.current === 'childInviteWaiting') {
       router.push('/game');
@@ -683,21 +692,7 @@ export function OnboardingParentFlow({
 
   const onInviteShared = useCallback(() => {
     if (stepRef.current === 'childInviteWaiting') return;
-
-    const sessionStart = new Date().toISOString();
-    setWaitingSessionStartedAt(sessionStart);
     setStep('childInviteWaiting');
-
-    void (async () => {
-      const parentId = await getCurrentUserIdAsync();
-      if (!parentId) return;
-      try {
-        await resetOnboardingChildProgress(parentId);
-        await resetOnboardingParentProgress(parentId);
-      } catch {
-        // RTDB rules may block in some envs
-      }
-    })();
   }, []);
 
   const { inviteWaitingVariant } = useParentChildProgress({
@@ -796,14 +791,21 @@ export function OnboardingParentFlow({
       }
 
       if (!result.isNewUser) {
-        logger.log('OAuth signup — existing account, redirecting to login', {
+        logger.log('OAuth signup — existing account, resuming session', {
           provider,
           uid: result.user.uid,
         });
         clearOAuthSessionFlags();
         setOauthDialogOpen(null);
-        createSession(result.user.uid);
-        redirectToLoginForExistingAccount(router, getOAuthUserEmail(result.user));
+        setOauthFinishing(provider);
+        try {
+          await finishAuthenticatedUserNavigation(result.user.uid, router);
+        } catch (error) {
+          logger.error('OAuth existing-user routing failed:', error);
+          setErrors({ _general: getAuthErrorFromUnknown(error) });
+        } finally {
+          setOauthFinishing(null);
+        }
         return;
       }
 
@@ -861,9 +863,18 @@ export function OnboardingParentFlow({
 
     try {
       const email = values.email.trim().toLowerCase();
-      const alreadyExists = await checkAuthEmailExists(email);
-      if (alreadyExists) {
+      const accountStatus = await resolveSignupEmailAccountStatus(email);
+      if (accountStatus === 'incomplete') {
         redirectToLoginForExistingAccount(router, email);
+        return;
+      }
+      if (accountStatus === 'complete') {
+        try {
+          const existingUser = await signIn(email, values.password);
+          await finishAuthenticatedUserNavigation(existingUser.uid, router);
+        } catch {
+          router.push(getLoginPath({ email }));
+        }
         return;
       }
 
@@ -958,6 +969,9 @@ export function OnboardingParentFlow({
   const handlePickChildContinue = () => {
     setOnboardingFirstChildIndex(selectedChildIndex);
     const picked = pickOptions[selectedChildIndex];
+    // Invalidate prior invite (e.g. אלונה) so share rebuilds cn/cg for this child.
+    clearBondingChildUrl();
+    clearOnboardingBondingInviteId();
     if (picked?.name?.trim()) setBondingChildName(picked.name.trim());
     if (picked?.gender) setBondingChildGender(picked.gender);
     setStep('childInviteIntro');
@@ -1137,8 +1151,11 @@ export function OnboardingParentFlow({
         onConfirmReady={() => {}}
         onRetry={() => {}}
         onFlowComplete={() => {
-          clearParentFlowSession();
-          router.replace('/dashboard?subscription=1');
+          void finishParentOnboardingAndGoToDashboard(router, { subscription: true }).catch(
+            () => {
+              window.alert('משהו השתבש בשמירת הפרופיל. נסו שוב.');
+            }
+          );
         }}
         parentId={parentPostGameParentId}
       />
@@ -1154,8 +1171,11 @@ export function OnboardingParentFlow({
         <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
           <ParentOnboardingCompletionStep
             onContinue={() => {
-              clearParentFlowSession();
-              router.replace('/dashboard?subscription=1');
+              void finishParentOnboardingAndGoToDashboard(router, { subscription: true }).catch(
+                () => {
+                  window.alert('משהו השתבש בשמירת הפרופיל. נסו שוב.');
+                }
+              );
             }}
           />
         </OnboardingFunnelStepSlot>

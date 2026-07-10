@@ -1,7 +1,7 @@
 import { JoystieWordmark } from '@/components/brand/JoystieWordmark';
 import { SIGNUP_CHILD_INVITE_WAITING_LOGO } from '@/constants/onboarding-figma';
 
-/** Desktop funnel — centered «mobile only» screen (2.5× prior banner scale). */
+/** Desktop — centered «mobile only» screen (2.5× prior banner scale). */
 const DESKTOP_OVERLAY_SCALE = 2.5;
 
 const LOGO_W_PX = 164 * DESKTOP_OVERLAY_SCALE;
@@ -10,12 +10,26 @@ const GIF_PX = 86.506 * DESKTOP_OVERLAY_SCALE * 0.7;
 const TEXT_PX = 18 * DESKTOP_OVERLAY_SCALE;
 const STACK_GAP_PX = 10 * DESKTOP_OVERLAY_SCALE;
 
-export function FunnelDesktopOverlay() {
+type FunnelDesktopOverlayProps = {
+  /**
+   * `absolute` — inside `FunnelViewport` (onboarding / game / login / help).
+   * `fixed` — full-viewport gate (dashboard and other non-funnel shells).
+   */
+  position?: 'absolute' | 'fixed';
+};
+
+/** Grid + Joystie logo + copy + waiting gif — desktop-only mobile gate. */
+export function FunnelDesktopOverlay({
+  position = 'absolute',
+}: FunnelDesktopOverlayProps) {
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-v03-green-900"
+      className={`${
+        position === 'fixed' ? 'fixed' : 'absolute'
+      } inset-0 z-50 flex items-center justify-center bg-v03-green-900`}
       role="alert"
       dir="rtl"
+      aria-live="polite"
     >
       <div className="v03-onboarding-grid-layer" aria-hidden />
 

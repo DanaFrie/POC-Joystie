@@ -25,7 +25,7 @@ export function ChildSelfieCameraDeniedOverlay({
 }: ChildSelfieCameraDeniedOverlayProps) {
   return (
     <div
-      className="v03-scroll-hidden absolute inset-0 z-[45] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto bg-[rgba(0,0,0,0.20)] px-v03-gutter backdrop-blur-[15px]"
+      className="v03-scroll-hidden pointer-events-auto absolute inset-0 z-[45] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto bg-[rgba(0,0,0,0.20)] px-v03-gutter backdrop-blur-[15px]"
       style={{
         paddingTop: 'max(24px, env(safe-area-inset-top))',
         paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
@@ -37,11 +37,11 @@ export function ChildSelfieCameraDeniedOverlay({
     >
       <BallGameSliderCard
         footer={
-          <div className="flex w-full flex-col items-start gap-[15px] self-stretch">
+          <div className="pointer-events-auto flex w-full flex-col items-start gap-[15px] self-stretch">
             <button
               type="button"
               onClick={onDecline}
-              className="inline-flex h-[55px] w-full shrink-0 items-center justify-center gap-2 self-stretch rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
+              className="inline-flex h-[55px] w-full shrink-0 touch-manipulation items-center justify-center gap-2 self-stretch rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
             >
               {CHILD_SELFIE_CAMERA_DECLINE_LABEL}
             </button>
@@ -51,7 +51,7 @@ export function ChildSelfieCameraDeniedOverlay({
                 type="button"
                 disabled={busy}
                 onClick={onRetry}
-                className="inline-flex h-[55px] w-full shrink-0 items-center justify-center gap-2 self-stretch rounded-[22px] border border-white bg-transparent px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-white shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:bg-white/5 disabled:opacity-60"
+                className="inline-flex h-[55px] w-full shrink-0 touch-manipulation items-center justify-center gap-2 self-stretch rounded-[22px] border border-white bg-transparent px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-white shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:bg-white/5 disabled:opacity-60"
               >
                 {CHILD_SELFIE_CAMERA_RETRY_LABEL}
               </button>

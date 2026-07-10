@@ -60,7 +60,7 @@ export default function Navigation() {
   const mobileMenuLinks = orderedLinks.filter(link => link.href !== primaryLink.href);
 
   const isActive = (path: string) => {
-    return pathname.startsWith(path);
+    return Boolean(pathname?.startsWith(path));
   };
 
   const handleLogout = async () => {

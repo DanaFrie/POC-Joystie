@@ -30,6 +30,7 @@ import {
   parentWaitingAdditionalChangeApprovalHeadline,
   parentWaitingChildChangeHeadline,
 } from '@/lib/onboarding/parentPostGameCopy';
+import { finishParentOnboardingAndGoToDashboard } from '@/lib/onboarding/finishParentOnboarding';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
 import { useOnboardingLightFunnel } from '@/lib/onboarding/useOnboardingLightFunnel';
 import type { GameRoomState } from '@/types/game';
@@ -249,7 +250,7 @@ export function ParentGamePostWinFlow({
       onFlowComplete();
       return;
     }
-    router.replace('/dashboard?subscription=1');
+    void finishParentOnboardingAndGoToDashboard(router, { subscription: true });
   }, [router, onFlowComplete]);
 
   if (phase === 'onboardingComplete') {

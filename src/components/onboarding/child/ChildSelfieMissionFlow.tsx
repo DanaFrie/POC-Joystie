@@ -8,7 +8,9 @@ import { ChildSharedPhotoPreparingStep } from '@/components/onboarding/child/Chi
 import { ChildSharedPhotoReviewStep } from '@/components/onboarding/child/ChildSharedPhotoReviewStep';
 import { ChildSharedPhotoShareStep } from '@/components/onboarding/child/ChildSharedPhotoShareStep';
 import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
+import { getChildBondingContext } from '@/lib/onboarding/childBondingContext';
 import { generateSelfieImage } from '@/lib/api/selfie';
+import { generateChildUrl } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('SelfieMission');
@@ -184,7 +186,22 @@ export function ChildSelfieMissionFlow({
     <ChildSharedPhotoShareStep
       photoSrc={photoSrc}
       onShare={() => {}}
-      onWallet={() => router.push('/dashboard/child')}
+      onWallet={() => {
+        const ctx = getChildBondingContext();
+        const resolvedParentId = parentId || ctx?.parentId;
+        const resolvedChildId = ctx?.childId || undefined;
+        if (resolvedParentId) {
+          const absolute = generateChildUrl(resolvedParentId, resolvedChildId || undefined);
+          try {
+            const path = new URL(absolute).pathname + new URL(absolute).search;
+            router.push(path);
+          } catch {
+            router.push(absolute);
+          }
+          return;
+        }
+        router.push('/dashboard/child');
+      }}
     />
   );
 }

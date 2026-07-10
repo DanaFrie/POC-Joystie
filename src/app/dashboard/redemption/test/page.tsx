@@ -23,7 +23,7 @@ export default function ParentRedemptionConfirmTestPage() {
 
   return (
     <ChallengeTestShell
-      title="TEST · אישור פדיון (הורה)"
+      title="TEST · אישור בדיקת שבוע (הורה)"
       subtitle="/dashboard/redemption/test"
       childName={childName}
       averageMinutes={Math.round(estimatedDailyHours * 60)}
@@ -40,7 +40,7 @@ export default function ParentRedemptionConfirmTestPage() {
             onClick={() => setOpen(true)}
             className="rounded-[22px] bg-[#00FFB3] px-8 py-3 font-simpler text-[16px] font-bold text-[#092125]"
           >
-            פתיחת אישור פדיון
+            פתיחת אישור בדיקת השבוע
           </button>
           {lastResult ? (
             <p className="text-center font-simpler text-[13px] text-white/60">

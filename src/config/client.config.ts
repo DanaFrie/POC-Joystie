@@ -6,7 +6,7 @@
 export const clientConfig = {
   // Token configuration
   token: {
-    expirationDays: 14,
+    expirationDays: 30,
   },
 
   // Session configuration

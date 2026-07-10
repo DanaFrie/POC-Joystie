@@ -1,0 +1,50 @@
+---
+description: Canonical 100vh funnel step stack — FunnelStepRoot / fitViewport / FunnelStepFooter
+globs: src/components/onboarding/**/*.tsx,src/components/ui/funnel-layout/**/*.tsx,src/components/login/**/*.tsx,src/components/help/**/*.tsx,src/constants/funnel-vertical-layout.ts
+alwaysApply: false
+---
+
+# v0.3 — funnel step layout (canonical)
+
+## Stack (required for new / edited funnel steps)
+
+```tsx
+<FunnelStepRoot fitViewport aria-label="…">
+  {/* bleed / heroes — absolute, not in flex flow */}
+  <FunnelStepBackground>…</FunnelStepBackground>
+  {/* or existing absolute backdrop components */}
+
+  <FunnelStepForeground distribution="between" fitViewport>
+    <FunnelStepSection>…hero / copy…</FunnelStepSection>
+    <FunnelStepMain>{/* scroll here if needed */}</FunnelStepMain>
+    <FunnelStepFooter primaryLabel="…" onPrimary={…} />
+  </FunnelStepForeground>
+</FunnelStepRoot>
+```
+
+Primitives: `src/components/ui/funnel-layout/*`. Spacing helpers: `src/constants/funnel-vertical-layout.ts`.
+
+Auth/help screens may use `AuthFunnelScreenShell` (same stack underneath) — do not invent a third shell.
+
+## Rules
+
+1. **`fitViewport`** on `FunnelStepRoot` + `FunnelStepForeground` for full-screen funnel steps so short phones shrink the canvas to usable height instead of outer page scroll.
+2. **Background bleed** stays absolute / out of flex (`FunnelStepBackground` or existing backdrop). Do not put full-bleed heroes inside `FunnelStepMain` flex flow.
+3. **CTAs** go in `FunnelStepFooter` (or shared blur-footer constants). Do **not** add new absolute-positioned footer/CTA components.
+4. **Scroll** lives in `FunnelStepMain` when content overflows — not a new page-level scroll wrapper.
+5. **Gutters:** `px-v03-gutter` / `w-v03-content` — no extra horizontal margin.
+6. **No** per-component `transform: scale()` to “fit” short screens — fix at `FunnelViewport` / this stack.
+
+## Out of scope
+
+| Surface | Layout |
+|---------|--------|
+| `/` landing | Responsive marketing — not 375×812 funnel |
+| `/dashboard/*` | `100dvh` dashboard chrome (S4) — not `FunnelStepRoot` |
+| `/child/*` token URLs | Legacy v0.2 until explicitly migrated |
+
+## Anti-patterns
+
+- New `Onboarding*Cta` / absolute footer shells parallel to `FunnelStepFooter`
+- Hardcoding `height: 812` on step roots when `fitViewport` should drive height
+- Migrating dashboard cards into the funnel artboard stack

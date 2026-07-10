@@ -9,7 +9,6 @@ import {
   FunnelHeroPortalMount,
   FunnelStepContentLayer,
 } from '@/components/ui/FunnelHeroPortalMount';
-import { useFunnelDesktop } from '@/components/ui/FunnelViewportContext';
 
 /** Grid on landing is rendered in `OnboardingLanding`; parent flow adds per-step grid. */
 function isChildOnboardingRoute(pathname: string | null) {
@@ -22,19 +21,9 @@ const ROUTES_WITHOUT_GRID = ['/onboarding'];
 const GAME_FUNNEL_ROUTES = ['/game', '/game/child'];
 const LIGHT_FUNNEL_ROUTES: string[] = [];
 
-function OnboardingFunnelContent({ children }: { children: ReactNode }) {
-  const isDesktop = useFunnelDesktop();
-
-  if (isDesktop) {
-    return null;
-  }
-
-  return <>{children}</>;
-}
-
 /**
  * /onboarding/* — mobile: width-fit 375×812; short viewports scroll instead of shrinking.
- * Desktop (≥768px): green canvas + grid + «זמין במובייל בלבד» only.
+ * Desktop (≥768px): FunnelViewport shows grid + logo + «אנחנו זמינים במובייל» only.
  */
 export function OnboardingFunnelFrame({
   children,
@@ -65,9 +54,7 @@ export function OnboardingFunnelFrame({
         {showBleedBackground ? <OnboardingFunnelBleedBackground /> : null}
         <FunnelHeroPortalMount />
         {showGrid && <OnboardingGrid />}
-        <FunnelStepContentLayer>
-          <OnboardingFunnelContent>{children}</OnboardingFunnelContent>
-        </FunnelStepContentLayer>
+        <FunnelStepContentLayer>{children}</FunnelStepContentLayer>
       </div>
     </FunnelViewport>
   );

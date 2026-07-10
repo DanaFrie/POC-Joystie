@@ -37,15 +37,17 @@ export function OnboardingWaitingCenterContent({
           gap: SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX,
         }}
       >
-        <p
-          className="w-full text-center font-simpler text-2xl font-black leading-[30px] text-white transition-opacity duration-300"
-          style={{
-            letterSpacing: '-0.36px',
-            textShadow: '0 0 20px rgba(255, 255, 255, 0.5)',
-          }}
-        >
-          {headline}
-        </p>
+        {headline ? (
+          <p
+            className="w-full text-center font-simpler text-2xl font-black leading-[30px] text-white transition-opacity duration-300"
+            style={{
+              letterSpacing: '-0.36px',
+              textShadow: '0 0 20px rgba(255, 255, 255, 0.5)',
+            }}
+          >
+            {headline}
+          </p>
+        ) : null}
 
         {showLogo ? (
           /* eslint-disable-next-line @next/next/no-img-element */

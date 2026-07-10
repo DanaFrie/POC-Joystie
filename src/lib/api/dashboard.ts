@@ -2,12 +2,25 @@
 import { getActiveChallenge, getLatestChallenge } from './challenges';
 import { getUploadsByChallenge, getPendingApprovals } from './uploads';
 import { getUser } from './users';
-import { getChild } from './children';
+import { getChild, ensureChildForParent } from './children';
+import { changeDayChecksToMatrix } from '@/lib/onboarding/changeDayChecks';
 import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
 import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('Dashboard');
+
+function challengeDailyBudget(challenge: FirestoreChallenge): number {
+  if (challenge.dailyBudget != null) return challenge.dailyBudget;
+  if (challenge.selectedBudget && challenge.challengeDays) {
+    return challenge.selectedBudget / challenge.challengeDays;
+  }
+  return 0;
+}
+
+function challengeDailyGoalHours(challenge: FirestoreChallenge): number {
+  return challenge.dailyScreenTimeGoal ?? 0;
+}
 
 /**
  * Helper: Transform FirestoreChallenge to Challenge type (adds weeklyBudget)
@@ -15,13 +28,16 @@ const logger = createContextLogger('Dashboard');
 function transformChallenge(firestoreChallenge: FirestoreChallenge): Challenge {
   return {
     selectedBudget: firestoreChallenge.selectedBudget,
-    weeklyBudget: firestoreChallenge.selectedBudget, // weeklyBudget equals selectedBudget
+    weeklyBudget: firestoreChallenge.selectedBudget,
     dailyBudget: firestoreChallenge.dailyBudget,
     dailyScreenTimeGoal: firestoreChallenge.dailyScreenTimeGoal,
+    hourlyRate: firestoreChallenge.hourlyRate,
+    moneyGoals: firestoreChallenge.moneyGoals,
     weekNumber: firestoreChallenge.weekNumber,
     totalWeeks: firestoreChallenge.totalWeeks,
     startDate: firestoreChallenge.startDate,
-    isActive: firestoreChallenge.isActive
+    challengeDays: firestoreChallenge.challengeDays,
+    isActive: firestoreChallenge.isActive,
   };
 }
 
@@ -165,12 +181,14 @@ function generateWeek(
     }
     
     // Calculate coins
-    const hourlyRate = challenge.dailyScreenTimeGoal > 0 
-      ? challenge.dailyBudget / challenge.dailyScreenTimeGoal 
+    const dailyGoalHours = challengeDailyGoalHours(challenge);
+    const dailyBudget = challengeDailyBudget(challenge);
+    const hourlyRate = dailyGoalHours > 0 
+      ? dailyBudget / dailyGoalHours 
       : 0;
     
     let screenTimeUsed = upload?.screenTimeUsed || 0;
-    const screenTimeGoal = challenge.dailyScreenTimeGoal;
+    const screenTimeGoal = dailyGoalHours;
     let coinsEarned = upload?.coinsEarned || 0;
     let requiresApproval = upload?.requiresApproval || false;
 
@@ -183,9 +201,8 @@ function generateWeek(
       const mins = minutesPerDay[dayName];
       if (mins != null) {
         screenTimeUsed = mins / 60;
-        const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60;
+        const goalMinutes = dailyGoalHours * 60;
         const success = mins <= goalMinutes;
-        const dailyBudget = challenge.dailyBudget ?? 0;
         coinsEarned = success ? dailyBudget : Math.max(0, dailyBudget * (1 - (mins - goalMinutes) / goalMinutes));
         if (weeklyUpload.status === 'approved') {
           status = success ? 'success' : 'warning';
@@ -236,7 +253,8 @@ function calculateWeeklyTotals(
   week: WeekDay[],
   challenge: FirestoreChallenge
 ): { coinsEarned: number; coinsMaxPossible: number; redemptionDate: string; redemptionDay: string } {
-  const coinsMaxPossible = challenge.dailyBudget * challenge.challengeDays; // Max possible for challenge days
+  const dailyBudget = challengeDailyBudget(challenge);
+  const coinsMaxPossible = dailyBudget * challenge.challengeDays;
   
   // Get approved non-redemption days
   const nonRedemptionDays = week.filter(day => !day.isRedemptionDay);
@@ -250,7 +268,6 @@ function calculateWeeklyTotals(
   for (const day of approvedDays) {
     const screenTimeUsed = day.screenTimeUsed || 0;
     const screenTimeGoal = day.screenTimeGoal || 0;
-    const dailyBudget = challenge.dailyBudget;
     
     // Calculate coins earned using the same formula as in upload page
     // If goal met: full daily budget
@@ -306,22 +323,24 @@ function buildToday(
       status: 'future', // Today hasn't passed yet, so it's future
       coinsEarned: 0,
       screenTimeUsed: 0,
-      screenTimeGoal: challenge.dailyScreenTimeGoal,
+      screenTimeGoal: challengeDailyGoalHours(challenge),
       isRedemptionDay: false,
       requiresApproval: false
     };
   }
+
+  const day = todayDay;
   
   // Determine screenshot status
   let screenshotStatus: Today['screenshotStatus'] = 'pending';
-  if (todayDay.status === 'success' || todayDay.status === 'warning') {
+  if (day.status === 'success' || day.status === 'warning') {
     screenshotStatus = 'uploaded';
-  } else if (todayDay.status === 'awaiting_approval') {
+  } else if (day.status === 'awaiting_approval') {
     screenshotStatus = 'uploaded';
-  } else if (todayDay.status === 'future') {
+  } else if (day.status === 'future') {
     // Today or future day - still pending (day hasn't passed yet)
     screenshotStatus = 'pending';
-  } else if (todayDay.status === 'missing') {
+  } else if (day.status === 'missing') {
     // Day has passed but no upload - missing or overdue
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
@@ -332,21 +351,23 @@ function buildToday(
     }
   }
   
-  const hourlyRate = challenge.dailyScreenTimeGoal > 0 
-    ? challenge.dailyBudget / challenge.dailyScreenTimeGoal 
+  const dailyGoalHours = challengeDailyGoalHours(challenge);
+  const dailyBudget = challengeDailyBudget(challenge);
+  const hourlyRate = dailyGoalHours > 0 
+    ? dailyBudget / dailyGoalHours 
     : 0;
   
   return {
     date: todayDateStr,
     hebrewDate: '', // TODO: Calculate Hebrew date if needed
     screenshotStatus,
-    screenTimeUsed: todayDay.screenTimeUsed || 0,
-    screenTimeGoal: todayDay.screenTimeGoal || challenge.dailyScreenTimeGoal,
-    coinsEarned: todayDay.coinsEarned || 0,
-    coinsMaxPossible: challenge.dailyBudget,
-    requiresApproval: todayDay.requiresApproval || false,
-    uploadedAt: todayDay.uploadedAt || new Date().toISOString(),
-    apps: todayDay.apps || []
+    screenTimeUsed: day.screenTimeUsed || 0,
+    screenTimeGoal: day.screenTimeGoal || dailyGoalHours,
+    coinsEarned: day.coinsEarned || 0,
+    coinsMaxPossible: dailyBudget,
+    requiresApproval: day.requiresApproval || false,
+    uploadedAt: day.uploadedAt || new Date().toISOString(),
+    apps: day.apps || []
   };
 }
 
@@ -362,8 +383,8 @@ export function mergeWeekWithWeeklyUpload(
   const minutesPerDay = weeklyUpload?.processedData?.minutesPerDay;
   if (!minutesPerDay || week.length === 0) return week;
 
-  const dailyBudget = challenge.dailyBudget ?? 0;
-  const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60;
+  const dailyBudget = challengeDailyBudget(challenge);
+  const goalMinutes = challengeDailyGoalHours(challenge) * 60;
 
   const hebrewToEn: Record<string, string> = {
     ראשון: 'Sunday', שני: 'Monday', שלישי: 'Tuesday', רביעי: 'Wednesday',
@@ -401,6 +422,59 @@ export function mergeWeekWithWeeklyUpload(
   });
 }
 
+function buildBootstrapDashboardState(
+  user: import('@/types/firestore').FirestoreUser,
+  child: import('@/types/firestore').FirestoreChild
+): DashboardState {
+  return {
+    parent: {
+      name: user.firstName || 'הורה',
+      id: user.id,
+      googleAuth: {},
+      profilePicture: '',
+      gender: user.gender,
+    },
+    child: {
+      name: child.name,
+      id: child.id,
+      profilePicture: child.profilePicture || '',
+      gender: child.gender,
+      nickname: child.nickname,
+      moneyGoals: child.moneyGoals,
+      changes: child.changes,
+      changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
+      baselineDailyMinutes: child.baselineDailyMinutes,
+    },
+    challenge: {
+      selectedBudget: 0,
+      weeklyBudget: 0,
+      weekNumber: 0,
+      startDate: '',
+      isActive: false,
+      challengeDays: 6,
+    },
+    today: {
+      date: '',
+      hebrewDate: '',
+      screenshotStatus: 'pending',
+      screenTimeUsed: 0,
+      screenTimeGoal: 0,
+      coinsEarned: 0,
+      coinsMaxPossible: 0,
+      requiresApproval: false,
+      uploadedAt: '',
+      apps: [],
+    },
+    week: [],
+    weeklyTotals: {
+      coinsEarned: 0,
+      coinsMaxPossible: 0,
+      redemptionDate: '',
+      redemptionDay: '',
+    },
+  };
+}
+
 /**
  * Get complete dashboard data for a user
  */
@@ -431,7 +505,8 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       challenge = await getLatestChallenge(parentId);
       if (!challenge) {
         logger.warn('No challenge found for user:', parentId);
-        return null;
+        const child = await ensureChildForParent(parentId);
+        return buildBootstrapDashboardState(user, child);
       }
       logger.log('Using latest (pending) challenge:', challenge.id);
     } else {
@@ -491,7 +566,10 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
         profilePicture: child.profilePicture || '',
         gender: child.gender,
         nickname: child.nickname,
-        moneyGoals: child.moneyGoals
+        moneyGoals: challenge.moneyGoals?.length ? challenge.moneyGoals : child.moneyGoals,
+        changes: child.changes,
+        changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
+        baselineDailyMinutes: child.baselineDailyMinutes,
       },
       challenge: challengeData,
       today: todayObj,
@@ -499,7 +577,6 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       weeklyTotals,
       challengeNotStarted: challengeNotStarted,
       challengeStartDate: challenge.startDate,
-      consultationCompleted: challenge.consultationCompleted ?? false,
       activeChallengeId: challenge.id
     };
     

@@ -6,19 +6,15 @@ import Navigation from './Navigation';
 export default function ConditionalNavigation() {
   const pathname = usePathname();
   
-  // Don't show navigation for home page, child pages, onboarding/signup pages, login and forgot password.
+  // Don't show navigation for home page, child pages, onboarding, login, help, dashboard.
   if (
     pathname === '/' ||
-    pathname?.startsWith('/child') ||
     pathname?.startsWith('/game') ||
-    pathname === '/signup' ||
     pathname === '/onboarding' ||
     pathname?.startsWith('/onboarding/') ||
-    pathname?.startsWith('/signup/terms') ||
     pathname === '/login' ||
     pathname?.startsWith('/login/') ||
-    pathname === '/forgot-password' ||
-    pathname === '/reset-password' ||
+    pathname === '/terms' ||
     pathname === '/help' ||
     pathname === '/dashboard' ||
     pathname?.startsWith('/dashboard/')

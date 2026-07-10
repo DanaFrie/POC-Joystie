@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DashboardFigmaBackground, DashboardBottomGlows } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
@@ -8,6 +8,14 @@ import { DashboardScreenTimeRing } from '@/components/dashboard/DashboardScreenT
 import { DashboardSavingsCard } from '@/components/dashboard/DashboardSavingsCard';
 import { DashboardContractSection } from '@/components/dashboard/DashboardContractSection';
 import { ChildDashboardNonPaidOverlay } from '@/components/dashboard/ChildDashboardNonPaidOverlay';
+import {
+  ChildChallengeSetupOverlay,
+  type ChildChallengeSetupResult,
+} from '@/components/dashboard/challenge/ChildChallengeSetupOverlay';
+import {
+  ChildRedemptionOverlay,
+  type ChildRedemptionFlowResult,
+} from '@/components/dashboard/challenge/ChildRedemptionOverlay';
 import {
   DashboardChildCompanion,
   DashboardChildGreeting,
@@ -19,23 +27,36 @@ import {
   CHILD_DASHBOARD_LAYOUT,
 } from '@/constants/child-dashboard-layout';
 import { PARENT_DASHBOARD_COLORS } from '@/constants/parent-dashboard-layout';
+import {
+  persistChildChallengeAccept,
+  persistChildRedemptionUpload,
+} from '@/lib/challenge/v03ChallengeFirestore';
+import {
+  canOpenChildChallengeSetup,
+  canOpenChildRedemption,
+  deriveHourlyRate,
+  deriveWeeklyBudget,
+  getRedemptionCountdownTarget,
+  isChildDealSetupComplete,
+  isParentChallengeSet,
+  isV03DealLive,
+  parentLabelFromGender,
+} from '@/lib/challenge/v03DashboardChallenge';
 import type { DashboardState } from '@/types/dashboard';
+import { formatNumber } from '@/utils/formatting';
 
 type ChildDashboardScreenProps = {
   dashboardData: DashboardState;
   shareUrl?: string;
   noChallengeExists: boolean;
-  /** When true, disappointed Dori card can be raised (e.g. on challenge CTA). Default true. */
-  isNonPaidPlan?: boolean;
-  /** Start with gate closed; open only when challenge CTA is tapped. */
-  openGateOnMount?: boolean;
-  onStartChallenge?: () => void;
+  challengeEnabled: boolean;
+  onRefresh: () => Promise<void>;
+  /** Present when opened via ?token= or parent session (optional UI hint). */
+  accessMode?: 'token' | 'parent';
 };
 
 function parentDisplayName(parent: DashboardState['parent']): string {
-  if (parent.gender === 'female') return 'אמא';
-  if (parent.gender === 'male') return 'אבא';
-  return parent.name || 'אבא';
+  return parentLabelFromGender(parent.gender);
 }
 
 function parentWalletHeadline(parent: DashboardState['parent']): string {
@@ -48,34 +69,119 @@ export function ChildDashboardScreen({
   dashboardData,
   shareUrl,
   noChallengeExists,
-  isNonPaidPlan = true,
-  openGateOnMount = false,
-  onStartChallenge,
+  challengeEnabled,
+  onRefresh,
+  accessMode: _accessMode,
 }: ChildDashboardScreenProps) {
   const childName = dashboardData.child.name || 'יואב';
-  const parentName = parentDisplayName(dashboardData.parent);
+  const parentLabel = parentDisplayName(dashboardData.parent);
   const gateHeadline = parentWalletHeadline(dashboardData.parent);
   const weeklyEarned = dashboardData.weeklyTotals?.coinsEarned ?? 0;
 
-  const today = dashboardData.today;
-  const goalHours = today?.screenTimeGoal ?? dashboardData.challenge.dailyScreenTimeGoal ?? 0;
-  const usedHours = today?.screenTimeUsed ?? 0;
-  const hasGoal = goalHours > 0;
-  const savedMinutes = hasGoal ? Math.max(0, (goalHours - usedHours) * 60) : 0;
-  const goalMinutes = hasGoal ? goalHours * 60 : 0;
+  const { challenge, child, challengeNotStarted } = dashboardData;
+  const weeklyBudget = deriveWeeklyBudget(challenge);
+  const hourlyRate = deriveHourlyRate(challenge);
+  const childDealComplete = isChildDealSetupComplete(child, challenge);
+  const parentChallengeSet = isParentChallengeSet(challenge, noChallengeExists);
+  const dealLive = isV03DealLive(challengeEnabled, challenge, child, challengeNotStarted);
+  const parentDealPending = challengeEnabled && parentChallengeSet && !childDealComplete;
+  const redemptionOpen = canOpenChildRedemption(challengeEnabled, challenge, child, null);
 
-  const walletLocked = noChallengeExists || !hasGoal;
-  const showStartCta = noChallengeExists || Boolean(dashboardData.challengeNotStarted);
+  const ctaLabel = challengeEnabled
+    ? 'הדיל השבועי'
+    : 'הגדרת הדיל הראשון בארנק שלי';
 
-  const [gateVisible, setGateVisible] = useState(isNonPaidPlan && openGateOnMount);
+  const ctaEnabled = challengeEnabled
+    ? parentChallengeSet &&
+      (parentDealPending ||
+        redemptionOpen ||
+        canOpenChildChallengeSetup(
+          challengeEnabled,
+          challenge,
+          child,
+          noChallengeExists,
+          challengeNotStarted
+        ))
+    : true;
+
+  const showCta =
+    !challengeEnabled || !dealLive || redemptionOpen || parentDealPending;
+
+  const walletBalance = dealLive ? weeklyBudget : weeklyEarned;
+  const walletLocked = !challengeEnabled || (!dealLive && !parentDealPending);
+  const cardRaised = parentDealPending;
+
+  const countdownStart = challenge.startDate ? new Date(challenge.startDate) : null;
+  const countdownTarget = getRedemptionCountdownTarget(challenge.startDate);
+  const showCountdown = challengeEnabled && dealLive && countdownTarget && countdownStart;
+
+  const [gateVisible, setGateVisible] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [redemptionOpenOverlay, setRedemptionOpenOverlay] = useState(false);
+
+  // Parent set the deal, child hasn't confirmed — show setup on every load.
+  useEffect(() => {
+    if (parentDealPending) setSetupOpen(true);
+  }, [parentDealPending]);
 
   const handleStartCta = () => {
-    if (isNonPaidPlan) {
+    if (!challengeEnabled) {
       setGateVisible(true);
       return;
     }
-    onStartChallenge?.();
+    if (!ctaEnabled) return;
+
+    if (redemptionOpen) {
+      setRedemptionOpenOverlay(true);
+      return;
+    }
+    if (
+      canOpenChildChallengeSetup(
+        challengeEnabled,
+        challenge,
+        child,
+        noChallengeExists,
+        challengeNotStarted
+      )
+    ) {
+      setSetupOpen(true);
+    }
   };
+
+  const handleSetupSubmit = useCallback(
+    async (result: ChildChallengeSetupResult) => {
+      if (!dashboardData.parent.id) return;
+      setSetupOpen(false);
+      const { ensureChildForParent } = await import('@/lib/api/children');
+      const childId =
+        child.id || (await ensureChildForParent(dashboardData.parent.id)).id;
+      await persistChildChallengeAccept(dashboardData.parent.id, childId, result);
+      await onRefresh();
+    },
+    [dashboardData.parent.id, child.id, onRefresh]
+  );
+
+  const handleRedemptionAwaitParent = useCallback(
+    async (result: ChildRedemptionFlowResult) => {
+      const challengeId = dashboardData.activeChallengeId;
+      if (!challengeId || !dashboardData.parent.id) return;
+      await persistChildRedemptionUpload(dashboardData.parent.id, challengeId, result);
+    },
+    [dashboardData.activeChallengeId, dashboardData.parent.id]
+  );
+
+  const handleRedemptionComplete = useCallback(
+    async (_result: ChildRedemptionFlowResult) => {
+      setRedemptionOpenOverlay(false);
+      await onRefresh();
+    },
+    [onRefresh]
+  );
+
+  const conversionMoneyLabel = useMemo(
+    () => (dealLive ? `${formatNumber(hourlyRate, 1)} ₪` : undefined),
+    [dealLive, hourlyRate]
+  );
 
   return (
     <div
@@ -84,13 +190,11 @@ export function ChildDashboardScreen({
       dir="rtl"
     >
       <DashboardFigmaBackground showBottomGlows={false} />
-
-      <DashboardTopBar balance={weeklyEarned} menuSlot={<DashboardHeaderMenu />} />
+      <DashboardTopBar balance={walletBalance} menuSlot={<DashboardHeaderMenu />} />
 
       <div className="absolute inset-0 overflow-x-hidden overflow-y-auto v03-scroll-hidden">
         <div className="relative min-h-full w-full max-w-[100vw] overflow-x-hidden pb-10">
           <DashboardBottomGlows />
-
           <DashboardChildCompanion src={CHILD_DASHBOARD_ASSETS.companion} />
 
           <div
@@ -102,39 +206,51 @@ export function ChildDashboardScreen({
               paddingTop: CHILD_DASHBOARD_LAYOUT.contentTop,
             }}
           >
-            {/* Frame 1 — savings card */}
-            <div className="relative w-full">
+            <div
+              className={`relative w-full transition-transform duration-500 ease-out ${
+                cardRaised ? '-translate-y-3' : ''
+              }`}
+            >
               <DashboardSavingsCard
-                balance={weeklyEarned}
+                balance={walletBalance}
                 dimmed={walletLocked}
                 variant="child"
               />
             </div>
 
-            {/* Frame 2 — greeting / CTA / conversion, circle last */}
             <div
               className="flex w-full flex-col items-center"
               style={{ gap: CHILD_DASHBOARD_LAYOUT.frame2Gap }}
             >
-              <DashboardChildGreeting childName={childName} />
+              <DashboardChildGreeting childName={childName} showWalletTeaser={!dealLive} />
+              {showCta ? (
+                <DashboardChildStartCta
+                  onClick={handleStartCta}
+                  label={ctaLabel}
+                  disabled={!ctaEnabled}
+                />
+              ) : null}
 
-              {showStartCta && <DashboardChildStartCta onClick={handleStartCta} />}
-
-              <DashboardConversionBar savedMinutes={savedMinutes} balance={weeklyEarned} />
+              <DashboardConversionBar
+                savedMinutes={dealLive ? 60 : 0}
+                balance={dealLive ? hourlyRate : weeklyEarned}
+                moneyLabel={conversionMoneyLabel}
+              />
 
               <DashboardScreenTimeRing
-                savedMinutes={savedMinutes}
-                goalMinutes={goalMinutes}
-                hasGoal={hasGoal}
                 variant="child"
-                dimmed={walletLocked}
+                dimmed={!challengeEnabled || walletLocked}
+                countdownTarget={showCountdown ? countdownTarget : null}
+                countdownStart={showCountdown ? countdownStart : null}
+                hasGoal={dealLive}
+                savedMinutes={0}
+                goalMinutes={60}
               />
             </div>
 
-            {/* Frame 3 — contract */}
             <DashboardContractSection
               childName={childName}
-              parentName={parentName}
+              parentName={parentLabel}
               shareUrl={shareUrl || '#'}
               variant="child"
             />
@@ -142,13 +258,33 @@ export function ChildDashboardScreen({
         </div>
       </div>
 
-      {isNonPaidPlan && (
-        <ChildDashboardNonPaidOverlay
-          visible={gateVisible}
-          headline={gateHeadline}
-          onDismiss={() => setGateVisible(false)}
-        />
-      )}
+      <ChildDashboardNonPaidOverlay
+        visible={gateVisible}
+        headline={gateHeadline}
+        onDismiss={() => setGateVisible(false)}
+      />
+
+      <ChildChallengeSetupOverlay
+        visible={setupOpen}
+        childName={childName}
+        parentLabel={parentLabel}
+        weeklyBudget={weeklyBudget}
+        hourlyRate={hourlyRate}
+        onClose={() => setSetupOpen(false)}
+        onSubmit={handleSetupSubmit}
+      />
+
+      <ChildRedemptionOverlay
+        visible={redemptionOpenOverlay}
+        childName={childName}
+        parentLabel={parentLabel}
+        weeklyBudget={weeklyBudget}
+        hourlyRate={hourlyRate}
+        challengeId={dashboardData.activeChallengeId}
+        onClose={() => setRedemptionOpenOverlay(false)}
+        onSubmitForParentApproval={handleRedemptionAwaitParent}
+        onComplete={handleRedemptionComplete}
+      />
     </div>
   );
 }

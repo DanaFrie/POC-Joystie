@@ -13,11 +13,11 @@ const logger = createContextLogger('ForgotPassword');
 function LoginForgotPasswordPageContent() {
   const searchParams = useSearchParams();
   const loginReturnHref = getLoginPath({
-    email: searchParams.get('email') ?? undefined,
-    existing: searchParams.get('existing') === '1',
+    email: searchParams?.get('email') ?? undefined,
+    existing: searchParams?.get('existing') === '1',
   });
 
-  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
+  const [email, setEmail] = useState(() => searchParams?.get('email') ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);

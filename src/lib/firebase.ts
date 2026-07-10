@@ -179,6 +179,8 @@ let dbInstance: Firestore | null = null;
 let functionsInstance: Functions | null = null;
 let rtdbInstance: Database | null = null;
 let initPromise: Promise<void> | null = null;
+let functionsEmulatorConnected = false;
+let firestoreEmulatorConnected = false;
 
 // Initialize Firebase (lazy, client-side only)
 async function initializeFirebase(): Promise<void> {
@@ -239,6 +241,27 @@ async function initializeFirebase(): Promise<void> {
 
       dbInstance = getFirestore(app);
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
+
+      const firebaseLogger = createContextLogger('Firebase');
+      const useEmulators =
+        typeof window !== 'undefined' &&
+        process.env.NODE_ENV === 'development' &&
+        process.env.NEXT_PUBLIC_USE_FUNCTIONS_EMULATOR === 'true';
+
+      if (useEmulators && !firestoreEmulatorConnected) {
+        const { connectFirestoreEmulator } = await import('firebase/firestore');
+        connectFirestoreEmulator(dbInstance, '127.0.0.1', 8080);
+        firestoreEmulatorConnected = true;
+        firebaseLogger.log('Firestore emulator: 127.0.0.1:8080');
+      }
+
+      if (useEmulators && !functionsEmulatorConnected) {
+        const { connectFunctionsEmulator } = await import('firebase/functions');
+        connectFunctionsEmulator(functionsInstance, '127.0.0.1', 5001);
+        functionsEmulatorConnected = true;
+        firebaseLogger.log('Functions emulator: 127.0.0.1:5001');
+      }
+
       if (config.databaseURL) {
         rtdbInstance = getDatabase(app);
       }
@@ -247,7 +270,6 @@ async function initializeFirebase(): Promise<void> {
       // Analytics is initialized separately in utils/analytics.ts to avoid SSR issues
       
       // Log config for debugging (without sensitive data)
-      const firebaseLogger = createContextLogger('Firebase');
       firebaseLogger.log('Initialized with config:', {
         projectId: config.projectId,
         authDomain: config.authDomain,

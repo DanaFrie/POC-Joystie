@@ -3,10 +3,16 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { LoginScreen } from '@/components/login/LoginScreen';
-import { createSession, isLoggedIn, clearSession } from '@/utils/session';
+import { isLoggedIn, clearSession } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
-import { ensureUserProfileForLogin } from '@/lib/auth/ensureUserProfile';
-import { navigateAfterLogin } from '@/lib/auth/postLoginNavigation';
+import { finishAuthenticatedUserNavigation } from '@/lib/auth/postLoginNavigation';
+import {
+  isRegisteredJoystieAccount,
+} from '@/lib/auth/signupAccountStatus';
+import {
+  getUnknownOAuthAccountMessage,
+  rejectUnknownOAuthLogin,
+} from '@/lib/auth/rejectUnknownOAuthLogin';
 import { beginOnboardingSignupFromLogin } from '@/lib/onboarding/parentFlowSession';
 import { getErrorMessage } from '@/utils/errors';
 import { createContextLogger } from '@/utils/logger';
@@ -19,14 +25,16 @@ import {
   isRestrictedOAuthEnvironment,
   getRestrictedOAuthMessage,
   isLikelyOAuthRedirectReturn,
+  getOAuthUserEmail,
 } from '@/utils/auth-oauth';
+import type { User } from 'firebase/auth';
 
 const logger = createContextLogger('Login');
 
 function LoginPageContent() {
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
-    email: searchParams.get('email') ?? '',
+    email: searchParams?.get('email') ?? '',
     password: '',
   });
 
@@ -36,15 +44,47 @@ function LoginPageContent() {
   const [loginError, setLoginError] = useState('');
   const router = useRouter();
 
-  const showResumeSignupBanner = searchParams.get('existing') === '1';
+  const showResumeSignupBanner = searchParams?.get('existing') === '1';
 
   const finishLogin = useCallback(
     async (uid: string) => {
-      createSession(uid);
-      const userData = await ensureUserProfileForLogin(uid);
-      navigateAfterLogin(userData, router);
+      await finishAuthenticatedUserNavigation(uid, router);
     },
     [router]
+  );
+
+  const completeOAuthLogin = useCallback(
+    async (uid: string) => {
+      await finishLogin(uid);
+    },
+    [finishLogin]
+  );
+
+  const handleOAuthLoginResult = useCallback(
+    async (result: { user: User; isNewUser: boolean }) => {
+      const registered = await isRegisteredJoystieAccount(
+        result.user.uid,
+        getOAuthUserEmail(result.user)
+      );
+
+      if (!registered) {
+        const auth = await import('@/utils/auth');
+        const { getAuthInstance } = await import('@/lib/firebase');
+        const firebaseAuth = await getAuthInstance();
+        const firebaseUser = firebaseAuth.currentUser;
+        if (firebaseUser) {
+          await rejectUnknownOAuthLogin(firebaseUser);
+        } else {
+          await auth.signOutUser();
+          clearSession();
+        }
+        setLoginError(getUnknownOAuthAccountMessage());
+        return;
+      }
+
+      await completeOAuthLogin(result.user.uid);
+    },
+    [completeOAuthLogin]
   );
 
   const checkUserAndRedirect = useCallback(async () => {
@@ -55,20 +95,12 @@ function LoginPageContent() {
         return;
       }
 
-      const userData = await ensureUserProfileForLogin(userId);
-      navigateAfterLogin(userData, router);
+      await finishAuthenticatedUserNavigation(userId, router);
     } catch (error) {
       logger.error('Error checking user:', error);
       router.push('/onboarding');
     }
   }, [router]);
-
-  const completeOAuthLogin = useCallback(
-    async (uid: string) => {
-      await finishLogin(uid);
-    },
-    [finishLogin]
-  );
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
@@ -128,7 +160,7 @@ function LoginPageContent() {
 
       try {
         clearOAuthSessionFlags();
-        await completeOAuthLogin(result.user.uid);
+        await handleOAuthLoginResult(result);
       } catch (error) {
         logger.error('OAuth redirect login error:', error);
         setLoginError(getErrorMessage(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
@@ -138,7 +170,7 @@ function LoginPageContent() {
     };
 
     void resolveOAuthRedirect();
-  }, [completeOAuthLogin]);
+  }, [handleOAuthLoginResult]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -233,7 +265,7 @@ function LoginPageContent() {
         return;
       }
 
-      await completeOAuthLogin(result.user.uid);
+      await handleOAuthLoginResult(result);
     } catch (error) {
       logger.error('OAuth login error:', error);
       setLoginError(getErrorMessage(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');

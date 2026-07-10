@@ -128,82 +128,88 @@ export function ParentSubscriptionStep({
 
       <FunnelStepForeground
         fitViewport
-        distribution="between"
+        distribution="start"
         padTopPx={metrics.padTopPx}
         padBottomPx={0}
         className="z-[10]"
+        style={{ gap: 0 }}
       >
+        {/* Copy + features — scrolls on SE when plans+CTA need the bottom of 100vh. */}
         <div
-          className="flex min-h-0 w-full flex-1 flex-col"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain v03-scroll-hidden"
           style={{ gap: metrics.sectionGap }}
         >
-          <div className="flex w-full shrink-0 flex-col" style={{ gap: metrics.sectionGap }}>
-            <div
-              className="flex w-full flex-col items-center"
-              style={{ gap: metrics.headlineGap }}
-            >
-              <h1
-                className="w-full text-center font-simpler font-black leading-[1.1] tracking-[-0.6px] text-white"
-                style={{
-                  fontSize: metrics.headlineSize,
-                  textShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-                }}
-              >
-                הצטרפו למשפחות שכבר מנהלות את המסכים נכון
-              </h1>
-              <p
-                className="w-full text-center font-simpler font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-100"
-                style={{ fontSize: metrics.subtitleSize }}
-              >
-                יחד נייצר הרגלים דיגיטליים בריאים - ללא מאבקים
-              </p>
-            </div>
-
-            <div
-              className="flex w-full shrink-0 flex-col items-stretch rounded-[16.145px] bg-white/[0.08] backdrop-blur-[6px]"
+          <div
+            className="flex w-full shrink-0 flex-col items-center"
+            style={{ gap: metrics.headlineGap }}
+          >
+            <h1
+              className="w-full text-center font-simpler font-black leading-[1.1] tracking-[-0.6px] text-white"
               style={{
-                padding: metrics.featuresPadding,
-                gap: metrics.featuresGap,
+                fontSize: metrics.headlineSize,
+                textShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
               }}
             >
-              {ONBOARDING_SUBSCRIPTION_FEATURES.map((feature) => (
-                <div key={feature.label} className="flex w-full items-center gap-2">
-                  <div
-                    className="flex min-w-0 flex-1 items-center"
-                    style={{ gap: metrics.featuresRowGap }}
-                  >
-                    <OnboardingLazyImage
-                      src={feature.icon}
-                      alt=""
-                      className="shrink-0 object-contain"
-                      style={{
-                        width: metrics.featureIconSize,
-                        height: metrics.featureIconSize,
-                      }}
-                    />
-                    <p
-                      className="flex-1 text-right font-simpler font-normal leading-[1.25] tracking-[-0.27px] text-v03-green-100"
-                      style={{ fontSize: metrics.featureFontSize }}
-                    >
-                      {feature.label}
-                    </p>
-                  </div>
-                  <OnboardingLazyImage
-                    src={ONBOARDING_SUBSCRIPTION_FEATURE_CHECK}
-                    alt=""
-                    className="shrink-0 object-contain"
-                    style={{
-                      width: metrics.featureCheckSize,
-                      height: metrics.featureCheckSize,
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+              הצטרפו למשפחות שכבר מנהלות את המסכים נכון
+            </h1>
+            <p
+              className="w-full text-center font-simpler font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-100"
+              style={{ fontSize: metrics.subtitleSize }}
+            >
+              יחד נייצר הרגלים דיגיטליים בריאים - ללא מאבקים
+            </p>
           </div>
 
           <div
-            className="mt-auto flex w-full shrink-0 flex-col items-stretch pb-1"
+            className="flex w-full shrink-0 flex-col items-stretch rounded-[16.145px] bg-white/[0.08] backdrop-blur-[6px]"
+            style={{
+              padding: metrics.featuresPadding,
+              gap: metrics.featuresGap,
+            }}
+          >
+            {ONBOARDING_SUBSCRIPTION_FEATURES.map((feature) => (
+              <div key={feature.label} className="flex w-full items-center gap-2">
+                <div
+                  className="flex min-w-0 flex-1 items-center"
+                  style={{ gap: metrics.featuresRowGap }}
+                >
+                  <OnboardingLazyImage
+                    src={feature.icon}
+                    alt=""
+                    className="shrink-0 object-contain"
+                    style={{
+                      width: metrics.featureIconSize,
+                      height: metrics.featureIconSize,
+                    }}
+                  />
+                  <p
+                    className="flex-1 text-right font-simpler font-normal leading-[1.25] tracking-[-0.27px] text-v03-green-100"
+                    style={{ fontSize: metrics.featureFontSize }}
+                  >
+                    {feature.label}
+                  </p>
+                </div>
+                <OnboardingLazyImage
+                  src={ONBOARDING_SUBSCRIPTION_FEATURE_CHECK}
+                  alt=""
+                  className="shrink-0 object-contain"
+                  style={{
+                    width: metrics.featureCheckSize,
+                    height: metrics.featureCheckSize,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Plans + CTA — fixed bottom stack; never overlaps within fitViewport height. */}
+        <div
+          className="flex w-full shrink-0 flex-col"
+          style={{ gap: metrics.plansToCtaGap, paddingTop: metrics.sectionGap }}
+        >
+          <div
+            className="flex w-full flex-col items-stretch"
             style={{ gap: metrics.planGap }}
             role="radiogroup"
             aria-label="בחירת מנוי"
@@ -238,27 +244,27 @@ export function ParentSubscriptionStep({
               );
             })}
           </div>
-        </div>
 
-        <FunnelStepFooter
-          className="shrink-0"
-          customFooter={
-            <div className="flex w-full flex-col gap-[6px]">
-              <button
-                type="button"
-                disabled={selectedPlan === null}
-                onClick={onContinue}
-                className={`${ONBOARDING_SELECTABLE_OPTION.primaryCtaClass} w-full`}
-                style={{ minHeight: FUNNEL_CTA_HEIGHT_PX }}
-              >
-                התחלת 30 ימים ניסיון בחינם
-              </button>
-              <p className="w-full text-center font-simpler text-[16px] font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200">
-                נזכיר לכם יומיים לפני שתקופת הניסיון נגמרת
-              </p>
-            </div>
-          }
-        />
+          <FunnelStepFooter
+            className="shrink-0"
+            customFooter={
+              <div className="flex w-full flex-col gap-[6px]">
+                <button
+                  type="button"
+                  disabled={selectedPlan === null}
+                  onClick={onContinue}
+                  className={`${ONBOARDING_SELECTABLE_OPTION.primaryCtaClass} w-full`}
+                  style={{ minHeight: FUNNEL_CTA_HEIGHT_PX }}
+                >
+                  התחלת 30 ימים ניסיון בחינם
+                </button>
+                <p className="w-full text-center font-simpler text-[16px] font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200">
+                  נזכיר לכם יומיים לפני שתקופת הניסיון נגמרת
+                </p>
+              </div>
+            }
+          />
+        </div>
       </FunnelStepForeground>
     </FunnelStepRoot>
   );
