@@ -8,13 +8,31 @@ export type SegmentPlaybackRateFn = (
   segmentCount: number
 ) => number;
 
+export type SegmentRangeFn = (
+  segmentIndex: number,
+  segmentCount: number,
+  duration: number
+) => { start: number; end: number };
+
+function equalSegmentRange(
+  segmentIndex: number,
+  segmentCount: number,
+  duration: number
+): { start: number; end: number } {
+  const segmentDuration = duration / segmentCount;
+  const start = segmentIndex * segmentDuration;
+  const end = Math.min((segmentIndex + 1) * segmentDuration, duration);
+  return { start, end };
+}
+
 /**
- * Advance a single video in equal time slices per tap (e.g. 50 egg-hatch segments).
+ * Advance a single video in time slices per tap (equal by default; custom ranges optional).
  */
 export function useSegmentedVideoTap(
   segmentCount: number,
   onAllSegmentsComplete: () => void,
-  getPlaybackRate?: SegmentPlaybackRateFn
+  getPlaybackRate?: SegmentPlaybackRateFn,
+  getSegmentRange: SegmentRangeFn = equalSegmentRange
 ) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const segmentIndexRef = useRef(0);
@@ -36,11 +54,10 @@ export function useSegmentedVideoTap(
 
       const currentIndex = segmentIndexRef.current;
       const nextIndex = currentIndex + 1;
-      const segmentDuration = video.duration / segmentCount;
-      const startTime = currentIndex * segmentDuration;
-      const endTime = Math.min(nextIndex * segmentDuration, video.duration);
-      const playbackRate =
-        getPlaybackRate?.(currentIndex, segmentCount) ?? 1;
+      const { start, end } = getSegmentRange(currentIndex, segmentCount, video.duration);
+      const startTime = Math.max(0, start);
+      const endTime = Math.min(end, video.duration);
+      const playbackRate = getPlaybackRate?.(currentIndex, segmentCount) ?? 1;
 
       setIsPlayingSegment(true);
       video.playbackRate = playbackRate;
@@ -80,7 +97,13 @@ export function useSegmentedVideoTap(
       runSegment();
     };
     video.addEventListener('loadedmetadata', onMetadata);
-  }, [getPlaybackRate, isPlayingSegment, onAllSegmentsComplete, segmentCount]);
+  }, [
+    getPlaybackRate,
+    getSegmentRange,
+    isPlayingSegment,
+    onAllSegmentsComplete,
+    segmentCount,
+  ]);
 
   return {
     videoRef,

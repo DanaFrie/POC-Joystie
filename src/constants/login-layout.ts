@@ -4,17 +4,17 @@ import { V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 export const LOGIN_CANVAS_W_PX = V03_SCREEN_WIDTH;
 
 /**
- * Scroll frame top @ 812 — resume path (`existing=1`, banner «התחלת את התהליך…»).
+ * Scroll frame top @ 812 — banner path (`existing=1` or `method=password`).
  */
 export const LOGIN_SCROLL_TOP_WITH_RESUME_BANNER_PX = 90;
 
-/** Scroll frame top @ 812 — default login (no resume banner). */
+/** Scroll frame top @ 812 — default login (no top banner). */
 export const LOGIN_SCROLL_TOP_PX = 187;
 
 export const LOGIN_RESUME_BANNER_H_PX = 72;
 
-export function getLoginScrollTopPx(showResumeSignupBanner: boolean): number {
-  return showResumeSignupBanner
+export function getLoginScrollTopPx(showTopBanner: boolean): number {
+  return showTopBanner
     ? LOGIN_SCROLL_TOP_WITH_RESUME_BANNER_PX
     : LOGIN_SCROLL_TOP_PX;
 }

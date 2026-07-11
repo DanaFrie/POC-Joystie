@@ -2,9 +2,13 @@ import type { User } from 'firebase/auth';
 import { checkAuthEmailExists } from '@/lib/api/auth';
 import { getUser, getUserByEmail } from '@/lib/api/users';
 import { isUserOnboardingComplete } from '@/lib/auth/postLoginNavigation';
+import {
+  classifyUserOnboarding,
+  type UserOnboardingRouteKind,
+} from '@/lib/auth/userOnboardingStatus';
 import { getOAuthUserEmail } from '@/utils/auth-oauth';
 
-export type SignupEmailAccountStatus = 'new' | 'incomplete' | 'complete';
+export type SignupEmailAccountStatus = 'new' | 'incomplete' | 'complete' | 'legacy';
 
 /** Whether a Joystie profile exists for login / resume-signup routing. */
 export async function isRegisteredJoystieAccount(
@@ -23,6 +27,13 @@ export async function isRegisteredJoystieAccount(
   return false;
 }
 
+function statusFromRouteKind(kind: UserOnboardingRouteKind): SignupEmailAccountStatus {
+  if (kind === 'complete') return 'complete';
+  if (kind === 'v02_legacy') return 'legacy';
+  if (kind === 'v03_resume') return 'incomplete';
+  return 'incomplete';
+}
+
 export async function resolveSignupEmailAccountStatus(
   email: string
 ): Promise<SignupEmailAccountStatus> {
@@ -31,7 +42,8 @@ export async function resolveSignupEmailAccountStatus(
 
   const profile = await getUserByEmail(normalized);
   if (profile) {
-    return isUserOnboardingComplete(profile) ? 'complete' : 'incomplete';
+    if (isUserOnboardingComplete(profile)) return 'complete';
+    return statusFromRouteKind(classifyUserOnboarding(profile));
   }
 
   const exists = await checkAuthEmailExists(normalized);

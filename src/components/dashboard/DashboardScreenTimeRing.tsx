@@ -88,11 +88,19 @@ export function DashboardScreenTimeRing({
       הדיל השבועי
     </>
   ) : variant === 'child' ? (
-    <>
-      זמן מסך
-      <br />
-      שחסכתי היום
-    </>
+    hasGoal ? (
+      <>
+        זמן מסך
+        <br />
+        שחסכתי היום
+      </>
+    ) : (
+      <>
+        ממוצע
+        <br />
+        יומי
+      </>
+    )
   ) : (
     <>
       זמן מסך
@@ -155,7 +163,9 @@ export function DashboardScreenTimeRing({
             >
               {hasGoal
                 ? `מתוך יעד של ${formatMinutesLabel(goalMinutes)}`
-                : 'עדיין לא נקבע יעד'}
+                : savedMinutes > 0
+                  ? 'מהדיל האחרון'
+                  : 'עדיין לא נקבע יעד'}
             </p>
           ) : null}
         </div>

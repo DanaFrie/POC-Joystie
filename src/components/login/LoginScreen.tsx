@@ -40,6 +40,7 @@ type LoginScreenProps = {
   errors: Record<string, string>;
   loginError?: string;
   showResumeSignupBanner?: boolean;
+  showPasswordProviderBanner?: boolean;
   isSubmitting: boolean;
   oauthLoading?: 'google' | 'apple' | null;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -129,12 +130,23 @@ function LoginResumeSignupBanner() {
   );
 }
 
+function LoginPasswordProviderBanner() {
+  return (
+    <div className="flex h-[72px] w-full shrink-0 items-center justify-center gap-2.5 self-stretch rounded-[20px] bg-white/5 backdrop-blur-[7.5px]">
+      <p className="flex-1 text-center font-simpler text-[18px] font-normal leading-[125%] tracking-[-0.27px] text-white">
+        החשבון נוצר עם אימייל וסיסמה, התחברו כך
+      </p>
+    </div>
+  );
+}
+
 export function LoginScreen({
   email,
   password,
   errors,
   loginError,
   showResumeSignupBanner = false,
+  showPasswordProviderBanner = false,
   isSubmitting,
   oauthLoading = null,
   onChange,
@@ -145,9 +157,11 @@ export function LoginScreen({
 }: LoginScreenProps) {
   const oauthBlocked = isRestrictedOAuthEnvironment();
   const formLocked = isSubmitting || oauthLoading !== null;
+  const showTopBanner = showResumeSignupBanner || showPasswordProviderBanner;
   const loginScrollRef = useRef<HTMLDivElement>(null);
   const scrollOverflows = useScrollOverflow(loginScrollRef, [
     showResumeSignupBanner,
+    showPasswordProviderBanner,
     loginError,
     errors,
     email,
@@ -155,10 +169,11 @@ export function LoginScreen({
     oauthBlocked,
     oauthLoading,
   ]);
-  const loginPadTopPx = useFunnelProportionalTopPx(getLoginScrollTopPx(showResumeSignupBanner));
+  const loginPadTopPx = useFunnelProportionalTopPx(getLoginScrollTopPx(showTopBanner));
   const forgotPasswordHref = getForgotPasswordPath({
     email,
     existing: showResumeSignupBanner,
+    method: showPasswordProviderBanner ? 'password' : undefined,
   });
 
   return (
@@ -188,7 +203,11 @@ export function LoginScreen({
                   התחברות לג׳ויסטי
                 </h1>
 
-                {showResumeSignupBanner ? <LoginResumeSignupBanner /> : null}
+                {showPasswordProviderBanner ? (
+                  <LoginPasswordProviderBanner />
+                ) : showResumeSignupBanner ? (
+                  <LoginResumeSignupBanner />
+                ) : null}
               </div>
 
               <div className="flex w-full flex-col items-end gap-[19px]">

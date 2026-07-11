@@ -620,7 +620,9 @@ export function OnboardingParentFlow({
         clearOAuthSessionFlags();
         setOauthFinishing(null);
         try {
-          await finishAuthenticatedUserNavigation(outcome.result.user.uid, router);
+          await finishAuthenticatedUserNavigation(outcome.result.user.uid, router, {
+            source: 'signup_existing',
+          });
         } catch (error) {
           logger.error('OAuth existing-user routing failed:', error);
           setErrors({
@@ -783,7 +785,13 @@ export function OnboardingParentFlow({
           result.errorCode === 'auth/account-exists-with-different-credential' ||
           result.errorCode === 'auth/email-already-in-use'
         ) {
-          redirectToLoginForExistingAccount(router, values.email.trim() || undefined);
+          redirectToLoginForExistingAccount(
+            router,
+            values.email.trim() || undefined,
+            result.errorCode === 'auth/account-exists-with-different-credential'
+              ? { reason: 'password_provider' }
+              : { reason: 'resume' }
+          );
           return;
         }
         setErrors({ _general: result.errorMessage });
@@ -799,7 +807,9 @@ export function OnboardingParentFlow({
         setOauthDialogOpen(null);
         setOauthFinishing(provider);
         try {
-          await finishAuthenticatedUserNavigation(result.user.uid, router);
+          await finishAuthenticatedUserNavigation(result.user.uid, router, {
+            source: 'signup_existing',
+          });
         } catch (error) {
           logger.error('OAuth existing-user routing failed:', error);
           setErrors({ _general: getAuthErrorFromUnknown(error) });
@@ -838,7 +848,13 @@ export function OnboardingParentFlow({
         code === 'auth/account-exists-with-different-credential' ||
         code === 'auth/email-already-in-use'
       ) {
-        redirectToLoginForExistingAccount(router, values.email.trim() || undefined);
+        redirectToLoginForExistingAccount(
+          router,
+          values.email.trim() || undefined,
+          code === 'auth/account-exists-with-different-credential'
+            ? { reason: 'password_provider' }
+            : { reason: 'resume' }
+        );
         return;
       }
       setErrors({ _general: getAuthErrorFromUnknown(error) });
@@ -864,14 +880,16 @@ export function OnboardingParentFlow({
     try {
       const email = values.email.trim().toLowerCase();
       const accountStatus = await resolveSignupEmailAccountStatus(email);
-      if (accountStatus === 'incomplete') {
+      if (accountStatus === 'incomplete' || accountStatus === 'legacy') {
         redirectToLoginForExistingAccount(router, email);
         return;
       }
       if (accountStatus === 'complete') {
         try {
           const existingUser = await signIn(email, values.password);
-          await finishAuthenticatedUserNavigation(existingUser.uid, router);
+          await finishAuthenticatedUserNavigation(existingUser.uid, router, {
+            source: 'signup_existing',
+          });
         } catch {
           router.push(getLoginPath({ email }));
         }

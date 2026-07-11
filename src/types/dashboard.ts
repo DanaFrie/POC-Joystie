@@ -102,6 +102,8 @@ export interface DashboardState {
   week: WeekDay[];
   weeklyTotals: WeeklyTotals;
   weeklyUpload?: WeeklyUploadSummary; // Weekly upload summary
+  /** Avg daily minutes from latest weeklyUpload (post-redemption ring). */
+  lastWeeklyAvgMinutes?: number;
   challengeNotStarted?: boolean;
   challengeStartDate?: string;
   activeChallengeId?: string;

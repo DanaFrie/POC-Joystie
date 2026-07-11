@@ -38,7 +38,7 @@ export function ChildDoriMediaFrame({
 
   return (
     <div
-      className={`pointer-events-none absolute z-[2] overflow-hidden ${className}`}
+      className={`pointer-events-none absolute z-[2] overflow-hidden v03-funnel-enter-1 ${className}`}
       style={{
         left: left ?? `calc(50% - ${sizePx / 2}px)`,
         top: topPx,

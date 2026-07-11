@@ -8,6 +8,8 @@ import {
   useFunnelProportionalTopPx,
 } from '@/components/ui/FunnelViewportContext';
 import {
+  CHILD_EGG_HATCH_LATE_DURATION_SHARE,
+  CHILD_EGG_HATCH_LATE_TAP_COUNT,
   CHILD_EGG_HATCH_SEGMENT_COUNT,
   CHILD_ONBOARDING_ASSETS,
 } from '@/constants/child-onboarding-assets';
@@ -18,7 +20,10 @@ import {
   CHILD_EGG_INTRO_TO_EGG_GAP_PX,
   CHILD_EGG_VIDEO_FRAME,
 } from '@/constants/child-onboarding-layout';
-import { useSegmentedVideoTap } from '@/hooks/useSegmentedVideoTap';
+import {
+  useSegmentedVideoTap,
+  type SegmentRangeFn,
+} from '@/hooks/useSegmentedVideoTap';
 import { ChildEggHatchArrow } from '@/components/onboarding/child/ChildEggHatchArrow';
 
 type ChildEggHatchStepProps = {
@@ -34,6 +39,30 @@ function eggTapHint(gender: 'boy' | 'girl') {
 function eggHeadlineStart(gender: 'boy' | 'girl') {
   return gender === 'girl' ? 'תתחילי ללחוץ על' : 'תתחיל ללחוץ על';
 }
+
+/** First 18 taps share 85%; last 2 taps share 15% of the hatch clip. */
+const eggHatchSegmentRange: SegmentRangeFn = (segmentIndex, segmentCount, duration) => {
+  const lateCount = Math.min(CHILD_EGG_HATCH_LATE_TAP_COUNT, segmentCount);
+  const earlyCount = Math.max(0, segmentCount - lateCount);
+  const lateShare = CHILD_EGG_HATCH_LATE_DURATION_SHARE;
+  const earlyShare = 1 - lateShare;
+  const earlyEnd = duration * earlyShare;
+
+  if (segmentIndex < earlyCount) {
+    const seg = earlyEnd / earlyCount;
+    return {
+      start: segmentIndex * seg,
+      end: Math.min((segmentIndex + 1) * seg, earlyEnd),
+    };
+  }
+
+  const lateIndex = segmentIndex - earlyCount;
+  const lateSeg = (duration * lateShare) / lateCount;
+  return {
+    start: earlyEnd + lateIndex * lateSeg,
+    end: Math.min(earlyEnd + (lateIndex + 1) * lateSeg, duration),
+  };
+};
 
 /**
  * Screens 5–5b — Figma 13147:5625 + 5626.
@@ -67,7 +96,12 @@ export function ChildEggHatchStep({
     markVideoReady,
     playNextSegment,
     isPlayingSegment,
-  } = useSegmentedVideoTap(CHILD_EGG_HATCH_SEGMENT_COUNT, onComplete);
+  } = useSegmentedVideoTap(
+    CHILD_EGG_HATCH_SEGMENT_COUNT,
+    onComplete,
+    undefined,
+    eggHatchSegmentRange
+  );
 
   useEffect(() => {
     const el = videoRef.current;

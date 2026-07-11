@@ -20,7 +20,7 @@ export function getAuthErrorMessage(code: string): string {
     'auth/cancelled-popup-request': 'ההתחברות בוטלה. נסו שוב.',
     'auth/popup-blocked': 'הדפדפן חסם חלון קופץ. אפשרו חלונות קופצים או השתמשו בהתחברות עם הפניה.',
     'auth/account-exists-with-different-credential':
-      'כתובת האימייל כבר רשומה בשיטה אחרת. התחברו בשיטה המקורית או אפסו סיסמה.',
+      'החשבון נוצר עם אימייל וסיסמה, התחברו כך',
     'auth/credential-already-in-use': 'חשבון זה כבר מקושר למשתמש אחר.',
     'auth/auth-domain-config-required': 'תצורת התחברות לא הושלמה. פנו לתמיכה.',
     'auth/unauthorized-domain': 'הדומיין לא מאושר להתחברות. פנו לתמיכה.',

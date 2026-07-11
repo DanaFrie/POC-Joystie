@@ -86,11 +86,12 @@ export function canOpenChildRedemption(
   challengeEnabled: boolean,
   challenge: Challenge,
   child: Child,
-  weeklyUpload?: WeeklyUpload | null
+  weeklyUpload?: WeeklyUpload | null,
+  now: Date = new Date()
 ): boolean {
   if (!isV03DealLive(challengeEnabled, challenge, child)) return false;
   if (!challenge.startDate) return false;
-  if (!isRedemptionOpen(new Date(challenge.startDate))) return false;
+  if (!isRedemptionOpen(new Date(challenge.startDate), now)) return false;
   if (weeklyUpload?.status === 'approved') return false;
   return true;
 }

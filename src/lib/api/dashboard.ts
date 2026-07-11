@@ -4,6 +4,7 @@ import { getUploadsByChallenge, getPendingApprovals } from './uploads';
 import { getUser } from './users';
 import { getChild, ensureChildForParent } from './children';
 import { changeDayChecksToMatrix } from '@/lib/onboarding/changeDayChecks';
+import { avgMinutesFromWeeklyScreenTime } from '@/lib/dashboard/parentDailyAverage';
 import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
 import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
@@ -551,6 +552,12 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     // Map FirestoreChallenge to Challenge
     const challengeData = transformChallenge(challenge);
     
+    const lastWeeklyAvgMinutes =
+      avgMinutesFromWeeklyScreenTime(
+        challenge.weeklyUpload?.processedData?.screenTimeMinutes,
+        challenge.challengeDays
+      ) ?? undefined;
+
     // Build dashboard state
     const dashboardState: DashboardState = {
       parent: {
@@ -575,6 +582,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       today: todayObj,
       week,
       weeklyTotals,
+      lastWeeklyAvgMinutes,
       challengeNotStarted: challengeNotStarted,
       challengeStartDate: challenge.startDate,
       activeChallengeId: challenge.id

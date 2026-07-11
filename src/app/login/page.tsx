@@ -45,12 +45,15 @@ function LoginPageContent() {
   const router = useRouter();
 
   const showResumeSignupBanner = searchParams?.get('existing') === '1';
+  const showPasswordProviderBanner = searchParams?.get('method') === 'password';
 
   const finishLogin = useCallback(
     async (uid: string) => {
-      await finishAuthenticatedUserNavigation(uid, router);
+      await finishAuthenticatedUserNavigation(uid, router, {
+        source: showResumeSignupBanner ? 'signup_existing' : 'login',
+      });
     },
-    [router]
+    [router, showResumeSignupBanner]
   );
 
   const completeOAuthLogin = useCallback(
@@ -95,12 +98,12 @@ function LoginPageContent() {
         return;
       }
 
-      await finishAuthenticatedUserNavigation(userId, router);
+      await finishLogin(userId);
     } catch (error) {
       logger.error('Error checking user:', error);
       router.push('/onboarding');
     }
-  }, [router]);
+  }, [finishLogin, router]);
 
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
@@ -287,6 +290,7 @@ function LoginPageContent() {
       errors={errors}
       loginError={loginError}
       showResumeSignupBanner={showResumeSignupBanner}
+      showPasswordProviderBanner={showPasswordProviderBanner}
       isSubmitting={isSubmitting}
       oauthLoading={oauthLoading}
       onChange={handleChange}

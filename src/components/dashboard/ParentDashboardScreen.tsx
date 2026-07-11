@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardFigmaBackground, DashboardBottomGlows } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
+import { DashboardEnter } from '@/components/dashboard/DashboardEnter';
 import { DashboardDailyAverageCard } from '@/components/dashboard/DashboardDailyAverageCard';
 import {
   DashboardChallengeBanner,
@@ -48,11 +49,24 @@ import {
 import { computeParentDailyAverageMetrics } from '@/lib/dashboard/parentDailyAverage';
 import { getUserChallenges } from '@/lib/api/challenges';
 import { resolveDashboardChildShareUrl } from '@/lib/api/bondingInvites';
+import { generateChildUrl } from '@/utils/url-encoding';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('ParentDashboard');
+
+/** Re-show parent redemption card after dismiss without confirm. */
+const PARENT_REDEMPTION_REOPEN_MS = 15_000;
+
+function isChildDashboardTokenUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://joystie.local');
+    return parsed.pathname.includes('/dashboard/child') && Boolean(parsed.searchParams.get('token')?.trim());
+  } catch {
+    return false;
+  }
+}
 
 type ParentDashboardScreenProps = {
   dashboardData: DashboardState;
@@ -128,8 +142,15 @@ export function ParentDashboardScreen({
   const [subscriptionOpen, setSubscriptionOpen] = useState(initialSubscriptionOpen);
   const [parentSetupOpen, setParentSetupOpen] = useState(false);
   const [parentRedemptionOpen, setParentRedemptionOpen] = useState(false);
+  const [redemptionDismissedAt, setRedemptionDismissedAt] = useState<number | null>(null);
   const [challengesHistory, setChallengesHistory] = useState<FirestoreChallenge[]>([]);
   const [copyHint, setCopyHint] = useState('');
+  const [now, setNow] = useState(() => Date.now());
+  const [pageVisible, setPageVisible] = useState(
+    () => typeof document === 'undefined' || document.visibilityState === 'visible'
+  );
+  const parentRedemptionOpenRef = useRef(parentRedemptionOpen);
+  parentRedemptionOpenRef.current = parentRedemptionOpen;
 
   const weeklyBudget = deriveWeeklyBudget(dashboardData.challenge);
   const hourlyRate = deriveHourlyRate(dashboardData.challenge);
@@ -145,10 +166,8 @@ export function ParentDashboardScreen({
     ? new Date(dashboardData.challenge.startDate)
     : null;
   const countdownTarget = getRedemptionCountdownTarget(dashboardData.challenge.startDate);
-  const summaryMode =
-    dealSet &&
-    Boolean(countdownTarget) &&
-    Date.now() >= (countdownTarget?.getTime() ?? Infinity);
+  const countdownDone = Boolean(countdownTarget) && now >= (countdownTarget?.getTime() ?? Infinity);
+  const summaryMode = dealSet && countdownDone;
 
   const metrics = useMemo(
     () =>
@@ -163,6 +182,23 @@ export function ParentDashboardScreen({
     metrics.source === 'baseline' || metrics.weekOverWeekPercent === 0
       ? null
       : Math.abs(metrics.weekOverWeekPercent);
+
+  // Flip to summary / redemption window when the countdown hits zero (no 1s polling).
+  useEffect(() => {
+    if (!countdownTarget) return;
+    const remaining = countdownTarget.getTime() - Date.now();
+    if (remaining <= 0) return;
+    const id = window.setTimeout(() => setNow(Date.now()), remaining + 50);
+    return () => window.clearTimeout(id);
+  }, [countdownTarget]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      setPageVisible(document.visibilityState === 'visible');
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   useEffect(() => {
     const parentId = dashboardData.parent.id;
@@ -180,19 +216,30 @@ export function ParentDashboardScreen({
 
   const resolveChildShareUrl = useCallback(async () => {
     const parentId = dashboardData.parent.id;
-    if (!parentId) return shareUrl;
-    try {
-      return await resolveDashboardChildShareUrl({
-        parentId,
-        childId: dashboardData.child.id || null,
-      });
-    } catch {
-      return shareUrl;
+    const childId = dashboardData.child.id || undefined;
+    if (!parentId) {
+      return isChildDashboardTokenUrl(shareUrl) ? shareUrl : '';
     }
+    try {
+      const url = await resolveDashboardChildShareUrl({
+        parentId,
+        childId: childId || null,
+      });
+      if (isChildDashboardTokenUrl(url)) return url;
+    } catch {
+      // fall through to local token URL
+    }
+    if (isChildDashboardTokenUrl(shareUrl)) return shareUrl;
+    return generateChildUrl(parentId, childId);
   }, [dashboardData.parent.id, dashboardData.child.id, shareUrl]);
 
   const handleCopyChildUrl = useCallback(async () => {
     const url = await resolveChildShareUrl();
+    if (!url || !isChildDashboardTokenUrl(url)) {
+      setCopyHint('לא ניתן ליצור קישור לילד');
+      window.setTimeout(() => setCopyHint(''), 2500);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(url);
       setCopyHint('הקישור הועתק');
@@ -201,6 +248,49 @@ export function ParentDashboardScreen({
       setCopyHint(url);
     }
   }, [resolveChildShareUrl]);
+
+  const tryOpenParentRedemption = useCallback(() => {
+    if (!challengeEnabled || !countdownDone || !pageVisible) return;
+    if (weeklyUpload?.status !== 'pending') return;
+    if (parentRedemptionOpenRef.current) return;
+    if (
+      redemptionDismissedAt != null &&
+      Date.now() - redemptionDismissedAt < PARENT_REDEMPTION_REOPEN_MS
+    ) {
+      return;
+    }
+    setParentRedemptionOpen(true);
+  }, [
+    challengeEnabled,
+    countdownDone,
+    pageVisible,
+    weeklyUpload?.status,
+    redemptionDismissedAt,
+  ]);
+
+  useEffect(() => {
+    tryOpenParentRedemption();
+  }, [tryOpenParentRedemption]);
+
+  // After dismiss without confirm — reopen in 15s while still pending.
+  useEffect(() => {
+    if (redemptionDismissedAt == null) return;
+    if (!challengeEnabled || !countdownDone) return;
+    if (weeklyUpload?.status !== 'pending') return;
+    const wait = Math.max(
+      0,
+      PARENT_REDEMPTION_REOPEN_MS - (Date.now() - redemptionDismissedAt)
+    );
+    const id = window.setTimeout(() => {
+      setRedemptionDismissedAt(null);
+    }, wait);
+    return () => window.clearTimeout(id);
+  }, [
+    redemptionDismissedAt,
+    challengeEnabled,
+    countdownDone,
+    weeklyUpload?.status,
+  ]);
 
   const handleBannerClick = () => {
     if (!challengeEnabled) {
@@ -211,7 +301,8 @@ export function ParentDashboardScreen({
       setParentSetupOpen(true);
       return;
     }
-    if (weeklyUpload?.status === 'pending') {
+    if (countdownDone && weeklyUpload?.status === 'pending') {
+      setRedemptionDismissedAt(null);
       setParentRedemptionOpen(true);
     }
   };
@@ -236,6 +327,7 @@ export function ParentDashboardScreen({
       const parentId = dashboardData.parent.id;
       const challengeId = dashboardData.activeChallengeId;
       if (!parentId || !challengeId) return;
+      setRedemptionDismissedAt(null);
       await persistParentRedemptionConfirm(parentId, challengeId, result);
       setParentRedemptionOpen(false);
       await onRefresh();
@@ -243,8 +335,16 @@ export function ParentDashboardScreen({
     [dashboardData.parent.id, dashboardData.activeChallengeId, onRefresh]
   );
 
+  const handleParentRedemptionClose = useCallback(() => {
+    setParentRedemptionOpen(false);
+    if (weeklyUpload?.status === 'pending') {
+      setRedemptionDismissedAt(Date.now());
+    }
+  }, [weeklyUpload?.status]);
+
   const handleContractApprove = async () => {
-    if (challengeEnabled && weeklyUpload?.status === 'pending') {
+    if (challengeEnabled && countdownDone && weeklyUpload?.status === 'pending') {
+      setRedemptionDismissedAt(null);
       setParentRedemptionOpen(true);
       return;
     }
@@ -254,13 +354,6 @@ export function ParentDashboardScreen({
   useEffect(() => {
     if (initialSubscriptionOpen) setSubscriptionOpen(true);
   }, [initialSubscriptionOpen]);
-
-  // Redemption-only live sync: open confirm card when child upload is pending.
-  useEffect(() => {
-    if (challengeEnabled && weeklyUpload?.status === 'pending') {
-      setParentRedemptionOpen(true);
-    }
-  }, [challengeEnabled, weeklyUpload?.status]);
 
   const closeSubscription = () => setSubscriptionOpen(false);
 
@@ -274,72 +367,93 @@ export function ParentDashboardScreen({
     >
       <DashboardFigmaBackground showBottomGlows={false} />
 
-      <DashboardTopBar balance={topBarBalance} menuSlot={<DashboardHeaderMenu />} />
+      <DashboardEnter variant="fade" index={0} className="absolute inset-x-0 top-0 z-20">
+        <DashboardTopBar balance={topBarBalance} menuSlot={<DashboardHeaderMenu />} />
+      </DashboardEnter>
 
       <div className="absolute inset-0 overflow-x-hidden overflow-y-auto v03-scroll-hidden">
         <div className="relative min-h-full w-full max-w-[100vw] overflow-x-hidden pb-10">
           <DashboardBottomGlows />
 
-          <div
+          <DashboardEnter
+            variant="frame"
+            index={0}
             className="relative z-[2] mx-auto flex w-full max-w-full flex-col items-center"
-            style={{
-              width: 328,
-              maxWidth: '100%',
-              gap: 45,
-              paddingTop: PARENT_DASHBOARD_LAYOUT.contentTop,
-            }}
           >
             <div
-              className="flex w-full flex-col items-center"
-              style={{ gap: PARENT_DASHBOARD_LAYOUT.frame1Gap }}
+              className="flex w-full max-w-full flex-col items-center"
+              style={{
+                width: 328,
+                maxWidth: '100%',
+                gap: 45,
+                paddingTop: PARENT_DASHBOARD_LAYOUT.contentTop,
+              }}
             >
-              <DashboardDailyAverageCard
-                childName={childName || 'יואב'}
-                week={displayWeek}
-                averageMinutes={metrics.averageMinutes}
-                weekOverWeekPercent={metrics.weekOverWeekPercent}
-              />
-              <DashboardChallengeBanner
-                childName={childName || 'יואב'}
-                reductionPercent={reductionPercent}
-                onClick={handleBannerClick}
-                dealActive={dealSet}
-                countdownTarget={countdownTarget}
-                countdownStart={countdownStart}
-                summaryMode={summaryMode}
-                onCopyChildUrl={handleCopyChildUrl}
-              />
-              <ParentDealExtras visible={dealSet} hourlyRate={hourlyRate} />
-              {copyHint ? (
-                <p className="text-center font-simpler text-[13px] text-white/70">{copyHint}</p>
-              ) : null}
-            </div>
+              <div
+                className="flex w-full flex-col items-center"
+                style={{ gap: PARENT_DASHBOARD_LAYOUT.frame1Gap }}
+              >
+                <DashboardEnter index={1} className="w-full">
+                  <DashboardDailyAverageCard
+                    childName={childName || 'יואב'}
+                    week={displayWeek}
+                    averageMinutes={metrics.averageMinutes}
+                    weekOverWeekPercent={metrics.weekOverWeekPercent}
+                  />
+                </DashboardEnter>
+                <DashboardEnter index={2} className="w-full">
+                  <DashboardChallengeBanner
+                    childName={childName || 'יואב'}
+                    reductionPercent={reductionPercent}
+                    onClick={handleBannerClick}
+                    dealActive={dealSet}
+                    countdownTarget={countdownTarget}
+                    countdownStart={countdownStart}
+                    summaryMode={summaryMode}
+                    onCopyChildUrl={handleCopyChildUrl}
+                  />
+                </DashboardEnter>
+                <DashboardEnter index={3} className="w-full">
+                  <ParentDealExtras visible={dealSet} hourlyRate={hourlyRate} />
+                  {copyHint ? (
+                    <p className="text-center font-simpler text-[13px] text-white/70">{copyHint}</p>
+                  ) : null}
+                </DashboardEnter>
+              </div>
 
-            <DashboardContractSection
-              childName={childName || 'יואב'}
-              parentName={parentName}
-              shareUrl={shareUrl || '#'}
-              weeklyUpload={weeklyUpload}
-              variant="parent"
-              onApprove={hasChallenge ? handleContractApprove : undefined}
-              onReject={hasChallenge ? onRejectWeeklyUpload : undefined}
-            />
+              <DashboardEnter index={4} className="w-full">
+                <DashboardContractSection
+                  childName={childName || 'יואב'}
+                  parentName={parentName}
+                  shareUrl={shareUrl || '#'}
+                  weeklyUpload={weeklyUpload}
+                  variant="parent"
+                  onApprove={hasChallenge ? handleContractApprove : undefined}
+                  onReject={hasChallenge ? onRejectWeeklyUpload : undefined}
+                />
+              </DashboardEnter>
 
-            <div
-              className="flex w-full flex-col items-center"
-              style={{ gap: PARENT_DASHBOARD_LAYOUT.frame3Gap }}
-            >
-              <DashboardWeekTracker
-                week={displayWeek}
-                dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-                childName={childName || 'יואב'}
-                childId={dashboardData.child.id}
-                parentId={dashboardData.parent.id}
-                changes={changeTexts}
-                changeDayChecks={dashboardData.child.changeDayChecks}
-              />
+              <DashboardEnter
+                index={5}
+                className="flex w-full flex-col items-center"
+              >
+                <div
+                  className="flex w-full flex-col items-center"
+                  style={{ gap: PARENT_DASHBOARD_LAYOUT.frame3Gap }}
+                >
+                  <DashboardWeekTracker
+                    week={displayWeek}
+                    dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
+                    childName={childName || 'יואב'}
+                    childId={dashboardData.child.id}
+                    parentId={dashboardData.parent.id}
+                    changes={changeTexts}
+                    changeDayChecks={dashboardData.child.changeDayChecks}
+                  />
+                </div>
+              </DashboardEnter>
             </div>
-          </div>
+          </DashboardEnter>
         </div>
       </div>
 
@@ -361,7 +475,7 @@ export function ParentDashboardScreen({
             ? weeklyUpload.processedData.screenTimeMinutes / 60
             : 0
         }
-        onClose={() => setParentRedemptionOpen(false)}
+        onClose={handleParentRedemptionClose}
         onConfirm={handleParentRedemptionConfirm}
       />
 

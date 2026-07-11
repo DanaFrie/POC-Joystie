@@ -13,6 +13,10 @@ import { isLoggedIn, updateLastActivity } from '@/utils/session';
 import { getDashboardData, mergeWeekWithWeeklyUpload } from '@/lib/api/dashboard';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import type { FirestoreChallenge } from '@/types/firestore';
+import {
+  isRedemptionOpen,
+  redemptionOpenDateFromStart,
+} from '@/lib/challenge/v03ChallengeMath';
 import { createContextLogger } from '@/utils/logger';
 import { getFirestoreInstance } from '@/lib/firebase';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange } from '@/utils/auth';
@@ -229,34 +233,49 @@ function DashboardPageContent() {
   }, [dashboardData?.child.id]);
 
   useEffect(() => {
-    if (!dashboardData?.challenge || !challengeEnabled) return;
+    if (!dashboardData?.challenge?.startDate || !challengeEnabled) return;
 
+    const startDate = new Date(dashboardData.challenge.startDate);
     let unsubscribe: (() => void) | null = null;
+    let cancelled = false;
+    let openTimer: number | null = null;
+
+    const tearDown = () => {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+    };
 
     const setupWeeklyUploadListener = async () => {
+      if (cancelled || document.visibilityState !== 'visible') return;
+      if (!isRedemptionOpen(startDate)) return;
+
       try {
         const userId = await getCurrentUserIdAsync();
-        if (!userId) return;
+        if (!userId || cancelled) return;
 
         const challenge = await getActiveChallenge(userId);
-        if (!challenge) return;
+        if (!challenge || cancelled) return;
 
         setActiveChallengeData(challenge);
         if (challenge.weeklyUpload) {
           setWeeklyUpload(challenge.weeklyUpload);
         }
 
+        // Already subscribed to this challenge.
+        if (unsubscribe) return;
+
         const { doc, onSnapshot } = await import('firebase/firestore');
         const db = await getFirestoreInstance();
         const challengeRef = doc(db, 'challenges', challenge.id);
 
         unsubscribe = onSnapshot(challengeRef, (snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.data() as FirestoreChallenge;
-            if (data.weeklyUpload) {
-              setWeeklyUpload(data.weeklyUpload);
-              setActiveChallengeData(data);
-            }
+          if (!snapshot.exists()) return;
+          const data = snapshot.data() as FirestoreChallenge;
+          if (data.weeklyUpload) {
+            setWeeklyUpload(data.weeklyUpload);
+            setActiveChallengeData(data);
           }
         });
       } catch (listenerError) {
@@ -264,12 +283,47 @@ function DashboardPageContent() {
       }
     };
 
-    setupWeeklyUploadListener();
+    const scheduleUntilRedemptionOpen = () => {
+      if (openTimer != null) {
+        window.clearTimeout(openTimer);
+        openTimer = null;
+      }
+      if (isRedemptionOpen(startDate)) {
+        void setupWeeklyUploadListener();
+        return;
+      }
+      const openAt = redemptionOpenDateFromStart(startDate).getTime();
+      const wait = Math.max(50, openAt - Date.now() + 50);
+      openTimer = window.setTimeout(() => {
+        openTimer = null;
+        void setupWeeklyUploadListener();
+      }, wait);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        scheduleUntilRedemptionOpen();
+      } else {
+        tearDown();
+        if (openTimer != null) {
+          window.clearTimeout(openTimer);
+          openTimer = null;
+        }
+      }
+    };
+
+    if (document.visibilityState === 'visible') {
+      scheduleUntilRedemptionOpen();
+    }
+    document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      cancelled = true;
+      tearDown();
+      if (openTimer != null) window.clearTimeout(openTimer);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [dashboardData?.challenge, challengeEnabled]);
+  }, [dashboardData?.challenge?.startDate, challengeEnabled]);
 
   const refreshDashboard = useCallback(async () => {
     try {

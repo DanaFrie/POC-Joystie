@@ -43,7 +43,7 @@ export function ChildDoriContinueFooter({
       type="button"
       onPointerDown={onPointerDown}
       onClick={onTapClick}
-      className="absolute z-[40] flex cursor-pointer touch-manipulation select-none flex-col items-center border-0 bg-transparent p-0 [-webkit-tap-highlight-color:transparent]"
+      className="absolute z-[40] flex cursor-pointer touch-manipulation select-none flex-col items-center border-0 bg-transparent p-0 v03-funnel-enter-2 [-webkit-tap-highlight-color:transparent]"
       style={{
         left: `calc(50% - ${(frame.width + HIT_PAD * 2) / 2}px)`,
         top: topPx - HIT_PAD,

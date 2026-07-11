@@ -105,7 +105,7 @@ export function ChildMissionTwoChangeIntroStep({ onContinue }: ChildMissionTwoCh
       </ChildSpeechBubble>
 
       <div
-        className="pointer-events-none absolute z-[2] overflow-hidden"
+        className="pointer-events-none absolute z-[2] overflow-hidden v03-funnel-enter-1"
         style={{
           left: `calc(50% - ${mediaWidthPx / 2}px)`,
           top: mediaTopPx,

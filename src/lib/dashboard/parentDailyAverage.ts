@@ -11,11 +11,21 @@ export type ParentDailyAverageMetrics = {
   source: 'baseline' | 'redemption';
 };
 
+/** Daily average minutes from a weekly upload total (6 challenge days). */
+export function avgMinutesFromWeeklyScreenTime(
+  screenTimeMinutes: number | null | undefined,
+  challengeDays?: number
+): number | null {
+  if (screenTimeMinutes == null || !Number.isFinite(screenTimeMinutes)) return null;
+  const days = challengeDays || V03_CHALLENGE_DAYS;
+  return Math.round(screenTimeMinutes / Math.max(1, days));
+}
+
 function avgMinutesFromChallenge(challenge: FirestoreChallenge): number | null {
-  const total = challenge.weeklyUpload?.processedData?.screenTimeMinutes;
-  if (total == null || !Number.isFinite(total)) return null;
-  const days = challenge.challengeDays || V03_CHALLENGE_DAYS;
-  return Math.round(total / Math.max(1, days));
+  return avgMinutesFromWeeklyScreenTime(
+    challenge.weeklyUpload?.processedData?.screenTimeMinutes,
+    challenge.challengeDays
+  );
 }
 
 function isAccomplished(challenge: FirestoreChallenge): boolean {

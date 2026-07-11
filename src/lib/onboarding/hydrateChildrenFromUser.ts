@@ -11,7 +11,12 @@ import {
   type OnboardingChildScreenTime,
 } from '@/lib/onboarding/childrenScreenTime';
 import type { OnboardingChildSnapshot } from '@/lib/onboarding/persistOnboardingAccount';
-import type { FirestoreUser, UserKidAgeScreenTime } from '@/types/firestore';
+import { kidsAgesFromChildrenDocs } from '@/lib/auth/userOnboardingStatus';
+import type {
+  FirestoreChild,
+  FirestoreUser,
+  UserKidAgeScreenTime,
+} from '@/types/firestore';
 
 function parseKidAge(age: unknown): number | null {
   const n = Number.parseInt(String(age ?? ''), 10);
@@ -54,38 +59,19 @@ function kidEntryToScreenTime(
   };
 }
 
-/**
- * Apply Firestore user.kidsAges to funnel session storage — Firestore is canonical
- * (names, gender, age, screen time) whenever the profile has saved children.
- */
-export function hydrateOnboardingChildrenFromUser(user: FirestoreUser): boolean {
-  const kids = user.kidsAges ?? [];
-  if (!kids.length) {
-    return false;
-  }
-
-  const children: OnboardingChildDraft[] = [];
-  for (const entry of kids) {
-    const draft = kidEntryToDraft(entry as UserKidAgeScreenTime | string);
-    if (draft) {
-      children.push(draft);
-    }
-  }
-
-  if (!children.length) {
-    return false;
-  }
-
-  const screenTimes = children.map((child, index) =>
-    kidEntryToScreenTime(kids[index] as UserKidAgeScreenTime | string, child)
-  );
+function applyHydratedChildren(
+  children: OnboardingChildDraft[],
+  screenTimes: OnboardingChildScreenTime[],
+  snapshotIds?: string[]
+): boolean {
+  if (!children.length) return false;
 
   setOnboardingChildrenDetails(children);
   setOnboardingChildrenPhoneCount(children.length);
   setOnboardingChildrenScreenTime(screenTimes);
 
   const snapshots: OnboardingChildSnapshot[] = children.map((child, index) => ({
-    id: `draft-${index}`,
+    id: snapshotIds?.[index] ?? `draft-${index}`,
     name: child.name.trim(),
     age: String(child.age),
     gender: child.gender,
@@ -114,4 +100,80 @@ export function hydrateOnboardingChildrenFromUser(user: FirestoreUser): boolean 
   }
 
   return true;
+}
+
+/**
+ * Apply Firestore user.kidsAges to funnel session storage — Firestore is canonical
+ * (names, gender, age, screen time) whenever the profile has saved children.
+ */
+export function hydrateOnboardingChildrenFromUser(user: FirestoreUser): boolean {
+  const kids = user.kidsAges ?? [];
+  if (!kids.length) {
+    return false;
+  }
+
+  const children: OnboardingChildDraft[] = [];
+  for (const entry of kids) {
+    const draft = kidEntryToDraft(entry as UserKidAgeScreenTime | string);
+    if (draft) {
+      children.push(draft);
+    }
+  }
+
+  if (!children.length) {
+    return false;
+  }
+
+  const screenTimes = children.map((child, index) =>
+    kidEntryToScreenTime(kids[index] as UserKidAgeScreenTime | string, child)
+  );
+
+  return applyHydratedChildren(children, screenTimes);
+}
+
+/**
+ * v0.2 fallback — seed funnel session from `children` collection docs
+ * (not from funnel drafts / signup-in-progress local storage).
+ */
+export function hydrateOnboardingChildrenFromChildrenDocs(
+  childrenDocs: FirestoreChild[]
+): boolean {
+  if (!childrenDocs.length) return false;
+
+  const kidsAges = kidsAgesFromChildrenDocs(childrenDocs);
+  const children: OnboardingChildDraft[] = [];
+  const screenTimes: OnboardingChildScreenTime[] = [];
+
+  for (let i = 0; i < kidsAges.length; i++) {
+    const draft = kidEntryToDraft(kidsAges[i]);
+    if (!draft) continue;
+    children.push(draft);
+    screenTimes.push(kidEntryToScreenTime(kidsAges[i], draft));
+  }
+
+  return applyHydratedChildren(
+    children,
+    screenTimes,
+    childrenDocs.map((c) => c.id)
+  );
+}
+
+/** Drop local funnel child drafts so a signup-existing / v0.2 path cannot overwrite Firestore. */
+export function clearOnboardingChildrenSession(): void {
+  if (typeof window === 'undefined') return;
+  const keys = [
+    'onboardingChildrenDetails',
+    'onboardingChildrenPhoneCount',
+    'onboardingChildrenScreenTime',
+    'onboardingChildSnapshots',
+    'parentData',
+  ];
+  for (const key of keys) {
+    sessionStorage.removeItem(key);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore quota / private mode
+    }
+  }
 }

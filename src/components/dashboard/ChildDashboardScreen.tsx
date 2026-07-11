@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DashboardFigmaBackground, DashboardBottomGlows } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
+import { DashboardEnter } from '@/components/dashboard/DashboardEnter';
 import { DashboardScreenTimeRing } from '@/components/dashboard/DashboardScreenTimeRing';
 import { DashboardSavingsCard } from '@/components/dashboard/DashboardSavingsCard';
 import { DashboardContractSection } from '@/components/dashboard/DashboardContractSection';
@@ -79,17 +80,32 @@ export function ChildDashboardScreen({
   const weeklyEarned = dashboardData.weeklyTotals?.coinsEarned ?? 0;
 
   const { challenge, child, challengeNotStarted } = dashboardData;
+  const [gateVisible, setGateVisible] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [redemptionOpenOverlay, setRedemptionOpenOverlay] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
   const weeklyBudget = deriveWeeklyBudget(challenge);
   const hourlyRate = deriveHourlyRate(challenge);
   const childDealComplete = isChildDealSetupComplete(child, challenge);
   const parentChallengeSet = isParentChallengeSet(challenge, noChallengeExists);
   const dealLive = isV03DealLive(challengeEnabled, challenge, child, challengeNotStarted);
   const parentDealPending = challengeEnabled && parentChallengeSet && !childDealComplete;
-  const redemptionOpen = canOpenChildRedemption(challengeEnabled, challenge, child, null);
+  const redemptionOpen = canOpenChildRedemption(
+    challengeEnabled,
+    challenge,
+    child,
+    null,
+    new Date(now)
+  );
+  const waitingForNextChallenge =
+    challengeEnabled && !dealLive && !parentDealPending && !redemptionOpen;
 
-  const ctaLabel = challengeEnabled
-    ? 'הדיל השבועי'
-    : 'הגדרת הדיל הראשון בארנק שלי';
+  const ctaLabel = !challengeEnabled
+    ? 'הגדרת הדיל הראשון בארנק שלי'
+    : redemptionOpen
+      ? 'לסיכום הדיל השבועי'
+      : 'הדיל השבועי';
 
   const ctaEnabled = challengeEnabled
     ? parentChallengeSet &&
@@ -105,7 +121,11 @@ export function ChildDashboardScreen({
     : true;
 
   const showCta =
-    !challengeEnabled || !dealLive || redemptionOpen || parentDealPending;
+    !challengeEnabled ||
+    !dealLive ||
+    redemptionOpen ||
+    parentDealPending ||
+    waitingForNextChallenge;
 
   const walletBalance = dealLive ? weeklyBudget : weeklyEarned;
   const walletLocked = !challengeEnabled || (!dealLive && !parentDealPending);
@@ -113,11 +133,21 @@ export function ChildDashboardScreen({
 
   const countdownStart = challenge.startDate ? new Date(challenge.startDate) : null;
   const countdownTarget = getRedemptionCountdownTarget(challenge.startDate);
-  const showCountdown = challengeEnabled && dealLive && countdownTarget && countdownStart;
+  const showCountdown = Boolean(
+    challengeEnabled && dealLive && countdownTarget && countdownStart
+  );
+  const ringAvgMinutes =
+    dashboardData.lastWeeklyAvgMinutes ??
+    (typeof child.baselineDailyMinutes === 'number' ? child.baselineDailyMinutes : 0);
 
-  const [gateVisible, setGateVisible] = useState(false);
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [redemptionOpenOverlay, setRedemptionOpenOverlay] = useState(false);
+  // Flip redemption CTA when countdown hits zero without requiring a refresh.
+  useEffect(() => {
+    if (!countdownTarget || !dealLive) return;
+    const remaining = countdownTarget.getTime() - Date.now();
+    if (remaining <= 0) return;
+    const id = window.setTimeout(() => setNow(Date.now()), remaining + 50);
+    return () => window.clearTimeout(id);
+  }, [countdownTarget, dealLive]);
 
   // Parent set the deal, child hasn't confirmed — show setup on every load.
   useEffect(() => {
@@ -190,71 +220,93 @@ export function ChildDashboardScreen({
       dir="rtl"
     >
       <DashboardFigmaBackground showBottomGlows={false} />
-      <DashboardTopBar balance={walletBalance} menuSlot={<DashboardHeaderMenu />} />
+      <DashboardEnter variant="fade" index={0} className="absolute inset-x-0 top-0 z-20">
+        <DashboardTopBar balance={walletBalance} menuSlot={<DashboardHeaderMenu />} />
+      </DashboardEnter>
 
       <div className="absolute inset-0 overflow-x-hidden overflow-y-auto v03-scroll-hidden">
         <div className="relative min-h-full w-full max-w-[100vw] overflow-x-hidden pb-10">
           <DashboardBottomGlows />
-          <DashboardChildCompanion src={CHILD_DASHBOARD_ASSETS.companion} />
+          <DashboardEnter variant="fade" index={1} className="pointer-events-none absolute inset-0 z-[1]">
+            <DashboardChildCompanion src={CHILD_DASHBOARD_ASSETS.companion} />
+          </DashboardEnter>
 
-          <div
+          <DashboardEnter
+            variant="frame"
+            index={0}
             className="relative z-[2] mx-auto flex w-full max-w-full flex-col items-center"
-            style={{
-              width: CHILD_DASHBOARD_LAYOUT.contentWidth,
-              maxWidth: '100%',
-              gap: CHILD_DASHBOARD_LAYOUT.contentGap,
-              paddingTop: CHILD_DASHBOARD_LAYOUT.contentTop,
-            }}
           >
             <div
-              className={`relative w-full transition-transform duration-500 ease-out ${
-                cardRaised ? '-translate-y-3' : ''
-              }`}
+              className="flex w-full max-w-full flex-col items-center"
+              style={{
+                width: CHILD_DASHBOARD_LAYOUT.contentWidth,
+                maxWidth: '100%',
+                gap: CHILD_DASHBOARD_LAYOUT.contentGap,
+                paddingTop: CHILD_DASHBOARD_LAYOUT.contentTop,
+              }}
             >
-              <DashboardSavingsCard
-                balance={walletBalance}
-                dimmed={walletLocked}
-                variant="child"
-              />
-            </div>
+              <DashboardEnter index={1} className="w-full">
+                <div
+                  className={`relative w-full transition-transform duration-500 ease-out ${
+                    cardRaised ? '-translate-y-3' : ''
+                  }`}
+                >
+                  <DashboardSavingsCard
+                    balance={walletBalance}
+                    dimmed={walletLocked}
+                    variant="child"
+                  />
+                </div>
+              </DashboardEnter>
 
-            <div
-              className="flex w-full flex-col items-center"
-              style={{ gap: CHILD_DASHBOARD_LAYOUT.frame2Gap }}
-            >
-              <DashboardChildGreeting childName={childName} showWalletTeaser={!dealLive} />
-              {showCta ? (
-                <DashboardChildStartCta
-                  onClick={handleStartCta}
-                  label={ctaLabel}
-                  disabled={!ctaEnabled}
+              <div
+                className="flex w-full flex-col items-center"
+                style={{ gap: CHILD_DASHBOARD_LAYOUT.frame2Gap }}
+              >
+                <DashboardEnter index={2} className="w-full">
+                  <DashboardChildGreeting childName={childName} showWalletTeaser={!dealLive} />
+                </DashboardEnter>
+                {showCta ? (
+                  <DashboardEnter index={3} className="w-full">
+                    <DashboardChildStartCta
+                      onClick={handleStartCta}
+                      label={ctaLabel}
+                      disabled={!ctaEnabled}
+                    />
+                  </DashboardEnter>
+                ) : null}
+
+                <DashboardEnter index={4} className="w-full">
+                  <DashboardConversionBar
+                    savedMinutes={dealLive ? 60 : 0}
+                    balance={dealLive ? hourlyRate : weeklyEarned}
+                    moneyLabel={conversionMoneyLabel}
+                  />
+                </DashboardEnter>
+
+                <DashboardEnter index={5}>
+                  <DashboardScreenTimeRing
+                    variant="child"
+                    dimmed={!challengeEnabled || walletLocked}
+                    countdownTarget={showCountdown ? countdownTarget : null}
+                    countdownStart={showCountdown ? countdownStart : null}
+                    hasGoal={false}
+                    savedMinutes={showCountdown ? 0 : ringAvgMinutes}
+                    goalMinutes={60}
+                  />
+                </DashboardEnter>
+              </div>
+
+              <DashboardEnter index={6} className="w-full">
+                <DashboardContractSection
+                  childName={childName}
+                  parentName={parentLabel}
+                  shareUrl={shareUrl || '#'}
+                  variant="child"
                 />
-              ) : null}
-
-              <DashboardConversionBar
-                savedMinutes={dealLive ? 60 : 0}
-                balance={dealLive ? hourlyRate : weeklyEarned}
-                moneyLabel={conversionMoneyLabel}
-              />
-
-              <DashboardScreenTimeRing
-                variant="child"
-                dimmed={!challengeEnabled || walletLocked}
-                countdownTarget={showCountdown ? countdownTarget : null}
-                countdownStart={showCountdown ? countdownStart : null}
-                hasGoal={dealLive}
-                savedMinutes={0}
-                goalMinutes={60}
-              />
+              </DashboardEnter>
             </div>
-
-            <DashboardContractSection
-              childName={childName}
-              parentName={parentLabel}
-              shareUrl={shareUrl || '#'}
-              variant="child"
-            />
-          </div>
+          </DashboardEnter>
         </div>
       </div>
 

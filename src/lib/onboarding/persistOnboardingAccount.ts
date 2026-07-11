@@ -18,6 +18,7 @@ import {
   getOnboardingParentRole,
   parentRoleToGender,
 } from '@/lib/onboarding/parentRole';
+import { ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
 import type { UserKidAgeScreenTime } from '@/types/firestore';
 import { createSession } from '@/utils/session';
 import { trackMetaCompleteRegistration } from '@/utils/meta-pixel';
@@ -184,12 +185,28 @@ export async function persistOnboardingAccountAfterAuth(params: {
       signupDate: now,
     });
   } else {
+    const resumeKind =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem(ONBOARDING_RESUME_KIND_KEY)
+        : null;
+    // v0.2 / signup-existing resume: never replace Firestore kids with empty funnel drafts.
+    const preferExistingKids =
+      resumeKind === 'v02_legacy' ||
+      resumeKind === 'v03_resume' ||
+      (!kidsAges.length && Boolean(existing.kidsAges?.length));
+
     await updateUser(uid, {
       email: normalizedEmail || existing.email,
       firstName: firstName || existing.firstName,
       lastName: lastName || existing.lastName,
       gender: existing.gender || gender,
-      kidsAges: kidsAges.length ? kidsAges : existing.kidsAges,
+      kidsAges: preferExistingKids
+        ? existing.kidsAges?.length
+          ? existing.kidsAges
+          : kidsAges
+        : kidsAges.length
+          ? kidsAges
+          : existing.kidsAges,
       termsAccepted: true,
     });
   }

@@ -11,7 +11,7 @@
  * | 10–11  | 13147:5635/2 | ball-game-bg.webp |
  */
 export const CHILD_ONBOARDING_ASSETS = {
-  /** Screen 5 — full egg→Dori hatch clip; each tap plays 1/50 of duration. */
+  /** Screen 5 — full egg→Dori hatch clip; 20 taps (last 2 = 15% of duration). */
   eggHatchVideo: '/onboarding/child/egg-hatch.mp4',
   /** Screen 6 — Dori reveal hero (324×324). */
   doriRevealTransitionVideo: '/onboarding/child/dori-reveal-transition.mp4',
@@ -49,12 +49,16 @@ export const CHILD_ONBOARDING_ASSETS = {
   castleChangeDeclineIcon: '/onboarding/child/X-icon.png',
 } as const;
 
-/** Tap segments for egg-hatch video (Figma prototype). */
-export const CHILD_EGG_HATCH_SEGMENT_COUNT = 35;
+/** Tap segments for egg-hatch video — 20 taps; last 2 cover 15% of duration. */
+export const CHILD_EGG_HATCH_SEGMENT_COUNT = 20;
+/** How many final taps share the late portion of the clip. */
+export const CHILD_EGG_HATCH_LATE_TAP_COUNT = 2;
+/** Fraction of video duration reserved for the late taps (together). */
+export const CHILD_EGG_HATCH_LATE_DURATION_SHARE = 0.15;
 
 /** First N taps + last N taps play at elevated rate. */
 export const CHILD_EGG_HATCH_FAST_HEAD_TAPS = 2;
-export const CHILD_EGG_HATCH_FAST_TAIL_TAPS = 5;
+export const CHILD_EGG_HATCH_FAST_TAIL_TAPS = 2;
 export const CHILD_EGG_HATCH_FAST_PLAYBACK_RATE = 2.75;
 export const CHILD_EGG_HATCH_NORMAL_PLAYBACK_RATE = 1;
 

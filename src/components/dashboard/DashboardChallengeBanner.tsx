@@ -60,9 +60,13 @@ export function DashboardChallengeBanner({
 
   const remainingMs = countdownTarget ? countdownTarget.getTime() - now : 0;
   const countdownDone = summaryMode || (dealActive && remainingMs <= 0);
+  const showingTimer = dealActive && !countdownDone;
+  /** Pre-deal CTA — Figma default chip includes 55%. */
+  const showingTeaserLabel = !showingTimer && !countdownDone;
 
-  const tagText =
-    reductionPercent != null && reductionPercent > 0
+  const tagText = showingTeaserLabel
+    ? 'לצמצום זמן מסך ב-55%'
+    : reductionPercent != null && reductionPercent > 0
       ? `לצמצום זמן מסך ב-${reductionPercent}%`
       : 'לצמצום זמן מסך';
 
@@ -81,7 +85,7 @@ export function DashboardChallengeBanner({
     }
   }
 
-  const isDisabled = disabled || (dealActive && !countdownDone);
+  const isDisabled = disabled || showingTimer;
   const handleClick = () => {
     if (isDisabled) return;
     if (countdownDone && onCopyChildUrl) {
@@ -100,7 +104,7 @@ export function DashboardChallengeBanner({
         isDisabled ? 'cursor-default opacity-95' : ''
       }`}
       style={{
-        backgroundImage: `linear-gradient(180deg, rgba(0, 0, 0, 0.00) 0%, rgba(0, 0, 0, 0.40) 52%), url(${PARENT_DASHBOARD_ASSETS.challengeBanner})`,
+        backgroundImage: `url(${PARENT_DASHBOARD_ASSETS.challengeBanner})`,
         backgroundColor: '#0a2a2c',
         backgroundRepeat: 'no-repeat',
         backgroundSize: '118% auto',
@@ -109,22 +113,22 @@ export function DashboardChallengeBanner({
         outline: 'none',
       }}
     >
-      {/* Tag + timer/headline share one column so the chip centers on the timer. */}
-      <div className="absolute left-[68px] top-[48px] z-[1] flex w-[229px] flex-col items-center gap-1.5">
-        <span className="inline-flex items-center justify-center rounded-full bg-white/25 px-2 py-1 font-simpler text-[12px] font-normal leading-[15px] text-white backdrop-blur-[2px]">
+      {/* Tag + timer/headline — physical right edge (RTL parent: items-start). */}
+      <div className="absolute left-[68px] top-[48px] z-[1] flex w-[229px] flex-col items-start gap-1.5">
+        <span className="inline-flex items-center justify-center gap-2.5 rounded-[300px] bg-white/25 px-2 py-1 font-simpler text-[12px] font-normal leading-[15px] text-white backdrop-blur-[2px]">
           {tagText}
         </span>
 
-        {dealActive && !countdownDone ? (
+        {showingTimer ? (
           <p
-            className="w-full text-center font-simpler text-[18px] font-black leading-6 text-white [text-shadow:0px_4px_4px_rgba(0,0,0,0.25)]"
+            className="w-full self-stretch text-right font-simpler text-[20px] font-black leading-[120%] tracking-[-0.3px] text-white [text-shadow:0px_4px_4px_rgba(0,0,0,0.25)]"
             dir="ltr"
           >
             {countdown.days}:{pad2(countdown.hours)}:{pad2(countdown.minutes)}:
             {pad2(countdown.seconds)}
           </p>
         ) : (
-          <p className="w-full text-center font-simpler text-[20px] font-black leading-6 text-white [text-shadow:0px_4px_4px_rgba(0,0,0,0.25)]">
+          <p className="w-full self-stretch text-right font-simpler text-[20px] font-black leading-[120%] tracking-[-0.3px] text-white [text-shadow:0px_4px_4px_rgba(0,0,0,0.25)]">
             {resolvedHeadline}
           </p>
         )}

@@ -88,7 +88,7 @@ export function ChildSpeechBubble({
 
   return (
     <div
-      className={`absolute z-[5] box-border flex flex-col items-center justify-center pointer-events-none ${className}`}
+      className={`absolute z-[5] box-border flex flex-col items-center justify-center pointer-events-none v03-funnel-enter-0 ${className}`}
       style={{
         top,
         left: left ?? `calc(50% - ${width / 2}px)`,
