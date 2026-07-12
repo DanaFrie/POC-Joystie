@@ -21,6 +21,7 @@ import {
   ParentRedemptionConfirmOverlay,
   type ParentRedemptionConfirmResult,
 } from '@/components/dashboard/challenge/ParentRedemptionConfirmOverlay';
+import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
 import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
 import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
 import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
@@ -29,6 +30,10 @@ import {
   PARENT_DASHBOARD_COLORS,
   PARENT_DASHBOARD_LAYOUT,
 } from '@/constants/parent-dashboard-layout';
+import {
+  V03_CHALLENGE_SETUP_ASSETS,
+  V03_CHALLENGE_SETUP_LAYOUT,
+} from '@/constants/v03-challenge-layout';
 import { usePostGameSync } from '@/hooks/usePostGameSync';
 import {
   postGameChildChangeText,
@@ -78,7 +83,10 @@ type ParentDashboardScreenProps = {
   noChallengeExists: boolean;
   onApproveWeeklyUpload: () => Promise<void>;
   onRejectWeeklyUpload: () => Promise<void>;
+  /** Open subscription popup on load (e.g. after onboarding or failed checkout). */
   initialSubscriptionOpen?: boolean;
+  /** Open challenge setup + confetti after successful Cardcom checkout. */
+  initialChallengeSetupOpen?: boolean;
   challengeEnabled?: boolean;
   onRefresh: () => Promise<void>;
 };
@@ -112,6 +120,7 @@ export function ParentDashboardScreen({
   onApproveWeeklyUpload,
   onRejectWeeklyUpload,
   initialSubscriptionOpen = false,
+  initialChallengeSetupOpen = false,
   challengeEnabled = true,
   onRefresh,
 }: ParentDashboardScreenProps) {
@@ -141,6 +150,7 @@ export function ParentDashboardScreen({
 
   const [subscriptionOpen, setSubscriptionOpen] = useState(initialSubscriptionOpen);
   const [parentSetupOpen, setParentSetupOpen] = useState(false);
+  const [showChallengeConfetti, setShowChallengeConfetti] = useState(false);
   const [parentRedemptionOpen, setParentRedemptionOpen] = useState(false);
   const [redemptionDismissedAt, setRedemptionDismissedAt] = useState<number | null>(null);
   const [challengesHistory, setChallengesHistory] = useState<FirestoreChallenge[]>([]);
@@ -355,6 +365,17 @@ export function ParentDashboardScreen({
     if (initialSubscriptionOpen) setSubscriptionOpen(true);
   }, [initialSubscriptionOpen]);
 
+  useEffect(() => {
+    if (!initialChallengeSetupOpen) return;
+    setParentSetupOpen(true);
+    setShowChallengeConfetti(true);
+    const timer = window.setTimeout(
+      () => setShowChallengeConfetti(false),
+      V03_CHALLENGE_SETUP_LAYOUT.celebrationMs
+    );
+    return () => window.clearTimeout(timer);
+  }, [initialChallengeSetupOpen]);
+
   const closeSubscription = () => setSubscriptionOpen(false);
 
   const topBarBalance = dealSet ? weeklyBudget : dashboardData.weeklyTotals?.coinsEarned ?? 0;
@@ -460,10 +481,30 @@ export function ParentDashboardScreen({
       <ParentChallengeSetupOverlay
         visible={parentSetupOpen}
         childName={childName || 'יואב'}
+        childGender={dashboardData.child.gender || 'boy'}
         estimatedDailyHours={estimatedDailyHours}
         onClose={() => setParentSetupOpen(false)}
         onSubmit={handleParentSetupSubmit}
       />
+
+      {showChallengeConfetti ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-[65] flex items-start justify-center pt-[72px]"
+          aria-hidden
+        >
+          <div
+            style={{
+              width: V03_CHALLENGE_SETUP_LAYOUT.confettiSize,
+              height: V03_CHALLENGE_SETUP_LAYOUT.confettiSize,
+            }}
+          >
+            <ChildCastleConfetti
+              src={V03_CHALLENGE_SETUP_ASSETS.confetti}
+              className="size-full"
+            />
+          </div>
+        </div>
+      ) : null}
 
       <ParentRedemptionConfirmOverlay
         visible={parentRedemptionOpen}

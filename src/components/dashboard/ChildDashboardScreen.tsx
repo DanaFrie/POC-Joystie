@@ -181,7 +181,6 @@ export function ChildDashboardScreen({
   const handleSetupSubmit = useCallback(
     async (result: ChildChallengeSetupResult) => {
       if (!dashboardData.parent.id) return;
-      setSetupOpen(false);
       const { ensureChildForParent } = await import('@/lib/api/children');
       const childId =
         child.id || (await ensureChildForParent(dashboardData.parent.id)).id;

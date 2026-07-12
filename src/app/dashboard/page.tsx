@@ -84,10 +84,13 @@ function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [openSubscription] = useState(() => searchParams?.get('subscription') === '1');
+  const [openChallengeSetup] = useState(() => searchParams?.get('openChallenge') === '1');
   const { challengeEnabled } = useDashboardSubscribeMode();
 
   useEffect(() => {
-    if (searchParams?.get('subscription') !== '1') return;
+    if (searchParams?.get('subscription') !== '1' && searchParams?.get('openChallenge') !== '1') {
+      return;
+    }
     router.replace('/dashboard', { scroll: false });
   }, [searchParams, router]);
 
@@ -442,6 +445,7 @@ function DashboardPageContent() {
       onApproveWeeklyUpload={handleApproveWeeklyUpload}
       onRejectWeeklyUpload={handleRejectWeeklyUpload}
       initialSubscriptionOpen={openSubscription}
+      initialChallengeSetupOpen={openChallengeSetup}
       challengeEnabled={challengeEnabled}
       onRefresh={refreshDashboard}
     />

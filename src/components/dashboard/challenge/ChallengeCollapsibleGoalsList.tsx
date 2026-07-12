@@ -15,7 +15,7 @@ type ChallengeCollapsibleGoalsListProps = {
   onExpandedChange: (expanded: boolean) => void;
 };
 
-function DoubleChevronDown({ className }: { className?: string }) {
+function DoubleChevron({ className }: { className?: string }) {
   return (
     <svg
       width="22"
@@ -43,7 +43,7 @@ function DoubleChevronDown({ className }: { className?: string }) {
   );
 }
 
-/** Collapsed: peek of list + bottom blur + >> ; expanded: full scrollable grid. */
+/** Collapsed: peek of list + bottom blur + open chevron; expanded: full grid + close chevron. */
 export function ChallengeCollapsibleGoalsList({
   options,
   selectedIds,
@@ -54,10 +54,7 @@ export function ChallengeCollapsibleGoalsList({
   if (!expanded) {
     return (
       <div className="relative w-full overflow-hidden rounded-[16px]">
-        <div
-          className="max-h-[148px] w-full overflow-hidden"
-          aria-hidden={false}
-        >
+        <div className="max-h-[148px] w-full overflow-hidden" aria-hidden={false}>
           <ChallengeMoneyGoalsGrid
             options={options}
             selectedIds={selectedIds}
@@ -65,18 +62,14 @@ export function ChallengeCollapsibleGoalsList({
           />
         </div>
 
-        {/* Bottom fade + expand affordance */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[72px] bg-gradient-to-t from-[#061C1E] via-[#061C1E]/85 to-transparent backdrop-blur-[2px]" />
         <button
           type="button"
           onClick={() => onExpandedChange(true)}
-          className="absolute inset-x-0 bottom-0 z-[1] flex h-[56px] items-end justify-center pb-1 text-white/90 transition hover:text-white"
+          className="absolute inset-x-0 bottom-0 z-[1] flex h-[56px] items-end justify-center pb-1 text-white/85 transition hover:text-white"
           aria-label="פתיחת רשימת המטרות"
         >
-          <span className="inline-flex items-center gap-0.5 font-simpler text-[18px] font-black tracking-wide">
-            <span aria-hidden>&gt;&gt;</span>
-            <span className="sr-only">הרחב</span>
-          </span>
+          <DoubleChevron />
         </button>
       </div>
     );
@@ -95,10 +88,10 @@ export function ChallengeCollapsibleGoalsList({
       <button
         type="button"
         onClick={() => onExpandedChange(false)}
-        className="mx-auto inline-flex items-center justify-center gap-1 rounded-full px-3 py-1.5 text-white/80 transition hover:bg-white/10 hover:text-white"
+        className="mx-auto inline-flex items-center justify-center gap-1 rounded-full px-3 py-1.5 text-white/85 transition hover:bg-white/10 hover:text-white"
         aria-label="סגירת הרשימה"
       >
-        <DoubleChevronDown className="rotate-180 text-white/85" />
+        <DoubleChevron className="rotate-180" />
       </button>
     </div>
   );

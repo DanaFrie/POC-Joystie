@@ -10,13 +10,16 @@ import {
 import { ChallengeGlowContinueButton } from '@/components/dashboard/challenge/ChallengeGlowContinueButton';
 import { ChallengeCollapsibleGoalsList } from '@/components/dashboard/challenge/ChallengeCollapsibleGoalsList';
 import { ChallengeDealWalletPreview } from '@/components/dashboard/challenge/ChallengeDealWalletPreview';
+import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
 import {
   DashboardBlurCardOverlay,
 } from '@/components/dashboard/challenge/DashboardBlurCardOverlay';
+import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { V03_MONEY_GOAL_OPTIONS } from '@/constants/v03-challenge';
 import {
   V03_CHALLENGE_SETUP_ASSETS,
   V03_CHALLENGE_SETUP_LAYOUT,
+  V03_REDEMPTION_CELEBRATE_VIDEO,
 } from '@/constants/v03-challenge-layout';
 
 export type ChildChallengeSetupResult = {
@@ -34,7 +37,7 @@ type ChildChallengeSetupOverlayProps = {
   onSubmit: (result: ChildChallengeSetupResult) => void;
 };
 
-type ChildSetupStep = 'goals' | 'deal';
+type ChildSetupStep = 'goals' | 'deal' | 'celebrate';
 
 export function ChildChallengeSetupOverlay({
   visible,
@@ -50,12 +53,14 @@ export function ChildChallengeSetupOverlay({
   const [customGoalText, setCustomGoalText] = useState('');
   const [goalsListOpen, setGoalsListOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const titleId = 'child-challenge-setup-title';
   const submittedRef = useRef(false);
 
   useEffect(() => {
     if (!visible) {
       setExiting(false);
+      setShowConfetti(false);
       submittedRef.current = false;
       return;
     }
@@ -64,6 +69,7 @@ export function ChildChallengeSetupOverlay({
     setCustomGoalText('');
     setGoalsListOpen(false);
     setExiting(false);
+    setShowConfetti(false);
     submittedRef.current = false;
   }, [visible]);
 
@@ -81,8 +87,18 @@ export function ChildChallengeSetupOverlay({
       moneyGoals: selectedGoals,
       customGoal: trimmedCustom || undefined,
     });
-    setExiting(true);
+    setStep('celebrate');
+    setShowConfetti(true);
   }, [customGoalText, selectedGoals, onSubmit]);
+
+  useEffect(() => {
+    if (step !== 'celebrate') return;
+    const fadeTimer = window.setTimeout(() => {
+      setShowConfetti(false);
+      setExiting(true);
+    }, V03_CHALLENGE_SETUP_LAYOUT.celebrationMs);
+    return () => window.clearTimeout(fadeTimer);
+  }, [step]);
 
   const handleExitComplete = useCallback(() => {
     onClose();
@@ -105,21 +121,65 @@ export function ChildChallengeSetupOverlay({
         onClick={() => setStep('deal')}
         label="המשך לדיל"
       />
-    ) : (
+    ) : step === 'deal' ? (
       <ChallengeGlowContinueButton enabled onClick={handleConfirmDeal} label="בואו נתחיל!" />
-    );
+    ) : null;
+
+  const confettiSize = V03_CHALLENGE_SETUP_LAYOUT.confettiSize;
 
   return (
     <DashboardBlurCardOverlay
       visible={visible}
       titleId={titleId}
       footer={footer}
-      onClose={onClose}
+      onClose={step === 'celebrate' ? undefined : onClose}
       compact
       fillViewport={step === 'goals' && !goalsListOpen}
       exiting={exiting}
       onExitComplete={handleExitComplete}
     >
+      {step === 'celebrate' && (
+        <div className="relative flex min-h-[300px] w-full flex-col items-center justify-center gap-4 py-4">
+          {showConfetti ? (
+            <div
+              className="pointer-events-none absolute left-1/2 top-0 z-0 flex -translate-x-1/2 items-start justify-center"
+              style={{ width: confettiSize * 1.35, height: confettiSize }}
+              aria-hidden
+            >
+              <ChildCastleConfetti
+                src={CHILD_ONBOARDING_ASSETS.confettiPurple}
+                className="absolute left-0 top-0 size-full max-w-[70%] object-contain"
+              />
+              <ChildCastleConfetti
+                src={CHILD_ONBOARDING_ASSETS.confettiPurple}
+                className="absolute right-0 top-2 size-full max-w-[70%] object-contain"
+              />
+            </div>
+          ) : null}
+
+          <div className="relative z-[1] flex w-full flex-col items-center gap-3">
+            <ChallengeTitle id={titleId}>
+              {childName}, אמרתי לך שאתה אלוף
+            </ChallengeTitle>
+            <ChallengeBody>אני אגיד לך את זה שוב!</ChallengeBody>
+
+            <video
+              src={V03_REDEMPTION_CELEBRATE_VIDEO}
+              autoPlay
+              muted
+              playsInline
+              loop
+              className="object-contain"
+              style={{
+                width: V03_CHALLENGE_SETUP_LAYOUT.redemptionCelebrateVideo.width,
+                height: V03_CHALLENGE_SETUP_LAYOUT.redemptionCelebrateVideo.height,
+              }}
+              aria-hidden
+            />
+          </div>
+        </div>
+      )}
+
       {step === 'goals' && (
         <>
           <div className="flex w-full flex-col items-center gap-[15px]">

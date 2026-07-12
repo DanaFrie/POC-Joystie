@@ -42,6 +42,7 @@ export type ParentChallengeSetupResult = {
 type ParentChallengeSetupOverlayProps = {
   visible: boolean;
   childName: string;
+  childGender?: 'boy' | 'girl';
   estimatedDailyHours: number;
   onClose: () => void;
   onSubmit: (result: ParentChallengeSetupResult) => void;
@@ -63,6 +64,7 @@ function formatHeDate(d: Date): string {
 export function ParentChallengeSetupOverlay({
   visible,
   childName,
+  childGender = 'boy',
   estimatedDailyHours,
   onClose,
   onSubmit,
@@ -159,8 +161,8 @@ export function ParentChallengeSetupOverlay({
               <li>כמה כסף שווה כל שימוש בשעת מסך?</li>
             </ul>
             <ChallengeBody>
-              ככל ש{childName} ישמור על פחות זמן מסך, יישאר יותר כסף בארנק. זה העיקרון שעוזר לבחור
-              בחוכמה.
+              ככל ש{childName} {childGender === 'girl' ? 'תשמור' : 'ישמור'} על פחות זמן מסך, יישאר
+              יותר כסף בארנק. זה העיקרון שעוזר לבחור בחוכמה.
             </ChallengeBody>
             <ChallengeBody>
               הארנק וירטואלי, בסוף השבוע מעלים צילום מסך של גרף השימוש במסך ובוחרים יחד מה לעשות
@@ -232,6 +234,7 @@ export function ParentChallengeSetupOverlay({
 
           <ChallengeParentDealSentCard
             childName={childName}
+            childGender={childGender}
             weeklyBudget={weeklyBudget}
             hourlyRate={hourlyRate}
             startDateLabel={formatHeDate(startDate)}
