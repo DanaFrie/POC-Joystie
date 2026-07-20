@@ -32,7 +32,7 @@ export function ChildSelfieCameraViewport({
         autoPlay
         className="absolute inset-0 size-full object-cover"
         style={{
-          objectPosition: 'center bottom',
+          objectPosition: 'center center',
         }}
         onLoadedData={onVideoReady}
       />

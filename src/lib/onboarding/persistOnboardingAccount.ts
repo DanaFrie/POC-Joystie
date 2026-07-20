@@ -189,9 +189,9 @@ export async function persistOnboardingAccountAfterAuth(params: {
       typeof window !== 'undefined'
         ? sessionStorage.getItem(ONBOARDING_RESUME_KIND_KEY)
         : null;
-    // v0.2 / signup-existing resume: never replace Firestore kids with empty funnel drafts.
+    // Prefer Firestore kids on v03 resume / empty funnel drafts.
+    // v02_legacy: allow funnel kidsAges to replace legacy string/partial kids.
     const preferExistingKids =
-      resumeKind === 'v02_legacy' ||
       resumeKind === 'v03_resume' ||
       (!kidsAges.length && Boolean(existing.kidsAges?.length));
 
@@ -239,4 +239,26 @@ export async function persistOnboardingAccountAfterAuth(params: {
   }
 
   return { childSnapshots };
+}
+
+/**
+ * Write funnel session kidsAges (v0.3 shape) onto an existing Firestore user.
+ * Used when a v0.2-legacy account continues through signup with kids already filled.
+ */
+export async function syncFunnelKidsAgesToUser(
+  uid: string
+): Promise<UserKidAgeScreenTime[] | null> {
+  const children = getOnboardingChildrenDetails() ?? [];
+  if (!children.length) return null;
+
+  let screenTimes = getOnboardingChildrenScreenTime();
+  if (!screenTimes?.length) {
+    screenTimes = createScreenTimesFromChildren(children);
+  }
+  const kidsAges = buildKidsAgesFromFunnel(children, screenTimes ?? []);
+  if (!kidsAges.length) return null;
+
+  saveFunnelChildrenToSession(children, screenTimes ?? []);
+  await updateUser(uid, { kidsAges, termsAccepted: true });
+  return kidsAges;
 }

@@ -19,6 +19,7 @@ import { getForgotPasswordPath } from '@/lib/auth/postLoginNavigation';
 import {
   getOnboardingParentExternalUrl,
   isRestrictedOAuthEnvironment,
+  IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 
 const LOGIN_FORM_ID = 'login-form';
@@ -238,7 +239,7 @@ export function LoginScreen({
                         label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
                         icon={<AppleIcon />}
                         onClick={onOAuthApple}
-                        disabled={formLocked || oauthBlocked}
+                        disabled={formLocked || oauthBlocked || !IS_APPLE_OAUTH_ENABLED}
                       />
                     </div>
                   </div>

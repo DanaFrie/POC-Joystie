@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { DashboardFigmaBackground, DashboardBottomGlows } from '@/components/dashboard/DashboardFigmaBackground';
+import { DashboardFigmaBackground } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
 import { DashboardEnter } from '@/components/dashboard/DashboardEnter';
@@ -218,14 +218,16 @@ export function ChildDashboardScreen({
       style={{ background: PARENT_DASHBOARD_COLORS.canvas }}
       dir="rtl"
     >
-      <DashboardFigmaBackground showBottomGlows={false} />
-      <DashboardEnter variant="fade" index={0} className="absolute inset-x-0 top-0 z-20">
-        <DashboardTopBar balance={walletBalance} menuSlot={<DashboardHeaderMenu />} />
+      <DashboardEnter variant="fade" index={0} className="pointer-events-none absolute inset-x-0 top-0 z-20">
+        <div className="pointer-events-auto">
+          <DashboardTopBar balance={walletBalance} menuSlot={<DashboardHeaderMenu variant="child" />} />
+        </div>
       </DashboardEnter>
 
-      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto v03-scroll-hidden">
-        <div className="relative min-h-full w-full max-w-[100vw] overflow-x-hidden pb-10">
-          <DashboardBottomGlows />
+      {/* One scroll surface — background + cards move together. */}
+      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-y-none v03-scroll-hidden">
+        <div className="relative min-h-full w-full max-w-[100vw] pb-10">
+          <DashboardFigmaBackground mode="embedded" />
           <DashboardEnter variant="fade" index={1} className="pointer-events-none absolute inset-0 z-[1]">
             <DashboardChildCompanion src={CHILD_DASHBOARD_ASSETS.companion} />
           </DashboardEnter>
@@ -233,7 +235,7 @@ export function ChildDashboardScreen({
           <DashboardEnter
             variant="frame"
             index={0}
-            className="relative z-[2] mx-auto flex w-full max-w-full flex-col items-center"
+            className="relative z-[2] mx-auto flex h-auto w-full max-w-full flex-col items-center"
           >
             <div
               className="flex w-full max-w-full flex-col items-center"

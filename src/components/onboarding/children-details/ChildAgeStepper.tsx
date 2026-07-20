@@ -39,7 +39,7 @@ function MiniStepButton({
   );
 }
 
-/** Compact age stepper — Figma 6–12; LTR + left / − right. */
+/** Compact age stepper — 6–14; LTR + left / − right. */
 export function ChildAgeStepper({ value, onChange }: ChildAgeStepperProps) {
   const atMin = value <= ONBOARDING_CHILD_AGE_MIN;
   const atMax = value >= ONBOARDING_CHILD_AGE_MAX;

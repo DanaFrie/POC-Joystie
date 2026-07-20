@@ -137,7 +137,7 @@ export function DashboardChildStartCta({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex h-[55px] w-full items-center justify-center rounded-[22px] bg-[#00FFB3] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-[#092125] shadow-[2px_2px_20px_rgba(109,109,109,0.15)] ${
+      className={`flex min-h-[55px] w-full items-center justify-center rounded-[22px] bg-[#00FFB3] px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-[21.6px] text-[#092125] shadow-[2px_2px_20px_rgba(109,109,109,0.15)] ${
         disabled ? 'cursor-not-allowed opacity-45' : ''
       }`}
     >

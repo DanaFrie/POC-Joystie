@@ -64,7 +64,7 @@ function ChildSelfieStaticBackdrop() {
       src={CHILD_ONBOARDING_ASSETS.castleDoriSelfie}
       alt=""
       className="pointer-events-none absolute z-0 object-cover"
-      style={{ ...coverStyle, objectPosition: 'center bottom' }}
+      style={{ ...coverStyle, objectPosition: 'center center' }}
       priority
     />
   );

@@ -1,19 +1,23 @@
 import { getChildrenByParent } from '@/lib/api/children';
-import { updateUser } from '@/lib/api/users';
 import { ensureUserProfileForLogin } from '@/lib/auth/ensureUserProfile';
 import {
   classifyUserOnboarding,
-  kidsAgesFromChildrenDocs,
   ONBOARDING_RESUME_KIND_KEY,
   type UserOnboardingRouteKind,
 } from '@/lib/auth/userOnboardingStatus';
-import { FLOW_STEP_STORAGE_KEY, LANDING_ACTIVE_KEY } from '@/lib/onboarding/parentFlowSession';
+import {
+  FLOW_STEP_STORAGE_KEY,
+  LANDING_ACTIVE_KEY,
+} from '@/lib/onboarding/parentFlowSession';
 import {
   clearOnboardingChildrenSession,
   hydrateOnboardingChildrenFromChildrenDocs,
   hydrateOnboardingChildrenFromUser,
 } from '@/lib/onboarding/hydrateChildrenFromUser';
-import { markOnboardingAccountCreated } from '@/lib/onboarding/persistOnboardingAccount';
+import {
+  markOnboardingAccountCreated,
+  syncFunnelKidsAgesToUser,
+} from '@/lib/onboarding/persistOnboardingAccount';
 import type { FirestoreUser } from '@/types/firestore';
 import { createSession } from '@/utils/session';
 import { createContextLogger } from '@/utils/logger';
@@ -24,7 +28,8 @@ export type NavigateAfterLoginOptions = {
   /**
    * `signup_existing` — user hit sign-up with an existing email (login note).
    * Clears local funnel drafts before hydrating so signup-in-progress kids
-   * do not overwrite Firestore / legacy children.
+   * do not overwrite Firestore / legacy children — except v02_legacy, which
+   * keeps funnel kidsAges and continues onboarding.
    */
   source?: 'login' | 'signup_existing' | 'onboarding_gate';
 };
@@ -60,29 +65,15 @@ export function prepareFreshOnboardingEntry(): void {
 }
 
 /**
- * v0.2 users who already have children docs: mark onboarding complete and
- * normalize kidsAges so dashboard gate passes.
+ * Login as v0.2-legacy without v0.3 kidsAges — start kids funnel (phoneCount)
+ * so the parent can enter proper kidsAges data.
  */
-async function migrateV02UserWithChildren(
-  user: FirestoreUser,
-  children: Awaited<ReturnType<typeof getChildrenByParent>>
-): Promise<FirestoreUser> {
-  const kidsAges = kidsAgesFromChildrenDocs(children);
-  const primaryChildId = user.primaryChildId?.trim() || children[0]?.id;
-
-  await updateUser(user.id, {
-    onboarding: true,
-    kidsAges: kidsAges.length ? kidsAges : user.kidsAges,
-    ...(primaryChildId ? { primaryChildId } : {}),
-    termsAccepted: user.termsAccepted ?? true,
-  });
-
-  return {
-    ...user,
-    onboarding: true,
-    kidsAges: kidsAges.length ? kidsAges : user.kidsAges,
-    ...(primaryChildId ? { primaryChildId } : {}),
-  };
+export function prepareV02LegacyKidsCollectionStart(): void {
+  if (typeof window === 'undefined') return;
+  markOnboardingAccountCreated();
+  sessionStorage.removeItem(LANDING_ACTIVE_KEY);
+  sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'phoneCount');
+  setResumeKind('v02_legacy');
 }
 
 /**
@@ -99,11 +90,6 @@ export async function resolveAuthenticatedUserDestination(
   const source = options?.source ?? 'login';
   const isSignupExisting = source === 'signup_existing';
 
-  if (isSignupExisting) {
-    // Sign-up form drafts must not win over existing profile / children.
-    clearOnboardingChildrenSession();
-  }
-
   let children: Awaited<ReturnType<typeof getChildrenByParent>> | null = null;
   try {
     children = await getChildrenByParent(user.id);
@@ -114,6 +100,11 @@ export async function resolveAuthenticatedUserDestination(
 
   let kind = classifyUserOnboarding(user, { children });
   let resolvedUser = user;
+
+  // Clear funnel drafts for signup-existing except v02_legacy (keep + store kidsAges).
+  if (isSignupExisting && kind !== 'v02_legacy') {
+    clearOnboardingChildrenSession();
+  }
 
   if (kind === 'complete') {
     const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
@@ -137,23 +128,29 @@ export async function resolveAuthenticatedUserDestination(
   }
 
   if (kind === 'v02_legacy') {
-    if (children?.length) {
-      try {
-        resolvedUser = await migrateV02UserWithChildren(user, children);
-      } catch (error) {
-        logger.warn('v0.2 migration failed — routing to dashboard with hydrate only', error);
-      }
+    if (source === 'login') {
+      // No v0.3 kidsAges yet — start kids collection (do not auto-migrate to dashboard).
       clearOnboardingChildrenSession();
-      hydrateOnboardingChildrenFromChildrenDocs(children);
-      setResumeKind('v02_legacy');
-      return { path: '/dashboard', kind: 'complete', user: resolvedUser };
+      prepareV02LegacyKidsCollectionStart();
+      return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
     }
 
-    // Legacy string ages / primaryChildId without children docs:
-    // different from v0.3 resume — clear signup drafts, hydrate ages only, still signupIntro.
-    clearOnboardingChildrenSession();
-    hydrateOnboardingChildrenFromUser(resolvedUser);
-    prepareOnboardingIntroReturn('v02_legacy');
+    if (source === 'signup_existing') {
+      // Keep funnel kidsAges, write v0.3 shape to Firestore, continue onboarding.
+      try {
+        const kidsAges = await syncFunnelKidsAgesToUser(user.id);
+        if (kidsAges?.length) {
+          resolvedUser = { ...user, kidsAges };
+        }
+      } catch (error) {
+        logger.warn('Could not sync funnel kidsAges for v02 signup resume', error);
+      }
+      prepareOnboardingIntroReturn('v02_legacy');
+      return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
+    }
+
+    // onboarding_gate — stay in funnel; do not force dashboard migration.
+    setResumeKind('v02_legacy');
     return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
   }
 
@@ -209,6 +206,7 @@ export async function resolveOnboardingEntryForAuthenticatedUser(
   return {
     path,
     kind,
+    // fresh → landing; v02_legacy / v03_resume → parent funnel
     enterParentFlow: path === '/onboarding' && kind !== 'fresh',
   };
 }

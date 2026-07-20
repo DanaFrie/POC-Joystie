@@ -26,6 +26,7 @@ import {
   getRestrictedOAuthMessage,
   isLikelyOAuthRedirectReturn,
   getOAuthUserEmail,
+  IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 import type { User } from 'firebase/auth';
 
@@ -241,6 +242,9 @@ function LoginPageContent() {
   };
 
   const handleOAuth = async (provider: 'google' | 'apple') => {
+    if (provider === 'apple' && !IS_APPLE_OAUTH_ENABLED) {
+      return;
+    }
     if (isRestrictedOAuthEnvironment()) {
       setLoginError(getRestrictedOAuthMessage());
       return;

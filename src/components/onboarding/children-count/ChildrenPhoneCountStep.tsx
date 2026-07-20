@@ -53,7 +53,7 @@ export function ChildrenPhoneCountStep({
             כמה מהילדים במשפחה משתמשים בטלפון?
           </h1>
           <p className="w-full text-center font-simpler text-[24px] font-normal leading-[30px] text-white/80">
-            בין הגילאים 6-12
+            בין הגילאים 6-14
           </p>
         </header>
 

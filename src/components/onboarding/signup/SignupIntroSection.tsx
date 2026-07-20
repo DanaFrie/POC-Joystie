@@ -4,6 +4,7 @@ import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAut
 import {
   getOnboardingParentExternalUrl,
   isRestrictedOAuthEnvironment,
+  IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 
 const oauthButtonClass =
@@ -90,7 +91,12 @@ export function SignupIntroSection({
           label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
           icon={<AppleIcon />}
           onClick={onOAuthApple}
-          disabled={oauthDisabled || oauthLoading !== null || oauthBlocked}
+          disabled={
+            !IS_APPLE_OAUTH_ENABLED ||
+            oauthDisabled ||
+            oauthLoading !== null ||
+            oauthBlocked
+          }
         />
       </div>
     </div>

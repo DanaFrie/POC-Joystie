@@ -76,8 +76,8 @@ export function ChallengeCollapsibleGoalsList({
   }
 
   return (
-    <div className="flex w-full min-h-0 flex-col gap-2">
-      <div className="relative max-h-[min(320px,48dvh)] min-h-0 w-full overflow-y-auto overflow-x-hidden v03-scroll-hidden">
+    <div className="flex w-full flex-col gap-2">
+      <div className="relative w-full overflow-x-hidden">
         <ChallengeMoneyGoalsGrid
           options={options}
           selectedIds={selectedIds}

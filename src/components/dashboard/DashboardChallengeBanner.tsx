@@ -100,7 +100,7 @@ export function DashboardChallengeBanner({
       type="button"
       onClick={handleClick}
       disabled={isDisabled}
-      className={`relative flex h-[145px] w-full flex-col items-center justify-center overflow-hidden rounded-[32px] px-[18px] py-[25px] text-right ${
+      className={`relative flex min-h-[145px] w-full flex-col items-center justify-center overflow-visible rounded-[32px] px-[18px] py-[25px] text-right ${
         isDisabled ? 'cursor-default opacity-95' : ''
       }`}
       style={{

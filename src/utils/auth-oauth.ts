@@ -15,6 +15,12 @@ const oauthLog = createContextLogger('OAuth');
 export type OAuthProviderId = 'google.com' | 'apple.com';
 export type OAuthProviderUiId = 'google' | 'apple';
 
+/**
+ * Flip to `true` after Apple Developer / Firebase Sign in with Apple is fixed.
+ * Keeps the button visible but disabled on login + signup.
+ */
+export const IS_APPLE_OAUTH_ENABLED = false;
+
 export type OAuthSignInResult =
   | { ok: true; user: User; isNewUser: boolean; displayName?: string }
   | { ok: false; errorMessage: string; errorCode: string };
@@ -295,6 +301,13 @@ export async function signInWithOAuth(
   provider: OAuthProviderUiId,
   options?: { useRedirect?: boolean }
 ): Promise<OAuthSignInResult | { ok: true; redirecting: true }> {
+  if (provider === 'apple' && !IS_APPLE_OAUTH_ENABLED) {
+    return {
+      ok: false,
+      errorCode: 'auth/operation-not-allowed',
+      errorMessage: 'התחברות עם Apple אינה זמינה כרגע. השתמשו ב-Google או בדוא״ל.',
+    };
+  }
   const providerId = toOAuthProviderId(provider);
   const useRedirect = options?.useRedirect ?? prefersOAuthRedirect();
   oauthLog.log('oauth:mode', {

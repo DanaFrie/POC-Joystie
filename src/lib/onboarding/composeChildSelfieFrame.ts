@@ -59,7 +59,7 @@ function extractCircularFace(source: HTMLCanvasElement, hole: SelfieFaceHole): P
   return canvasToBlob(canvas, 'image/png');
 }
 
-/** object-cover draw into the 375×812 funnel canvas. */
+/** object-cover draw into the 375×812 funnel canvas (slightly zoomed out for framing). */
 function drawCoverImage(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
@@ -68,14 +68,18 @@ function drawCoverImage(
   destWidth: number,
   destHeight: number,
   mirror = false,
+  zoomOut = 0.82,
 ) {
-  const scale = Math.max(destWidth / sourceWidth, destHeight / sourceHeight);
+  const coverScale = Math.max(destWidth / sourceWidth, destHeight / sourceHeight);
+  const scale = coverScale * Math.min(1, Math.max(0.5, zoomOut));
   const width = sourceWidth * scale;
   const height = sourceHeight * scale;
   const x = (destWidth - width) / 2;
   const y = (destHeight - height) / 2;
 
   ctx.save();
+  ctx.fillStyle = '#061C1E';
+  ctx.fillRect(0, 0, destWidth, destHeight);
   if (mirror) {
     ctx.translate(destWidth, 0);
     ctx.scale(-1, 1);

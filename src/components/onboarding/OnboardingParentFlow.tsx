@@ -90,6 +90,7 @@ import {
   clearOnboardingAccountCreated,
   isOnboardingAccountCreated,
   persistOnboardingAccountAfterAuth,
+  syncFunnelKidsAgesToUser,
 } from '@/lib/onboarding/persistOnboardingAccount';
 import {
   clearOAuthSessionFlags,
@@ -123,6 +124,7 @@ import {
   toOAuthProviderId,
   userHasOAuthProvider,
   userMatchesOAuthProvider,
+  IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
 import { useScrollOverflow } from '@/hooks/useScrollOverflow';
@@ -136,6 +138,7 @@ import {
   markOAuthSignupWelcomePending,
   shouldShowOAuthSignupWelcome,
 } from '@/lib/onboarding/parentFlowSession';
+import { ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
 import { createContextLogger } from '@/utils/logger';
 import {
   FunnelStepFooter,
@@ -229,6 +232,24 @@ function isValidFlowStep(value: string | null): value is ParentFlowStep {
   return value != null && ALL_FLOW_STEPS.includes(value as ParentFlowStep);
 }
 
+const KIDS_COLLECTION_STEPS: ParentFlowStep[] = [
+  'role',
+  'phoneCount',
+  'details',
+  'screenTime',
+  'calculating',
+  ...REVEAL_STEPS,
+];
+
+function isKidsCollectionStep(step: ParentFlowStep) {
+  return KIDS_COLLECTION_STEPS.includes(step);
+}
+
+function isV02LegacyKidsResume(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(ONBOARDING_RESUME_KIND_KEY) === 'v02_legacy';
+}
+
 function readInitialFlowStep(): ParentFlowStep {
   if (typeof window === 'undefined') return 'role';
   if (sessionStorage.getItem(ONBOARDING_PARENT_GAME_WON_KEY)) {
@@ -239,6 +260,11 @@ function readInitialFlowStep(): ParentFlowStep {
   if (isOnboardingAccountCreated()) {
     const saved = readStoredFlowStep();
     if (saved && isPostSignupStep(saved)) return saved;
+    // Login as v02_legacy: collect kidsAges before post-signup carousel.
+    if (isV02LegacyKidsResume() && saved && isValidFlowStep(saved) && isKidsCollectionStep(saved)) {
+      return saved;
+    }
+    if (isV02LegacyKidsResume()) return 'phoneCount';
     if (shouldShowOAuthSignupWelcome()) return 'signupWelcome';
     return 'signupIntro';
   }
@@ -568,12 +594,24 @@ export function OnboardingParentFlow({
       if (saved === 'role') {
         return;
       }
+      // v02_legacy login resume — stay on kids collection steps.
+      if (
+        isV02LegacyKidsResume() &&
+        saved &&
+        isValidFlowStep(saved) &&
+        isKidsCollectionStep(saved)
+      ) {
+        setStep(saved);
+        return;
+      }
       const targetStep =
         saved && isPostSignupStep(saved)
           ? saved
           : shouldShowOAuthSignupWelcome()
             ? ('signupWelcome' as const)
-            : ('signupIntro' as const);
+            : isV02LegacyKidsResume()
+              ? ('phoneCount' as const)
+              : ('signupIntro' as const);
       if (targetStep === 'signupIntro' || targetStep === 'signupWelcome') {
         if (targetStep === 'signupIntro') {
           postSignupIntroNavigatedRef.current = true;
@@ -747,6 +785,9 @@ export function OnboardingParentFlow({
   };
 
   const handleOAuth = async (provider: 'google' | 'apple') => {
+    if (provider === 'apple' && !IS_APPLE_OAUTH_ENABLED) {
+      return;
+    }
     if (isRestrictedOAuthEnvironment()) {
       logger.warn('OAuth blocked: restricted environment', { provider });
       setErrors({ _general: getRestrictedOAuthMessage() });
@@ -971,6 +1012,20 @@ export function OnboardingParentFlow({
     }
     if (step === 'goodNews') {
       setStep('realData');
+      return;
+    }
+    // Already authenticated (e.g. v02_legacy login) — store kidsAges and skip signup form.
+    if (accountCreated) {
+      void (async () => {
+        try {
+          const auth = await getAuthInstance();
+          const uid = auth.currentUser?.uid;
+          if (uid) await syncFunnelKidsAgesToUser(uid);
+        } catch (error) {
+          logger.warn('Could not sync kidsAges after reveal', error);
+        }
+        goToSignupIntro();
+      })();
       return;
     }
     setStep('signupForm');

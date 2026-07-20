@@ -36,7 +36,8 @@ export const PHYSICS_SUBSTEPS = 4;
 export const WIN_SCORE = GAME_WIN_SCORE;
 
 const MIN_SPEED = 0.21528;
-const MAX_SPEED = 0.5;
+/** Raised with 2× serve so start speed is not immediately clamped. */
+const MAX_SPEED = 1.0;
 /** Per-hit speed multiplier — +5% vs prior 1.04. */
 const PADDLE_BOOST = 1.092;
 const PADDLE_ANGLE_GAIN = 0.28;

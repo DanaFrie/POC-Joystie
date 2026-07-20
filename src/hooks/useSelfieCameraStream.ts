@@ -103,6 +103,7 @@ export function useSelfieCameraStream() {
         return false;
       }
 
+      // Prefer widest front FOV (no forced zoom) so parent + child can frame into holes.
       streamRef.current = mediaStream;
       setStream(mediaStream);
       setStatus('active');

@@ -9,6 +9,8 @@ export const ONBOARDING_RESUME_KIND_KEY = 'onboardingResumeKind';
  * - complete: `onboarding === true` → dashboard
  * - v03_resume: has v0.3-shaped kidsAges, not finished → signupIntro + hydrate
  * - v02_legacy: pre-v0.3 profile (string ages / children docs / primaryChildId) without v0.3 kids shape
+ *   - signup: keep going in onboarding; store funnel kidsAges
+ *   - login: start kids funnel (phoneCount) so user can provide v0.3 kidsAges
  * - fresh: Auth session but nothing to resume from
  */
 export type UserOnboardingRouteKind =
