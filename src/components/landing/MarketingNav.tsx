@@ -152,15 +152,20 @@ export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps =
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Temporary: marketing chrome does not open product app routes */}
           <a
-            href="/login"
+            href="#"
+            aria-disabled
+            onClick={(e) => e.preventDefault()}
             className="inline-flex h-9 items-center justify-center rounded-2xl border border-white px-5 font-rubik text-base font-bold tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
           >
             התחברות
           </a>
           <a
-            href="/onboarding"
+            href="#"
+            aria-disabled
             dir="rtl"
+            onClick={(e) => e.preventDefault()}
             className="inline-flex h-9 flex-row items-center justify-center gap-3 rounded-2xl bg-v03-turquoise-300 px-5 font-rubik text-base font-bold tracking-[-0.32px] text-[#282828] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:-translate-y-0.5"
           >
             להצטרפות

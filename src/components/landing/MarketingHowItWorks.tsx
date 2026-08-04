@@ -162,26 +162,32 @@ export function MarketingHowItWorks() {
           </div>
         </div>
 
-        {/* Desktop Story — RTL order: buttons → text → image; gap 20 */}
-        <LandingReveal delayMs={80} className="relative z-[1] hidden w-full overflow-hidden md:block">
-          <div
-            className="relative flex h-[304px] w-full flex-row items-center gap-5 overflow-hidden rounded-[50px] border border-dashed border-[#505050] bg-[rgba(1,21,24,0.5)] py-6 pl-0 pr-[46px]"
-            dir="rtl"
-          >
-            <div className="relative z-10 shrink-0">
-              <StepTabs active={active} onSelect={setActive} layout="desktop" />
+        {/* Desktop Story — circle @ top 25 / left −22, outside card so it bleeds past the dashed border */}
+        <LandingReveal delayMs={80} className="relative z-[1] hidden w-full overflow-visible md:block">
+          <div className="relative w-full overflow-visible">
+            <div
+              className="relative flex h-[304px] w-full flex-row items-center gap-5 overflow-visible rounded-[50px] border border-dashed border-[#505050] bg-[rgba(1,21,24,0.5)] py-6 pe-[230px] ps-[46px]"
+              dir="rtl"
+            >
+              <div className="relative z-10 shrink-0">
+                <StepTabs active={active} onSelect={setActive} layout="desktop" />
+              </div>
+
+              <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-6 text-right">
+                <h3 className="font-rubik text-[36px] font-bold leading-[1.1] tracking-[-1.08px] text-white">
+                  {step.title}
+                </h3>
+                <p className="font-rubik text-[20px] leading-[1.2] tracking-[-0.4px] text-white">
+                  {step.body}
+                </p>
+              </div>
             </div>
 
-            <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-6 text-right">
-              <h3 className="font-rubik text-[36px] font-bold leading-[1.1] tracking-[-1.08px] text-white">
-                {step.title}
-              </h3>
-              <p className="font-rubik text-[20px] leading-[1.2] tracking-[-0.4px] text-white">
-                {step.body}
-              </p>
-            </div>
-
-            <div className="relative z-20 -ml-[23px] h-[244px] w-[244px] shrink-0">
+            {/* Sibling of dashed card — not clipped by story overflow/border */}
+            <div
+              className="pointer-events-none absolute left-[-22px] top-[25px] z-20 h-[254px] w-[254px]"
+              aria-hidden
+            >
               <StepImage className="h-full w-full" />
             </div>
           </div>
