@@ -423,18 +423,202 @@ body.layout-root:has(.v03-funnel-light) {
   background-image: none !important;
 }
 
-/* v0.3 marketing landing — no v0.2 background.png */
-html.layout-root:has(.v03-landing-root),
-body.layout-root:has(.v03-landing-root) {
-  background-color: var(--v03-green-900) !important;
+/* Marketing landing — single document scroll (html only; no nested body/root scrollport) */
+html.layout-root:has(.v03-landing-root) {
+  background-color: #05161a !important;
   background-image: none !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+body.layout-root:has(.v03-landing-root) {
+  background-color: #05161a !important;
+  background-image: none !important;
+  /* Override layout body overflow-y-auto — only html scrolls on landing */
+  overflow: clip !important;
+  overscroll-behavior-y: none;
+}
+
+/* About — white page chrome (margins) while reusing landing reveal / nav tokens */
+html.layout-root:has(.v03-about-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+body.layout-root:has(.v03-about-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow: clip !important;
+  overscroll-behavior-y: none;
+}
+
+.v03-about-root {
+  font-family: var(--font-marketing-rubik), 'Rubik', 'Simpler Pro', var(--font-simpler), 'Assistant', sans-serif;
+  scroll-behavior: smooth;
+  --landing-gutter: 1.5rem;
+  overflow: clip;
+  background-color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .v03-about-root {
+    --landing-gutter: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .v03-about-root {
+    --landing-gutter: clamp(3rem, 5vw, 6rem);
+  }
+}
+
+.v03-about-root .landing-reveal {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition:
+    opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--landing-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.v03-about-root .landing-reveal.is-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v03-about-root .landing-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 .v03-landing-root {
-  font-family: 'Simpler Pro', var(--font-simpler), 'Assistant', sans-serif;
+  font-family: var(--font-marketing-rubik), 'Rubik', 'Simpler Pro', var(--font-simpler), 'Assistant', sans-serif;
+  scroll-behavior: smooth;
+  /* Side margins — mobile gutters stay in components; desktop uses this token */
+  --landing-gutter: 1.5rem;
+  /*
+   * clip (not hidden/auto): contain horizontal glow bleed without creating a
+   * vertical scrollport (hidden/auto on one axis forces the other to auto).
+   */
+  overflow: clip;
 }
 
-html.layout-root {
+@media (min-width: 768px) {
+  .v03-landing-root {
+    --landing-gutter: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .v03-landing-root {
+    --landing-gutter: clamp(3rem, 5vw, 6rem);
+  }
+}
+
+.v03-landing-root .landing-gutter {
+  padding-inline: var(--landing-gutter);
+}
+
+/*
+ * Section stacking — root owns #05161a. Sections stay transparent.
+ * How-it-works Story clips its turquoise ellipse at the frame bottom
+ * (Figma 15448:8826 overflow-clip); do not bleed that glow into science.
+ *
+ * Do not put overflow-x-clip on sections (clip forces Y clip).
+ */
+.v03-landing-root .landing-section {
+  position: relative;
+}
+
+.v03-landing-root .landing-section-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.v03-landing-root .landing-section-fg {
+  position: relative;
+  z-index: 10;
+}
+
+/* Full-bleed on small screens (carousels); gutters from md up */
+.v03-landing-root .landing-gutter-md {
+  padding-inline: 0;
+}
+
+@media (min-width: 768px) {
+  .v03-landing-root .landing-gutter-md {
+    padding-inline: var(--landing-gutter);
+  }
+}
+
+.v03-landing-root .landing-reveal {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition:
+    opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--landing-reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.v03-landing-root .landing-reveal.is-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Hero — opacity only, soft ease */
+.v03-landing-root .landing-reveal.landing-reveal--fade {
+  transform: none;
+  transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
+  will-change: opacity;
+}
+
+.v03-landing-root .landing-reveal.landing-reveal--fade.is-in {
+  transform: none;
+}
+
+.v03-landing-root .landing-step-swap {
+  animation: landing-step-swap 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes landing-step-swap {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v03-landing-root {
+    scroll-behavior: auto;
+  }
+
+  .v03-landing-root .landing-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .v03-landing-root .landing-step-swap {
+    animation: none;
+  }
+}
+
+/* Landing uses its own html overflow rules above; other routes clip X here */
+html.layout-root:not(:has(.v03-landing-root)) {
   overflow-x: hidden;
 }
 
@@ -674,62 +858,6 @@ html[dir="rtl"] {
 }
 .hero-wallet-shimmer {
   animation: heroWalletShimmer 3s infinite;
-}
-
-/* Landing hero — viewport-aware scene scale */
-.landing-hero-scene-scale {
-  transform-origin: center center;
-  transform: scale(0.58);
-}
-@media (min-width: 390px) {
-  .landing-hero-scene-scale {
-    transform: scale(0.64);
-  }
-}
-@media (min-width: 640px) {
-  .landing-hero-scene-scale {
-    transform: scale(0.7);
-  }
-}
-@media (min-width: 768px) {
-  .landing-hero-scene-scale {
-    transform: scale(0.82);
-  }
-}
-@media (min-width: 1024px) {
-  .landing-hero-scene-scale {
-    transform: scale(0.9);
-  }
-}
-@media (min-width: 1280px) {
-  .landing-hero-scene-scale {
-    transform: scale(0.96);
-  }
-}
-
-/* Landing hero companions — gentler float than marketing duo-float */
-@keyframes landingHeroCompanionFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-14px) rotate(3deg); }
-}
-@keyframes landingHeroCompanionFloatAlt {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(12px) rotate(-4deg); }
-}
-.landing-hero-companion-float {
-  animation: landingHeroCompanionFloat 4.5s ease-in-out infinite;
-}
-.landing-hero-companion-float-delayed {
-  animation: landingHeroCompanionFloat 5.5s ease-in-out infinite;
-  animation-delay: 0.8s;
-}
-.landing-hero-companion-float-slow {
-  animation: landingHeroCompanionFloat 6.5s ease-in-out infinite;
-  animation-delay: 1.4s;
-}
-.landing-hero-companion-float-alt {
-  animation: landingHeroCompanionFloatAlt 4s ease-in-out infinite;
-  animation-delay: 0.3s;
 }
 
 /* Reveal on scroll */

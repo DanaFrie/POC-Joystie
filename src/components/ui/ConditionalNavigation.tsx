@@ -9,6 +9,7 @@ export default function ConditionalNavigation() {
   // Don't show navigation for home page, child pages, onboarding, login, help, dashboard.
   if (
     pathname === '/' ||
+    pathname === '/about' ||
     pathname?.startsWith('/game') ||
     pathname === '/onboarding' ||
     pathname?.startsWith('/onboarding/') ||

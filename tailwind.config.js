@@ -50,7 +50,8 @@ module.exports = {
         assistant: ['var(--font-simpler)', 'Assistant', 'sans-serif'],
         heebo: ['var(--font-heebo)', 'Heebo', 'sans-serif'],
         montserrat: ['"Montserrat Alternates"', 'sans-serif'],
-        rubik: ['Rubik', 'sans-serif'],
+        rubik: ['Rubik', 'var(--font-marketing-rubik)', 'sans-serif'],
+        marketing: ['var(--font-marketing-rubik)', 'Rubik', 'sans-serif'],
         varela: ['"Varela Round"', 'sans-serif'],
       },
       fontSize: {
