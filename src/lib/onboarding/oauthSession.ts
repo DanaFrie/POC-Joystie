@@ -3,6 +3,8 @@ import { ONBOARDING_TERMS_KEY } from '@/lib/onboarding/persistOnboardingAccount'
 export const OAUTH_PENDING_KEY = 'onboardingOAuthPending';
 export const OAUTH_PROVIDER_KEY = 'onboardingOAuthProvider';
 export const OAUTH_PENDING_AT_KEY = 'onboardingOAuthPendingAt';
+/** Signup: terms sheet open before Google/Apple popup (survives /terms navigation). */
+export const OAUTH_TERMS_GATE_KEY = 'onboardingOAuthTermsGate';
 
 /** Redirect round-trip should finish within this window */
 const OAUTH_PENDING_TTL_MS = 15 * 60 * 1000;
@@ -113,6 +115,23 @@ export function clearOAuthSessionFlags() {
   localStorage.removeItem(OAUTH_PENDING_KEY);
   localStorage.removeItem(OAUTH_PROVIDER_KEY);
   localStorage.removeItem(OAUTH_PENDING_AT_KEY);
+}
+
+export function readOAuthTermsGateProvider(): 'google' | 'apple' | null {
+  if (typeof window === 'undefined') return null;
+  const value = sessionStorage.getItem(OAUTH_TERMS_GATE_KEY);
+  if (value === 'google' || value === 'apple') return value;
+  return null;
+}
+
+export function markOAuthTermsGateProvider(provider: 'google' | 'apple') {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(OAUTH_TERMS_GATE_KEY, provider);
+}
+
+export function clearOAuthTermsGateProvider() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(OAUTH_TERMS_GATE_KEY);
 }
 
 export function isOAuthRedirectRecoverable(): boolean {

@@ -2,7 +2,6 @@
 
 import { SignupIntroSection } from '@/components/onboarding/signup/SignupIntroSection';
 import { SignupTermsConsent } from '@/components/onboarding/signup/SignupTermsConsent';
-import { getOnboardingParentExternalUrl } from '@/utils/auth-oauth';
 
 export type SignupFormValues = {
   firstName: string;
@@ -165,22 +164,6 @@ export function OnboardingSignupForm({
               disabled={formLocked}
             />
           </div>
-
-          {errors._general ? (
-            <div className="w-full text-center font-simpler text-sm text-red-300">
-              <p>{errors._general}</p>
-              {errors._general.includes('Google') || errors._general.includes('מוטמע') ? (
-                <a
-                  href={getOnboardingParentExternalUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block font-bold text-white underline"
-                >
-                  פתחו ב-Chrome / Safari
-                </a>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
     </div>

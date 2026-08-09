@@ -72,4 +72,30 @@ export async function signalChildOnboardingMilestone(
   } catch (error) {
     logger.warn('Firestore milestone callable failed', { milestone, error });
   }
+
+  if (milestone === 'parent_change_accepted') {
+    try {
+      const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
+      await logEventOnce(
+        `agreement_done:child:${parentId}`,
+        AnalyticsEvents.AGREEMENT_DONE,
+        { path: 'child_accept' }
+      );
+    } catch (error) {
+      logger.warn('Agreement analytics failed', error);
+    }
+  }
+
+  if (milestone === 'selfie_mission_done') {
+    try {
+      const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
+      await logEventOnce(
+        `selfie_done:${parentId}`,
+        AnalyticsEvents.SELFIE_DONE,
+        { content_name: 'onboarding_accomplished' }
+      );
+    } catch (error) {
+      logger.warn('Selfie analytics failed', error);
+    }
+  }
 }

@@ -118,11 +118,6 @@ export async function updateChild(
         logger.log('Current document data:', JSON.stringify(currentData, null, 2));
         logger.log('Current document keys:', Object.keys(currentData));
         logger.log('Has nickname?', currentData.nickname ? `Yes: "${currentData.nickname}"` : 'No');
-        logger.log('Has moneyGoals?', currentData.moneyGoals ? `Yes: ${JSON.stringify(currentData.moneyGoals)}` : 'No');
-        logger.log('moneyGoals type:', typeof currentData.moneyGoals, Array.isArray(currentData.moneyGoals) ? '(array)' : '(not array)');
-        if (Array.isArray(currentData.moneyGoals)) {
-          logger.log('moneyGoals size:', currentData.moneyGoals.length);
-        }
         logger.log('parentId:', currentData.parentId);
       } else {
         logger.warn('Document does not exist! Will attempt to create it.');
@@ -191,6 +186,13 @@ export async function updateChild(
     await updateDoc(childRef, updatePayload);
     logger.log('Update successful!');
     logger.log('===== Update complete =====');
+
+    const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+    dataCache.invalidate(cacheKeys.child(childId));
+    if (parentId) {
+      dataCache.invalidate(cacheKeys.dashboard(parentId));
+      dataCache.invalidate(cacheKeys.user(parentId));
+    }
   } catch (error: any) {
     logger.error('===== Update failed =====');
     logger.error('Error updating child:', error);

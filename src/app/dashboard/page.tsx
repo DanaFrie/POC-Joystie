@@ -169,6 +169,13 @@ function DashboardPageContent() {
           if (typeof window !== 'undefined') {
             localStorage.removeItem('challengeData');
           }
+
+          void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+            void logEventOnce(
+              `dashboard_reached:${userId}`,
+              AnalyticsEvents.DASHBOARD_REACHED
+            );
+          });
         } else {
           setDashboardData({
             ...emptyDashboardState,
@@ -187,6 +194,13 @@ function DashboardPageContent() {
             },
           });
           setNoChallengeExists(true);
+
+          void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+            void logEventOnce(
+              `dashboard_reached:${userId}`,
+              AnalyticsEvents.DASHBOARD_REACHED
+            );
+          });
         }
       } catch (err: unknown) {
         logger.error('Error loading dashboard data:', err);

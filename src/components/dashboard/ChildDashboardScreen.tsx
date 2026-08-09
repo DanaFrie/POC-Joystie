@@ -87,14 +87,13 @@ export function ChildDashboardScreen({
 
   const weeklyBudget = deriveWeeklyBudget(challenge);
   const hourlyRate = deriveHourlyRate(challenge);
-  const childDealComplete = isChildDealSetupComplete(child, challenge);
+  const childDealComplete = isChildDealSetupComplete(challenge);
   const parentChallengeSet = isParentChallengeSet(challenge, noChallengeExists);
-  const dealLive = isV03DealLive(challengeEnabled, challenge, child, challengeNotStarted);
+  const dealLive = isV03DealLive(challengeEnabled, challenge, challengeNotStarted);
   const parentDealPending = challengeEnabled && parentChallengeSet && !childDealComplete;
   const redemptionOpen = canOpenChildRedemption(
     challengeEnabled,
     challenge,
-    child,
     null,
     new Date(now)
   );
@@ -114,7 +113,6 @@ export function ChildDashboardScreen({
         canOpenChildChallengeSetup(
           challengeEnabled,
           challenge,
-          child,
           noChallengeExists,
           challengeNotStarted
         ))
@@ -169,7 +167,6 @@ export function ChildDashboardScreen({
       canOpenChildChallengeSetup(
         challengeEnabled,
         challenge,
-        child,
         noChallengeExists,
         challengeNotStarted
       )
@@ -181,13 +178,10 @@ export function ChildDashboardScreen({
   const handleSetupSubmit = useCallback(
     async (result: ChildChallengeSetupResult) => {
       if (!dashboardData.parent.id) return;
-      const { ensureChildForParent } = await import('@/lib/api/children');
-      const childId =
-        child.id || (await ensureChildForParent(dashboardData.parent.id)).id;
-      await persistChildChallengeAccept(dashboardData.parent.id, childId, result);
+      await persistChildChallengeAccept(dashboardData.parent.id, result);
       await onRefresh();
     },
-    [dashboardData.parent.id, child.id, onRefresh]
+    [dashboardData.parent.id, onRefresh]
   );
 
   const handleRedemptionAwaitParent = useCallback(

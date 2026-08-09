@@ -79,7 +79,10 @@ export interface FirestoreChild {
   deviceType?: 'ios' | 'android';
   profilePicture?: string;
   nickname?: string;
-  /** @deprecated Prefer challenge.moneyGoals — kept for legacy child-accept flows. */
+  /**
+   * @deprecated v0.3 — not written; goals live on `challenge.moneyGoals`.
+   * May still exist on old child docs; ignore for reads.
+   */
   moneyGoals?: string[];
   /** Behavior changes from onboarding (1–2). */
   changes?: string[];
@@ -196,31 +199,6 @@ export interface FirestoreDailyUpload {
     timeUsed: number;
     icon?: string;
   }>;
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
-}
-
-export interface FirestoreNotification {
-  id: string; // Document ID
-  parentId: string; // Reference to users collection
-  type: 'upload_success' | 'upload_exceeded' | 'reminder_approval' | 'missing_report';
-  title: string;
-  message: string;
-  timestamp: string; // ISO timestamp
-  read: boolean;
-  dayDate?: string; // Format: "DD/MM"
-  dayName?: string; // Hebrew day name
-  relatedUploadId?: string; // Optional reference (legacy)
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
-}
-
-export interface FirestoreSession {
-  id: string; // Document ID
-  userId: string; // Reference to users collection (Firebase Auth UID)
-  loginTime: string; // ISO timestamp
-  expiresAt: string; // ISO timestamp
-  lastActivity: string; // ISO timestamp
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }

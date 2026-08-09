@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { TrackAnalyticsEvent } from '@/components/analytics/TrackAnalyticsEvent';
 import { SignupChildInviteHeroBlock } from '@/components/onboarding/signup/SignupChildInviteHeroBlock';
 import {
   SignupCopyLinkIcon,
@@ -20,6 +21,7 @@ import {
 import { getBondingChildUrl } from '@/lib/onboarding/bondingInvite';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
 import { buildWhatsAppChildInviteMessage } from '@/lib/share/whatsapp';
+import { AnalyticsEvents } from '@/utils/analytics';
 import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 function getParentGenderForMessage(): 'female' | 'male' {
@@ -139,6 +141,7 @@ export function SignupChildInviteShareStep({
 
   const body = (
     <>
+      <TrackAnalyticsEvent event={AnalyticsEvents.CHILD_INVITE_LINK} />
       <div
         className="flex w-full flex-col items-stretch"
         style={{ gap: SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX }}

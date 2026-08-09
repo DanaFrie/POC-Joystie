@@ -185,30 +185,6 @@ service cloud.firestore {
 
     // (daily_uploads removed – week data is stored in challenge.weekUploads)
 
-    
-
-    // Notifications collection - users can read/write their own notifications
-
-    match /notifications/{notificationId} {
-
-      allow read, write: if isAuthenticated() && 
-
-        (resource == null || resource.data.parentId == request.auth.uid);
-
-    }
-
-    
-
-    // Sessions collection - users can read/write their own sessions
-
-    match /sessions/{sessionId} {
-
-      allow read, write: if isAuthenticated() && 
-
-        (resource == null || resource.data.userId == request.auth.uid);
-
-    }
-
     match /bonding_invites/{inviteId} {
       allow read: if isAuthenticated() &&
         (resource == null || resource.data.parentId == request.auth.uid);

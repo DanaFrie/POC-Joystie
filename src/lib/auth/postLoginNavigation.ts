@@ -14,6 +14,7 @@ import {
   hydrateOnboardingChildrenFromChildrenDocs,
   hydrateOnboardingChildrenFromUser,
 } from '@/lib/onboarding/hydrateChildrenFromUser';
+import { getOnboardingChildrenDetails } from '@/lib/onboarding/childrenDetails';
 import {
   markOnboardingAccountCreated,
   syncFunnelKidsAgesToUser,
@@ -26,10 +27,9 @@ const logger = createContextLogger('PostLoginNavigation');
 
 export type NavigateAfterLoginOptions = {
   /**
-   * `signup_existing` — user hit sign-up with an existing email (login note).
-   * Clears local funnel drafts before hydrating so signup-in-progress kids
-   * do not overwrite Firestore / legacy children — except v02_legacy, which
-   * keeps funnel kidsAges and continues onboarding.
+   * `signup_existing` — user hit sign-up with an existing account.
+   * Mid onboarding: funnel kids overwrite Firestore and resume at איך זה עובד.
+   * Complete (dashboard): keep Firestore/children as-is — do not overwrite done kids.
    */
   source?: 'login' | 'signup_existing' | 'onboarding_gate';
 };
@@ -101,15 +101,40 @@ export async function resolveAuthenticatedUserDestination(
   let kind = classifyUserOnboarding(user, { children });
   let resolvedUser = user;
 
-  // Clear funnel drafts for signup-existing except v02_legacy (keep + store kidsAges).
-  if (isSignupExisting && kind !== 'v02_legacy') {
-    clearOnboardingChildrenSession();
+  // Signup + existing Auth:
+  // - complete → never overwrite done kids / children (dashboard stays stable)
+  // - mid → write funnel kids to Firestore and resume at איך זה עובד
+  let appliedFunnelKids = false;
+  if (isSignupExisting) {
+    if (kind === 'complete') {
+      clearOnboardingChildrenSession();
+    } else {
+      const funnelKids = getOnboardingChildrenDetails();
+      if (funnelKids?.length) {
+        try {
+          const kidsAges = await syncFunnelKidsAgesToUser(user.id);
+          if (kidsAges?.length) {
+            resolvedUser = { ...user, kidsAges, termsAccepted: true };
+            appliedFunnelKids = true;
+            kind = classifyUserOnboarding(resolvedUser, { children });
+            logger.log('signup_existing mid — synced funnel kidsAges', {
+              uid: user.id,
+              kidsCount: kidsAges.length,
+              kind,
+            });
+          }
+        } catch (error) {
+          logger.warn('Could not sync funnel kidsAges for signup_existing', error);
+        }
+      } else if (kind !== 'v02_legacy') {
+        clearOnboardingChildrenSession();
+      }
+    }
   }
 
   if (kind === 'complete') {
     const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
     if (!hydrated) {
-      // Firestore has no kidsAges — do not keep stale funnel drafts.
       clearOnboardingChildrenSession();
       if (children?.length) {
         hydrateOnboardingChildrenFromChildrenDocs(children);
@@ -119,44 +144,56 @@ export async function resolveAuthenticatedUserDestination(
     return { path: '/dashboard', kind, user: resolvedUser };
   }
 
-  if (kind === 'v03_resume') {
-    // Firestore kidsAges are canonical for v0.3 resume.
-    clearOnboardingChildrenSession();
-    hydrateOnboardingChildrenFromUser(resolvedUser);
-    prepareOnboardingIntroReturn('v03_resume');
-    return { path: '/onboarding', kind, user: resolvedUser };
+  if (kind === 'v03_resume' || (isSignupExisting && appliedFunnelKids)) {
+    if (!appliedFunnelKids) {
+      clearOnboardingChildrenSession();
+      hydrateOnboardingChildrenFromUser(resolvedUser);
+    } else {
+      hydrateOnboardingChildrenFromUser(resolvedUser);
+    }
+    // Mid signup-existing with new kids → איך זה עובד (pick child later).
+    prepareOnboardingIntroReturn(
+      appliedFunnelKids || kind === 'v03_resume' ? 'v03_resume' : kind
+    );
+    return {
+      path: '/onboarding',
+      kind: appliedFunnelKids ? 'v03_resume' : kind,
+      user: resolvedUser,
+    };
   }
 
   if (kind === 'v02_legacy') {
     if (source === 'login') {
-      // No v0.3 kidsAges yet — start kids collection (do not auto-migrate to dashboard).
       clearOnboardingChildrenSession();
       prepareV02LegacyKidsCollectionStart();
       return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
     }
 
     if (source === 'signup_existing') {
-      // Keep funnel kidsAges, write v0.3 shape to Firestore, continue onboarding.
-      try {
-        const kidsAges = await syncFunnelKidsAgesToUser(user.id);
-        if (kidsAges?.length) {
-          resolvedUser = { ...user, kidsAges };
+      if (!appliedFunnelKids) {
+        try {
+          const kidsAges = await syncFunnelKidsAgesToUser(user.id);
+          if (kidsAges?.length) {
+            resolvedUser = { ...user, kidsAges };
+          }
+        } catch (error) {
+          logger.warn('Could not sync funnel kidsAges for v02 signup resume', error);
         }
-      } catch (error) {
-        logger.warn('Could not sync funnel kidsAges for v02 signup resume', error);
       }
       prepareOnboardingIntroReturn('v02_legacy');
       return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
     }
 
-    // onboarding_gate — stay in funnel; do not force dashboard migration.
     setResumeKind('v02_legacy');
     return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
   }
 
   // fresh — Auth/Firestore with no kids payload.
-  // Login / signup-existing: clear stale local drafts (Firestore empty = empty).
-  // Onboarding gate: keep in-progress funnel kids (user may still be filling the form).
+  if (appliedFunnelKids) {
+    prepareOnboardingIntroReturn('v03_resume');
+    return { path: '/onboarding', kind: 'v03_resume', user: resolvedUser };
+  }
+
   if (source === 'login' || source === 'signup_existing') {
     clearOnboardingChildrenSession();
     prepareFreshOnboardingEntry();

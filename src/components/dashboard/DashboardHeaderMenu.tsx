@@ -45,7 +45,7 @@ export function DashboardHeaderMenu({ variant = 'parent' }: DashboardHeaderMenuP
       logger.error('Error signing out:', error);
     }
     clearSession();
-    router.push('/');
+    router.push('/login');
     setOpen(false);
   };
 

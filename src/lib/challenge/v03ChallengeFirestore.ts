@@ -6,7 +6,6 @@ import {
   updateChallenge,
   updateWeeklyUpload,
 } from '@/lib/api/challenges';
-import { updateChild } from '@/lib/api/children';
 import type { ChildChallengeSetupResult } from '@/components/dashboard/challenge/ChildChallengeSetupOverlay';
 import type { ChildRedemptionFlowResult } from '@/components/dashboard/challenge/ChildRedemptionOverlay';
 import type { ParentChallengeSetupResult } from '@/components/dashboard/challenge/ParentChallengeSetupOverlay';
@@ -62,11 +61,13 @@ export async function persistParentChallengeSetup(
   };
 
   let challengeId: string;
+  let created = false;
   if (existing) {
     await updateChallenge(existing.id, payload);
     challengeId = existing.id;
   } else {
     challengeId = await createChallenge(payload);
+    created = true;
   }
 
   // Refresh parent-facing child share URL with this challenge id (30-day token).
@@ -79,6 +80,19 @@ export async function persistParentChallengeSetup(
     // non-critical
   }
 
+  if (created) {
+    try {
+      const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
+      await logEventOnce(
+        `challenge_created:${challengeId}`,
+        AnalyticsEvents.CHALLENGE_CREATED,
+        { week_number: weekNumber }
+      );
+    } catch {
+      // non-critical
+    }
+  }
+
   invalidateDashboardCache(parentId);
   return challengeId;
 }
@@ -86,7 +100,6 @@ export async function persistParentChallengeSetup(
 /** Child accepts deal — money goals live on the challenge (week-scoped). */
 export async function persistChildChallengeAccept(
   parentId: string,
-  childId: string,
   result: ChildChallengeSetupResult
 ): Promise<void> {
   const goals = [
@@ -95,14 +108,13 @@ export async function persistChildChallengeAccept(
   ];
 
   const active = await getActiveChallenge(parentId, false);
-  if (active) {
-    await updateChallenge(active.id, {
-      moneyGoals: goals,
-    });
-  } else {
-    // Fallback for legacy flows that still expect child.moneyGoals
-    await updateChild(childId, { moneyGoals: goals }, parentId);
+  if (!active) {
+    throw new Error('אין דיל פעיל לשמירת מטרות.');
   }
+
+  await updateChallenge(active.id, {
+    moneyGoals: goals,
+  });
 
   invalidateDashboardCache(parentId);
 }

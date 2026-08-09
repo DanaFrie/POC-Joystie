@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PaymentCheckoutFailureScreen } from '@/components/billing/PaymentCheckoutFailureScreen';
 import { PaymentCheckoutSuccessFlow } from '@/components/billing/PaymentCheckoutSuccessFlow';
@@ -23,6 +23,7 @@ export default function SubscriptionPaySuccessPage() {
   const { uid, ready } = useRequireAuth();
   const { status, challengeUnlocked, loading } = useUserSubscription(ready ? uid : null);
   const [timedOut, setTimedOut] = useState(false);
+  const trialTrackedRef = useRef(false);
 
   const subscriptionReady = status === 'trialing' || challengeUnlocked;
 
@@ -35,8 +36,23 @@ export default function SubscriptionPaySuccessPage() {
 
   useEffect(() => {
     if (!ready || loading || !subscriptionReady) return;
+
+    if (!trialTrackedRef.current) {
+      trialTrackedRef.current = true;
+      void import('@/utils/meta-pixel').then(({ trackMetaTrialStarted }) => {
+        trackMetaTrialStarted({ content_name: 'cardcom_trial_30d' });
+      });
+      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+        void logEventOnce(
+          `trial_payment_success:${uid ?? 'anon'}`,
+          AnalyticsEvents.TRIAL_PAYMENT_SUCCESS,
+          { provider: 'cardcom' }
+        );
+      });
+    }
+
     router.replace(DASHBOARD_CHALLENGE_SETUP_PATH);
-  }, [ready, loading, subscriptionReady, router]);
+  }, [ready, loading, subscriptionReady, router, uid]);
 
   if (timedOut && !subscriptionReady) {
     return (

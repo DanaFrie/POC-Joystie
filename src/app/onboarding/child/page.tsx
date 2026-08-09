@@ -21,7 +21,7 @@ function OnboardingChildPageInner() {
     return (
       <ChildInvalidInviteStep
         title="הקישור לא תקין"
-        detail="בקשו מההורה לשלוח שוב את הלינק. לבדיקה מקומית השתמשו ב־http://localhost:3000 (לא https)."
+        detail="בקשו מההורה לשלוח את הלינק פעם נוספת"
       />
     );
   }
@@ -30,7 +30,7 @@ function OnboardingChildPageInner() {
     return (
       <ChildInvalidInviteStep
         title="הקישור פג תוקף"
-        detail="בקשו מההורה לשלוח הזמנה חדשה מהמסך שלו."
+        detail="בקשו מההורה לשלוח את הלינק פעם נוספת"
       />
     );
   }
@@ -39,7 +39,7 @@ function OnboardingChildPageInner() {
     return (
       <ChildInvalidInviteStep
         title="הקישור לא תקין"
-        detail="בקשו מההורה לשלוח שוב את הלינק."
+        detail="בקשו מההורה לשלוח את הלינק פעם נוספת"
       />
     );
   }

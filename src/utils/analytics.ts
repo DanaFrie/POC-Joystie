@@ -1,6 +1,6 @@
 /**
- * Firebase Analytics utility
- * Provides easy-to-use functions for tracking events in Google Analytics
+ * Firebase Analytics — intgr + prod (client-only).
+ * Custom events for the v0.3 funnel + dashboard milestones.
  */
 
 import type { Analytics } from 'firebase/analytics';
@@ -8,32 +8,24 @@ import type { Analytics } from 'firebase/analytics';
 let analyticsInstance: Analytics | null = null;
 let initPromise: Promise<Analytics | null> | null = null;
 
-/**
- * Initialize Firebase Analytics (client-side only)
- */
 async function getAnalytics(): Promise<Analytics | null> {
-  // Only initialize on client side
   if (typeof window === 'undefined') {
     return null;
   }
 
-  // Return existing instance if already initialized
   if (analyticsInstance) {
     return analyticsInstance;
   }
 
-  // Return existing promise if initialization is in progress
   if (initPromise) {
     return initPromise;
   }
 
-  // Initialize Analytics
   initPromise = (async () => {
     try {
       const { getAnalytics, isSupported } = await import('firebase/analytics');
       const { getFirebaseApp } = await import('@/lib/firebase');
-      
-      // Check if Analytics is supported (requires browser environment)
+
       const supported = await isSupported();
       if (!supported) {
         console.warn('[Analytics] Analytics not supported in this environment');
@@ -42,7 +34,6 @@ async function getAnalytics(): Promise<Analytics | null> {
 
       const app = await getFirebaseApp();
       analyticsInstance = getAnalytics(app);
-      
       return analyticsInstance;
     } catch (error) {
       console.error('[Analytics] Initialization error:', error);
@@ -53,19 +44,14 @@ async function getAnalytics(): Promise<Analytics | null> {
   return initPromise;
 }
 
-/**
- * Log an event to Firebase Analytics
- * @param eventName - Name of the event (e.g., 'signup', 'upload_submitted')
- * @param eventParams - Optional parameters for the event
- */
+/** Log an event to Firebase Analytics (GA4 via Firebase). */
 export async function logEvent(
   eventName: string,
-  eventParams?: Record<string, any>
+  eventParams?: Record<string, string | number | boolean>
 ): Promise<void> {
   try {
     const analytics = await getAnalytics();
     if (!analytics) {
-      // Analytics not available - silently fail (e.g., in SSR or unsupported environment)
       console.warn('[Analytics] Analytics not available, skipping event:', eventName);
       return;
     }
@@ -73,42 +59,38 @@ export async function logEvent(
     const { logEvent: firebaseLogEvent } = await import('firebase/analytics');
     firebaseLogEvent(analytics, eventName, eventParams);
   } catch (error) {
-    // Log error but don't break the app
-    console.error('[Analytics] ❌ Error logging event:', {
+    console.error('[Analytics] Error logging event:', {
       eventName,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
 
 /**
- * Set user properties for analytics
- * @param properties - User properties to set
+ * Fire at most once per browser tab session (avoids Strict Mode / remount doubles).
+ * `onceKey` should be unique per logical conversion (e.g. `game_win:parent`).
  */
-export async function setUserProperties(properties: Record<string, string>): Promise<void> {
+export async function logEventOnce(
+  onceKey: string,
+  eventName: string,
+  eventParams?: Record<string, string | number | boolean>
+): Promise<void> {
+  if (typeof window === 'undefined') return;
+  const storageKey = `joystie_analytics_once:${onceKey}`;
   try {
-    const analytics = await getAnalytics();
-    if (!analytics) {
-      return;
-    }
-
-    const { setUserProperties: firebaseSetUserProperties } = await import('firebase/analytics');
-    firebaseSetUserProperties(analytics, properties);
-  } catch (error) {
-    console.error('[Analytics] Error setting user properties:', error);
+    if (sessionStorage.getItem(storageKey)) return;
+    sessionStorage.setItem(storageKey, '1');
+  } catch {
+    // private mode / blocked storage — still attempt to log
   }
+  await logEvent(eventName, eventParams);
 }
 
-/**
- * Set user ID for analytics
- * @param userId - User ID to set
- */
+/** Set Firebase Analytics user ID (after auth). */
 export async function setUserId(userId: string | null): Promise<void> {
   try {
     const analytics = await getAnalytics();
-    if (!analytics) {
-      return;
-    }
+    if (!analytics) return;
 
     const { setUserId: firebaseSetUserId } = await import('firebase/analytics');
     firebaseSetUserId(analytics, userId);
@@ -117,21 +99,21 @@ export async function setUserId(userId: string | null): Promise<void> {
   }
 }
 
-/**
- * Predefined event names for common actions
- */
+/** Canonical funnel + dashboard event names (intgr + prod). */
 export const AnalyticsEvents = {
-  // Authentication
+  LANDING_MARKETING: 'landing_marketing',
+  LANDING_ONBOARDING: 'landing_onboarding',
   SIGNUP: 'signup',
-  
-  // Challenge
+  CHILD_INVITE_LINK: 'child_invite_link',
+  GAME_START: 'game_start',
+  GAME_WIN: 'game_win',
+  AGREEMENT_DONE: 'agreement_done',
+  /** Child selfie mission done — marks joint onboarding accomplished. */
+  SELFIE_DONE: 'selfie_done',
+  DASHBOARD_REACHED: 'dashboard_reached',
+  TRIAL_PAYMENT_SUCCESS: 'trial_payment_success',
   CHALLENGE_CREATED: 'challenge_created',
-  CHALLENGE_DEACTIVATED: 'challenge_deactivated', // isActive changed from true to false
-  
-  // Upload
-  UPLOAD_SUBMITTED: 'upload_submitted',
-  
-  // Navigation
-  HOME_PAGE_VIEW: 'home_page_view', // Entry to home page
 } as const;
 
+export type AnalyticsEventName =
+  (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

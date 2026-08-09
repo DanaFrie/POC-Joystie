@@ -52,7 +52,15 @@ export function SignupTermsConsent({
               className="underline decoration-solid underline-offset-2"
               onClick={(e) => e.stopPropagation()}
             >
-              תנאי השימוש, מדיניות הפרטיות
+              תנאי השימוש
+            </Link>
+            ,{' '}
+            <Link
+              href="/privacy"
+              className="underline decoration-solid underline-offset-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              מדיניות הפרטיות
             </Link>
           </span>
         </button>

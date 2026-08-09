@@ -2,8 +2,6 @@
 
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
 import {
-  getOnboardingParentExternalUrl,
-  isRestrictedOAuthEnvironment,
   IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 
@@ -51,8 +49,6 @@ export function SignupIntroSection({
   oauthDisabled = false,
   oauthLoading = null,
 }: SignupIntroSectionProps) {
-  const oauthBlocked = isRestrictedOAuthEnvironment();
-
   return (
     <div className="flex w-full flex-col items-stretch gap-4 v03-funnel-enter-1">
       <div className="flex w-full flex-col items-end">
@@ -66,26 +62,12 @@ export function SignupIntroSection({
         </p>
       </div>
 
-      {oauthBlocked ? (
-        <div className="w-full rounded-[18px] border border-amber-300/40 bg-amber-400/10 px-4 py-3 text-center font-simpler text-sm leading-[1.4] text-amber-100">
-          <p>התחברות עם Google או Apple לא עובדת מתוך Cursor.</p>
-          <a
-            href={getOnboardingParentExternalUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-block font-bold text-white underline"
-          >
-            פתחו ב-Chrome / Safari
-          </a>
-        </div>
-      ) : null}
-
       <div className="flex w-full flex-col items-stretch gap-3">
         <OAuthButton
           label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
           icon={<GoogleIcon />}
           onClick={onOAuthGoogle}
-          disabled={oauthDisabled || oauthLoading !== null || oauthBlocked}
+          disabled={oauthDisabled || oauthLoading !== null}
         />
         <OAuthButton
           label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
@@ -94,8 +76,7 @@ export function SignupIntroSection({
           disabled={
             !IS_APPLE_OAUTH_ENABLED ||
             oauthDisabled ||
-            oauthLoading !== null ||
-            oauthBlocked
+            oauthLoading !== null
           }
         />
       </div>

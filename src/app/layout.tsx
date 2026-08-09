@@ -4,7 +4,6 @@ import Script from 'next/script'
 import { Heebo } from 'next/font/google'
 import { simplerPro } from '@/lib/fonts'
 import { isMetaPixelEnabled, META_PIXEL_ID } from '@/constants/meta-pixel'
-import ConditionalNavigation from '@/components/ui/ConditionalNavigation'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
 
@@ -44,7 +43,6 @@ fbq('init', '${META_PIXEL_ID}');
         ) : null}
         <div className="relative min-h-screen">
           <ScrollToTop />
-          <ConditionalNavigation />
           <ConditionalMainWrapper>
             {children}
           </ConditionalMainWrapper>

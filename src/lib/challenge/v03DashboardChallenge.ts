@@ -4,7 +4,7 @@ import {
   roundMoney,
 } from '@/lib/challenge/v03ChallengeMath';
 import { V03_CHALLENGE_DEFAULT_DAILY_HOURS } from '@/constants/v03-challenge';
-import type { Challenge, Child, DashboardState } from '@/types/dashboard';
+import type { Challenge, DashboardState } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 
 export function deriveHourlyRate(
@@ -24,11 +24,9 @@ export function deriveWeeklyBudget(challenge: Pick<Challenge, 'selectedBudget' |
 }
 
 export function isChildDealSetupComplete(
-  child: Child,
   challenge?: Pick<Challenge, 'moneyGoals'> | null
 ): boolean {
-  if (challenge?.moneyGoals && challenge.moneyGoals.length > 0) return true;
-  return Boolean(child.moneyGoals && child.moneyGoals.length > 0);
+  return Boolean(challenge?.moneyGoals && challenge.moneyGoals.length > 0);
 }
 
 export function isChallengeStarted(challenge: Challenge): boolean {
@@ -43,14 +41,13 @@ export function isChallengeStarted(challenge: Challenge): boolean {
 export function isV03DealLive(
   challengeEnabled: boolean,
   challenge: Challenge,
-  child: Child,
   _challengeNotStarted?: boolean
 ): boolean {
   if (!challengeEnabled) return false;
   if (!challenge.isActive) return false;
   // Deal values (card / conversion / countdown) go live once the child confirms —
   // even if the calendar start date is still in the future.
-  if (!isChildDealSetupComplete(child, challenge)) return false;
+  if (!isChildDealSetupComplete(challenge)) return false;
   return deriveWeeklyBudget(challenge) > 0;
 }
 
@@ -73,23 +70,21 @@ export function canOpenParentChallengeSetup(
 export function canOpenChildChallengeSetup(
   challengeEnabled: boolean,
   challenge: Challenge,
-  child: Child,
   noChallengeExists: boolean,
   _challengeNotStarted?: boolean
 ): boolean {
   if (!challengeEnabled || noChallengeExists) return false;
   if (!challenge.isActive) return false;
-  return !isChildDealSetupComplete(child, challenge);
+  return !isChildDealSetupComplete(challenge);
 }
 
 export function canOpenChildRedemption(
   challengeEnabled: boolean,
   challenge: Challenge,
-  child: Child,
   weeklyUpload?: WeeklyUpload | null,
   now: Date = new Date()
 ): boolean {
-  if (!isV03DealLive(challengeEnabled, challenge, child)) return false;
+  if (!isV03DealLive(challengeEnabled, challenge)) return false;
   if (!challenge.startDate) return false;
   if (!isRedemptionOpen(new Date(challenge.startDate), now)) return false;
   if (weeklyUpload?.status === 'approved') return false;

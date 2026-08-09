@@ -117,6 +117,9 @@ export async function updateUser(
       ...updates,
       updatedAt: new Date().toISOString(),
     });
+
+    const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+    dataCache.invalidate(cacheKeys.user(userId));
   } catch (error) {
     logger.error('Error updating user:', error);
     throw new Error('שגיאה בעדכון נתוני המשתמש.');

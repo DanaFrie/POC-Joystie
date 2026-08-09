@@ -18,6 +18,7 @@ export default function ConditionalMainWrapper({
     pathname === '/login' ||
     pathname?.startsWith('/login/') ||
     pathname === '/terms' ||
+    pathname === '/privacy' ||
     pathname === '/help' ||
     pathname === '/dashboard' ||
     pathname?.startsWith('/dashboard/');

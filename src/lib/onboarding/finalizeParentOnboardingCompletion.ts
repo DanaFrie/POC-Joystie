@@ -256,5 +256,12 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
         }),
   });
 
+  try {
+    const { trackMetaOnboardingComplete } = await import('@/utils/meta-pixel');
+    trackMetaOnboardingComplete({ content_name: 'parent_onboarding_complete' });
+  } catch (error) {
+    logger.warn('Meta onboarding-complete tracking failed:', error);
+  }
+
   return { childId: child.id };
 }

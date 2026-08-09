@@ -6,24 +6,36 @@ import {
   classifyUserOnboarding,
   type UserOnboardingRouteKind,
 } from '@/lib/auth/userOnboardingStatus';
+import type { FirestoreUser } from '@/types/firestore';
 import { getOAuthUserEmail } from '@/utils/auth-oauth';
 
 export type SignupEmailAccountStatus = 'new' | 'incomplete' | 'complete' | 'legacy';
 
-/** Whether a Joystie profile exists for login / resume-signup routing. */
+/**
+ * Stub from `authOnUserCreated` is not enough — login OAuth must only succeed
+ * after a real Joystie signup (terms / kids / finished onboarding).
+ */
+export function hasJoystieSignupEvidence(
+  user: Pick<
+    FirestoreUser,
+    'termsAccepted' | 'onboarding' | 'kidsAges' | 'primaryChildId'
+  >
+): boolean {
+  if (user.termsAccepted === true) return true;
+  if (user.onboarding === true) return true;
+  if (Boolean(user.primaryChildId?.trim())) return true;
+  if (Array.isArray(user.kidsAges) && user.kidsAges.length > 0) return true;
+  return false;
+}
+
+/** Whether this Auth uid completed Joystie signup (not Auth stub only). */
 export async function isRegisteredJoystieAccount(
   uid: string,
-  email?: string | null
+  _email?: string | null
 ): Promise<boolean> {
-  const byUid = await getUser(uid, true);
-  if (byUid) return true;
-
-  const normalized = email?.trim().toLowerCase();
-  if (normalized) {
-    const byEmail = await getUserByEmail(normalized);
-    if (byEmail) return true;
-  }
-
+  // Prefer fresh read — cache can keep a deleted/recreated Auth uid looking registered.
+  const byUid = await getUser(uid, false);
+  if (byUid && hasJoystieSignupEvidence(byUid)) return true;
   return false;
 }
 

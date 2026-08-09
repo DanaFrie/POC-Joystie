@@ -21,7 +21,7 @@ import {
 import { ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
 import type { UserKidAgeScreenTime } from '@/types/firestore';
 import { createSession } from '@/utils/session';
-import { trackMetaCompleteRegistration } from '@/utils/meta-pixel';
+import { trackMetaSignupSuccess } from '@/utils/meta-pixel';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('OnboardingSignupPersist');
@@ -222,17 +222,16 @@ export async function persistOnboardingAccountAfterAuth(params: {
   markOnboardingAccountCreated();
 
   try {
-    trackMetaCompleteRegistration({ content_name: 'onboarding_signup' });
+    trackMetaSignupSuccess({ content_name: 'onboarding_signup' });
   } catch (error) {
     logger.warn('Meta tracking failed:', error);
   }
 
   try {
-    const { logEvent, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
+    const { logEventOnce, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
     await setUserId(uid);
-    await logEvent(AnalyticsEvents.SIGNUP, {
-      user_id: uid,
-      email: normalizedEmail,
+    await logEventOnce(`signup:${uid}`, AnalyticsEvents.SIGNUP, {
+      method: 'onboarding',
     });
   } catch (error) {
     logger.warn('Signup analytics failed:', error);
@@ -243,7 +242,7 @@ export async function persistOnboardingAccountAfterAuth(params: {
 
 /**
  * Write funnel session kidsAges (v0.3 shape) onto an existing Firestore user.
- * Used when a v0.2-legacy account continues through signup with kids already filled.
+ * Also mirrors kidsAges onto existing `children` docs so dashboard UI matches.
  */
 export async function syncFunnelKidsAgesToUser(
   uid: string
@@ -260,5 +259,40 @@ export async function syncFunnelKidsAgesToUser(
 
   saveFunnelChildrenToSession(children, screenTimes ?? []);
   await updateUser(uid, { kidsAges, termsAccepted: true });
+
+  try {
+    const { getChildrenByParent, updateChild } = await import('@/lib/api/children');
+    const childDocs = await getChildrenByParent(uid);
+    if (childDocs.length) {
+      const user = await getUser(uid, false);
+      const ordered = [...childDocs];
+      if (user?.primaryChildId) {
+        ordered.sort((a, b) => {
+          if (a.id === user.primaryChildId) return -1;
+          if (b.id === user.primaryChildId) return 1;
+          return 0;
+        });
+      }
+      const limit = Math.min(ordered.length, kidsAges.length);
+      for (let i = 0; i < limit; i++) {
+        const kid = kidsAges[i];
+        await updateChild(
+          ordered[i].id,
+          {
+            name: kid.name?.trim() || ordered[i].name,
+            age: String(kid.age ?? ordered[i].age ?? ''),
+            gender: kid.gender === 'girl' ? 'girl' : 'boy',
+            ...(typeof kid.dailyScreenTimeHours === 'number'
+              ? { baselineDailyMinutes: Math.round(kid.dailyScreenTimeHours * 60) }
+              : {}),
+          },
+          uid
+        );
+      }
+    }
+  } catch (error) {
+    logger.warn('Could not mirror kidsAges onto children docs', error);
+  }
+
   return kidsAges;
 }

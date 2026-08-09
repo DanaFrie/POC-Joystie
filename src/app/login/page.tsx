@@ -14,7 +14,7 @@ import {
   rejectUnknownOAuthLogin,
 } from '@/lib/auth/rejectUnknownOAuthLogin';
 import { beginOnboardingSignupFromLogin } from '@/lib/onboarding/parentFlowSession';
-import { getErrorMessage } from '@/utils/errors';
+import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
 import { createContextLogger } from '@/utils/logger';
 import { clearOAuthSessionFlags, isOAuthRedirectRecoverable } from '@/lib/onboarding/oauthSession';
 import {
@@ -167,7 +167,7 @@ function LoginPageContent() {
         await handleOAuthLoginResult(result);
       } catch (error) {
         logger.error('OAuth redirect login error:', error);
-        setLoginError(getErrorMessage(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
+        setLoginError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
       } finally {
         setIsSubmitting(false);
       }
@@ -235,7 +235,7 @@ function LoginPageContent() {
       await completeOAuthLogin(firebaseUser.uid);
     } catch (error) {
       logger.error('Login error:', error);
-      const errorMessage = getErrorMessage(error);
+      const errorMessage = getAuthErrorFromUnknown(error);
       setLoginError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
       setIsSubmitting(false);
     }
@@ -275,7 +275,7 @@ function LoginPageContent() {
       await handleOAuthLoginResult(result);
     } catch (error) {
       logger.error('OAuth login error:', error);
-      setLoginError(getErrorMessage(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
+      setLoginError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
     } finally {
       setOauthLoading(null);
       clearOAuthSessionFlags();

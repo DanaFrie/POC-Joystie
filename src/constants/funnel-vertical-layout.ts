@@ -1,5 +1,3 @@
-import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
-
 /**
  * Shared vertical layout tokens for funnel foreground stacks (100% height + auto gaps).
  * Figma values @ 812px canvas = max; flex distributes below that on short viewports.
@@ -31,13 +29,6 @@ export const FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX = 32;
 
 /** Login link row approximate height. */
 export const FUNNEL_FOOTER_LOGIN_ROW_H_PX = 22;
-
-/** Legacy stacked footer shell top @ 812 — reference only during migration. */
-export const FUNNEL_LEGACY_FOOTER_SHELL_TOP_PX = 690;
-
-/** Canvas space from legacy footer button top to canvas bottom. */
-export const FUNNEL_LEGACY_FOOTER_RESERVE_PX =
-  V03_SCREEN_HEIGHT - (FUNNEL_LEGACY_FOOTER_SHELL_TOP_PX + FUNNEL_FOOTER_SHELL_PAD_TOP_PX);
 
 /** Stacked footer shell height — pad + CTA + gaps + home-indicator spacer (+ optional login row). */
 export function getFunnelStackedFooterShellHeightPx(options?: {

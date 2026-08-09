@@ -335,18 +335,10 @@
   --shadow: rgba(0, 0, 0, 0.25);
 }
 
-/* Root layout body — v0.2 background only on routes that opt in via .layout-v02-bg */
+/* Root layout body */
 body.layout-root {
   background-color: var(--primary-bg);
   scroll-behavior: smooth;
-}
-
-body.layout-root.layout-v02-bg {
-  background-image: url(/background.png);
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
 }
 
 /* v0.3 onboarding funnel: full viewport from SSR (.v03-funnel-root in layout) */
@@ -626,50 +618,6 @@ html.layout-root:not(:has(.v03-landing-root)) {
 html[dir="rtl"] {
   direction: rtl;
   text-align: right;
-}
-
-/* Typography Classes */
-.heading-large {
-  @apply font-montserrat font-bold text-2xl leading-tight;
-}
-
-.heading-medium {
-  @apply font-montserrat font-semibold text-base leading-snug;
-}
-
-.body-text {
-  @apply font-varela text-sm leading-normal;
-}
-
-.small-text {
-  @apply font-varela text-xs leading-tight;
-}
-
-/* Landing Page Styles */
-/* Brand colors */
-.bg-joystie-blue { background-color: #BBE9FD; }
-.bg-joystie-lime { background-color: #E6F19A; }
-.bg-joystie-dark { background-color: #273143; }
-.text-joystie-dark { color: #273143; }
-.text-joystie-blue { color: #BBE9FD; }
-.text-joystie-lime { color: #E6F19A; }
-
-/* Gradient background */
-.gradient-bg {
-  background: linear-gradient(145deg, #BBE9FD 0%, #E6F19A 100%);
-  background-attachment: fixed;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-size: cover;
-  position: relative;
-}
-
-/* Fix gradient position on mobile devices */
-@media (max-width: 768px) {
-  .gradient-bg {
-    background-attachment: scroll;
-    background-position: center top;
-  }
 }
 
 /* Funnel grid — landing `.bg-grid` repeat, between green root and step content */

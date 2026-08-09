@@ -1,6 +1,6 @@
 // Dashboard Data API
 import { getActiveChallenge, getLatestChallenge } from './challenges';
-import { getUploadsByChallenge, getPendingApprovals } from './uploads';
+import { getUploadsByChallenge } from './uploads';
 import { getUser } from './users';
 import { getChild, ensureChildForParent } from './children';
 import { changeDayChecksToMatrix } from '@/lib/onboarding/changeDayChecks';
@@ -441,7 +441,6 @@ function buildBootstrapDashboardState(
       profilePicture: child.profilePicture || '',
       gender: child.gender,
       nickname: child.nickname,
-      moneyGoals: child.moneyGoals,
       changes: child.changes,
       changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
       baselineDailyMinutes: child.baselineDailyMinutes,
@@ -573,7 +572,6 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
         profilePicture: child.profilePicture || '',
         gender: child.gender,
         nickname: child.nickname,
-        moneyGoals: challenge.moneyGoals?.length ? challenge.moneyGoals : child.moneyGoals,
         changes: child.changes,
         changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
         baselineDailyMinutes: child.baselineDailyMinutes,
@@ -600,36 +598,4 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     throw new Error('שגיאה בטעינת נתוני הדשבורד.');
   }
 }
-
-/**
- * Get weekly data for a challenge
- */
-export async function getWeekData(challengeId: string, parentId?: string): Promise<FirestoreDailyUpload[]> {
-  try {
-    return await getUploadsByChallenge(challengeId, parentId);
-  } catch (error) {
-    logger.error('Error getting week data:', error);
-    throw new Error('שגיאה בטעינת נתוני השבוע.');
-  }
-}
-
-/**
- * Get today's upload data
- */
-export async function getTodayData(
-  challengeId: string,
-  date: string,
-  parentId?: string
-): Promise<FirestoreDailyUpload | null> {
-  try {
-    const { getUploadByDate } = await import('./uploads');
-    return await getUploadByDate(challengeId, date, parentId);
-  } catch (error) {
-    logger.error('Error getting today data:', error);
-    throw new Error('שגיאה בטעינת נתוני היום.');
-  }
-}
-
-// Re-export for convenience
-export { getUploadByDate } from './uploads';
 

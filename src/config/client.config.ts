@@ -9,19 +9,10 @@ export const clientConfig = {
     expirationDays: 30,
   },
 
-  // Session configuration
+  // Session configuration (localStorage — see utils/session.ts)
   session: {
     durationDays: 8,
     inactivityTimeoutMinutes: 48 * 60, // 48 hours
-  },
-
-  // Challenge configuration
-  challenge: {
-    totalWeeks: 4,
-    challengeDays: 6, // Sunday-Friday (6 days)
-    budgetDivision: 6, // Divide selectedBudget by this number to get dailyBudget
-    defaultDailyScreenTimeGoal: 3, // hours
-    defaultSelectedBudget: 100, // For simulation/testing
   },
 } as const;
 

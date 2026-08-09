@@ -94,12 +94,16 @@ import {
 } from '@/lib/onboarding/persistOnboardingAccount';
 import {
   clearOAuthSessionFlags,
+  clearOAuthTermsGateProvider,
   isFreshOAuthPending,
   isOAuthRedirectRecoverable,
+  markOAuthTermsGateProvider,
   markOnboardingTermsAccepted,
   purgeStaleOAuthSessionFlags,
   readOAuthPending,
   readOAuthProvider,
+  readOAuthTermsGateProvider,
+  readOnboardingTermsAccepted,
 } from '@/lib/onboarding/oauthSession';
 import { recoverOAuthRedirectSignIn } from '@/lib/onboarding/oauthRedirectRecovery';
 import { hydrateOnboardingChildrenFromUser } from '@/lib/onboarding/hydrateChildrenFromUser';
@@ -306,6 +310,9 @@ export function OnboardingParentFlow({
   const [oauthDialogOpen, setOauthDialogOpen] = useState<'google' | 'apple' | null>(
     null
   );
+  const [oauthTermsGateProvider, setOauthTermsGateProvider] = useState<
+    'google' | 'apple' | null
+  >(() => (typeof window === 'undefined' ? null : readOAuthTermsGateProvider()));
   const [oauthFinishing, setOauthFinishing] = useState<'google' | 'apple' | null>(
     () => {
       if (typeof window === 'undefined') return null;
@@ -500,7 +507,12 @@ export function OnboardingParentFlow({
           });
           clearOAuthSessionFlags();
           if (params.oauthProvider) {
-            goToSignupWelcome();
+            // Terms already accepted before OAuth popup when gate was used.
+            if (params.termsAccepted || readOnboardingTermsAccepted()) {
+              goToSignupIntro();
+            } else {
+              goToSignupWelcome();
+            }
           } else {
             goToSignupIntro();
           }
@@ -571,7 +583,11 @@ export function OnboardingParentFlow({
         authDomain: auth.app.options.authDomain,
       });
       if (params.oauthProvider) {
-        goToSignupWelcome();
+        if (params.termsAccepted || readOnboardingTermsAccepted()) {
+          goToSignupIntro();
+        } else {
+          goToSignupWelcome();
+        }
       } else {
         goToSignupIntro();
       }
@@ -784,15 +800,7 @@ export function OnboardingParentFlow({
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'apple') => {
-    if (provider === 'apple' && !IS_APPLE_OAUTH_ENABLED) {
-      return;
-    }
-    if (isRestrictedOAuthEnvironment()) {
-      logger.warn('OAuth blocked: restricted environment', { provider });
-      setErrors({ _general: getRestrictedOAuthMessage() });
-      return;
-    }
+  const runOAuthSignIn = async (provider: 'google' | 'apple') => {
     if (oauthPopupInFlightRef.current) return;
 
     setErrors({});
@@ -875,7 +883,7 @@ export function OnboardingParentFlow({
           result.displayName ||
           getOAuthUserDisplayName(result.user) ||
           undefined,
-        termsAccepted: values.termsAccepted,
+        termsAccepted: true,
         oauthProvider: provider,
       });
     } catch (error) {
@@ -906,6 +914,39 @@ export function OnboardingParentFlow({
         setOauthFinishing(null);
       }
     }
+  };
+
+  const handleOAuthTermsGateContinue = () => {
+    if (!oauthTermsAccepted) {
+      setOauthTermsError('אנא אשר את תנאי השימוש');
+      return;
+    }
+    const provider = oauthTermsGateProvider;
+    if (!provider) return;
+
+    setOauthTermsError('');
+    markOnboardingTermsAccepted();
+    setValues((prev) => ({ ...prev, termsAccepted: true }));
+    clearOAuthTermsGateProvider();
+    setOauthTermsGateProvider(null);
+    void runOAuthSignIn(provider);
+  };
+
+  /** Open terms sheet first; Google/Apple popup only after consent. */
+  const handleOAuth = async (provider: 'google' | 'apple') => {
+    if (provider === 'apple' && !IS_APPLE_OAUTH_ENABLED) {
+      return;
+    }
+    if (isRestrictedOAuthEnvironment()) {
+      logger.warn('OAuth blocked: restricted environment', { provider });
+      setErrors({ _general: getRestrictedOAuthMessage() });
+      return;
+    }
+    setErrors({});
+    setOauthTermsAccepted(false);
+    setOauthTermsError('');
+    markOAuthTermsGateProvider(provider);
+    setOauthTermsGateProvider(provider);
   };
 
   const handleRegister = async () => {
@@ -1467,12 +1508,25 @@ export function OnboardingParentFlow({
                 showLoginLink
                 overlay
                 blur={signupScrollOverflows}
-                disabled={isRegistering || oauthDialogOpen !== null}
+                disabled={
+                  isRegistering ||
+                  oauthDialogOpen !== null ||
+                  oauthTermsGateProvider !== null
+                }
+                errorMessage={errors._general}
                 onClick={handleRegister}
               >
                 {isRegistering ? 'נרשמים...' : 'הרשמה'}
               </FunnelStepFooter>
             </FunnelStepForeground>
+            {oauthTermsGateProvider ? (
+              <SignupOAuthTermsSheet
+                termsAccepted={oauthTermsAccepted}
+                onTermsAcceptedChange={handleOAuthTermsAcceptedChange}
+                termsError={oauthTermsError}
+                onContinue={handleOAuthTermsGateContinue}
+              />
+            ) : null}
           </FunnelStepRoot>
         </OnboardingFunnelStepSlot>
       </>

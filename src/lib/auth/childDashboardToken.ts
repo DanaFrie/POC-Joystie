@@ -27,13 +27,16 @@ export async function validateChildDashboardToken(
 ): Promise<ChildDashboardTokenAccess> {
   const decoded = decodeParentToken(token.trim());
   if (!decoded) {
-    return { isValid: false, error: 'כתובת לא תקינה' };
+    return {
+      isValid: false,
+      error: 'בקשו מההורה לשלוח את הלינק פעם נוספת',
+    };
   }
 
   if (decoded.isExpired) {
     return {
       isValid: false,
-      error: 'הקישור פג תוקף. בקש קישור חדש מההורה שלך.',
+      error: 'הקישור פג תוקף. בקשו מההורה לשלוח את הלינק פעם נוספת',
     };
   }
 

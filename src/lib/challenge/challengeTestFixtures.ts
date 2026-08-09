@@ -29,7 +29,6 @@ export function createChallengeTestDashboardState(
       profilePicture: '',
       gender: overrides?.childGender ?? 'boy',
       nickname: '',
-      moneyGoals: [],
     },
     challenge: {
       selectedBudget: weeklyBudget,

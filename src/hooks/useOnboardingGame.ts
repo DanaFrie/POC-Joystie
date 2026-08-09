@@ -77,6 +77,7 @@ export function useOnboardingGame({
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolveBusy, setResolveBusy] = useState(false);
   const wonNavigated = useRef(false);
+  const gameStartTracked = useRef(false);
   const parentWinHandled = useRef(false);
   const childWinHandled = useRef(false);
   const parentPublished = useRef(false);
@@ -262,6 +263,18 @@ export function useOnboardingGame({
       router.push('/onboarding/child');
     }
   }, [role, router]);
+
+  /** First transition to `playing` after countdown (not post-miss restarts). */
+  useEffect(() => {
+    if (!session.roomId || session.room?.phase !== 'playing') return;
+    if (gameStartTracked.current) return;
+    gameStartTracked.current = true;
+    void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+      void logEventOnce(`game_start:${role}:${session.roomId}`, AnalyticsEvents.GAME_START, {
+        role,
+      });
+    });
+  }, [session.room?.phase, session.roomId, role]);
 
   useEffect(() => {
     if (!session.room || !isGameWon(session.room)) return;

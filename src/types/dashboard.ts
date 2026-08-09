@@ -12,7 +12,6 @@ export interface Child {
   profilePicture: string;
   gender?: 'boy' | 'girl';
   nickname?: string;
-  moneyGoals?: string[];
   changes?: string[];
   changeDayChecks?: boolean[][];
   baselineDailyMinutes?: number;

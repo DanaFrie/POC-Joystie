@@ -1,5 +1,6 @@
 'use client';
 
+import { TrackAnalyticsEvent } from '@/components/analytics/TrackAnalyticsEvent';
 import { OnboardingCopy } from '@/components/onboarding/OnboardingCopy';
 import { OnboardingKingdomEllipsesBackdrop } from '@/components/onboarding/OnboardingKingdomEllipsesBackdrop';
 import { OnboardingLogo } from '@/components/onboarding/OnboardingLogo';
@@ -10,6 +11,7 @@ import {
   FunnelStepSection,
 } from '@/components/ui/funnel-layout';
 import { resetOnboardingParentFlowStart } from '@/lib/onboarding/parentFlowSession';
+import { AnalyticsEvents } from '@/utils/analytics';
 
 type OnboardingLandingProps = {
   onStart: () => void;
@@ -27,6 +29,7 @@ export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
 
   return (
     <FunnelStepRoot aria-label="Joystie onboarding landing" fitViewport>
+      <TrackAnalyticsEvent event={AnalyticsEvents.LANDING_ONBOARDING} />
       <OnboardingKingdomEllipsesBackdrop />
       <FunnelStepForeground distribution="between" padTopPx={0} padBottomPx={16} fitViewport>
         <FunnelStepSection>

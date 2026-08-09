@@ -19,6 +19,9 @@ function ParentGameInner() {
   const [postGamePhase, setPostGamePhase] = useState<ParentPostGamePhase>('game');
 
   const onParentGameWon = useCallback(() => {
+    void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+      void logEventOnce('game_win:parent', AnalyticsEvents.GAME_WIN, { role: 'parent' });
+    });
     setPostGamePhase('winFadeOut');
   }, []);
 

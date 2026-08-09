@@ -16,10 +16,10 @@ export type OAuthProviderId = 'google.com' | 'apple.com';
 export type OAuthProviderUiId = 'google' | 'apple';
 
 /**
- * Flip to `true` after Apple Developer / Firebase Sign in with Apple is fixed.
- * Keeps the button visible but disabled on login + signup.
+ * Apple Sign-In on login + signup. Requires Firebase Console Apple provider
+ * + Apple Developer Services ID / key configured for the project.
  */
-export const IS_APPLE_OAUTH_ENABLED = false;
+export const IS_APPLE_OAUTH_ENABLED = true;
 
 export type OAuthSignInResult =
   | { ok: true; user: User; isNewUser: boolean; displayName?: string }

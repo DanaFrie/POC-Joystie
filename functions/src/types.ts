@@ -30,6 +30,7 @@ export interface FirestoreChild {
   deviceType: 'ios' | 'android';
   profilePicture?: string;
   nickname?: string;
+  /** @deprecated v0.3 — not written; use challenge.moneyGoals */
   moneyGoals?: string[];
   createdAt: string;
   updatedAt: string;
