@@ -1,9 +1,14 @@
 /**
  * Joystie v0.3 design tokens (from Figma DSM + onboarding 12703:42224)
- * Replace Assistant with Simpler Pro woff2 in public/fonts/simpler-pro/ when available.
+ * App typeface: Rubik (`--font-rubik` from next/font).
  */
 
 :root {
+  /* Legacy font aliases → Rubik (next/font sets --font-rubik on <html>) */
+  --font-simpler: var(--font-rubik);
+  --font-marketing-rubik: var(--font-rubik);
+  --font-heebo: var(--font-rubik);
+
   /* Green scale */
   --v03-green-900: #092125;
   --v03-green-700: #243e35;

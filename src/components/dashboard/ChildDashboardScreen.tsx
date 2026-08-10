@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import nextDynamic from 'next/dynamic';
 import { DashboardFigmaBackground } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
@@ -9,14 +10,9 @@ import { DashboardScreenTimeRing } from '@/components/dashboard/DashboardScreenT
 import { DashboardSavingsCard } from '@/components/dashboard/DashboardSavingsCard';
 import { DashboardContractSection } from '@/components/dashboard/DashboardContractSection';
 import { ChildDashboardNonPaidOverlay } from '@/components/dashboard/ChildDashboardNonPaidOverlay';
-import {
-  ChildChallengeSetupOverlay,
-  type ChildChallengeSetupResult,
-} from '@/components/dashboard/challenge/ChildChallengeSetupOverlay';
-import {
-  ChildRedemptionOverlay,
-  type ChildRedemptionFlowResult,
-} from '@/components/dashboard/challenge/ChildRedemptionOverlay';
+import type { ChildChallengeSetupResult } from '@/components/dashboard/challenge/ChildChallengeSetupOverlay';
+import type { ChildRedemptionFlowResult } from '@/components/dashboard/challenge/ChildRedemptionOverlay';
+
 import {
   DashboardChildCompanion,
   DashboardChildGreeting,
@@ -46,14 +42,30 @@ import {
 import type { DashboardState } from '@/types/dashboard';
 import { formatNumber } from '@/utils/formatting';
 
+const ChildChallengeSetupOverlay = nextDynamic(
+  () =>
+    import('@/components/dashboard/challenge/ChildChallengeSetupOverlay').then((m) => ({
+      default: m.ChildChallengeSetupOverlay,
+    })),
+  { ssr: false }
+);
+const ChildRedemptionOverlay = nextDynamic(
+  () =>
+    import('@/components/dashboard/challenge/ChildRedemptionOverlay').then((m) => ({
+      default: m.ChildRedemptionOverlay,
+    })),
+  { ssr: false }
+);
+
 type ChildDashboardScreenProps = {
   dashboardData: DashboardState;
-  shareUrl?: string;
   noChallengeExists: boolean;
   challengeEnabled: boolean;
   onRefresh: () => Promise<void>;
   /** Present when opened via ?token= or parent session (optional UI hint). */
   accessMode?: 'token' | 'parent';
+  /** Child dashboard URL token — required for private share-card access without parent Auth. */
+  dashboardToken?: string | null;
 };
 
 function parentDisplayName(parent: DashboardState['parent']): string {
@@ -68,11 +80,11 @@ function parentWalletHeadline(parent: DashboardState['parent']): string {
 
 export function ChildDashboardScreen({
   dashboardData,
-  shareUrl,
   noChallengeExists,
   challengeEnabled,
   onRefresh,
   accessMode: _accessMode,
+  dashboardToken = null,
 }: ChildDashboardScreenProps) {
   const childName = dashboardData.child.name || 'יואב';
   const parentLabel = parentDisplayName(dashboardData.parent);
@@ -296,7 +308,11 @@ export function ChildDashboardScreen({
                 <DashboardContractSection
                   childName={childName}
                   parentName={parentLabel}
-                  shareUrl={shareUrl || '#'}
+                  parentId={dashboardData.parent.id}
+                  childId={dashboardData.child.id}
+                  shareImageUrl={dashboardData.child.shareCardUrl}
+                  shareCardStored={Boolean(dashboardData.child.shareCardStored)}
+                  dashboardToken={dashboardToken}
                   variant="child"
                 />
               </DashboardEnter>
@@ -311,27 +327,31 @@ export function ChildDashboardScreen({
         onDismiss={() => setGateVisible(false)}
       />
 
-      <ChildChallengeSetupOverlay
-        visible={setupOpen}
-        childName={childName}
-        parentLabel={parentLabel}
-        weeklyBudget={weeklyBudget}
-        hourlyRate={hourlyRate}
-        onClose={() => setSetupOpen(false)}
-        onSubmit={handleSetupSubmit}
-      />
+      {setupOpen ? (
+        <ChildChallengeSetupOverlay
+          visible
+          childName={childName}
+          parentLabel={parentLabel}
+          weeklyBudget={weeklyBudget}
+          hourlyRate={hourlyRate}
+          onClose={() => setSetupOpen(false)}
+          onSubmit={handleSetupSubmit}
+        />
+      ) : null}
 
-      <ChildRedemptionOverlay
-        visible={redemptionOpenOverlay}
-        childName={childName}
-        parentLabel={parentLabel}
-        weeklyBudget={weeklyBudget}
-        hourlyRate={hourlyRate}
-        challengeId={dashboardData.activeChallengeId}
-        onClose={() => setRedemptionOpenOverlay(false)}
-        onSubmitForParentApproval={handleRedemptionAwaitParent}
-        onComplete={handleRedemptionComplete}
-      />
+      {redemptionOpenOverlay ? (
+        <ChildRedemptionOverlay
+          visible
+          childName={childName}
+          parentLabel={parentLabel}
+          weeklyBudget={weeklyBudget}
+          hourlyRate={hourlyRate}
+          challengeId={dashboardData.activeChallengeId}
+          onClose={() => setRedemptionOpenOverlay(false)}
+          onSubmitForParentApproval={handleRedemptionAwaitParent}
+          onComplete={handleRedemptionComplete}
+        />
+      ) : null}
     </div>
   );
 }

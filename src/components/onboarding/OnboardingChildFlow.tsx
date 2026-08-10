@@ -4,9 +4,11 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
+import nextDynamic from 'next/dynamic';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { ChildSelfieMissionFlow } from '@/components/onboarding/child/ChildSelfieMissionFlow';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ChildMissionThreeSelfieIntroStep } from '@/components/onboarding/child/ChildMissionThreeSelfieIntroStep';
 import { ChildContractCelebrationStep } from '@/components/onboarding/child/ChildContractCelebrationStep';
 import { ChildChangeKingStep } from '@/components/onboarding/child/ChildChangeKingStep';
@@ -55,6 +57,14 @@ import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunn
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
+
+const ChildSelfieMissionFlow = nextDynamic(
+  () =>
+    import('@/components/onboarding/child/ChildSelfieMissionFlow').then((m) => ({
+      default: m.ChildSelfieMissionFlow,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
 
 import {
 

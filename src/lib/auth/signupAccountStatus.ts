@@ -31,11 +31,25 @@ export function hasJoystieSignupEvidence(
 /** Whether this Auth uid completed Joystie signup (not Auth stub only). */
 export async function isRegisteredJoystieAccount(
   uid: string,
-  _email?: string | null
+  email?: string | null
 ): Promise<boolean> {
   // Prefer fresh read — cache can keep a deleted/recreated Auth uid looking registered.
   const byUid = await getUser(uid, false);
   if (byUid && hasJoystieSignupEvidence(byUid)) return true;
+
+  // Apple re-auth after a prior Auth delete: new uid, same email, old Firestore profile.
+  const normalized = (email ?? '').trim().toLowerCase() || null;
+  if (!normalized) return false;
+
+  const byEmail = await getUserByEmail(normalized);
+  if (
+    byEmail &&
+    byEmail.id !== uid &&
+    hasJoystieSignupEvidence(byEmail)
+  ) {
+    return true;
+  }
+
   return false;
 }
 

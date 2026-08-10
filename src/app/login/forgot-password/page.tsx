@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ForgotPasswordScreen } from '@/components/login/ForgotPasswordScreen';
 import { getLoginPath } from '@/lib/auth/postLoginNavigation';
 import { sendPasswordReset } from '@/utils/auth';
@@ -76,7 +77,7 @@ function LoginForgotPasswordPageContent() {
 
 export default function LoginForgotPasswordPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FunnelRouteLoading surface="dark" />}>
       <LoginForgotPasswordPageContent />
     </Suspense>
   );

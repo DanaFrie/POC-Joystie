@@ -9,8 +9,6 @@ import type { DashboardState } from '@/types/dashboard';
 import { useDashboardSubscribeMode } from '@/hooks/useDashboardSubscribeMode';
 import { isLoggedIn, updateLastActivity } from '@/utils/session';
 import { getDashboardData } from '@/lib/api/dashboard';
-import { generateChildUrl } from '@/utils/url-encoding';
-import { getActiveChallenge } from '@/lib/api/challenges';
 import { validateChildDashboardToken } from '@/lib/auth/childDashboardToken';
 import { createContextLogger } from '@/utils/logger';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange } from '@/utils/auth';
@@ -56,7 +54,6 @@ function DashboardChildPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams?.get('token')?.trim() || '';
-  const [shareUrl, setShareUrl] = useState('');
   const [noChallengeExists, setNoChallengeExists] = useState(true);
   const [tokenChallengeEnabled, setTokenChallengeEnabled] = useState<boolean | null>(null);
   const [accessMode, setAccessMode] = useState<'token' | 'parent' | null>(null);
@@ -74,12 +71,6 @@ function DashboardChildPageContent() {
     if (data) {
       setDashboardData(data);
       setNoChallengeExists(!data.challenge.isActive || !data.activeChallengeId);
-      const challenge = await getActiveChallenge(parentId, false);
-      setShareUrl(
-        challenge
-          ? generateChildUrl(parentId, challenge.childId)
-          : generateChildUrl(parentId, data.child.id || undefined)
-      );
       return;
     }
 
@@ -106,7 +97,6 @@ function DashboardChildPageContent() {
       },
     });
     setNoChallengeExists(true);
-    setShareUrl(generateChildUrl(parentId, user.primaryChildId || undefined));
   }, []);
 
   const loadDashboard = useCallback(
@@ -196,11 +186,11 @@ function DashboardChildPageContent() {
   return (
     <ChildDashboardScreen
       dashboardData={dashboardData}
-      shareUrl={shareUrl}
       noChallengeExists={noChallengeExists}
       challengeEnabled={challengeEnabled}
       onRefresh={refresh}
       accessMode={accessMode ?? undefined}
+      dashboardToken={token || null}
     />
   );
 }

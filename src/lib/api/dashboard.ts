@@ -4,12 +4,40 @@ import { getUploadsByChallenge } from './uploads';
 import { getUser } from './users';
 import { getChild, ensureChildForParent } from './children';
 import { changeDayChecksToMatrix } from '@/lib/onboarding/changeDayChecks';
+import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
 import { avgMinutesFromWeeklyScreenTime } from '@/lib/dashboard/parentDailyAverage';
 import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
-import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
+import type { FirestoreChallenge, FirestoreChild, FirestoreDailyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('Dashboard');
+
+function resolveChildShareCardFields(child: FirestoreChild): {
+  shareCardUrl: string | null;
+  shareCardSource: 'ai' | 'default' | null;
+  shareCardStored: boolean;
+} {
+  const card = child.shareCard;
+  if (!card) {
+    return { shareCardUrl: null, shareCardSource: null, shareCardStored: false };
+  }
+  // Never expose permanent Storage downloadUrl — access is via getChildShareCardAccess.
+  if (card.storagePath) {
+    return {
+      shareCardUrl: null,
+      shareCardSource: card.source ?? null,
+      shareCardStored: true,
+    };
+  }
+  if (card.source === 'default') {
+    return {
+      shareCardUrl: defaultSelfieAssetForChild(child.gender),
+      shareCardSource: 'default',
+      shareCardStored: false,
+    };
+  }
+  return { shareCardUrl: null, shareCardSource: card.source ?? null, shareCardStored: false };
+}
 
 function challengeDailyBudget(challenge: FirestoreChallenge): number {
   if (challenge.dailyBudget != null) return challenge.dailyBudget;
@@ -444,6 +472,7 @@ function buildBootstrapDashboardState(
       changes: child.changes,
       changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
       baselineDailyMinutes: child.baselineDailyMinutes,
+      ...resolveChildShareCardFields(child),
     },
     challenge: {
       selectedBudget: 0,
@@ -575,6 +604,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
         changes: child.changes,
         changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
         baselineDailyMinutes: child.baselineDailyMinutes,
+        ...resolveChildShareCardFields(child),
       },
       challenge: challengeData,
       today: todayObj,

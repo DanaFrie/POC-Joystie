@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import nextDynamic from 'next/dynamic';
 import { DashboardFigmaBackground } from '@/components/dashboard/DashboardFigmaBackground';
 import { DashboardTopBar } from '@/components/dashboard/DashboardTopBar';
 import { DashboardHeaderMenu } from '@/components/dashboard/DashboardHeaderMenu';
@@ -12,20 +13,14 @@ import {
 } from '@/components/dashboard/DashboardChallengeBanner';
 import { DashboardWeekTracker } from '@/components/dashboard/DashboardWeekTracker';
 import { DashboardContractSection } from '@/components/dashboard/DashboardContractSection';
-import { DashboardSubscriptionOverlay } from '@/components/dashboard/DashboardSubscriptionOverlay';
-import {
-  ParentChallengeSetupOverlay,
-  type ParentChallengeSetupResult,
-} from '@/components/dashboard/challenge/ParentChallengeSetupOverlay';
-import {
-  ParentRedemptionConfirmOverlay,
-  type ParentRedemptionConfirmResult,
-} from '@/components/dashboard/challenge/ParentRedemptionConfirmOverlay';
+import type { ParentChallengeSetupResult } from '@/components/dashboard/challenge/ParentChallengeSetupOverlay';
+import type { ParentRedemptionConfirmResult } from '@/components/dashboard/challenge/ParentRedemptionConfirmOverlay';
 import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
 import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
 import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
 import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
 import { FunnelViewport } from '@/components/ui/FunnelViewport';
+
 import {
   PARENT_DASHBOARD_COLORS,
   PARENT_DASHBOARD_LAYOUT,
@@ -58,6 +53,28 @@ import { generateChildUrl } from '@/utils/url-encoding';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
+
+const ParentChallengeSetupOverlay = nextDynamic(
+  () =>
+    import('@/components/dashboard/challenge/ParentChallengeSetupOverlay').then((m) => ({
+      default: m.ParentChallengeSetupOverlay,
+    })),
+  { ssr: false }
+);
+const ParentRedemptionConfirmOverlay = nextDynamic(
+  () =>
+    import('@/components/dashboard/challenge/ParentRedemptionConfirmOverlay').then((m) => ({
+      default: m.ParentRedemptionConfirmOverlay,
+    })),
+  { ssr: false }
+);
+const DashboardSubscriptionOverlay = nextDynamic(
+  () =>
+    import('@/components/dashboard/DashboardSubscriptionOverlay').then((m) => ({
+      default: m.DashboardSubscriptionOverlay,
+    })),
+  { ssr: false }
+);
 
 const logger = createContextLogger('ParentDashboard');
 
@@ -447,7 +464,10 @@ export function ParentDashboardScreen({
                 <DashboardContractSection
                   childName={childName || 'יואב'}
                   parentName={parentName}
-                  shareUrl={shareUrl || '#'}
+                  parentId={dashboardData.parent.id}
+                  childId={dashboardData.child.id}
+                  shareImageUrl={dashboardData.child.shareCardUrl}
+                  shareCardStored={Boolean(dashboardData.child.shareCardStored)}
                   weeklyUpload={weeklyUpload}
                   variant="parent"
                   onApprove={hasChallenge ? handleContractApprove : undefined}
@@ -479,14 +499,16 @@ export function ParentDashboardScreen({
         </div>
       </div>
 
-      <ParentChallengeSetupOverlay
-        visible={parentSetupOpen}
-        childName={childName || 'יואב'}
-        childGender={dashboardData.child.gender || 'boy'}
-        estimatedDailyHours={estimatedDailyHours}
-        onClose={() => setParentSetupOpen(false)}
-        onSubmit={handleParentSetupSubmit}
-      />
+      {parentSetupOpen ? (
+        <ParentChallengeSetupOverlay
+          visible
+          childName={childName || 'יואב'}
+          childGender={dashboardData.child.gender || 'boy'}
+          estimatedDailyHours={estimatedDailyHours}
+          onClose={() => setParentSetupOpen(false)}
+          onSubmit={handleParentSetupSubmit}
+        />
+      ) : null}
 
       {showChallengeConfetti ? (
         <div
@@ -507,24 +529,25 @@ export function ParentDashboardScreen({
         </div>
       ) : null}
 
-      <ParentRedemptionConfirmOverlay
-        visible={parentRedemptionOpen}
-        childName={childName || 'יואב'}
-        weeklyBudget={weeklyBudget}
-        hourlyRate={hourlyRate}
-        initialTotalHours={
-          weeklyUpload?.processedData?.screenTimeMinutes
-            ? weeklyUpload.processedData.screenTimeMinutes / 60
-            : 0
-        }
-        onClose={handleParentRedemptionClose}
-        onConfirm={handleParentRedemptionConfirm}
-      />
+      {parentRedemptionOpen ? (
+        <ParentRedemptionConfirmOverlay
+          visible
+          childName={childName || 'יואב'}
+          weeklyBudget={weeklyBudget}
+          hourlyRate={hourlyRate}
+          initialTotalHours={
+            weeklyUpload?.processedData?.screenTimeMinutes
+              ? weeklyUpload.processedData.screenTimeMinutes / 60
+              : 0
+          }
+          onClose={handleParentRedemptionClose}
+          onConfirm={handleParentRedemptionConfirm}
+        />
+      ) : null}
 
-      <DashboardSubscriptionOverlay
-        visible={subscriptionOpen}
-        onClose={closeSubscription}
-      />
+      {subscriptionOpen ? (
+        <DashboardSubscriptionOverlay visible onClose={closeSubscription} />
+      ) : null}
     </div>
   );
 }

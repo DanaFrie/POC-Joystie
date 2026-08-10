@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { WeeklyUpload } from '@/types/firestore';
 import {
   PARENT_DASHBOARD_ASSETS,
   PARENT_DASHBOARD_COLORS,
 } from '@/constants/parent-dashboard-layout';
+import { getChildShareCardAccess } from '@/lib/api/shareCard';
+import { shareImageFile } from '@/lib/share/shareImage';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('DashboardContractSection');
@@ -14,7 +16,14 @@ const logger = createContextLogger('DashboardContractSection');
 type DashboardContractSectionProps = {
   childName: string;
   parentName?: string;
-  shareUrl?: string;
+  parentId?: string;
+  childId?: string;
+  /** Public default asset URL only (not a permanent Storage token link). */
+  shareImageUrl?: string | null;
+  /** Private Storage share card — load via short-lived signed URL. */
+  shareCardStored?: boolean;
+  /** Child dashboard `?token=` when parent Auth is absent. */
+  dashboardToken?: string | null;
   weeklyUpload?: WeeklyUpload | null;
   variant?: 'parent' | 'child';
   onApprove?: () => Promise<void>;
@@ -24,18 +33,26 @@ type DashboardContractSectionProps = {
 export function DashboardContractSection({
   childName,
   parentName,
-  shareUrl,
+  parentId,
+  childId,
+  shareImageUrl,
+  shareCardStored = false,
+  dashboardToken = null,
   weeklyUpload,
   variant = 'parent',
   onApprove,
   onReject,
 }: DashboardContractSectionProps) {
-  const [copied, setCopied] = useState(false);
+  const [shareHint, setShareHint] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(shareImageUrl || null);
+  const [loadingCard, setLoadingCard] = useState(shareCardStored);
+  const objectUrlRef = useRef<string | null>(null);
 
-  const screenshotUrl = weeklyUpload?.screenshotUrl || null;
   const isPending = weeklyUpload?.status === 'pending';
-  const viewUrl = screenshotUrl || PARENT_DASHBOARD_ASSETS.agreementThumb;
+  const hasShareCard = Boolean(shareCardStored || shareImageUrl);
+  const imageUrl = resolvedUrl || PARENT_DASHBOARD_ASSETS.agreementThumb;
 
   const sectionTitle =
     variant === 'child'
@@ -56,14 +73,89 @@ export function DashboardContractSection({
       ? 'bg-white text-[#092125]'
       : 'border-[0.84px] border-white bg-transparent text-white';
 
-  const handleShare = async () => {
-    if (!shareUrl) return;
+  const loadStoredCard = useCallback(async (): Promise<string | null> => {
+    if (!shareCardStored || !parentId) return shareImageUrl || null;
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const access = await getChildShareCardAccess({
+        parentId,
+        childId,
+        dashboardToken,
+      });
+      if (objectUrlRef.current?.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+      // Data-URL fallback from callable is fine as img src; signed URL too.
+      setResolvedUrl(access.url);
+      return access.url;
     } catch (error) {
-      logger.error('Copy failed:', error);
+      logger.error('Failed to load share card access:', error);
+      setResolvedUrl(shareImageUrl || null);
+      return shareImageUrl || null;
+    }
+  }, [shareCardStored, parentId, childId, dashboardToken, shareImageUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!shareCardStored) {
+      setResolvedUrl(shareImageUrl || null);
+      setLoadingCard(false);
+      return;
+    }
+    setLoadingCard(true);
+    void loadStoredCard().finally(() => {
+      if (!cancelled) setLoadingCard(false);
+    });
+    return () => {
+      cancelled = true;
+      if (objectUrlRef.current?.startsWith('blob:')) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
+    };
+  }, [shareCardStored, shareImageUrl, loadStoredCard]);
+
+  const handleShare = async () => {
+    if (!hasShareCard) return;
+    setSharing(true);
+    setShareHint(null);
+    try {
+      let url = resolvedUrl;
+      if (shareCardStored) {
+        url = (await loadStoredCard()) || url;
+      }
+      if (!url) throw new Error('חסרה תמונה');
+      const result = await shareImageFile({
+        imageUrl: url,
+        fileName: 'joystie-selfie.jpg',
+        title: 'Joystie',
+        text: 'התמונה שלנו ב־Joystie',
+      });
+      if (result === 'downloaded') {
+        setShareHint('התמונה הורדה');
+        setTimeout(() => setShareHint(null), 2000);
+      }
+    } catch (error) {
+      logger.error('Share image failed:', error);
+      setShareHint('השיתוף נכשל');
+      setTimeout(() => setShareHint(null), 2500);
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleView = async () => {
+    try {
+      let url = resolvedUrl;
+      if (shareCardStored) {
+        url = (await loadStoredCard()) || url;
+      }
+      if (!url) return;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      logger.error('View image failed:', error);
+      setShareHint('לא ניתן לפתוח');
+      setTimeout(() => setShareHint(null), 2500);
     }
   };
 
@@ -107,21 +199,21 @@ export function DashboardContractSection({
           <div className="flex flex-1 flex-col items-start gap-3">
             <button
               type="button"
-              onClick={handleShare}
-              disabled={!shareUrl}
+              onClick={() => void handleShare()}
+              disabled={!hasShareCard || sharing || loadingCard}
               className={`flex h-[40.16px] w-full items-center justify-center rounded-[15.06px] px-[12.55px] py-[6.69px] font-simpler text-[13.39px] font-bold leading-[18.07px] shadow-[1.67px_1.67px_16.73px_rgba(109,109,109,0.15)] disabled:opacity-40 ${sharePrimaryClass}`}
             >
-              {copied ? 'הועתק!' : 'לשיתוף התמונה'}
+              {shareHint || (sharing ? 'משתף...' : 'לשיתוף התמונה')}
             </button>
 
-            <a
-              href={viewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex h-[40.16px] w-full items-center justify-center rounded-[15.06px] px-[12.55px] py-[6.69px] font-simpler text-[13.39px] font-bold leading-[18.07px] shadow-[1.67px_1.67px_16.73px_rgba(109,109,109,0.15)] ${viewButtonClass}`}
+            <button
+              type="button"
+              onClick={() => void handleView()}
+              disabled={!hasShareCard || loadingCard}
+              className={`flex h-[40.16px] w-full items-center justify-center rounded-[15.06px] px-[12.55px] py-[6.69px] font-simpler text-[13.39px] font-bold leading-[18.07px] shadow-[1.67px_1.67px_16.73px_rgba(109,109,109,0.15)] disabled:opacity-40 ${viewButtonClass}`}
             >
-              לצפייה בתמונה
-            </a>
+              {loadingCard ? 'טוען...' : 'לצפייה בתמונה'}
+            </button>
 
             {variant === 'parent' && isPending && onApprove && onReject && (
               <div className="flex w-full gap-2 pt-1">
@@ -149,8 +241,16 @@ export function DashboardContractSection({
             className="relative h-[96.64px] w-[85px] shrink-0 overflow-hidden rounded-[12.44px]"
             style={{ outline: '0.62px solid white', outlineOffset: -0.62 }}
           >
+            <Image
+              src={imageUrl}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="85px"
+              unoptimized
+            />
             <div
-              className="absolute inset-0"
+              className="pointer-events-none absolute inset-0"
               style={{
                 background:
                   'linear-gradient(180deg, rgba(0, 0, 0, 0) 15%, rgba(0, 0, 0, 0.40) 85%)',
@@ -160,15 +260,12 @@ export function DashboardContractSection({
             <Image
               src={PARENT_DASHBOARD_ASSETS.agreementThumb}
               alt=""
-              width={62}
-              height={62}
-              className="absolute object-cover"
+              width={43}
+              height={48}
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 object-contain"
               style={{
-                width: 61.599,
-                height: 61.599,
-                aspectRatio: '1 / 1',
-                top: 17.5,
-                left: 12,
+                width: '50%',
+                height: '50%',
               }}
               unoptimized
             />

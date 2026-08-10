@@ -10,19 +10,17 @@ export function getUnknownOAuthAccountMessage(): string {
   return UNKNOWN_ACCOUNT_MESSAGE;
 }
 
-/** Remove an OAuth session created on the login page when no Joystie profile exists. */
-export async function rejectUnknownOAuthLogin(user: User): Promise<void> {
+/**
+ * Drop an OAuth session from the login page when no Joystie signup exists.
+ * Sign out only — never deleteUser. Deleting broke Apple re-login (same Apple ID
+ * got a new Auth uid while the Firestore profile stayed on the old uid).
+ */
+export async function rejectUnknownOAuthLogin(_user: User): Promise<void> {
   try {
-    const { deleteUser } = await import('firebase/auth');
-    await deleteUser(user);
-  } catch (error) {
-    logger.warn('Could not delete unknown OAuth user — signing out instead', error);
-    try {
-      const { signOutUser } = await import('@/utils/auth');
-      await signOutUser();
-    } catch (signOutError) {
-      logger.warn('Sign-out after unknown OAuth login failed', signOutError);
-    }
+    const { signOutUser } = await import('@/utils/auth');
+    await signOutUser();
+  } catch (signOutError) {
+    logger.warn('Sign-out after unknown OAuth login failed', signOutError);
   }
 
   clearSession();

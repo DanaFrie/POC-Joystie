@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react';
 import { LANDING_ASSETS, LANDING_NAV_LINKS } from '@/constants/landing-marketing';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { LandingMenuGlow } from '@/components/landing/LandingDecor';
+import { scrollLandingToSection } from '@/components/landing/landingStatsStory';
 
 /** Figma chrome heights removed permanently; remaining Y keeps same relative spacing. */
 const MOBILE_STATUS_BAR = 44;
@@ -21,11 +22,28 @@ type MarketingNavProps = {
    * On the home landing, leave unset so in-page smooth scroll still works.
    */
   homeHashPrefix?: string;
+  /**
+   * `onDark` — landing (near-clear glass on dark hero).
+   * `onLight` — about (darker frosted glass so the bar reads on white).
+   */
+  chrome?: 'onDark' | 'onLight';
 };
 
-export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps = {}) {
+export function MarketingNav({
+  activeHref,
+  homeHashPrefix,
+  chrome = 'onDark',
+}: MarketingNavProps = {}) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const onLight = chrome === 'onLight';
+
+  const barGlass = onLight
+    ? 'bg-[rgba(5,22,26,0.72)] backdrop-blur-[16px]'
+    : 'bg-white/[0.02] backdrop-blur-[10px]';
+  const desktopGlass = onLight
+    ? 'bg-[rgba(5,22,26,0.72)] backdrop-blur-[16px]'
+    : 'bg-white/[0.01] backdrop-blur-[10px]';
 
   const resolveHref = useCallback(
     (href: string) => {
@@ -57,10 +75,7 @@ export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps =
       }
 
       const id = href.replace('#', '');
-      const el = document.getElementById(id);
-      if (!el) return;
-      const top = el.getBoundingClientRect().top + window.scrollY - 88;
-      window.scrollTo({ top, behavior: 'smooth' });
+      scrollLandingToSection(id);
     },
     [homeHashPrefix, resolveHref, router],
   );
@@ -86,34 +101,34 @@ export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps =
     >
       {!open ? (
         <nav
-          className="pointer-events-auto flex h-[58px] w-full items-center justify-between bg-white/[0.02] px-6 backdrop-blur-[10px] lg:hidden"
+          className={`pointer-events-auto flex h-[58px] w-full items-center justify-between px-6 lg:hidden ${barGlass}`}
           aria-label="ניווט ראשי"
         >
           <Link href="/" className="shrink-0" aria-label="Joystie">
-            <Image
-              src={LANDING_ASSETS.logoWordmark}
-              alt="Joystie"
-              width={65}
-              height={34}
-              className="h-8 w-auto"
-              priority
-              unoptimized
-            />
-          </Link>
-          <button
-            type="button"
-            className="rounded-lg p-1 text-white"
-            aria-label="פתח תפריט"
-            onClick={() => setOpen(true)}
-          >
-            <Menu size={24} />
-          </button>
-        </nav>
-      ) : null}
+              <Image
+                src={LANDING_ASSETS.logoWordmark}
+                alt="Joystie"
+                width={65}
+                height={34}
+                className="h-8 w-auto"
+                priority
+                unoptimized
+              />
+            </Link>
+            <button
+              type="button"
+              className="rounded-lg p-1 text-white"
+              aria-label="פתח תפריט"
+              onClick={() => setOpen(true)}
+            >
+              <Menu size={24} />
+            </button>
+          </nav>
+        ) : null}
 
       {/* Desktop: logo + links on the right (start), CTAs on the left (end) */}
       <nav
-        className="pointer-events-auto mx-auto hidden max-w-[1200px] items-center justify-between gap-3 rounded-[25px] bg-white/[0.01] px-6 py-3 backdrop-blur-[10px] lg:flex lg:pl-[15px] lg:pr-[25px]"
+        className={`pointer-events-auto mx-auto hidden max-w-[1200px] items-center justify-between gap-3 rounded-[25px] px-6 py-3 lg:flex lg:pl-[15px] lg:pr-[25px] ${desktopGlass}`}
         aria-label="ניווט ראשי"
         data-chrome-offset={DESKTOP_BROWSER_CHROME}
       >
@@ -125,7 +140,6 @@ export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps =
               width={79}
               height={39}
               className="h-10 w-auto"
-              priority
               unoptimized
             />
           </Link>
@@ -152,20 +166,15 @@ export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps =
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Temporary: marketing chrome does not open product app routes */}
-          <a
-            href="#"
-            aria-disabled
-            onClick={(e) => e.preventDefault()}
+          <Link
+            href="/login"
             className="inline-flex h-9 items-center justify-center rounded-2xl border border-white px-5 font-rubik text-base font-bold tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
           >
             התחברות
-          </a>
-          <a
-            href="#"
-            aria-disabled
+          </Link>
+          <Link
+            href="/onboarding"
             dir="rtl"
-            onClick={(e) => e.preventDefault()}
             className="inline-flex h-9 flex-row items-center justify-center gap-3 rounded-2xl bg-v03-turquoise-300 px-5 font-rubik text-base font-bold tracking-[-0.32px] text-[#282828] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:-translate-y-0.5"
           >
             להצטרפות
@@ -186,7 +195,7 @@ export function MarketingNav({ activeHref, homeHashPrefix }: MarketingNavProps =
                 strokeLinejoin="round"
               />
             </svg>
-          </a>
+          </Link>
         </div>
       </nav>
 

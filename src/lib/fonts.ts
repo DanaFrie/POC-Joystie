@@ -1,17 +1,19 @@
-import { Assistant, Rubik } from 'next/font/google';
+import { Rubik } from 'next/font/google';
 
-/** Fallback when Simpler Pro woff2 missing from public/fonts/simpler-pro/ */
-export const simplerPro = Assistant({
-  subsets: ['hebrew', 'latin'],
-  weight: ['400', '700', '800'],
-  variable: '--font-simpler',
-  display: 'swap',
-});
-
-/** Marketing website (Figma Joystie Marketing) */
-export const marketingRubik = Rubik({
+/**
+ * App-wide Rubik (Hebrew + Latin).
+ * CSS var `--font-rubik` — also aliased to `--font-simpler` / `--font-marketing-rubik`
+ * so existing `font-simpler` / marketing classes resolve to Rubik.
+ */
+export const appRubik = Rubik({
   subsets: ['hebrew', 'latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-marketing-rubik',
+  variable: '--font-rubik',
   display: 'swap',
 });
+
+/** @deprecated Use `appRubik` — kept so marketing pages keep importing this name. */
+export const marketingRubik = appRubik;
+
+/** @deprecated Assistant/Simpler fallback replaced by Rubik. */
+export const simplerPro = appRubik;

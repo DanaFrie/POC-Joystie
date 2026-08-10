@@ -18,9 +18,10 @@ function BehindIdeaPhoto() {
           loading="lazy"
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[center_42%]"
+          style={{ filter: 'saturate(1.75) contrast(1.08)' }}
           draggable={false}
         />
-        <div className="absolute inset-0 bg-black/25" aria-hidden />
+        <div className="absolute inset-0 bg-black/10" aria-hidden />
       </div>
     </div>
   );

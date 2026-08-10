@@ -1,16 +1,23 @@
 'use client';
 
+import nextDynamic from 'next/dynamic';
 import { Suspense, useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  ParentGamePostWinFlow,
-  type ParentPostGamePhase,
-} from '@/components/onboarding/parent/ParentGamePostWinFlow';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
+import type { ParentPostGamePhase } from '@/components/onboarding/parent/ParentGamePostWinFlow';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { useOnboardingGame } from '@/hooks/useOnboardingGame';
 import { endOnboardingGameRoom } from '@/lib/api/game';
 import { getSelectedFirstChildGender, getSelectedFirstChildName } from '@/lib/onboarding/bondingInvite';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
+
+const ParentGamePostWinFlow = nextDynamic(
+  () =>
+    import('@/components/onboarding/parent/ParentGamePostWinFlow').then((m) => ({
+      default: m.ParentGamePostWinFlow,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
 
 function ParentGameInner() {
   const router = useRouter();
@@ -78,7 +85,7 @@ function ParentGameInner() {
 /** `/game` — parent cooperative ball game; win fade then `/onboarding` post-game funnel. */
 export default function ParentGamePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FunnelRouteLoading />}>
       <ParentGameInner />
     </Suspense>
   );

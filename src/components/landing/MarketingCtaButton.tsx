@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import type { MouseEvent } from 'react';
 
 type MarketingCtaButtonProps = {
   href: string;
@@ -11,11 +10,6 @@ type MarketingCtaButtonProps = {
   iconTone?: 'purple' | 'mint';
   onClick?: () => void;
 };
-
-/** Temporary: landing CTAs that open the product app are inert. */
-function isAppRoute(href: string) {
-  return href.startsWith('/onboarding') || href.startsWith('/login') || href.startsWith('/signup');
-}
 
 /**
  * White pill CTA — Figma CTA_Special_Button (RTL: label on the right, purple icon on the left).
@@ -46,22 +40,11 @@ export function MarketingCtaButton({
       ? 'size-[24.426px]'
       : 'size-8';
 
-  const blockApp = isAppRoute(href);
-
-  const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    if (blockApp) {
-      e.preventDefault();
-      return;
-    }
-    onClick?.();
-  };
-
   return (
     <Link
-      href={blockApp ? '#' : href}
-      onClick={handleClick}
+      href={href}
+      onClick={onClick}
       dir="rtl"
-      aria-disabled={blockApp || undefined}
       className={`inline-flex flex-row items-center bg-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-95 hover:-translate-y-0.5 ${sizeClasses} ${className}`}
     >
       <span className={`font-rubik font-bold text-[#05161a] ${labelClasses}`}>{label}</span>

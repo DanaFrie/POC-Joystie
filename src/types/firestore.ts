@@ -93,6 +93,17 @@ export interface FirestoreChild {
   changeDayChecks?: Array<{ days: boolean[] }>;
   /** Onboarding slider assumption — daily screen minutes for dashboard baseline. */
   baselineDailyMinutes?: number;
+  /**
+   * Final share selfie (agreement + selfie card). Bytes live in Storage;
+   * this is the pointer for dashboard view/share.
+   */
+  shareCard?: {
+    source: 'ai' | 'default';
+    storagePath: string | null;
+    /** @deprecated Permanent token URLs — cleared; use getChildShareCardAccess. */
+    downloadUrl: string | null;
+    createdAt: string;
+  };
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }

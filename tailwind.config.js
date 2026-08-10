@@ -46,12 +46,12 @@ module.exports = {
         'danger': '#dc3545',
       },
       fontFamily: {
-        simpler: ['Simpler Pro', 'var(--font-simpler)', 'Assistant', 'sans-serif'],
-        assistant: ['var(--font-simpler)', 'Assistant', 'sans-serif'],
-        heebo: ['var(--font-heebo)', 'Heebo', 'sans-serif'],
+        simpler: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
+        assistant: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
+        heebo: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
         montserrat: ['"Montserrat Alternates"', 'sans-serif'],
-        rubik: ['Rubik', 'var(--font-marketing-rubik)', 'sans-serif'],
-        marketing: ['var(--font-marketing-rubik)', 'Rubik', 'sans-serif'],
+        rubik: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
+        marketing: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
         varela: ['"Varela Round"', 'sans-serif'],
       },
       fontSize: {

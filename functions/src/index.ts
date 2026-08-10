@@ -20,6 +20,8 @@ import {
   endOnboardingGameRoom,
 } from './game/rooms';
 import { generateSelfie } from './selfie/generateSelfie';
+import { saveChildShareCard } from './shareCard/saveChildShareCard';
+import { getChildShareCardAccess } from './shareCard/getChildShareCardAccess';
 import { createCardcomTrialCheckout, cardcomWebhook } from './billing/cardcom/handlers';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
@@ -52,6 +54,8 @@ export {
   completeGameOnboarding,
   endOnboardingGameRoom,
   generateSelfie,
+  saveChildShareCard,
+  getChildShareCardAccess,
   createCardcomTrialCheckout,
   cardcomWebhook,
 };

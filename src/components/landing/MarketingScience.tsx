@@ -200,7 +200,7 @@ function ScienceCard({
   return (
     <article
       dir="rtl"
-      className={`relative flex h-[305.297px] w-full flex-col justify-between overflow-visible rounded-[26px] bg-white/10 px-[30px] pb-[35px] pt-[45px] text-right ${className}`}
+      className={`relative flex h-[305.297px] w-full flex-col overflow-visible rounded-[26px] bg-white/10 px-[30px] pb-[35px] pt-[45px] text-right ${className}`}
     >
       <ScienceBadge n={card.n} size="desktop" />
       <div className="relative z-[1] flex w-full flex-col items-end gap-[9px] text-right text-white">
@@ -209,9 +209,6 @@ function ScienceCard({
           {card.body}
         </p>
       </div>
-      <p className="relative z-[1] w-full text-right font-simpler text-base leading-[1.25] tracking-[-0.48px] text-white underline">
-        לקריאה נוספת &gt;&gt;
-      </p>
     </article>
   );
 }
@@ -229,7 +226,7 @@ function ScienceCardMobile({
   return (
     <article
       dir="rtl"
-      className="relative flex h-[262px] w-[267px] shrink-0 flex-col justify-between overflow-visible rounded-[25.671px] bg-white/10 px-[30px] pb-5 pt-[30px] text-right"
+      className="relative flex h-[262px] w-[267px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-[30px] pb-5 pt-[30px] text-right"
     >
       <ScienceBadge n={card.n} size="mobile" />
       <div className="relative z-[1] flex w-full flex-col items-end gap-[9px] text-right">
@@ -245,9 +242,6 @@ function ScienceCardMobile({
           {card.body}
         </p>
       </div>
-      <p className="relative z-[1] w-full text-right font-rubik text-base leading-[1.28] tracking-[-0.32px] text-white underline">
-        לקריאה נוספת &gt;&gt;
-      </p>
     </article>
   );
 }

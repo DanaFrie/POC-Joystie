@@ -1,17 +1,17 @@
 import Image from 'next/image';
-import { LANDING_BLOG } from '@/constants/landing-marketing';
-import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
+import Link from 'next/link';
+import { LANDING_BLOG, type LandingBlogPost } from '@/constants/landing-marketing';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 
 function KnowledgeCard({
   post,
   variant,
 }: {
-  post: (typeof LANDING_BLOG)[number];
+  post: LandingBlogPost;
   variant: 'mobile' | 'desktop';
 }) {
   const mobile = variant === 'mobile';
-  return (
+  const card = (
     <article
       className={
         mobile
@@ -30,7 +30,9 @@ function KnowledgeCard({
           src={post.image}
           alt=""
           fill
-          className="object-cover"
+          loading="lazy"
+          decoding="async"
+          className="object-cover object-top"
           sizes={mobile ? '232px' : '313px'}
         />
       </div>
@@ -61,6 +63,8 @@ function KnowledgeCard({
             src={post.avatar}
             alt=""
             fill
+            loading="lazy"
+            decoding="async"
             className="object-cover"
             sizes={mobile ? '32px' : '36px'}
           />
@@ -86,6 +90,18 @@ function KnowledgeCard({
       </p>
     </article>
   );
+
+  if (!post.slug) return card;
+
+  return (
+    <Link
+      href={`/knowledge/${post.slug}`}
+      className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-[#00ffb3]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#05161a]"
+      aria-label={post.title}
+    >
+      {card}
+    </Link>
+  );
 }
 
 export function MarketingKnowledge() {
@@ -96,11 +112,6 @@ export function MarketingKnowledge() {
           <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text text-right font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[40px] lg:text-[45px]">
             מרכז הידע של ג׳ויסטי
           </h2>
-          <MarketingCtaButton
-            href="#knowledge"
-            label="לעוד מקורות"
-            className="hidden self-start lg:inline-flex"
-          />
         </LandingReveal>
 
         {/*
@@ -108,9 +119,9 @@ export function MarketingKnowledge() {
           touch-pan-x + overscroll-x-contain: swipe X through cards; Y gestures don’t scroll this strip.
         */}
         <div className="flex items-stretch gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x px-6 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
-          {[...LANDING_BLOG].reverse().map((post, index) => (
+          {LANDING_BLOG.map((post, index) => (
             <LandingReveal
-              key={post.title}
+              key={post.slug ?? post.title}
               delayMs={index * 90}
               className="flex shrink-0 self-stretch"
             >
@@ -119,18 +130,9 @@ export function MarketingKnowledge() {
           ))}
         </div>
 
-        <LandingReveal delayMs={160} className="px-6 lg:hidden">
-          <MarketingCtaButton
-            href="#knowledge"
-            label="למאמרים נוספים"
-            size="mobile"
-            className="mr-auto"
-          />
-        </LandingReveal>
-
         <div className="hidden items-stretch gap-[30px] lg:grid lg:grid-cols-3">
           {LANDING_BLOG.map((post, index) => (
-            <LandingReveal key={post.title} delayMs={100 + index * 110} className="h-full">
+            <LandingReveal key={post.slug ?? post.title} delayMs={100 + index * 110} className="h-full">
               <KnowledgeCard post={post} variant="desktop" />
             </LandingReveal>
           ))}

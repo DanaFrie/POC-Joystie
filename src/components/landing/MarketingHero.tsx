@@ -12,14 +12,22 @@ export function MarketingHero() {
     // can create a nested scrollport. Desktop may clip for absolute art.
     <section className="relative lg:min-h-[1001px] lg:overflow-hidden" dir="rtl">
       <div className="pointer-events-none absolute inset-0" aria-hidden>
-        <Image
-          src={LANDING_ASSETS.heroLandscape}
-          alt=""
-          fill
-          priority
-          className="object-cover object-[center_40%] lg:object-center"
-          sizes="100vw"
-        />
+        {/*
+          Art-directed LCP: one hero file per viewport (preload in MarketingLandingPage).
+          Avoid priority on both mobile+desktop Next/Image — that double-fetches ~2MB.
+        */}
+        <picture className="absolute inset-0 block h-full w-full">
+          <source media="(min-width: 1024px)" srcSet={LANDING_ASSETS.heroDesktop} type="image/webp" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LANDING_ASSETS.heroMobile}
+            alt=""
+            decoding="async"
+            fetchPriority="high"
+            className="h-full w-full object-cover object-[center_40%] lg:object-center"
+            sizes="100vw"
+          />
+        </picture>
         <div className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-b from-transparent to-[#05161a] lg:hidden" />
         {/* Desktop — Figma Rectangle 6554: 1924×314 fade into stats */}
         <div

@@ -1,5 +1,7 @@
 /**
- * Client API — AI selfie generation via Firebase Callable → Cloud Run.
+ * Client API — AI selfie generation.
+ * Default: Firebase Callable → Cloud Run.
+ * Local loop: set NEXT_PUBLIC_SELFIE_SERVICE_URL → browser hits the service directly.
  * Output is an in-memory PNG blob (not stored).
  */
 
@@ -18,6 +20,8 @@ export type GenerateSelfieInput = {
   parentGender: SelfieGenderInput;
   onProgress?: (percent: number) => void;
 };
+
+export type SelfieTransport = 'local' | 'firebase';
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -47,14 +51,27 @@ export function normalizeSelfieGender(gender: SelfieGenderInput): 'female' | 'ma
   return 'male';
 }
 
+/** Local selfie service base URL (no trailing slash), or null → Firebase callable. */
+export function getLocalSelfieServiceUrl(): string | null {
+  const raw = process.env.NEXT_PUBLIC_SELFIE_SERVICE_URL?.trim();
+  if (!raw) return null;
+  return raw.replace(/\/$/, '');
+}
+
+export function getSelfieTransport(): SelfieTransport {
+  return getLocalSelfieServiceUrl() ? 'local' : 'firebase';
+}
+
 function summarizeSelfieRequest(
+  transport: SelfieTransport,
   input: GenerateSelfieInput,
   childImageBase64Len: number,
   parentImageBase64Len: number,
 ) {
   return {
-    transport: 'firebase' as const,
-    endpoint: 'generateSelfie',
+    transport,
+    endpoint: transport === 'local' ? 'generate-selfie-json' : 'generateSelfie',
+    localServiceUrl: getLocalSelfieServiceUrl(),
     childGender: normalizeSelfieGender(input.childGender),
     parentGender: normalizeSelfieGender(input.parentGender),
     childFaceBytes: input.childFace.size,
@@ -66,6 +83,74 @@ function summarizeSelfieRequest(
   };
 }
 
+async function generateViaLocalService(
+  baseUrl: string,
+  childGender: 'female' | 'male',
+  parentGender: 'female' | 'male',
+  childImageData: string,
+  parentImageData: string,
+): Promise<string> {
+  const response = await fetch(`${baseUrl}/generate-selfie-json`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      parent_gender: parentGender,
+      child_gender: childGender,
+      parent_image_base64: parentImageData,
+      child_image_base64: childImageData,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Selfie service error ${response.status}: ${errorText.slice(0, 240)}`);
+  }
+
+  const result = (await response.json()) as {
+    success?: boolean;
+    imageData?: string;
+    detail?: string;
+    error?: string;
+  };
+
+  if (!result.imageData) {
+    throw new Error(result.detail ?? result.error ?? 'No image returned from local selfie service');
+  }
+
+  return result.imageData;
+}
+
+async function generateViaFirebase(
+  childGender: 'female' | 'male',
+  parentGender: 'female' | 'male',
+  childImageData: string,
+  parentImageData: string,
+): Promise<string> {
+  const functions = await getFunctionsInstance();
+  const generateSelfieFn = httpsCallable<
+    {
+      childGender: string;
+      parentGender: string;
+      childImageData: string;
+      parentImageData: string;
+    },
+    { success: boolean; imageData?: string; error?: string }
+  >(functions, 'generateSelfie');
+
+  const result = await generateSelfieFn({
+    childGender,
+    parentGender,
+    childImageData,
+    parentImageData,
+  });
+
+  if (!result.data.success || !result.data.imageData) {
+    throw new Error(result.data.error ?? 'יצירת התמונה נכשלה');
+  }
+
+  return result.data.imageData;
+}
+
 /**
  * Generate composed selfie PNG — tracks coarse progress for the preparing ring.
  * Nothing is persisted client-side except the returned Blob.
@@ -73,8 +158,12 @@ function summarizeSelfieRequest(
 export async function generateSelfieImage(input: GenerateSelfieInput): Promise<Blob> {
   const startTime = Date.now();
   const report = (pct: number) => input.onProgress?.(Math.min(100, Math.max(0, Math.round(pct))));
+  const transport = getSelfieTransport();
+  const localBase = getLocalSelfieServiceUrl();
 
   logger.log('Starting selfie generation', {
+    transport,
+    localServiceUrl: localBase,
     childFaceBytes: input.childFace.size,
     parentFaceBytes: input.parentFace.size,
     childGender: input.childGender,
@@ -95,43 +184,33 @@ export async function generateSelfieImage(input: GenerateSelfieInput): Promise<B
   }, 900);
 
   try {
-    logger.log('Request → Firebase generateSelfie', {
-      ...summarizeSelfieRequest(input, childImageData.length, parentImageData.length),
+    const childGender = normalizeSelfieGender(input.childGender);
+    const parentGender = normalizeSelfieGender(input.parentGender);
+
+    logger.log(`Request → ${transport === 'local' ? 'local selfie service' : 'Firebase generateSelfie'}`, {
+      ...summarizeSelfieRequest(transport, input, childImageData.length, parentImageData.length),
     });
 
-    const functions = await getFunctionsInstance();
-    const generateSelfieFn = httpsCallable<
-      {
-        childGender: string;
-        parentGender: string;
-        childImageData: string;
-        parentImageData: string;
-      },
-      { success: boolean; imageData?: string; error?: string }
-    >(functions, 'generateSelfie');
+    const imageData =
+      transport === 'local' && localBase
+        ? await generateViaLocalService(
+            localBase,
+            childGender,
+            parentGender,
+            childImageData,
+            parentImageData,
+          )
+        : await generateViaFirebase(childGender, parentGender, childImageData, parentImageData);
 
-    const result = await generateSelfieFn({
-      childGender: normalizeSelfieGender(input.childGender),
-      parentGender: normalizeSelfieGender(input.parentGender),
-      childImageData,
-      parentImageData,
-    });
-
-    logger.log('Response ← Firebase generateSelfie', {
-      success: result.data.success,
-      imageDataBase64Len: result.data.imageData?.length ?? 0,
-      error: result.data.error,
+    logger.log(`Response ← ${transport}`, {
+      imageDataBase64Len: imageData.length,
       elapsedMs: Date.now() - startTime,
     });
 
-    if (!result.data.success || !result.data.imageData) {
-      throw new Error(result.data.error ?? 'יצירת התמונה נכשלה');
-    }
-
     report(100);
-    const blob = base64ToBlob(result.data.imageData, 'image/png');
+    const blob = base64ToBlob(imageData, 'image/png');
     logger.log('Selfie blob ready', {
-      transport: 'firebase',
+      transport,
       outputBytes: blob.size,
       outputType: blob.type || 'image/png',
       elapsedMs: Date.now() - startTime,
@@ -140,7 +219,7 @@ export async function generateSelfieImage(input: GenerateSelfieInput): Promise<B
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     logger.error('Selfie generation failed', {
-      transport: 'firebase',
+      transport,
       message,
       elapsedMs: Date.now() - startTime,
     });

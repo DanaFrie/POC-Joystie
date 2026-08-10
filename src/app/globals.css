@@ -42,6 +42,35 @@
     isolation: isolate;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .v03-funnel-screen,
+    .v03-funnel-enter-0,
+    .v03-funnel-enter-1,
+    .v03-funnel-enter-2,
+    .v03-funnel-enter-3,
+    .v03-funnel-enter-4,
+    .v03-funnel-enter-5,
+    .v03-funnel-enter-6,
+    .v03-funnel-enter-fast-0,
+    .v03-funnel-enter-fast-1,
+    .v03-funnel-enter-fast-2,
+    .v03-funnel-enter-fast-3,
+    .v03-funnel-enter-reveal-0,
+    .v03-funnel-enter-reveal-1,
+    .v03-funnel-enter-reveal-2,
+    .v03-funnel-enter-reveal-3,
+    .v03-funnel-enter-reveal-4,
+    .v03-funnel-enter-reveal-5,
+    .v03-funnel-enter-reveal-6,
+    .v03-funnel-enter-reveal-hero-intro,
+    .v03-oauth-terms-sheet,
+    .v03-fade-in-quick {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
   @keyframes v03-oauth-terms-sheet {
     from {
       transform: translateY(100%);
@@ -423,6 +452,13 @@ html.layout-root:has(.v03-landing-root) {
   overflow-y: auto !important;
 }
 
+/* 5–6 hours story — beats overflow-y: auto !important while words auto-bold */
+html.layout-root.landing-stats-scroll-lock:has(.v03-landing-root) {
+  overflow-y: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+}
+
 body.layout-root:has(.v03-landing-root) {
   background-color: #05161a !important;
   background-image: none !important;
@@ -446,8 +482,23 @@ body.layout-root:has(.v03-about-root) {
   overscroll-behavior-y: none;
 }
 
+/* Knowledge articles — same white page chrome as about */
+html.layout-root:has(.v03-knowledge-article-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+body.layout-root:has(.v03-knowledge-article-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow: clip !important;
+  overscroll-behavior-y: none;
+}
+
 .v03-about-root {
-  font-family: var(--font-marketing-rubik), 'Rubik', 'Simpler Pro', var(--font-simpler), 'Assistant', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   scroll-behavior: smooth;
   --landing-gutter: 1.5rem;
   overflow: clip;
@@ -490,7 +541,7 @@ body.layout-root:has(.v03-about-root) {
 }
 
 .v03-landing-root {
-  font-family: var(--font-marketing-rubik), 'Rubik', 'Simpler Pro', var(--font-simpler), 'Assistant', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   scroll-behavior: smooth;
   /* Side margins — mobile gutters stay in components; desktop uses this token */
   --landing-gutter: 1.5rem;
@@ -593,6 +644,21 @@ body.layout-root:has(.v03-about-root) {
   }
 }
 
+/* How-it-works story tabs — turquoise fill over 7s, RTL origin (right → left) */
+.v03-landing-root .how-it-works-story-fill {
+  transform: scaleX(0);
+  animation: how-it-works-story-fill 5s linear forwards;
+}
+
+@keyframes how-it-works-story-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .v03-landing-root {
     scroll-behavior: auto;
@@ -606,6 +672,11 @@ body.layout-root:has(.v03-about-root) {
 
   .v03-landing-root .landing-step-swap {
     animation: none;
+  }
+
+  .v03-landing-root .how-it-works-story-fill {
+    animation: none;
+    transform: scaleX(1);
   }
 }
 
@@ -821,7 +892,7 @@ html[dir="rtl"] {
 
 .btn-main {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   font-weight: 900;
 }
 .btn-main:hover {

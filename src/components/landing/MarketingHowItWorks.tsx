@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LANDING_ASSETS, LANDING_HOW_STEPS } from '@/constants/landing-marketing';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingHowGlow } from '@/components/landing/LandingDecor';
+
+/** Story dwell per step — active badge fills turquoise, then advances. */
+const STORY_MS = 5000;
 
 /** Figma Story circle — white→#CDCDCD gradient frame + how-it-works-circle.webp */
 function StepImage({ className = '' }: { className?: string }) {
@@ -24,59 +27,153 @@ function StepImage({ className = '' }: { className?: string }) {
   );
 }
 
-function StepTabs({
+/** Non-interactive step badges — active one is a turquoise loader for STORY_MS. */
+function StepBadges({
   active,
-  onSelect,
   layout,
+  progress,
 }: {
   active: number;
-  onSelect: (index: number) => void;
   layout: 'mobile' | 'desktop';
+  /** 0–1 fill on the active badge */
+  progress: number;
 }) {
   const isMobile = layout === 'mobile';
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLDivElement>(null);
+
+  // Horizontal-only: scroll the badge row, never the page (text/image stay put).
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = activeRef.current;
+    const scroller = scrollerRef.current;
+    if (!el || !scroller) return;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const elCenter = elRect.left + elRect.width / 2;
+    const scrollerCenter = scrollerRect.left + scrollerRect.width / 2;
+    const delta = elCenter - scrollerCenter;
+    if (Math.abs(delta) < 4) return;
+
+    scroller.scrollBy({ left: delta, behavior: 'smooth' });
+  }, [active, isMobile]);
+
   return (
     <div
+      ref={scrollerRef}
       className={
         isMobile
-          ? /* Full-bleed scroll; flex spacers (not padding) keep end chip borders visible in RTL */
-            'flex w-[calc(100%+3rem)] max-w-none -mx-6 flex-row gap-2 overflow-x-auto v03-scroll-hidden'
+          ? /* Full-bleed scroll; flex spacers keep end chip borders visible in RTL */
+            'flex w-full flex-row gap-2 overflow-x-auto v03-scroll-hidden'
           : 'flex w-auto min-w-[220px] flex-col gap-4'
       }
+      role="list"
+      aria-label="שלבי התהליך"
     >
       {isMobile ? <div className="w-6 shrink-0" aria-hidden /> : null}
       {LANDING_HOW_STEPS.map((item, index) => {
         const isActive = index === active;
         return (
-          <button
+          <div
             key={item.tab}
-            type="button"
-            onClick={() => onSelect(index)}
-            className={`shrink-0 rounded-full text-center font-rubik outline-none transition-none ${
+            ref={isActive ? activeRef : undefined}
+            role="listitem"
+            aria-current={isActive ? 'step' : undefined}
+            className={`relative shrink-0 overflow-hidden rounded-full text-center font-rubik select-none pointer-events-none ${
               isMobile
                 ? 'px-3 py-1.5 text-sm tracking-[-0.21px]'
                 : 'px-7 py-2.5 text-[20px] tracking-[-0.3px]'
             } ${
               isActive
-                ? 'bg-gradient-to-r from-[#e5e5e5] to-white font-bold text-[#05161a]'
-                : 'border border-[#ebebeb] font-normal text-[#ebebeb] hover:bg-white/5'
+                ? /* Light chip from the start so label stays readable over the fill */
+                  'border border-[#00ffb3] bg-white font-bold text-[#05161a]'
+                : 'border border-[#ebebeb] bg-transparent font-normal text-[#ebebeb]'
             }`}
           >
-            {item.tab}
-          </button>
+            {isActive ? (
+              <span
+                className="pointer-events-none absolute inset-y-0 start-0 z-0 bg-[#00ffb3]"
+                style={{ width: `${Math.max(0, Math.min(1, progress)) * 100}%` }}
+                aria-hidden
+              />
+            ) : null}
+            <span className="relative z-10">{item.tab}</span>
+          </div>
         );
       })}
-      {/* RTL: last chip sits on the physical left — spacer must be after buttons in DOM */}
       {isMobile ? <div className="w-6 shrink-0" aria-hidden /> : null}
     </div>
   );
 }
 
 export function MarketingHowItWorks() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const startedRef = useRef(false);
   const [active, setActive] = useState(0);
+  const [storyKey, setStoryKey] = useState(0);
+  const [storyPlaying, setStoryPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+
   const step = LANDING_HOW_STEPS[active] ?? LANDING_HOW_STEPS[0];
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) {
+          setStoryPlaying(false);
+          return;
+        }
+        setStoryPlaying(true);
+        if (!startedRef.current) {
+          startedRef.current = true;
+          setActive(0);
+          setStoryKey((k) => k + 1);
+        }
+      },
+      { threshold: 0.2 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  // Turquoise fill 0→1 over STORY_MS, then advance step.
+  useEffect(() => {
+    if (!storyPlaying) {
+      setProgress(0);
+      return;
+    }
+
+    let raf = 0;
+    let cancelled = false;
+    const start = performance.now();
+    setProgress(0);
+
+    const tick = (now: number) => {
+      if (cancelled) return;
+      const t = Math.min(1, (now - start) / STORY_MS);
+      setProgress(t);
+      if (t < 1) {
+        raf = window.requestAnimationFrame(tick);
+        return;
+      }
+      setActive((i) => (i + 1) % LANDING_HOW_STEPS.length);
+      setStoryKey((k) => k + 1);
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf);
+    };
+  }, [storyPlaying, storyKey]);
 
   return (
     <section
+      ref={sectionRef}
       id="how-it-works"
       className="landing-section landing-gutter-md relative py-12 md:py-24"
     >
@@ -99,14 +196,14 @@ export function MarketingHowItWorks() {
               alt=""
               loading="lazy"
               decoding="async"
-              className="size-full max-w-none object-contain"
+              className="h-full w-full max-w-none object-contain"
               draggable={false}
             />
           </div>
         </div>
 
-        {/* Mobile header — Figma 15445:6168 */}
-        <LandingReveal className="relative z-[1] mx-auto w-full max-w-[327px] text-right md:hidden">
+        {/* Mobile header — keep content gutter; story frame below is full-bleed */}
+        <LandingReveal className="relative z-[1] mx-auto w-full max-w-[327px] px-6 text-right md:hidden">
           <h2 className="font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
             איך עובד התהליך איתנו?
           </h2>
@@ -126,10 +223,11 @@ export function MarketingHowItWorks() {
         </LandingReveal>
 
         {/*
-          Mobile Story — Figma 15448:8826: overflow-clip crops ellipse at bottom border.
+          Mobile Story — full-bleed past the 1004 column (no side margins);
+          ellipse clipped at frame bottom.
         */}
-        <div className="relative w-full shrink-0 md:hidden">
-          <div className="relative mx-auto flex h-[281px] w-full max-w-[375px] flex-col items-stretch overflow-hidden bg-[#05161a] px-6 pb-7">
+        <div className="relative left-1/2 w-screen max-w-[100vw] shrink-0 -translate-x-1/2 md:hidden">
+          <div className="relative flex h-[281px] w-full flex-col items-stretch overflow-hidden bg-[#05161a] pb-7">
             {/* Ellipse 209 — Figma 15448:8827 @ top 224.61, centered; clipped by Story overflow */}
             <div
               className="pointer-events-none absolute left-1/2 top-[224.61px] z-0 h-[246px] w-[245px] -translate-x-1/2"
@@ -140,9 +238,10 @@ export function MarketingHowItWorks() {
 
             <LandingReveal delayMs={160} className="relative z-[1] w-full">
               <div className="flex w-full flex-col gap-6">
-                <StepTabs active={active} onSelect={setActive} layout="mobile" />
+                <StepBadges active={active} layout="mobile" progress={progress} />
                 <div
-                  className="relative flex w-full items-start justify-between gap-[21px]"
+                  key={active}
+                  className="relative flex w-full items-start justify-between gap-[21px] px-6 landing-step-swap"
                   dir="ltr"
                 >
                   <div className="relative shrink-0">
@@ -170,10 +269,13 @@ export function MarketingHowItWorks() {
               dir="rtl"
             >
               <div className="relative z-10 shrink-0">
-                <StepTabs active={active} onSelect={setActive} layout="desktop" />
+                <StepBadges active={active} layout="desktop" progress={progress} />
               </div>
 
-              <div className="relative z-10 flex min-w-0 flex-1 flex-col gap-6 text-right">
+              <div
+                key={active}
+                className="relative z-10 flex min-w-0 flex-1 flex-col gap-6 text-right landing-step-swap"
+              >
                 <h3 className="font-rubik text-[36px] font-bold leading-[1.1] tracking-[-1.08px] text-white">
                   {step.title}
                 </h3>

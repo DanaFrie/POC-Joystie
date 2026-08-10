@@ -50,23 +50,23 @@ export function HelpScreen() {
     <div
       ref={rootRef}
       dir="rtl"
-      className="relative z-[10] w-full bg-v03-green-900 px-v03-gutter pb-8"
+      className="relative z-[10] w-full bg-v03-green-900 px-v03-gutter pb-8 v03-funnel-screen"
       style={{ paddingTop: contentTopPadPx, minHeight: '100%' }}
     >
       <FunnelMintEllipse />
       <OnboardingBackButton href="/dashboard" />
 
       <div className="relative z-[20] mx-auto flex w-v03-content flex-col items-center gap-5">
-        <JoystieCompactMark width={45.47} height={45.04} />
-        <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
+        <JoystieCompactMark className="v03-funnel-enter-0" width={45.47} height={45.04} />
+        <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white v03-funnel-enter-1">
           עזרה
         </h1>
 
-        <p className="w-full px-2.5 text-center font-simpler text-[14px] font-normal leading-[17.5px] text-v03-green-100">
+        <p className="w-full px-2.5 text-center font-simpler text-[14px] font-normal leading-[17.5px] text-v03-green-100 v03-funnel-enter-2">
           שאלות נפוצות ודרכי יצירת קשר
         </p>
 
-        <div className="flex w-full flex-col gap-3 rounded-[18px] border border-white/20 bg-v03-green-900/40 px-4 py-4 text-center backdrop-blur-[2px]">
+        <div className="flex w-full flex-col gap-3 rounded-[18px] border border-white/20 bg-v03-green-900/40 px-4 py-4 text-center backdrop-blur-[2px] v03-funnel-enter-3">
           <h2 className="font-simpler text-[16px] font-bold leading-[21.6px] text-white">
             צור קשר
           </h2>
@@ -93,7 +93,7 @@ export function HelpScreen() {
           </a>
         </div>
 
-        <div className="flex w-full flex-col gap-4">
+        <div className="flex w-full flex-col gap-4 v03-funnel-enter-4">
           {FAQ_ITEMS.map((item) => (
             <section
               key={item.question}

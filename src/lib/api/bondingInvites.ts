@@ -2,7 +2,7 @@ import { getFirestoreInstance } from '@/lib/firebase';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import { getUser } from '@/lib/api/users';
 import type { FirestoreBondingInvite } from '@/types/bonding';
-import { generateChildUrl } from '@/utils/url-encoding';
+import { generateChildUrl, isDraftChildId } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('BondingInvites');
@@ -60,15 +60,24 @@ export async function resolveDashboardChildShareUrl(params: {
 }): Promise<string> {
   const base = typeof window !== 'undefined' ? window.location.origin : '';
   let childId = params.childId?.trim() || null;
+  if (isDraftChildId(childId)) childId = null;
 
   try {
     if (!childId) {
       const active = await getActiveChallenge(params.parentId, false);
-      if (active?.childId) childId = active.childId;
+      if (active?.childId && !isDraftChildId(active.childId)) {
+        childId = active.childId;
+      }
     }
     if (!childId) {
       const user = await getUser(params.parentId, false);
-      childId = user?.primaryChildId || null;
+      const primary = user?.primaryChildId?.trim() || null;
+      if (primary && !isDraftChildId(primary)) childId = primary;
+    }
+    if (!childId) {
+      const { getChildrenByParent } = await import('@/lib/api/children');
+      const kids = await getChildrenByParent(params.parentId);
+      childId = kids[0]?.id || null;
     }
   } catch (error) {
     logger.warn('resolveDashboardChildShareUrl enrichment failed:', error);

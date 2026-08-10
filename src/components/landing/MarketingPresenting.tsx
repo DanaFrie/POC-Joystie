@@ -35,20 +35,20 @@ function FeatureEllipse({
 }
 
 const MOCKUP_FADE_BG =
-  'linear-gradient(180deg, rgba(5, 22, 26, 0) 0%, #05161A 89.22%)';
+  'linear-gradient(180deg, rgba(5, 22, 26, 0.00) 0%, #05161A 89.22%)';
+
+/** Visible phone image — 5% above previous 142.8px. */
+const MOBILE_IMAGE_MAX_PX = Math.round(142.8 * 1.05 * 10) / 10; // 149.9
 
 /**
- * Mobile-only fade over bottom of phone mockup (Figma Rectangle 6555 / 6556).
- * Lives inside the phone LandingReveal so it transitions with the mockup.
+ * Mobile-only fade rectangle at bottom of mockup area (Figma Rectangle 6555).
+ * Fixed 327×167 — spans content column, not the smaller phone image.
  */
-function MobileMockupFade({ height }: { height: number }) {
+function MobileMockupFade() {
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] lg:hidden"
-      style={{
-        height,
-        background: MOCKUP_FADE_BG,
-      }}
+      className="pointer-events-none absolute bottom-0 left-1/2 z-[2] h-[167px] w-[327px] -translate-x-1/2 lg:hidden"
+      style={{ background: MOCKUP_FADE_BG }}
       aria-hidden
     />
   );
@@ -57,12 +57,15 @@ function MobileMockupFade({ height }: { height: number }) {
 export function MarketingPresenting() {
   return (
     <section
-      id="what-is-joystie"
       className="landing-section landing-gutter pt-0 pb-12 md:py-24 lg:pt-0"
       dir="rtl"
     >
       <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-14 md:gap-[100px] lg:gap-[160px]">
-        <LandingReveal className="flex w-full max-w-[358px] items-center justify-center gap-3 md:max-w-none md:gap-9">
+        {/* Menu "מה זה ג׳ויסטי?" lands here — גאים להציג בפניכם */}
+        <LandingReveal
+          id="what-is-joystie"
+          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 md:max-w-none md:scroll-mt-32 md:gap-9 lg:scroll-mt-36"
+        >
           <div className="h-px flex-1 bg-white/25" aria-hidden />
           <div className="flex flex-col items-center gap-1 text-center">
             <p className="font-rubik text-[15px] font-light tracking-[-0.4px] text-white md:text-[30px] md:tracking-[-0.75px]">
@@ -80,13 +83,13 @@ export function MarketingPresenting() {
           <div className="h-px flex-1 bg-white/25" aria-hidden />
         </LandingReveal>
 
+        <div className="flex w-full flex-col items-center gap-[100px] md:gap-[100px] lg:gap-[160px]">
         {LANDING_FEATURES.map((feature, index) => {
           const isSection1 = index === 0;
           const isSection2 = index === 1;
           const isSection3 = index === 2;
           const useArticleEllipse = isSection1 || isSection2 || isSection3;
           const useAbsoluteDesktop = isSection2 || isSection3;
-          const mobileFadeHeight = isSection3 ? 180.278 : 167;
 
           return (
             <article
@@ -116,9 +119,10 @@ export function MarketingPresenting() {
               {/*
                 Phone column — relative wrapper WITHOUT LandingReveal transform
                 so mobile rotated dots (2174 tall) are not clipped.
+                Mobile: slot keeps Figma 210×435 footprint; image is smaller inside.
               */}
               <div
-                className={`relative z-10 order-1 mx-auto w-full max-w-[210px] overflow-visible md:max-w-[320px] ${
+                className={`relative z-10 order-1 mx-auto w-full max-w-[327px] overflow-visible md:max-w-[320px] ${
                   isSection2
                     ? 'lg:absolute lg:left-0 lg:top-0 lg:mx-0'
                     : isSection3
@@ -135,16 +139,45 @@ export function MarketingPresenting() {
 
                 <LandingReveal delayMs={180 + index * 40} className="relative z-[1] overflow-visible">
                   <LandingFeatureEllipse showDesktop={!useArticleEllipse} />
-                  <div className="relative mx-auto aspect-[210/435] w-full max-w-[210px] overflow-hidden md:aspect-[320/663] md:max-w-[320px]">
-                    <Image
-                      src={feature.image}
-                      alt={feature.imageAlt}
-                      fill
-                      className="object-contain object-center"
-                      sizes="(max-width: 768px) 210px, 320px"
-                    />
-                    {/* Bottom blur — same LandingReveal as mockup */}
-                    <MobileMockupFade height={mobileFadeHeight} />
+                  <div className="relative mx-auto w-full overflow-visible md:aspect-[320/663] md:max-w-[320px] md:overflow-hidden">
+                    {/* Mobile slot — fixed footprint */}
+                    <div
+                      className="relative mx-auto aspect-[210/435] w-full max-w-[210px] overflow-visible md:hidden"
+                    >
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div
+                          className="relative overflow-hidden"
+                          style={{
+                            width: MOBILE_IMAGE_MAX_PX,
+                            aspectRatio: '210 / 435',
+                          }}
+                        >
+                          <Image
+                            src={feature.image}
+                            alt={feature.imageAlt}
+                            fill
+                            loading="lazy"
+                            decoding="async"
+                            className="object-contain object-center"
+                            sizes="150px"
+                          />
+                        </div>
+                      </div>
+                      <MobileMockupFade />
+                    </div>
+
+                    {/* Desktop phone */}
+                    <div className="relative mx-auto hidden aspect-[320/663] w-full max-w-[320px] overflow-hidden md:block">
+                      <Image
+                        src={feature.image}
+                        alt={feature.imageAlt}
+                        fill
+                        loading="lazy"
+                        decoding="async"
+                        className="object-contain object-center"
+                        sizes="320px"
+                      />
+                    </div>
                   </div>
                   {isSection1 ? <LandingFeatureDonex /> : null}
                   {isSection2 ? <LandingFeatureDonexConvert /> : null}
@@ -198,6 +231,7 @@ export function MarketingPresenting() {
             </article>
           );
         })}
+        </div>
       </div>
     </section>
   );

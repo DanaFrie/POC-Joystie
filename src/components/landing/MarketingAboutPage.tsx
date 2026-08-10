@@ -197,7 +197,7 @@ export function MarketingAboutPage() {
       className="v03-about-root min-h-screen bg-white text-right font-rubik text-[#092125] [direction:rtl]"
       dir="rtl"
     >
-      <MarketingNav activeHref="/about" homeHashPrefix="/" />
+      <MarketingNav activeHref="/about" homeHashPrefix="/" chrome="onLight" />
 
       {/*
         Stack: green (z-0) → ellipse (z-1) → headline + white (z-2).

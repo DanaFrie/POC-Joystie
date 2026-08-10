@@ -16,6 +16,11 @@ export const ONBOARDING_CHILD_PATH = '/onboarding/child';
 
 const CHILD_DASHBOARD_PATH = '/dashboard/child';
 
+/** Onboarding placeholder ids — never embed in dashboard tokens. */
+export function isDraftChildId(childId: string | null | undefined): boolean {
+  return Boolean(childId && /^draft-/i.test(childId));
+}
+
 /**
  * Encode parent (+ optional child) into a compact URL-safe token.
  * Format: base64url(parentId|childId|expiresAt)
@@ -26,7 +31,8 @@ export function encodeParentToken(parentId: string, childId?: string): string {
   const expiresAt =
     Date.now() + clientConfig.token.expirationDays * 24 * 60 * 60 * 1000;
 
-  const parts = [parentId, childId || '', expiresAt.toString()];
+  const safeChildId = isDraftChildId(childId) ? '' : childId || '';
+  const parts = [parentId, safeChildId, expiresAt.toString()];
   const compact = parts.join('|');
   return btoa(compact).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }

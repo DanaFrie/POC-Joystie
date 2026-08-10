@@ -4,6 +4,7 @@ import { TrackAnalyticsEvent } from '@/components/analytics/TrackAnalyticsEvent'
 import { OnboardingCopy } from '@/components/onboarding/OnboardingCopy';
 import { OnboardingKingdomEllipsesBackdrop } from '@/components/onboarding/OnboardingKingdomEllipsesBackdrop';
 import { OnboardingLogo } from '@/components/onboarding/OnboardingLogo';
+import { FunnelRouteEnter } from '@/components/ui/FunnelRouteEnter';
 import {
   FunnelStepFooter,
   FunnelStepForeground,
@@ -28,27 +29,30 @@ export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
   };
 
   return (
-    <FunnelStepRoot aria-label="Joystie onboarding landing" fitViewport>
-      <TrackAnalyticsEvent event={AnalyticsEvents.LANDING_ONBOARDING} />
-      <OnboardingKingdomEllipsesBackdrop />
-      <FunnelStepForeground distribution="between" padTopPx={0} padBottomPx={16} fitViewport>
-        <FunnelStepSection>
-          <OnboardingLogo flow />
-        </FunnelStepSection>
+    <FunnelRouteEnter stepKey="onboarding-landing">
+      <FunnelStepRoot aria-label="Joystie onboarding landing" fitViewport>
+        <TrackAnalyticsEvent event={AnalyticsEvents.LANDING_ONBOARDING} />
+        <OnboardingKingdomEllipsesBackdrop />
+        <FunnelStepForeground distribution="between" padTopPx={0} padBottomPx={16} fitViewport>
+          <FunnelStepSection className="v03-funnel-enter-0">
+            <OnboardingLogo flow />
+          </FunnelStepSection>
 
-        <FunnelStepSection>
-          <OnboardingCopy flow />
-        </FunnelStepSection>
+          <FunnelStepSection className="v03-funnel-enter-1">
+            <OnboardingCopy flow />
+          </FunnelStepSection>
 
-        <FunnelStepFooter
-          variant="accent"
-          showLoginLink
-          blur={false}
-          onClick={handleStart}
-        >
-          התחלה
-        </FunnelStepFooter>
-      </FunnelStepForeground>
-    </FunnelStepRoot>
+          <FunnelStepFooter
+            className="v03-funnel-enter-2"
+            variant="accent"
+            showLoginLink
+            blur={false}
+            onClick={handleStart}
+          >
+            התחלה
+          </FunnelStepFooter>
+        </FunnelStepForeground>
+      </FunnelStepRoot>
+    </FunnelRouteEnter>
   );
 }

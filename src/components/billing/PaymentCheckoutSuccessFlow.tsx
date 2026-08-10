@@ -36,7 +36,7 @@ export function PaymentCheckoutSuccessFlow({
     >
       <FunnelViewport surface="dark" scaleMode="scroll" className="font-simpler text-v03-text-on-dark">
         <OnboardingMintGridBackdrop showGrid />
-        <OnboardingWaitingScreenShell skipMintGlow zIndex={20} ariaBusy staticLayout>
+        <OnboardingWaitingScreenShell skipMintGlow zIndex={20} ariaBusy>
           <OnboardingWaitingCenterContent headline={VERIFY_COPY} ariaLabel={VERIFY_COPY} />
         </OnboardingWaitingScreenShell>
       </FunnelViewport>

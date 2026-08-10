@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useRef } from 'react';
 import { JoystieCompactMark } from '@/components/brand/JoystieCompactMark';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
+import { FunnelRouteEnter } from '@/components/ui/FunnelRouteEnter';
 import {
   FunnelStepFooter,
   FunnelStepForeground,
@@ -89,8 +90,12 @@ export function AuthFunnelScreenShell({
 
   const body = (
     <div className="flex w-full flex-col items-center gap-5">
-      <JoystieCompactMark width={45.47} height={45.04} />
-      <div className="flex w-full flex-col items-end gap-[19px]">
+      <JoystieCompactMark
+        className="v03-funnel-enter-0"
+        width={45.47}
+        height={45.04}
+      />
+      <div className="flex w-full flex-col items-end gap-[19px] v03-funnel-enter-1">
         <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
           {title}
         </h1>
@@ -116,6 +121,7 @@ export function AuthFunnelScreenShell({
   const structuredFooter =
     !usesLegacyFooter && footerCtaLabel !== undefined ? (
       <FunnelStepFooter
+        className="v03-funnel-enter-2"
         variant="secondary"
         overlay
         blur={scrollOverflows}
@@ -135,6 +141,7 @@ export function AuthFunnelScreenShell({
   const legacyFooter =
     usesLegacyFooter ? (
       <FunnelStepFooter
+        className="v03-funnel-enter-2"
         variant="secondary"
         overlay
         blur={scrollOverflows}
@@ -144,24 +151,26 @@ export function AuthFunnelScreenShell({
     ) : null;
 
   return (
-    <FunnelStepRoot fitViewport aria-label={ariaLabel ?? title}>
-      <SignupHeroFrame />
-      <FunnelStepForeground
-        distribution="between"
-        padTopPx={padTopPx}
-        padBottomPx={padBottomPx}
-        fitViewport
-      >
-        <FunnelStepMain
-          scroll
-          scrollRef={scrollRef}
-          className="relative min-h-0 w-full flex-1"
+    <FunnelRouteEnter stepKey={`auth-${title}`}>
+      <FunnelStepRoot fitViewport aria-label={ariaLabel ?? title}>
+        <SignupHeroFrame />
+        <FunnelStepForeground
+          distribution="between"
+          padTopPx={padTopPx}
+          padBottomPx={padBottomPx}
+          fitViewport
         >
-          {scrollContent}
-        </FunnelStepMain>
-        {structuredFooter}
-        {legacyFooter}
-      </FunnelStepForeground>
-    </FunnelStepRoot>
+          <FunnelStepMain
+            scroll
+            scrollRef={scrollRef}
+            className="relative min-h-0 w-full flex-1"
+          >
+            {scrollContent}
+          </FunnelStepMain>
+          {structuredFooter}
+          {legacyFooter}
+        </FunnelStepForeground>
+      </FunnelStepRoot>
+    </FunnelRouteEnter>
   );
 }

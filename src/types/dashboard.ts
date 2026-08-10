@@ -15,6 +15,11 @@ export interface Child {
   changes?: string[];
   changeDayChecks?: boolean[][];
   baselineDailyMinutes?: number;
+  /** Public default asset only — stored cards use ephemeral access (shareCardStored). */
+  shareCardUrl?: string | null;
+  shareCardSource?: 'ai' | 'default' | null;
+  /** True when bytes are in private Storage (load via getChildShareCardAccess). */
+  shareCardStored?: boolean;
 }
 
 export interface Challenge {

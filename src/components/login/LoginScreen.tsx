@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import { JoystieCompactMark } from '@/components/brand/JoystieCompactMark';
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
+import { FunnelRouteEnter } from '@/components/ui/FunnelRouteEnter';
 import {
   FunnelStepFooter,
   FunnelStepForeground,
@@ -174,119 +175,126 @@ export function LoginScreen({
   });
 
   return (
-    <FunnelStepRoot fitViewport aria-label="התחברות">
-      <SignupHeroFrame />
-      <FunnelStepForeground
-        distribution="between"
-        padTopPx={loginPadTopPx}
-        padBottomPx={getFunnelScrollFrameBottomInsetPx({ showSignupLink: true })}
-        fitViewport
-      >
-        <FunnelStepMain
-          scroll
-          scrollRef={loginScrollRef}
-          className="relative min-h-0 w-full flex-1"
+    <FunnelRouteEnter stepKey="login">
+      <FunnelStepRoot fitViewport aria-label="התחברות">
+        <SignupHeroFrame />
+        <FunnelStepForeground
+          distribution="between"
+          padTopPx={loginPadTopPx}
+          padBottomPx={getFunnelScrollFrameBottomInsetPx({ showSignupLink: true })}
+          fitViewport
         >
-          <form
-            id={LOGIN_FORM_ID}
-            onSubmit={onSubmit}
-            className="relative z-[20] mx-auto flex w-full flex-col items-stretch gap-[15px]"
+          <FunnelStepMain
+            scroll
+            scrollRef={loginScrollRef}
+            className="relative min-h-0 w-full flex-1"
           >
-            <div className="flex w-full flex-col items-center gap-5">
-              <JoystieCompactMark width={45.47} height={45.04} />
+            <form
+              id={LOGIN_FORM_ID}
+              onSubmit={onSubmit}
+              className="relative z-[20] mx-auto flex w-full flex-col items-stretch gap-[15px]"
+            >
+              <div className="flex w-full flex-col items-center gap-5">
+                <JoystieCompactMark
+                  className="v03-funnel-enter-0"
+                  width={45.47}
+                  height={45.04}
+                />
 
-              <div className="flex w-full flex-col items-end justify-center gap-[15px]">
-                <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
-                  התחברות לג׳ויסטי
-                </h1>
+                <div className="flex w-full flex-col items-end justify-center gap-[15px] v03-funnel-enter-1">
+                  <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
+                    התחברות לג׳ויסטי
+                  </h1>
 
-                {showPasswordProviderBanner ? (
-                  <LoginPasswordProviderBanner />
-                ) : showResumeSignupBanner ? (
-                  <LoginResumeSignupBanner />
-                ) : null}
-              </div>
+                  {showPasswordProviderBanner ? (
+                    <LoginPasswordProviderBanner />
+                  ) : showResumeSignupBanner ? (
+                    <LoginResumeSignupBanner />
+                  ) : null}
+                </div>
 
-              <div className="flex w-full flex-col items-end gap-[19px]">
-                <div className="flex w-full flex-col items-center gap-5">
-                  <div className="flex w-full flex-col items-start gap-5">
-                    <div className="flex w-full flex-col gap-3">
-                      <OAuthButton
-                        label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
-                        icon={<GoogleIcon />}
-                        onClick={onOAuthGoogle}
-                        disabled={formLocked}
-                      />
-                      <OAuthButton
-                        label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
-                        icon={<AppleIcon />}
-                        onClick={onOAuthApple}
-                        disabled={formLocked || !IS_APPLE_OAUTH_ENABLED}
-                      />
+                <div className="flex w-full flex-col items-end gap-[19px] v03-funnel-enter-2">
+                  <div className="flex w-full flex-col items-center gap-5">
+                    <div className="flex w-full flex-col items-start gap-5">
+                      <div className="flex w-full flex-col gap-3">
+                        <OAuthButton
+                          label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
+                          icon={<GoogleIcon />}
+                          onClick={onOAuthGoogle}
+                          disabled={formLocked}
+                        />
+                        <OAuthButton
+                          label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
+                          icon={<AppleIcon />}
+                          onClick={onOAuthApple}
+                          disabled={formLocked || !IS_APPLE_OAUTH_ENABLED}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex w-full items-center gap-5">
-                    <div className="h-0 flex-1 border-t-[0.7px] border-v03-green-300" />
-                    <span className="font-simpler text-[14px] font-normal uppercase leading-5 text-v03-green-300">
-                      או
-                    </span>
-                    <div className="h-0 flex-1 border-t-[0.7px] border-v03-green-300" />
-                  </div>
+                    <div className="flex w-full items-center gap-5">
+                      <div className="h-0 flex-1 border-t-[0.7px] border-v03-green-300" />
+                      <span className="font-simpler text-[14px] font-normal uppercase leading-5 text-v03-green-300">
+                        או
+                      </span>
+                      <div className="h-0 flex-1 border-t-[0.7px] border-v03-green-300" />
+                    </div>
 
-                  <div className="flex w-full flex-col gap-3">
-                    <div className="flex w-full flex-col gap-[25px]">
-                      <div className="flex w-full flex-col items-start gap-5">
-                        <LoginField
-                          id="email"
-                          label="אימייל"
-                          type="email"
-                          value={email}
-                          error={errors.email}
-                          onChange={onChange}
-                          disabled={formLocked}
-                        />
-                        <LoginField
-                          id="password"
-                          label="סיסמה"
-                          type="password"
-                          value={password}
-                          error={errors.password}
-                          onChange={onChange}
-                          disabled={formLocked}
-                        />
-                        <p className="relative z-[30] w-full px-2.5 text-right">
-                          <Link
-                            href={forgotPasswordHref}
-                            prefetch={false}
-                            className="pointer-events-auto font-simpler text-[14px] font-normal leading-[17.5px] text-v03-green-100 underline decoration-solid underline-offset-2"
-                          >
-                            שכחתי סיסמה
-                          </Link>
-                        </p>
+                    <div className="flex w-full flex-col gap-3">
+                      <div className="flex w-full flex-col gap-[25px]">
+                        <div className="flex w-full flex-col items-start gap-5">
+                          <LoginField
+                            id="email"
+                            label="אימייל"
+                            type="email"
+                            value={email}
+                            error={errors.email}
+                            onChange={onChange}
+                            disabled={formLocked}
+                          />
+                          <LoginField
+                            id="password"
+                            label="סיסמה"
+                            type="password"
+                            value={password}
+                            error={errors.password}
+                            onChange={onChange}
+                            disabled={formLocked}
+                          />
+                          <p className="relative z-[30] w-full px-2.5 text-right">
+                            <Link
+                              href={forgotPasswordHref}
+                              prefetch={false}
+                              className="pointer-events-auto font-simpler text-[14px] font-normal leading-[17.5px] text-v03-green-100 underline decoration-solid underline-offset-2"
+                            >
+                              שכחתי סיסמה
+                            </Link>
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </form>
-        </FunnelStepMain>
+            </form>
+          </FunnelStepMain>
 
-        <FunnelStepFooter
-          variant="secondary"
-          showSignupLink
-          overlay
-          blur={scrollOverflows}
-          disabled={formLocked}
-          type="submit"
-          formId={LOGIN_FORM_ID}
-          errorMessage={loginError}
-          onSignupClick={onSignupClick}
-        >
-          {isSubmitting ? 'מתחבר...' : 'התחברות'}
-        </FunnelStepFooter>
-      </FunnelStepForeground>
-    </FunnelStepRoot>
+          <FunnelStepFooter
+            className="v03-funnel-enter-3"
+            variant="secondary"
+            showSignupLink
+            overlay
+            blur={scrollOverflows}
+            disabled={formLocked}
+            type="submit"
+            formId={LOGIN_FORM_ID}
+            errorMessage={loginError}
+            onSignupClick={onSignupClick}
+          >
+            {isSubmitting ? 'מתחבר...' : 'התחברות'}
+          </FunnelStepFooter>
+        </FunnelStepForeground>
+      </FunnelStepRoot>
+    </FunnelRouteEnter>
   );
 }

@@ -1,8 +1,8 @@
 import Image from 'next/image';
 import { LANDING_ASSETS, LANDING_FOOTER_LINKS } from '@/constants/landing-marketing';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
-import { LandingReveal } from '@/components/landing/LandingReveal';
 import { JoystieWordmarkLogo } from '@/components/brand/JoystieWordmarkLogo';
+import { LandingLazyBackground } from '@/components/landing/LandingLazyBackground';
 
 type MarketingFooterProps = {
   /**
@@ -26,46 +26,61 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
       dir="rtl"
     >
       <div className="mx-auto flex w-full max-w-[1786px] flex-col gap-3 md:gap-10 md:px-[var(--landing-gutter)] lg:px-[67px]">
-        <LandingReveal>
           <div className="relative min-h-[479px] overflow-hidden rounded-t-[45px] md:min-h-[410px] md:rounded-[74px]">
+            {/* Mobile — bottom of mountains-mobile.webp (no saturation boost) */}
             <Image
               src={LANDING_ASSETS.footerMountainMobile}
               alt=""
               fill
+              loading="lazy"
+              decoding="async"
               className="object-cover object-bottom md:hidden"
               sizes="100vw"
             />
-            <Image
-              src={LANDING_ASSETS.footerMountainDesktop}
-              alt=""
-              fill
-              className="hidden object-cover object-bottom md:block"
-              sizes="1786px"
+            {/*
+              Desktop — Figma Screen crop + high saturation (image), then soft gradient.
+              lightgray 0px -428.426px / 100% 435.61% no-repeat
+              Lazy: 2.6MB mountain must not load with the hero.
+            */}
+            <LandingLazyBackground
+              imageUrl={LANDING_ASSETS.footerMountainMobile}
+              className="pointer-events-none absolute inset-0 hidden md:block"
+              style={{
+                backgroundColor: 'lightgray',
+                backgroundPosition: '0px -428.426px',
+                backgroundSize: '100% 435.61%',
+                backgroundRepeat: 'no-repeat',
+                filter: 'saturate(1.75) contrast(1.08)',
+              }}
             />
             <div
-              className="absolute inset-0"
+              className="pointer-events-none absolute inset-0 hidden md:block"
+              style={{
+                backgroundImage:
+                  'linear-gradient(92deg, rgba(0, 0, 0, 0.00) 3.04%, rgba(0, 0, 0, 0.20) 74.27%)',
+              }}
+              aria-hidden
+            />
+            {/* Softening overlays — mobile only */}
+            <div
+              className="absolute inset-0 md:hidden"
               style={{
                 backgroundImage:
                   'linear-gradient(117deg, rgba(0,0,0,0) 33%, rgba(0,0,0,0.4) 77%)',
               }}
               aria-hidden
             />
-            {/* Bottom seam (mobile about only): fade into white so no hard gray line */}
+            {/* Bottom seam into page chrome — mobile only */}
             {light ? (
               <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[72px] md:hidden"
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48px] bg-gradient-to-b from-transparent to-white md:hidden"
                 aria-hidden
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/80 to-white" />
-                <div className="absolute inset-x-0 bottom-0 h-8 bg-white/90 blur-md" />
-              </div>
+              />
             ) : (
               <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[102px] md:h-[80px]"
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[80px] bg-gradient-to-b from-transparent to-[#05161a] md:hidden"
                 aria-hidden
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#05161a]/55 to-[#05161a]" />
-              </div>
+              />
             )}
 
             <JoystieWordmarkLogo
@@ -96,7 +111,6 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
               />
             </div>
           </div>
-        </LandingReveal>
 
         <div className="flex w-full flex-col items-center gap-3 px-6 md:mx-auto md:max-w-[1580px] md:flex-row md:items-center md:justify-between md:gap-6 md:px-0">
           <div className="flex items-center gap-[50px] md:gap-[74px]">

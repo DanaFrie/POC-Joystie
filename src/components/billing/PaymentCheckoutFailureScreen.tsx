@@ -27,7 +27,7 @@ export function PaymentCheckoutFailureScreen({
 }: PaymentCheckoutFailureScreenProps) {
   return (
     <div
-      className="v03-scroll-hidden absolute inset-0 z-[55] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto px-v03-gutter"
+      className="v03-scroll-hidden absolute inset-0 z-[55] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto px-v03-gutter v03-funnel-screen"
       style={{
         background: 'rgba(0, 0, 0, 0.20)',
         backdropFilter: 'blur(15px)',
@@ -39,6 +39,7 @@ export function PaymentCheckoutFailureScreen({
       aria-modal="true"
       aria-labelledby="payment-checkout-failure-title"
     >
+      <div className="v03-funnel-enter-0">
       <BallGameSliderCard
         footer={
           <button
@@ -80,6 +81,7 @@ export function PaymentCheckoutFailureScreen({
           </p>
         </div>
       </BallGameSliderCard>
+      </div>
     </div>
   );
 }

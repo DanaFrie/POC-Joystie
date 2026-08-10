@@ -27,7 +27,8 @@ function profileFromFirestoreDoc(profile: FirestoreUser): Omit<
  * Resolve Firestore profile after Auth sign-in. Creates or re-links a profile when missing at uid.
  */
 export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreUser> {
-  const existing = await getUser(uid, true);
+  // Fresh read — cached stubs (pre-terms) caused false "unknown account" after Apple signup.
+  const existing = await getUser(uid, false);
   if (existing) {
     return existing;
   }

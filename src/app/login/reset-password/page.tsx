@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ResetPasswordScreen } from '@/components/login/ResetPasswordScreen';
 import { confirmPasswordReset } from '@/utils/auth';
 import { getErrorMessage } from '@/utils/errors';
@@ -112,7 +113,7 @@ function ResetPasswordPageContent() {
 
 export default function LoginResetPasswordPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FunnelRouteLoading surface="dark" />}>
       <ResetPasswordPageContent />
     </Suspense>
   );

@@ -1,17 +1,24 @@
 'use client';
 
+import nextDynamic from 'next/dynamic';
 import { Suspense, useCallback, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import {
-  ChildGamePostWinFlow,
-  type ChildPostGamePhase,
-} from '@/components/onboarding/child/ChildGamePostWinFlow';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ChildMissionOneStep } from '@/components/onboarding/child/ChildMissionOneStep';
+import type { ChildPostGamePhase } from '@/components/onboarding/child/ChildGamePostWinFlow';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { ChildMintFunnelBackground } from '@/components/onboarding/game/ChildMintFunnelBackground';
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 import { useOnboardingGame } from '@/hooks/useOnboardingGame';
 import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
+
+const ChildGamePostWinFlow = nextDynamic(
+  () =>
+    import('@/components/onboarding/child/ChildGamePostWinFlow').then((m) => ({
+      default: m.ChildGamePostWinFlow,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
 
 function ChildGameInner() {
   const searchParams = useSearchParams();
@@ -79,7 +86,7 @@ function ChildGameInner() {
 /** `/game/child` — child onboarding ball game + court exit fade. */
 export default function ChildGamePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FunnelRouteLoading />}>
       <ChildGameInner />
     </Suspense>
   );

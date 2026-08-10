@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 type LandingRevealProps = {
   children: ReactNode;
   className?: string;
+  id?: string;
   /** Stagger delay after the element enters view */
   delayMs?: number;
   /** Float in on mount (hero / above-the-fold) */
@@ -22,6 +23,7 @@ type LandingRevealProps = {
 export function LandingReveal({
   children,
   className = '',
+  id,
   delayMs = 0,
   immediate = false,
   variant = 'float',
@@ -57,25 +59,30 @@ export function LandingReveal({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0)) {
+        // Root is inset so a hit means the block is in the main reading band —
+        // not just peeking at the bottom edge of the screen.
+        if (entries.some((entry) => entry.isIntersecting)) {
           reveal();
         }
       },
-      // Only when the block actually enters the viewport — not while still below the fold
-      { threshold: [0, 0.12], rootMargin: '0px 0px -12% 0px' },
+      {
+        threshold: 0,
+        // Top/bottom inset: animate only once the user has scrolled to the section.
+        rootMargin: '-14% 0px -22% 0px',
+      }
     );
 
     observer.observe(el);
 
-    // Hash nav / late hydration: reveal only if already meaningfully on-screen
+    // Hash nav / late hydration: reveal only if already in the same reading band
     const checkAlreadyVisible = () => {
       const rect = el.getBoundingClientRect();
       if (rect.height <= 0 && rect.width <= 0) return;
       const vh = window.innerHeight || document.documentElement.clientHeight;
-      const visibleTop = Math.max(0, rect.top);
-      const visibleBottom = Math.min(vh, rect.bottom);
-      const visibleH = Math.max(0, visibleBottom - visibleTop);
-      if (visibleH / Math.min(rect.height, vh) >= 0.12) {
+      const bandTop = vh * 0.14;
+      const bandBottom = vh * 0.78;
+      const overlapsBand = rect.top < bandBottom && rect.bottom > bandTop;
+      if (overlapsBand) {
         reveal();
       }
     };
@@ -98,6 +105,7 @@ export function LandingReveal({
   return (
     <div
       ref={ref}
+      id={id}
       dir={dir}
       className={`landing-reveal${variantClass}${visible ? ' is-in' : ''}${className ? ` ${className}` : ''}`}
       style={style}

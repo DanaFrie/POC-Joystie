@@ -1,6 +1,7 @@
 import type { SelfieFaceHole } from '@/components/onboarding/child/ChildSelfieFaceMask';
 import { CHILD_SELFIE_PATTERN } from '@/constants/child-post-game-layout';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
+import { SELFIE_COVER_ZOOM_OUT } from '@/lib/onboarding/drawSelfieCoverVideo';
 
 type ComposeChildSelfieFrameInput = {
   video: HTMLVideoElement | null;
@@ -59,7 +60,7 @@ function extractCircularFace(source: HTMLCanvasElement, hole: SelfieFaceHole): P
   return canvasToBlob(canvas, 'image/png');
 }
 
-/** object-cover draw into the 375×812 funnel canvas (slightly zoomed out for framing). */
+/** object-cover draw into the 375×812 funnel canvas (no digital zoom by default). */
 function drawCoverImage(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
@@ -68,7 +69,7 @@ function drawCoverImage(
   destWidth: number,
   destHeight: number,
   mirror = false,
-  zoomOut = 0.82,
+  zoomOut = SELFIE_COVER_ZOOM_OUT,
 ) {
   const coverScale = Math.max(destWidth / sourceWidth, destHeight / sourceHeight);
   const scale = coverScale * Math.min(1, Math.max(0.5, zoomOut));

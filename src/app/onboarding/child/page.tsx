@@ -1,12 +1,21 @@
 'use client';
 
+import nextDynamic from 'next/dynamic';
 import { Suspense } from 'react';
-import { OnboardingChildFlow } from '@/components/onboarding/OnboardingChildFlow';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ChildInvalidInviteStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
 import { useChildBondingBootstrap } from '@/hooks/useChildBondingBootstrap';
 import { useChildInviteAccess } from '@/hooks/useChildInviteAccess';
 
 export const dynamic = 'force-dynamic';
+
+const OnboardingChildFlow = nextDynamic(
+  () =>
+    import('@/components/onboarding/OnboardingChildFlow').then((m) => ({
+      default: m.OnboardingChildFlow,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
 
 function OnboardingChildPageInner() {
   const access = useChildInviteAccess();
@@ -14,7 +23,7 @@ function OnboardingChildPageInner() {
   useChildBondingBootstrap(access.status === 'ready' ? access : null);
 
   if (access.status === 'loading') {
-    return null;
+    return <FunnelRouteLoading />;
   }
 
   if (access.status === 'invalid') {
@@ -50,7 +59,7 @@ function OnboardingChildPageInner() {
 /** `/onboarding/child` — kid onboarding funnel (bonding invite). */
 export default function OnboardingChildPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FunnelRouteLoading />}>
       <OnboardingChildPageInner />
     </Suspense>
   );

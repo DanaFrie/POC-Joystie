@@ -14,13 +14,11 @@ import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunn
 import { OnboardingGrid } from '@/components/onboarding/OnboardingGrid';
 import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
 import { OnboardingRevealBleedBackground } from '@/components/onboarding/OnboardingRevealBleedBackground';
+import nextDynamic from 'next/dynamic';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ParentOnboardingCompletionStep } from '@/components/onboarding/parent/ParentOnboardingCompletionStep';
-import {
-  ParentGamePostWinFlow,
-  type ParentPostGamePhase,
-} from '@/components/onboarding/parent/ParentGamePostWinFlow';
+import type { ParentPostGamePhase } from '@/components/onboarding/parent/ParentGamePostWinFlow';
 import { ParentRoleStep } from '@/components/onboarding/parent-role/ParentRoleStep';
-import { ParentSubscriptionStep } from '@/components/onboarding/parent/ParentSubscriptionStep';
 import { PickFirstChildStep } from '@/components/onboarding/pick-child/PickFirstChildStep';
 import {
   OnboardingRevealStepContent,
@@ -38,6 +36,22 @@ import {
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
 import { SignupIntroStep } from '@/components/onboarding/signup/SignupIntroStep';
 import { SignupOAuthTermsSheet } from '@/components/onboarding/signup/SignupOAuthTermsSheet';
+
+const ParentSubscriptionStep = nextDynamic(
+  () =>
+    import('@/components/onboarding/parent/ParentSubscriptionStep').then((m) => ({
+      default: m.ParentSubscriptionStep,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
+
+const ParentGamePostWinFlow = nextDynamic(
+  () =>
+    import('@/components/onboarding/parent/ParentGamePostWinFlow').then((m) => ({
+      default: m.ParentGamePostWinFlow,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
 import { getBondingChildName, getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName, setBondingChildGender, setBondingChildName, clearBondingChildUrl } from '@/lib/onboarding/bondingInvite';
 import { clearOnboardingBondingInviteId } from '@/lib/onboarding/bondingShare';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
@@ -113,7 +127,7 @@ import {
   getLoginPath,
   redirectToLoginForExistingAccount,
 } from '@/lib/auth/postLoginNavigation';
-import { resolveSignupEmailAccountStatus } from '@/lib/auth/signupAccountStatus';
+import { resolveSignupEmailAccountStatus, isRegisteredJoystieAccount } from '@/lib/auth/signupAccountStatus';
 import { validateOnboardingSignupForm } from '@/lib/onboarding/validateSignupForm';
 import { getAuthInstance } from '@/lib/firebase';
 import { signUp, signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
@@ -536,6 +550,18 @@ export function OnboardingParentFlow({
       }
 
       await auth.currentUser!.getIdToken(true);
+      // Apple often hydrates providerData a tick late — reload before rejecting.
+      if (
+        params.oauthProvider &&
+        (!userHasOAuthProvider(auth.currentUser!) ||
+          auth.currentUser!.providerData.length === 0)
+      ) {
+        try {
+          await auth.currentUser!.reload();
+        } catch (reloadError) {
+          logger.warn('OAuth provider reload failed', reloadError);
+        }
+      }
       const providerIds = auth.currentUser!.providerData.map((p) => p.providerId);
       if (params.oauthProvider) {
         const expected = toOAuthProviderId(params.oauthProvider);
@@ -674,8 +700,24 @@ export function OnboardingParentFlow({
         clearOAuthSessionFlags();
         setOauthFinishing(null);
         try {
-          await finishAuthenticatedUserNavigation(outcome.result.user.uid, router, {
-            source: 'signup_existing',
+          const registered = await isRegisteredJoystieAccount(outcome.result.user.uid);
+          if (registered) {
+            await finishAuthenticatedUserNavigation(outcome.result.user.uid, router, {
+              source: 'signup_existing',
+            });
+            return;
+          }
+          // Auth stub / incomplete Apple-Google retry — complete Joystie signup evidence.
+          setOauthFinishing(readOAuthProvider());
+          await finishAccountSetup({
+            uid: outcome.result.user.uid,
+            email: getOAuthUserEmail(outcome.result.user),
+            displayName:
+              outcome.result.displayName ||
+              getOAuthUserDisplayName(outcome.result.user) ||
+              undefined,
+            termsAccepted: true,
+            oauthProvider: readOAuthProvider(),
           });
         } catch (error) {
           logger.error('OAuth existing-user routing failed:', error);
@@ -683,6 +725,8 @@ export function OnboardingParentFlow({
             _general: getAuthErrorFromUnknown(error),
           });
           setStep('signupForm');
+        } finally {
+          if (active) setOauthFinishing(null);
         }
         return;
       }
@@ -848,7 +892,7 @@ export function OnboardingParentFlow({
       }
 
       if (!result.isNewUser) {
-        logger.log('OAuth signup — existing account, resuming session', {
+        logger.log('OAuth signup — existing Auth user', {
           provider,
           uid: result.user.uid,
         });
@@ -856,8 +900,23 @@ export function OnboardingParentFlow({
         setOauthDialogOpen(null);
         setOauthFinishing(provider);
         try {
-          await finishAuthenticatedUserNavigation(result.user.uid, router, {
-            source: 'signup_existing',
+          const registered = await isRegisteredJoystieAccount(result.user.uid);
+          if (registered) {
+            await finishAuthenticatedUserNavigation(result.user.uid, router, {
+              source: 'signup_existing',
+            });
+            return;
+          }
+          // Same Apple/Google Auth uid as a prior incomplete attempt — persist signup.
+          await finishAccountSetup({
+            uid: result.user.uid,
+            email: getOAuthUserEmail(result.user),
+            displayName:
+              result.displayName ||
+              getOAuthUserDisplayName(result.user) ||
+              undefined,
+            termsAccepted: true,
+            oauthProvider: provider,
           });
         } catch (error) {
           logger.error('OAuth existing-user routing failed:', error);

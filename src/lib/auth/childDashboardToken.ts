@@ -1,5 +1,5 @@
-import { decodeParentToken } from '@/utils/url-encoding';
-import { getChild } from '@/lib/api/children';
+import { decodeParentToken, isDraftChildId } from '@/utils/url-encoding';
+import { getChild, getChildrenByParent } from '@/lib/api/children';
 import { getUser } from '@/lib/api/users';
 import { createContextLogger } from '@/utils/logger';
 
@@ -13,10 +13,6 @@ export type ChildDashboardTokenAccess = {
   /** Parent paid / unlocked — drives challenge UI on child dashboard. */
   challengeEnabled?: boolean;
 };
-
-function isDraftChildId(childId: string | null | undefined): boolean {
-  return Boolean(childId && /^draft-/i.test(childId));
-}
 
 /**
  * Validate `/dashboard/child?token=` — no parent Auth session required.
@@ -57,7 +53,7 @@ export async function validateChildDashboardToken(
     let resolvedChildId: string | null = null;
     const candidates = [
       isDraftChildId(childId) ? null : childId,
-      parent.primaryChildId || null,
+      isDraftChildId(parent.primaryChildId) ? null : parent.primaryChildId || null,
     ].filter((id): id is string => Boolean(id?.trim()));
 
     for (const candidate of candidates) {
@@ -65,6 +61,16 @@ export async function validateChildDashboardToken(
       if (child && child.parentId === parentId) {
         resolvedChildId = child.id;
         break;
+      }
+    }
+
+    if (!resolvedChildId) {
+      try {
+        const kids = await getChildrenByParent(parentId);
+        const match = kids.find((c) => c.parentId === parentId);
+        if (match?.id) resolvedChildId = match.id;
+      } catch (listError) {
+        logger.warn('getChildrenByParent fallback failed:', listError);
       }
     }
 

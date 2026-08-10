@@ -1,12 +1,9 @@
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
-/**
- * Zoom-out vs object-cover so faces sit smaller in the castle holes and
- * parent + child can position themselves more easily.
- */
-export const SELFIE_COVER_ZOOM_OUT = 0.82;
+/** 1 = true object-cover (no digital zoom). Values &lt; 1 zoom out. */
+export const SELFIE_COVER_ZOOM_OUT = 1;
 
-/** object-cover + mirror into the 375×812 funnel canvas (slightly zoomed out). */
+/** object-cover + mirror into the 375×812 funnel canvas. */
 export function drawMirroredCoverVideo(
   ctx: CanvasRenderingContext2D,
   video: HTMLVideoElement,

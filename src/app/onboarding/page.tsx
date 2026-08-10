@@ -1,10 +1,10 @@
 'use client';
 
-import '@/lib/onboarding/oauthRedirectPrime';
+import nextDynamic from 'next/dynamic';
 import { useCallback, useLayoutEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { OnboardingLanding } from '@/components/onboarding/OnboardingLanding';
-import { OnboardingParentFlow } from '@/components/onboarding/OnboardingParentFlow';
 import { resolveOnboardingEntryForAuthenticatedUser } from '@/lib/auth/postLoginNavigation';
 import {
   clearParentFlowSession,
@@ -17,6 +17,14 @@ import { createContextLogger } from '@/utils/logger';
 export const dynamic = 'force-dynamic';
 
 const logger = createContextLogger('OnboardingPage');
+
+const OnboardingParentFlow = nextDynamic<{ onBackToLanding?: () => void }>(
+  () =>
+    import('@/components/onboarding/OnboardingParentFlow').then((m) => ({
+      default: m.OnboardingParentFlow,
+    })),
+  { loading: () => <FunnelRouteLoading />, ssr: false }
+);
 
 /** `/onboarding` — landing; התחלה continues parent funnel on the same route. */
 export default function OnboardingPage() {
@@ -78,7 +86,7 @@ export default function OnboardingPage() {
   }, []);
 
   if (phase === 'loading') {
-    return null;
+    return <FunnelRouteLoading />;
   }
 
   if (phase === 'parent') {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 
 /**
- * Muted loop video that stays off the network until near the viewport.
+ * Muted loop video — network fetch only when near the viewport.
  * Pauses when scrolled away to save decode/battery on mobile.
  */
 export function LandingLazyVideo({
@@ -18,6 +18,7 @@ export function LandingLazyVideo({
   'aria-label'?: string;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const loadedRef = useRef(false);
 
   useEffect(() => {
     const el = ref.current;
@@ -27,6 +28,11 @@ export function LandingLazyVideo({
       ([entry]) => {
         if (!entry) return;
         if (entry.isIntersecting) {
+          if (!loadedRef.current) {
+            loadedRef.current = true;
+            el.src = src;
+            el.load();
+          }
           void el.play().catch(() => {
             /* autoplay may be blocked; muted+playsInline usually OK */
           });
@@ -34,19 +40,18 @@ export function LandingLazyVideo({
           el.pause();
         }
       },
-      { rootMargin: '120px 0px', threshold: 0.01 },
+      { rootMargin: '200px 0px', threshold: 0.01 },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [src]);
 
   return (
     <video
       ref={ref}
       className={className}
       style={style}
-      src={src}
       muted
       loop
       playsInline

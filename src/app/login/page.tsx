@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { LoginScreen } from '@/components/login/LoginScreen';
 import { isLoggedIn, clearSession } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
@@ -66,9 +67,27 @@ function LoginPageContent() {
 
   const handleOAuthLoginResult = useCallback(
     async (result: { user: User; isNewUser: boolean }) => {
+      let user = result.user;
+      // Apple often omits email / providerData until reload on repeat sign-in.
+      if (
+        !getOAuthUserEmail(user) ||
+        user.providerData.length === 0
+      ) {
+        try {
+          await user.reload();
+          const auth = await import('@/lib/firebase').then((m) => m.getAuthInstance());
+          const firebaseAuth = await auth;
+          if (firebaseAuth.currentUser) {
+            user = firebaseAuth.currentUser;
+          }
+        } catch (reloadError) {
+          logger.warn('OAuth login reload failed:', reloadError);
+        }
+      }
+
       const registered = await isRegisteredJoystieAccount(
-        result.user.uid,
-        getOAuthUserEmail(result.user)
+        user.uid,
+        getOAuthUserEmail(user)
       );
 
       if (!registered) {
@@ -86,7 +105,7 @@ function LoginPageContent() {
         return;
       }
 
-      await completeOAuthLogin(result.user.uid);
+      await completeOAuthLogin(user.uid);
     },
     [completeOAuthLogin]
   );
@@ -308,7 +327,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FunnelRouteLoading surface="dark" />}>
       <LoginPageContent />
     </Suspense>
   );

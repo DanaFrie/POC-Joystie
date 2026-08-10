@@ -40,16 +40,16 @@ export function LegalDocumentScreen({
     <div
       ref={rootRef}
       dir="rtl"
-      className="relative z-[10] w-full bg-v03-green-900 px-v03-gutter pb-8"
+      className="relative z-[10] w-full bg-v03-green-900 px-v03-gutter pb-8 v03-funnel-screen"
       style={{ paddingTop: contentTopPadPx, minHeight: '100%' }}
     >
       <FunnelMintEllipse />
       <OnboardingBackButton onClick={() => router.back()} />
 
       <div className="relative z-[20] mx-auto flex w-v03-content flex-col items-center gap-5">
-        <JoystieCompactMark width={45.47} height={45.04} />
+        <JoystieCompactMark className="v03-funnel-enter-0" width={45.47} height={45.04} />
 
-        <div className="flex w-full flex-col items-center">
+        <div className="flex w-full flex-col items-center v03-funnel-enter-1">
           <h1 className="mb-2 text-center font-simpler text-[30px] font-bold leading-[34.5px] text-white">
             {title}
           </h1>
@@ -57,7 +57,7 @@ export function LegalDocumentScreen({
             {updatedLabel}
           </p>
 
-          <div className="relative flex w-v03-content flex-col items-center gap-5 overflow-hidden rounded-[18px] border-[1.5px] border-white/25 bg-v03-green-900/40 px-5 py-[15px] backdrop-blur-[2px]">
+          <div className="relative flex w-v03-content flex-col items-center gap-5 overflow-hidden rounded-[18px] border-[1.5px] border-white/25 bg-v03-green-900/40 px-5 py-[15px] backdrop-blur-[2px] v03-funnel-enter-2">
             <p className="w-full text-center font-simpler text-[14px] font-normal leading-[17.5px] text-[#E3EDEA]">
               {intro}
             </p>

@@ -144,10 +144,9 @@ export function ParentSubscriptionStep({
             style={{ gap: metrics.headlineGap }}
           >
             <h1
-              className="w-full text-center font-simpler font-black leading-[1.1] tracking-[-0.6px] text-white"
+              className="w-full break-words text-center font-rubik text-[30px] font-extrabold leading-[33px] text-white"
               style={{
-                fontSize: metrics.headlineSize,
-                textShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+                textShadow: '0px 0px 10px rgba(0, 0, 0, 0.30)',
               }}
             >
               הצטרפו למשפחות שכבר מנהלות את המסכים נכון

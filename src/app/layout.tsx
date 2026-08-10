@@ -1,18 +1,10 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import Script from 'next/script'
-import { Heebo } from 'next/font/google'
-import { simplerPro } from '@/lib/fonts'
+import { appRubik } from '@/lib/fonts'
 import { isMetaPixelEnabled, META_PIXEL_ID } from '@/constants/meta-pixel'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
-
-const heebo = Heebo({
-  subsets: ['latin', 'hebrew'],
-  weight: ['400', '700'],
-  variable: '--font-heebo',
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Joy Wallet of Digital Balance',
@@ -25,8 +17,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={`layout-root ${heebo.variable} ${simplerPro.variable}`}>
-      <body className="layout-root font-heebo min-h-screen overflow-y-auto overflow-x-hidden">
+    <html lang="he" dir="rtl" className={`layout-root ${appRubik.variable}`}>
+      <body className="layout-root font-rubik min-h-screen overflow-y-auto overflow-x-hidden">
         {isMetaPixelEnabled() ? (
           <Script id="meta-pixel-init" strategy="afterInteractive">
             {`
