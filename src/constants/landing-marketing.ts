@@ -4,7 +4,7 @@ export const LANDING_ASSETS = {
   heroDesktop: '/landing/hero-desktop.webp',
   heroMobile: '/landing/hero-mobile.webp',
   calmFamily: '/landing/calm-family.webp',
-  footerMountainDesktop: '/landing/mountains-desktop.webp',
+  footerMountainDesktop: '/landing/mountains-mobile.webp',
   footerMountainMobile: '/landing/mountains-mobile.webp',
   howItWorksHero: '/signup/child-invite/hero.webp',
   howItWorksCircle: '/landing/how-it-works-circle.webp',

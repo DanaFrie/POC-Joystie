@@ -201,14 +201,14 @@ export function MarketingNav({
 
       {open ? (
         <div
-          className="pointer-events-auto fixed inset-0 z-[60] flex flex-col overflow-hidden bg-[#05161a]"
+          className="pointer-events-auto fixed inset-0 z-[60] flex h-[100dvh] w-[100vw] max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden bg-[#05161a] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
           role="dialog"
           aria-modal="true"
           aria-label="תפריט"
         >
           <LandingMenuGlow />
 
-          <div className="relative z-10 flex h-[58px] shrink-0 items-center justify-between px-6">
+          <div className="relative z-10 flex h-[58px] w-full shrink-0 items-center justify-between px-6">
             <Link href="/" className="shrink-0" aria-label="Joystie" onClick={() => setOpen(false)}>
               <Image
                 src={LANDING_ASSETS.logoWordmark}
@@ -229,7 +229,7 @@ export function MarketingNav({
             </button>
           </div>
 
-          <div className="relative z-10 mx-auto flex w-full max-w-[327px] flex-1 flex-col gap-10 pb-8 pt-2">
+          <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-[327px] flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-10 sm:pb-8">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
               {LANDING_NAV_LINKS.map((link) => {
                 const showChevron =
@@ -242,7 +242,7 @@ export function MarketingNav({
                       e.preventDefault();
                       goTo(link.href);
                     }}
-                    className="relative flex flex-1 items-center justify-start border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-6 text-right backdrop-blur-[10px] last:border-b-0"
+                    className="relative flex min-h-0 flex-1 items-center justify-start border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-4 text-right backdrop-blur-[10px] last:border-b-0 sm:py-6"
                   >
                     {showChevron ? (
                       <Image
@@ -272,12 +272,12 @@ export function MarketingNav({
               })}
             </div>
 
-            <div className="relative h-[194px] w-full shrink-0 overflow-hidden rounded-[36px]">
+            <div className="relative h-[160px] w-full shrink-0 overflow-hidden rounded-[36px] sm:h-[194px]">
               <Image
-                src={LANDING_ASSETS.footerMountainDesktop}
+                src={LANDING_ASSETS.footerMountainMobile}
                 alt=""
                 fill
-                className="object-cover object-bottom"
+                className="object-cover object-top [filter:saturate(1.75)_contrast(1.08)]"
                 sizes="327px"
               />
               <div
@@ -288,11 +288,8 @@ export function MarketingNav({
                 }}
                 aria-hidden
               />
-              <div
-                className="absolute left-1/2 top-1/2 z-10 flex w-[282px] -translate-x-1/2 -translate-y-1/2 flex-col items-start justify-center gap-5 text-right"
-                style={{ marginLeft: '-5.5px' }}
-              >
-                <p className="w-full font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
+              <div className="absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-start justify-center gap-4 px-5 text-right sm:gap-5 sm:px-6">
+                <p className="w-full font-rubik text-[26px] font-bold leading-[1.15] tracking-[-0.8px] text-white sm:text-[30px] sm:tracking-[-0.9px]">
                   הדרך החדשה לנהל הרגלי מסך בריאים
                 </p>
                 <MarketingCtaButton

@@ -27,14 +27,14 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
     >
       <div className="mx-auto flex w-full max-w-[1786px] flex-col gap-3 md:gap-10 md:px-[var(--landing-gutter)] lg:px-[67px]">
           <div className="relative min-h-[479px] overflow-hidden rounded-t-[45px] md:min-h-[410px] md:rounded-[74px]">
-            {/* Mobile — bottom of mountains-mobile.webp (no saturation boost) */}
+            {/* Mobile — bottom of mountains-mobile.webp + same saturation as desktop */}
             <Image
               src={LANDING_ASSETS.footerMountainMobile}
               alt=""
               fill
               loading="lazy"
               decoding="async"
-              className="object-cover object-bottom md:hidden"
+              className="object-cover object-bottom [filter:saturate(1.75)_contrast(1.08)] md:hidden"
               sizes="100vw"
             />
             {/*
@@ -85,13 +85,16 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
 
             <JoystieWordmarkLogo
               tone="dark"
-              className="absolute right-[38px] top-[29px] z-10 h-[58px] w-[117px] md:hidden"
+              className="absolute right-6 top-[29px] z-10 h-[58px] w-[117px] md:hidden"
               aria-label="Joystie"
             />
 
-            {/* Mobile: items-start = visual right in RTL (Figma 15445:6252). Purple arrow CTA like hero. */}
-            <div className="absolute inset-x-0 top-[185px] z-10 mx-auto flex w-[320px] flex-col items-start gap-10 text-right md:inset-0 md:top-0 md:mx-0 md:h-full md:w-full md:max-w-none md:items-start md:justify-center md:gap-8 md:px-12 lg:px-16 xl:px-20">
-              <p className="w-full max-w-[320px] font-rubik text-[45px] font-bold leading-[1.05] tracking-[-1.35px] text-white md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
+            {/*
+              Mobile gutters: 24px sides (px-6) so SE/320 never flush to the edge.
+              Absolute inset + padding — not fixed 320px width (that fills 320 screens).
+            */}
+            <div className="absolute inset-x-0 top-[min(185px,38%)] z-10 flex flex-col items-start gap-8 px-6 text-right sm:gap-10 md:inset-0 md:top-0 md:h-full md:w-full md:max-w-none md:items-start md:justify-center md:gap-8 md:px-12 lg:px-16 xl:px-20">
+              <p className="w-full max-w-[327px] font-rubik text-[40px] font-bold leading-[1.05] tracking-[-1.2px] text-white sm:text-[45px] sm:tracking-[-1.35px] md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
                 <span className="block md:hidden">בונים יחד עם</span>
                 <span className="block md:hidden">הילדים הרגלי</span>
                 <span className="block md:hidden">מסך בריאים</span>

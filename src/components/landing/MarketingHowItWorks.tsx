@@ -227,7 +227,11 @@ export function MarketingHowItWorks() {
           ellipse clipped at frame bottom.
         */}
         <div className="relative left-1/2 w-screen max-w-[100vw] shrink-0 -translate-x-1/2 md:hidden">
-          <div className="relative flex h-[281px] w-full flex-col items-stretch overflow-hidden bg-[#05161a] pb-7">
+          {/*
+            Figma story is 281px @ 375-wide; on SE/320 text wraps taller —
+            grow with content + extra bottom pad so copy isn’t flush to the frame.
+          */}
+          <div className="relative flex min-h-[300px] w-full flex-col items-stretch overflow-hidden bg-[#05161a] pb-10 pt-1">
             {/* Ellipse 209 — Figma 15448:8827 @ top 224.61, centered; clipped by Story overflow */}
             <div
               className="pointer-events-none absolute left-1/2 top-[224.61px] z-0 h-[246px] w-[245px] -translate-x-1/2"
@@ -237,21 +241,21 @@ export function MarketingHowItWorks() {
             </div>
 
             <LandingReveal delayMs={160} className="relative z-[1] w-full">
-              <div className="flex w-full flex-col gap-6">
+              <div className="flex w-full flex-col gap-5 sm:gap-6">
                 <StepBadges active={active} layout="mobile" progress={progress} />
                 <div
                   key={active}
-                  className="relative flex w-full items-start justify-between gap-[21px] px-6 landing-step-swap"
+                  className="relative flex w-full items-start justify-between gap-4 px-6 pb-2 landing-step-swap sm:gap-[21px]"
                   dir="ltr"
                 >
                   <div className="relative shrink-0">
-                    <StepImage className="h-[119px] w-[119px]" />
+                    <StepImage className="h-[100px] w-[100px] sm:h-[119px] sm:w-[119px]" />
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-4 text-right" dir="rtl">
-                    <h3 className="font-rubik text-2xl font-bold leading-[1.15] tracking-[-0.72px] text-white">
+                  <div className="flex min-w-0 flex-1 flex-col gap-3 text-right sm:gap-4" dir="rtl">
+                    <h3 className="font-rubik text-[22px] font-bold leading-[1.15] tracking-[-0.66px] text-white sm:text-2xl sm:tracking-[-0.72px]">
                       {step.title}
                     </h3>
-                    <p className="font-rubik text-sm leading-[1.25] tracking-[-0.28px] text-white/70">
+                    <p className="font-rubik text-sm leading-[1.35] tracking-[-0.28px] text-white/70">
                       {step.body}
                     </p>
                   </div>

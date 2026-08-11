@@ -108,11 +108,14 @@ export function MarketingStats() {
           return;
         }
         startedRef.current = true;
-        el.scrollIntoView({ block: 'start', behavior: 'auto' });
+        // Pin section top to the visual viewport (svh-stable on iOS short phones).
+        const y = el.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({ top: y, behavior: 'auto' });
         setActiveIndex(-1);
         setPlaying(true);
       },
-      { threshold: 0.45, rootMargin: '0px 0px -10% 0px' }
+      // Lower threshold so short viewports (SE / mini) still arm the lock.
+      { threshold: 0.2, rootMargin: '0px 0px -5% 0px' }
     );
     io.observe(el);
     return () => io.disconnect();
@@ -132,7 +135,9 @@ export function MarketingStats() {
     if (!playing) return;
 
     const html = document.documentElement;
-    const y = window.scrollY;
+    const el = sectionRef.current;
+    const y = el ? el.getBoundingClientRect().top + window.scrollY : window.scrollY;
+    window.scrollTo(0, y);
     html.classList.add('landing-stats-scroll-lock');
 
     const block = (event: Event) => {
@@ -196,14 +201,15 @@ export function MarketingStats() {
     <section
       ref={sectionRef}
       className={`landing-section relative ${
-        pinEnabled ? 'h-[100vh] h-[100dvh]' : ''
+        /* svh = visible viewport on iOS; avoids 100vh taller-than-screen lock miss */
+        pinEnabled ? 'h-[100svh] max-h-[100svh] overflow-hidden md:h-[100dvh] md:max-h-[100dvh]' : ''
       }`}
     >
       <div
-        className={`landing-gutter flex w-full flex-col justify-center overflow-visible ${
+        className={`landing-gutter flex w-full flex-col justify-center overflow-hidden ${
           pinEnabled
-            ? 'min-h-[100vh] min-h-[100dvh] py-16'
-            : 'min-h-[100vh] min-h-[100dvh] py-16 md:min-h-0 md:pt-[90px] md:pb-16 lg:pb-[298px]'
+            ? 'h-full min-h-0 py-10 sm:py-16'
+            : 'min-h-[100svh] py-16 md:min-h-0 md:pt-[90px] md:pb-16 lg:pb-[298px]'
         }`}
       >
         <div className="relative mx-auto w-full max-w-[341px] overflow-visible text-center md:max-w-[1200px] md:min-h-[308px]">
