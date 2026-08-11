@@ -2,19 +2,25 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { ChildSelfieMissionFlow } from '@/components/onboarding/child/ChildSelfieMissionFlow';
+import { ChildSharedPhotoShareStep } from '@/components/onboarding/child/ChildSharedPhotoShareStep';
+import { PARENT_POST_GAME_DEMO_CHILD_CHANGE } from '@/constants/parent-post-game-layout';
 import {
   generateSelfieImage,
   getLocalSelfieServiceUrl,
   getSelfieTransport,
 } from '@/lib/api/selfie';
+import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('SelfieGenerateTest');
 
-type Mode = 'mission' | 'scratchpad';
+/** Sample agreed change — enough to review the share/agreement footer layout. */
+const TEST_AGREEMENT_CHANGE = PARENT_POST_GAME_DEMO_CHILD_CHANGE;
+
+type Mode = 'share' | 'mission' | 'scratchpad';
 
 /**
- * Local selfie loop — Mission 3 UI + optional API scratchpad.
+ * Local selfie loop — Mission 3 UI + agreement share preview + API scratchpad.
  * Route: /onboarding/child/selfie-generate-test
  *
  * Point UI at local Cloud Run with:
@@ -24,7 +30,7 @@ type Mode = 'mission' | 'scratchpad';
 export default function SelfieGenerateTestPage() {
   const transport = getSelfieTransport();
   const localUrl = getLocalSelfieServiceUrl();
-  const [mode, setMode] = useState<Mode>('mission');
+  const [mode, setMode] = useState<Mode>('share');
   const [childGender, setChildGender] = useState<'girl' | 'boy'>('girl');
   const [parentGender, setParentGender] = useState<'female' | 'male'>('female');
   const [childFile, setChildFile] = useState<File | null>(null);
@@ -33,6 +39,11 @@ export default function SelfieGenerateTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+
+  const defaultPhotoSrc = useMemo(
+    () => defaultSelfieAssetForChild(childGender),
+    [childGender],
+  );
 
   const bannerTone =
     transport === 'local'
@@ -92,6 +103,15 @@ export default function SelfieGenerateTestPage() {
             <button
               type="button"
               className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                mode === 'share' ? 'bg-white/20 text-white' : 'bg-black/20 text-white/70'
+              }`}
+              onClick={() => setMode('share')}
+            >
+              Agreement shot
+            </button>
+            <button
+              type="button"
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                 mode === 'mission' ? 'bg-white/20 text-white' : 'bg-black/20 text-white/70'
               }`}
               onClick={() => setMode('mission')}
@@ -133,17 +153,33 @@ export default function SelfieGenerateTestPage() {
         </div>
       </div>
 
+      {mode === 'share' ? (
+        <ChildSharedPhotoShareStep
+          photoSrc={defaultPhotoSrc}
+          changeText={TEST_AGREEMENT_CHANGE}
+          onShare={() => {
+            logger.log('Share tapped (test — no native share)');
+          }}
+          onWallet={() => {
+            logger.log('Wallet tapped (test — no navigate)');
+          }}
+        />
+      ) : null}
+
       {mode === 'mission' ? (
         <ChildSelfieMissionFlow
           childName="נועם"
           childGender={childGender}
           parentName={parentGender === 'female' ? 'אמא' : 'אבא'}
           parentGender={parentGender}
+          changeText={TEST_AGREEMENT_CHANGE}
           onShareReached={() => {
             logger.log('Share reached (test — no milestone write)');
           }}
         />
-      ) : (
+      ) : null}
+
+      {mode === 'scratchpad' ? (
         <div className="flex h-full flex-col gap-3 overflow-y-auto bg-v03-green-900 px-4 pb-8 pt-36 text-white font-simpler">
           <p className="text-[13px] text-white/70">
             Upload face crops and hit generate — skips camera. Restart `npm run selfie:service` after
@@ -192,7 +228,7 @@ export default function SelfieGenerateTestPage() {
             />
           ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

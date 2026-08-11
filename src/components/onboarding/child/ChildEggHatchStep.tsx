@@ -8,8 +8,12 @@ import {
   useFunnelProportionalTopPx,
 } from '@/components/ui/FunnelViewportContext';
 import {
+  CHILD_EGG_HATCH_FAST_HEAD_TAPS,
+  CHILD_EGG_HATCH_FAST_PLAYBACK_RATE,
+  CHILD_EGG_HATCH_FAST_TAIL_TAPS,
   CHILD_EGG_HATCH_LATE_DURATION_SHARE,
   CHILD_EGG_HATCH_LATE_TAP_COUNT,
+  CHILD_EGG_HATCH_MID_PLAYBACK_RATE,
   CHILD_EGG_HATCH_SEGMENT_COUNT,
   CHILD_ONBOARDING_ASSETS,
 } from '@/constants/child-onboarding-assets';
@@ -22,9 +26,24 @@ import {
 } from '@/constants/child-onboarding-layout';
 import {
   useSegmentedVideoTap,
+  type SegmentPlaybackRateFn,
   type SegmentRangeFn,
 } from '@/hooks/useSegmentedVideoTap';
 import { ChildEggHatchArrow } from '@/components/onboarding/child/ChildEggHatchArrow';
+
+/** Soft oval — hides the baked white square plate + Kling watermark in the MP4. */
+const EGG_VIDEO_SOFT_MASK =
+  'radial-gradient(ellipse 52% 58% at 50% 48%, #000 58%, transparent 76%)';
+
+const eggHatchPlaybackRate: SegmentPlaybackRateFn = (segmentIndex, segmentCount) => {
+  if (segmentIndex < CHILD_EGG_HATCH_FAST_HEAD_TAPS) {
+    return CHILD_EGG_HATCH_FAST_PLAYBACK_RATE;
+  }
+  if (segmentIndex >= segmentCount - CHILD_EGG_HATCH_FAST_TAIL_TAPS) {
+    return CHILD_EGG_HATCH_FAST_PLAYBACK_RATE;
+  }
+  return CHILD_EGG_HATCH_MID_PLAYBACK_RATE;
+};
 
 type ChildEggHatchStepProps = {
   childGender?: 'boy' | 'girl';
@@ -99,7 +118,7 @@ export function ChildEggHatchStep({
   } = useSegmentedVideoTap(
     CHILD_EGG_HATCH_SEGMENT_COUNT,
     onComplete,
-    undefined,
+    eggHatchPlaybackRate,
     eggHatchSegmentRange
   );
 
@@ -115,11 +134,10 @@ export function ChildEggHatchStep({
   }, [markVideoReady, videoRef]);
 
   const handleEggTap = useCallback(() => {
-    if (isPlayingSegment) return;
     setHintPulse(true);
-    window.setTimeout(() => setHintPulse(false), 220);
+    window.setTimeout(() => setHintPulse(false), 180);
     playNextSegment();
-  }, [isPlayingSegment, playNextSegment]);
+  }, [playNextSegment]);
 
   const glowLayerWidth = Math.max(intro.glow.width, bleedWidth + bleedX * 2);
 
@@ -129,7 +147,7 @@ export function ChildEggHatchStep({
         <OnboardingBackButton tone="light" onClick={onBack} />
       ) : null}
 
-      {/* Egg video — one layer behind purple wash */}
+      {/* Egg video — soft oval mask drops the white square plate from the MP4 */}
       <div
         className="absolute z-[2] overflow-hidden"
         style={{
@@ -137,6 +155,12 @@ export function ChildEggHatchStep({
           top: eggTopPx,
           width: eggFrame.width,
           height: eggHeightPx,
+          WebkitMaskImage: EGG_VIDEO_SOFT_MASK,
+          maskImage: EGG_VIDEO_SOFT_MASK,
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+          WebkitMaskSize: '100% 100%',
+          maskSize: '100% 100%',
         }}
       >
         <video
@@ -149,7 +173,11 @@ export function ChildEggHatchStep({
           onCanPlay={markVideoReady}
           onLoadedMetadata={markVideoReady}
           className="pointer-events-none absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-200"
-          style={{ opacity: videoReady ? 1 : 0 }}
+          style={{
+            opacity: videoReady ? 1 : 0,
+            /* White plate → transparent against the light funnel gradient */
+            mixBlendMode: 'multiply',
+          }}
           aria-hidden
         />
       </div>
@@ -234,7 +262,6 @@ export function ChildEggHatchStep({
       <button
         type="button"
         onClick={handleEggTap}
-        disabled={isPlayingSegment}
         className="absolute z-20 cursor-pointer border-0 bg-transparent p-0"
         style={{
           left: eggFrame.left,
@@ -243,6 +270,7 @@ export function ChildEggHatchStep({
           height: eggHeightPx,
         }}
         aria-label="לחץ על ביצת הדרקון"
+        aria-busy={isPlayingSegment}
       />
     </FunnelStepRoot>
   );

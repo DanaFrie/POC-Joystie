@@ -67,7 +67,7 @@ export function ChildAgeStepper({ value, onChange }: ChildAgeStepperProps) {
         </svg>
       </MiniStepButton>
 
-      <span className="min-w-[1ch] text-center font-simpler text-[20px] font-bold leading-none text-white">
+      <span className="min-w-[1ch] text-center font-simpler text-[20px] font-bold leading-[1.2] tracking-[-0.4px] text-white">
         {value}
       </span>
 

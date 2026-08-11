@@ -57,6 +57,13 @@ export const ONBOARDING_FUNNEL_CTA_TOP_PX = 661;
 export const ONBOARDING_FUNNEL_LOGIN_TOP_PX = 738;
 export const ONBOARDING_FUNNEL_LOGIN_LEFT_PX = 108;
 
+/** Landing copy block — Figma 12703:41514 @ top 402 on 375×812 */
+export const ONBOARDING_LANDING_COPY_TOP_PX = 402;
+
+/** Landing logo glow / wordmark — Figma 12703:41507 / 41508 */
+export const ONBOARDING_LANDING_LOGO_GLOW_TOP_PX = 114;
+export const ONBOARDING_LANDING_LOGO_TOP_PX = 152.53;
+
 /** `/onboarding/parent` — role picker */
 export const ONBOARDING_PARENT_IMAGES = {
   mother: '/onboarding/parent/parent-mother.webp',

@@ -82,7 +82,7 @@ export function ChildMissionOneStep({
         <button
           type="button"
           onClick={onContinue}
-          className="inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-v03-turquoise-300 px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] text-v03-green-900 shadow-v03-button transition hover:brightness-95"
+          className="inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-v03-turquoise-300 px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-v03-green-900 shadow-v03-button transition hover:brightness-95"
         >
           {parentGender === 'female'
             ? `קדימה, אני ו${parentLabel} מוכנות!`

@@ -30,7 +30,7 @@ export function OnboardingKingdom() {
             fill
             priority
             sizes="100vw"
-            className="object-cover object-top"
+            className="object-cover object-top [filter:saturate(1.75)_contrast(1.08)]"
             draggable={false}
           />
         </div>

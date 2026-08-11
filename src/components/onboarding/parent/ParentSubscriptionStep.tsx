@@ -144,7 +144,7 @@ export function ParentSubscriptionStep({
             style={{ gap: metrics.headlineGap }}
           >
             <h1
-              className="w-full break-words text-center font-rubik text-[30px] font-extrabold leading-[33px] text-white"
+              className="w-full break-words text-center font-rubik text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white"
               style={{
                 textShadow: '0px 0px 10px rgba(0, 0, 0, 0.30)',
               }}

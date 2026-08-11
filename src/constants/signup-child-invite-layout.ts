@@ -2,9 +2,9 @@
 export const SIGNUP_CHILD_INVITE_INTRO_FRAME_W_PX = 327;
 export const SIGNUP_CHILD_INVITE_INTRO_TOP_PX = 110;
 export const SIGNUP_CHILD_INVITE_INTRO_COLUMN_GAP_PX = 55;
-/** Shared funnel CTA — matches `OnboardingFooterCta` / `OnboardingBlurFooter` */
+/** Shared funnel CTA — Figma 18px/Bold Green-900 (התחלה et al.) */
 export const SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS =
-  'flex h-[55px] w-full items-center justify-center gap-2 rounded-v03-button px-[15px] py-2 font-simpler text-[18px] font-bold shadow-v03-button transition';
+  'flex h-[55px] w-full items-center justify-center gap-2 rounded-v03-button px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right shadow-v03-button transition';
 export const SIGNUP_CHILD_INVITE_HERO_PX = 200;
 /** Side fades — Figma 31×134 */
 export const SIGNUP_CHILD_INVITE_HERO_FADE_W_PX = 31;

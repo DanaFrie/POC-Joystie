@@ -13,7 +13,9 @@ import {
   FUNNEL_FOOTER_INNER_GAP_PX,
   FUNNEL_FOOTER_SHELL_PAD_TOP_PX,
   getFunnelStackedFooterShellHeightPx,
+  V03_CTA_LABEL_CLASS,
 } from '@/constants/funnel-vertical-layout';
+
 
 /** Figma stacked footer — frosted bar when content scrolls underneath. */
 const SCROLL_FOOTER_BLUR_STYLE: CSSProperties = {
@@ -99,10 +101,10 @@ export function FunnelStepFooter({
   const useCanvasBlur = blur && overlay;
   const buttonClass =
     variant === 'accent'
-      ? 'bg-v03-accent text-[#031D15] hover:brightness-105'
+      ? 'bg-v03-accent text-v03-green-900 hover:brightness-105'
       : 'bg-white text-v03-turquoise-950 hover:brightness-95';
 
-  const ctaClassName = `relative z-[1] inline-flex w-full max-w-v03-content items-center justify-center gap-2 overflow-hidden rounded-v03-button px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-normal shadow-v03-button transition disabled:cursor-not-allowed disabled:opacity-50 ${buttonClass}`;
+  const ctaClassName = `relative z-[1] inline-flex w-full max-w-v03-content items-center justify-center gap-2 overflow-hidden rounded-v03-button px-[15px] py-2 ${V03_CTA_LABEL_CLASS} shadow-v03-button transition disabled:cursor-not-allowed disabled:opacity-50 ${buttonClass}`;
 
   return (
     <>

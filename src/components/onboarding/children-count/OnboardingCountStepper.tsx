@@ -71,7 +71,7 @@ export function OnboardingCountStepper({
       </StepperCircleButton>
 
       <span
-        className="min-w-[1ch] text-center font-simpler text-[40px] font-black leading-[44px] text-white"
+        className="min-w-[1ch] text-center font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white"
         aria-live="polite"
         aria-atomic="true"
       >

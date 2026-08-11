@@ -52,10 +52,10 @@ export function ScreenTimeCalculatingStep({
         <ScreenTimeProgressRing percent={percent} />
 
         <div className="flex w-full max-w-v03-content flex-col items-center">
-          <p className="w-full text-center font-simpler text-[24px] font-normal leading-[30px] text-v03-green-200">
+          <p className="w-full text-center font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-v03-green-200">
             כמה רגעים
           </p>
-          <p className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white [text-shadow:0_0_20px_rgba(255,255,255,0.5)]">
+          <p className="w-full text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white [text-shadow:0_0_20px_rgba(255,255,255,0.5)]">
             מחשבים זמן מסך...
           </p>
         </div>

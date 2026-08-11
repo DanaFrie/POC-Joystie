@@ -127,7 +127,7 @@ export function DashboardContractSection({
       if (!url) throw new Error('חסרה תמונה');
       const result = await shareImageFile({
         imageUrl: url,
-        fileName: 'joystie-selfie.jpg',
+        fileName: 'joystie-handshake.jpg',
         title: 'Joystie',
         text: 'התמונה שלנו ב־Joystie',
       });

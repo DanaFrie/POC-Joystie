@@ -558,9 +558,9 @@ export const CHILD_PARENT_SUGGESTED_CHANGE = {
     borderRadius: 22,
     dimmedOpacity: 0.3,
     primaryClass:
-      'inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-v03-turquoise-300 px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-v03-button transition hover:brightness-95',
+      'inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-v03-turquoise-300 px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-v03-green-900 shadow-v03-button transition hover:brightness-95',
     secondaryClass:
-      'inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-transparent px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-white transition hover:bg-white/5',
+      'inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-transparent px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-white transition hover:bg-white/5',
   },
   acceptCelebration: {
     confettiSize: 374.43,
@@ -698,6 +698,43 @@ export const CHILD_SHARED_PHOTO_FOOTER = {
   iconSize: 15.06,
 } as const;
 
+/**
+ * Share / printed agreement — Figma 13674:16159 (UI) + 14283:17885 (stored image).
+ * Dark change panel sits above side-by-side Share / Wallet CTAs.
+ */
+export const CHILD_SHARED_PHOTO_SHARE_FOOTER = {
+  paddingTop: 10,
+  paddingX: 42.67,
+  paddingBottom: 16,
+  gap: 12.55,
+  blur: 4.18,
+  changeBlock: {
+    padding: 10,
+    gap: 6,
+    checkSize: 30.754,
+    textGap: 4,
+    textWidth: 275,
+    labelFontSize: 18,
+    labelLineHeight: 1.25,
+    labelLetterSpacing: -0.36,
+    labelColor: '#BCC8CB',
+    changeFontSize: 30,
+    changeLineHeight: 1.15,
+    changeLetterSpacing: -0.9,
+  },
+  buttonRow: {
+    gap: 8,
+    height: 46.017,
+    radius: 22,
+    paddingX: 12.55,
+    paddingY: 6.693,
+    fontSize: 15.06,
+    shadow: '1.673px 1.673px 16.733px rgba(109, 109, 109, 0.15)',
+    iconSize: 15.06,
+    iconGap: 6.693,
+  },
+} as const;
+
 export const CHILD_SHARED_PHOTO_REVIEW = {
   logo: { left: 19, top: 19, width: 90 },
 } as const;
@@ -725,4 +762,6 @@ export const CHILD_SHARED_PHOTO_SHARE = {
       strokeWidth: 16,
     },
   },
+  /** Bottom dark band baked into stored agreement image (no CTAs). */
+  agreementPanel: CHILD_SHARED_PHOTO_SHARE_FOOTER,
 } as const;

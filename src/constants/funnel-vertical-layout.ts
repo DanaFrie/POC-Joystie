@@ -18,6 +18,16 @@ export const FUNNEL_SECTION_GAP_MAX_PX = 42;
 /** Primary CTA height — matches stacked footer buttons. */
 export const FUNNEL_CTA_HEIGHT_PX = 55;
 
+/**
+ * Figma CTA label — 18px/Bold (התחלה et al.).
+ * Pair accent/mint fills with `text-v03-green-900`.
+ */
+export const V03_CTA_LABEL_CLASS =
+  'font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right';
+
+/** Accent CTA text on mint / turquoise fills — Green-900. */
+export const V03_CTA_ACCENT_LABEL_CLASS = `${V03_CTA_LABEL_CLASS} text-v03-green-900`;
+
 /** Footer shell padding above button (Figma stacked footer). */
 export const FUNNEL_FOOTER_SHELL_PAD_TOP_PX = 20;
 

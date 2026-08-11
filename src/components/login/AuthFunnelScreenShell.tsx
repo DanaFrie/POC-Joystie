@@ -96,7 +96,7 @@ export function AuthFunnelScreenShell({
         height={45.04}
       />
       <div className="flex w-full flex-col items-end gap-[19px] v03-funnel-enter-1">
-        <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
+        <h1 className="w-full text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
           {title}
         </h1>
         {children}

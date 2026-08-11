@@ -30,7 +30,7 @@ export function ChildGenderPicker({ value, onChange }: ChildGenderPickerProps) {
             role="radio"
             aria-checked={selected}
             onClick={() => onChange(option.id)}
-            className={`flex h-[33px] w-[92.58px] items-center justify-center rounded-[31px] px-3 font-simpler text-sm transition ${
+            className={`flex h-[33px] w-[92.58px] items-center justify-center rounded-[31px] px-3 text-center font-simpler text-[14px] leading-normal tracking-[-0.28px] transition ${
               selected
                 ? 'bg-v03-green-100 font-bold text-v03-green-900'
                 : 'font-normal text-[#88A49D]'

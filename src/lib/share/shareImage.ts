@@ -12,7 +12,7 @@ export async function shareImageFile(input: {
   title?: string;
   text?: string;
 }): Promise<'shared' | 'downloaded' | 'copied'> {
-  const fileName = input.fileName || 'joystie-selfie.jpg';
+  const fileName = input.fileName || 'joystie-handshake.jpg';
   let blob = input.imageBlob ?? null;
   if (!blob) {
     if (!input.imageUrl) {

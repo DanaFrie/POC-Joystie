@@ -41,7 +41,7 @@ export function OnboardingGoodNewsStep() {
               <GoodNewsPhoneMockup />
             </div>
             <p
-              className="v03-funnel-enter-reveal-1 absolute inset-x-0 z-[2] flex items-center justify-center text-center font-simpler text-[24px] font-normal leading-[30px] text-v03-text-on-light"
+              className="v03-funnel-enter-reveal-1 absolute inset-x-0 z-[2] flex items-center justify-center text-center font-simpler text-[24px] font-normal leading-[1.2] tracking-[-0.48px] text-v03-text-on-light"
               style={{
                 top: '66.6667%',
                 height: '33.3333%',
@@ -61,7 +61,7 @@ export function OnboardingGoodNewsStep() {
           className="flex w-full flex-col items-center gap-[35px]"
           style={{ maxWidth: COPY_BLOCK_WIDTH_PX }}
         >
-          <h1 className="v03-funnel-enter-reveal-2 w-full self-stretch text-center font-simpler text-[28px] font-black leading-[34px] text-v03-text-on-light">
+          <h1 className="v03-funnel-enter-reveal-2 w-full self-stretch text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-v03-text-on-light">
             שימוש ב-Joystie יכול לצמצם זמן מסך ב-
           </h1>
 

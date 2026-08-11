@@ -25,10 +25,10 @@ export function ParentRoleStep({ role, onRoleChange }: ParentRoleStepProps) {
       aria-label="בחירת תפקיד הורה"
     >
       <header className="v03-funnel-enter-0 flex w-full max-w-v03-content flex-col items-end justify-center gap-1 px-[15px]">
-        <h1 className="w-full text-right font-simpler text-[40px] font-black leading-[44px] text-white">
+        <h1 className="w-full text-right font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
           היי, נעים מאוד!
         </h1>
-        <p className="w-[293px] max-w-full text-right font-simpler text-[24px] font-normal leading-[30px] text-white">
+        <p className="w-[293px] max-w-full text-right font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white">
           שמחים להכיר, עם מי אנחנו מדברים?
         </p>
       </header>

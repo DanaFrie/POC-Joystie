@@ -159,6 +159,7 @@ import {
 import { ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
 import { createContextLogger } from '@/utils/logger';
 import {
+  FunnelInlineActions,
   FunnelStepFooter,
   FunnelStepForeground,
   FunnelStepMain,
@@ -382,14 +383,6 @@ export function OnboardingParentFlow({
     screenTimes,
     count,
     pickOptions,
-  ]);
-
-  const signupScrollOverflows = useScrollOverflow(signupScrollRef, [
-    step,
-    values,
-    errors,
-    oauthDialogOpen,
-    isRegistering,
   ]);
 
   const selectedChildName = useMemo(() => {
@@ -692,7 +685,7 @@ export function OnboardingParentFlow({
         clearOAuthSessionFlags();
         setOauthFinishing(null);
         setStep('signupForm');
-        setErrors({ _general: outcome.message });
+        setErrors({ _oauth: outcome.message });
         return;
       }
 
@@ -722,7 +715,7 @@ export function OnboardingParentFlow({
         } catch (error) {
           logger.error('OAuth existing-user routing failed:', error);
           setErrors({
-            _general: getAuthErrorFromUnknown(error),
+            _oauth: getAuthErrorFromUnknown(error),
           });
           setStep('signupForm');
         } finally {
@@ -746,7 +739,7 @@ export function OnboardingParentFlow({
         logger.error('OAuth redirect persist failed:', error);
         setAccountCreated(false);
         setErrors({
-          _general: getAuthErrorFromUnknown(error),
+          _oauth: getAuthErrorFromUnknown(error),
         });
         setStep('signupForm');
       } finally {
@@ -887,7 +880,7 @@ export function OnboardingParentFlow({
           );
           return;
         }
-        setErrors({ _general: result.errorMessage });
+        setErrors({ _oauth: result.errorMessage });
         return;
       }
 
@@ -920,7 +913,7 @@ export function OnboardingParentFlow({
           });
         } catch (error) {
           logger.error('OAuth existing-user routing failed:', error);
-          setErrors({ _general: getAuthErrorFromUnknown(error) });
+          setErrors({ _oauth: getAuthErrorFromUnknown(error) });
         } finally {
           setOauthFinishing(null);
         }
@@ -965,7 +958,7 @@ export function OnboardingParentFlow({
         );
         return;
       }
-      setErrors({ _general: getAuthErrorFromUnknown(error) });
+      setErrors({ _oauth: getAuthErrorFromUnknown(error) });
     } finally {
       oauthPopupInFlightRef.current = false;
       setOauthDialogOpen(null);
@@ -998,7 +991,7 @@ export function OnboardingParentFlow({
     }
     if (isRestrictedOAuthEnvironment()) {
       logger.warn('OAuth blocked: restricted environment', { provider });
-      setErrors({ _general: getRestrictedOAuthMessage() });
+      setErrors({ _oauth: getRestrictedOAuthMessage() });
       return;
     }
     setErrors({});
@@ -1177,7 +1170,9 @@ export function OnboardingParentFlow({
       return;
     }
     if (step === 'childInviteShare') {
-      setStep('childInviteIntro');
+      // Skip pick/intro — back to «איך מתחילים?» (signup intro first screen).
+      setJourneyStage(0);
+      setStep('signupIntro');
       return;
     }
     if (step === 'childInviteIntro') {
@@ -1194,16 +1189,16 @@ export function OnboardingParentFlow({
         setJourneyStage((s) => (s - 1) as SignupJourneyStageIndex);
         return;
       }
-      if (!accountCreated) {
-        setStep('signupForm');
-      }
+      // Came from reveal — skip back through facts; return to screen-time details.
+      setStep('screenTime');
       return;
     }
     if (step === 'signupWelcome') {
       return;
     }
     if (step === 'signupForm') {
-      setStep('realData');
+      // Came from reveal — skip back through facts; return to screen-time details.
+      setStep('screenTime');
       return;
     }
     if (step === 'realData') {
@@ -1262,8 +1257,7 @@ export function OnboardingParentFlow({
 
   const showBackButton =
     !(accountCreated && step === 'signupForm') &&
-    !(accountCreated && step === 'signupWelcome') &&
-    !(accountCreated && step === 'signupIntro' && journeyStage === 0);
+    !(accountCreated && step === 'signupWelcome');
 
   /** After Google/Apple auth returns — waiting layout until account persist finishes. */
   if (oauthFinishing !== null && !accountCreated && !isRegistering) {
@@ -1293,7 +1287,6 @@ export function OnboardingParentFlow({
 
     return (
       <>
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <div
           key={step}
           className="v03-funnel-screen absolute inset-0 z-[10] flex min-h-0 flex-col overflow-hidden"
@@ -1338,9 +1331,6 @@ export function OnboardingParentFlow({
   if (step === 'onboardingComplete') {
     return (
       <>
-        {showBackButton && (
-          <OnboardingBackButton tone="light" onClick={handleBack} />
-        )}
         <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
           <ParentOnboardingCompletionStep
             onContinue={() => {
@@ -1360,13 +1350,7 @@ export function OnboardingParentFlow({
     return (
       <>
         <OnboardingMintGridBackdrop showGrid />
-        <OnboardingWaitingScreenShell
-          skipMintGlow
-          staticLayout
-          showBackButton={
-            showBackButton ? <OnboardingBackButton onClick={handleBack} /> : undefined
-          }
-        >
+        <OnboardingWaitingScreenShell skipMintGlow staticLayout>
           <SignupChildInviteWaitingStep
             childName={selectedChildName}
             childGender={selectedChildGender}
@@ -1381,7 +1365,7 @@ export function OnboardingParentFlow({
     return (
       <>
         <OnboardingMintGridBackdrop showGrid={false} />
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
+        <OnboardingBackButton onClick={handleBack} />
         <OnboardingFunnelStepSlot stepKey="childInviteShare" clipOverflow={false}>
           <FunnelStepRoot fitViewport aria-label="שיתוף הזמנה לילד">
             <FunnelStepForeground
@@ -1414,7 +1398,6 @@ export function OnboardingParentFlow({
     return (
       <>
         <OnboardingMintGridBackdrop showGrid={false} />
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <OnboardingFunnelStepSlot stepKey="childInviteIntro" clipOverflow={false}>
           <FunnelStepRoot fitViewport aria-label="הצטרפות ילד — התחלה">
             <FunnelStepForeground
@@ -1442,7 +1425,6 @@ export function OnboardingParentFlow({
     return (
       <>
         <OnboardingMintGridBackdrop showGrid={false} />
-        {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <OnboardingFunnelStepSlot stepKey="pickChild" clipOverflow={false}>
           <FunnelStepRoot fitViewport aria-label="בחירת ילד ראשון">
             <FunnelStepForeground
@@ -1541,7 +1523,7 @@ export function OnboardingParentFlow({
             <FunnelStepForeground
               distribution="between"
               padTopPx={signupFormPadTopPx}
-              padBottomPx={getFunnelScrollFrameBottomInsetPx({ showLoginLink: true })}
+              padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
               fitViewport
             >
               <FunnelStepMain
@@ -1559,24 +1541,16 @@ export function OnboardingParentFlow({
                     onOAuthApple={() => handleOAuth('apple')}
                     oauthDisabled={isRegistering}
                     oauthPickerOpen={oauthDialogOpen}
+                    isRegistering={isRegistering}
+                    onRegister={handleRegister}
+                    ctaDisabled={
+                      isRegistering ||
+                      oauthDialogOpen !== null ||
+                      oauthTermsGateProvider !== null
+                    }
                   />
                 </div>
               </FunnelStepMain>
-              <FunnelStepFooter
-                variant="accent"
-                showLoginLink
-                overlay
-                blur={signupScrollOverflows}
-                disabled={
-                  isRegistering ||
-                  oauthDialogOpen !== null ||
-                  oauthTermsGateProvider !== null
-                }
-                errorMessage={errors._general}
-                onClick={handleRegister}
-              >
-                {isRegistering ? 'נרשמים...' : 'הרשמה'}
-              </FunnelStepFooter>
             </FunnelStepForeground>
             {oauthTermsGateProvider ? (
               <SignupOAuthTermsSheet
@@ -1596,7 +1570,6 @@ export function OnboardingParentFlow({
     return (
       <>
         <OnboardingRevealBleedBackground />
-        <OnboardingBackButton tone="light" onClick={handleBack} />
         <OnboardingFunnelStepSlot
           stepKey={step}
           clipOverflow
@@ -1652,6 +1625,9 @@ export function OnboardingParentFlow({
   }
 
   if (step === 'details' || step === 'screenTime') {
+    const continueDisabled =
+      step === 'details' && !childrenDetailsComplete(children);
+
     return (
       <>
         <OnboardingMintGridBackdrop showGrid={false} />
@@ -1663,7 +1639,7 @@ export function OnboardingParentFlow({
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}
-              padBottomPx={getFunnelScrollFrameBottomInsetPx()}
+              padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
               fitViewport
             >
               <FunnelStepMain
@@ -1671,36 +1647,38 @@ export function OnboardingParentFlow({
                 scrollRef={funnelScrollRef}
                 className="relative min-h-0 w-full flex-1"
               >
-                {showBackButton && step === 'screenTime' && (
-                  <OnboardingBackButton scrollWithContent onClick={handleBack} />
-                )}
-                {step === 'details' ? (
-                  <ChildrenDetailsStep
-                    children={children}
-                    nameErrors={childNameErrors}
-                    onChildrenChange={(next) => {
-                      setChildren(next);
-                      setChildNameErrors(getChildrenHebrewNameErrors(next));
-                    }}
-                  />
-                ) : (
-                  <ChildrenScreenTimeStep
-                    children={children}
-                    entries={screenTimes}
-                    onEntriesChange={setScreenTimes}
-                  />
-                )}
+                <div className="flex min-h-full w-full flex-col">
+                  {showBackButton && step === 'screenTime' && (
+                    <OnboardingBackButton scrollWithContent onClick={handleBack} />
+                  )}
+                  {step === 'details' ? (
+                    <ChildrenDetailsStep
+                      children={children}
+                      nameErrors={childNameErrors}
+                      onChildrenChange={(next) => {
+                        setChildren(next);
+                        setChildNameErrors(getChildrenHebrewNameErrors(next));
+                      }}
+                    />
+                  ) : (
+                    <ChildrenScreenTimeStep
+                      children={children}
+                      entries={screenTimes}
+                      onEntriesChange={setScreenTimes}
+                    />
+                  )}
+                  <div className="mt-auto w-full shrink-0 pt-[54px]">
+                    <FunnelInlineActions
+                      className="v03-funnel-enter-2"
+                      variant="secondary"
+                      disabled={continueDisabled}
+                      onClick={handleParentContinue}
+                    >
+                      המשך
+                    </FunnelInlineActions>
+                  </div>
+                </div>
               </FunnelStepMain>
-              <FunnelStepFooter
-                className="v03-funnel-enter-2"
-                variant="secondary"
-                overlay
-                blur={funnelScrollOverflows}
-                disabled={step === 'details' && !childrenDetailsComplete(children)}
-                onClick={handleParentContinue}
-              >
-                המשך
-              </FunnelStepFooter>
             </FunnelStepForeground>
           </FunnelStepRoot>
         </OnboardingFunnelStepSlot>

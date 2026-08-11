@@ -17,7 +17,7 @@ type ChildDetailsFormBlockProps = {
 };
 
 const fieldLabelClass =
-  'w-full px-2.5 text-right font-simpler text-base font-normal leading-[1.35] tracking-[-0.24px] text-white';
+  'w-full px-2.5 text-right font-simpler text-[16px] font-normal leading-[1.28] tracking-[-0.32px] text-white';
 
 /** Single child — name, age, gender (Figma block). */
 export function ChildDetailsFormBlock({
@@ -43,7 +43,7 @@ export function ChildDetailsFormBlock({
           value={child.name}
           onChange={(e) => onChange({ ...child, name: e.target.value })}
           placeholder="שם פרטי"
-          className="flex h-[49px] w-full items-center justify-end rounded-[18px] bg-white/5 px-[15px] py-3.5 text-right font-simpler text-base font-normal leading-[1.35] tracking-[-0.24px] text-white outline outline-1 outline-white/20 outline-offset-[-1px] placeholder:text-v03-green-400 focus:outline-white/40"
+          className="flex h-[49px] w-full items-center justify-end rounded-[18px] bg-white/5 px-[15px] py-3.5 text-right font-simpler text-[16px] font-normal leading-[1.28] tracking-[-0.32px] text-white outline outline-1 outline-white/20 outline-offset-[-1px] placeholder:text-v03-green-400 focus:outline-white/40"
         />
         {nameError ? (
           <p className="w-full px-2.5 text-right font-simpler text-sm text-red-300">
@@ -58,7 +58,7 @@ export function ChildDetailsFormBlock({
         className="flex w-full items-start"
         style={{ gap: rowGapPx }}
       >
-        <div className="flex shrink-0 flex-col items-center gap-0.5 self-stretch">
+        <div className="flex shrink-0 flex-col items-end gap-0.5 self-stretch">
           <span className={fieldLabelClass}>גיל</span>
           <ChildAgeStepper
             value={child.age}

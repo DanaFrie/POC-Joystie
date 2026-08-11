@@ -1,19 +1,20 @@
 import Link from 'next/link';
 import type { ComponentPropsWithoutRef } from 'react';
+import { V03_CTA_LABEL_CLASS } from '@/constants/funnel-vertical-layout';
 
 type ButtonVariant = 'primary' | 'secondary';
 type ButtonSize = 'lg' | 'md';
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-v03-accent text-v03-accent-foreground shadow-v03-button hover:brightness-105',
+    'bg-v03-accent text-v03-green-900 shadow-v03-button hover:brightness-105',
   secondary:
-    'bg-v03-white text-v03-accent-foreground shadow-v03-button hover:brightness-95',
+    'bg-v03-white text-v03-turquoise-950 shadow-v03-button hover:brightness-95',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  lg: 'h-[55px] text-v03-button rounded-v03-button',
-  md: 'h-12 text-v03-button rounded-v03-button',
+  lg: 'h-[55px] rounded-v03-button',
+  md: 'h-12 rounded-v03-button',
 };
 
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {
@@ -26,8 +27,7 @@ type ButtonLinkProps = ComponentPropsWithoutRef<typeof Link> & {
   size?: ButtonSize;
 };
 
-const baseClasses =
-  'inline-flex w-full items-center justify-center px-[15px] py-2 font-simpler font-bold transition';
+const baseClasses = `inline-flex w-full items-center justify-center px-[15px] py-2 ${V03_CTA_LABEL_CLASS} transition`;
 
 export function Button({
   variant = 'primary',

@@ -1,17 +1,20 @@
 /**
  * Bake share-step overlay onto the selfie before Storage / native share.
- * Matches ChildSharedPhotoShareStep + ChildSharedPhotoBackdrop:
+ * Matches ChildSharedPhotoShareStep + ChildSharedPhotoBackdrop + Figma 14283:17885:
  * - 375×812 artboard
  * - photo object-fit: cover; object-position: center bottom
  * - Rubik black headline + letter-spacing + text-shadow
  * - same scribble SVG (blob URL — data: URLs truncate the 50KB path)
  * - Joystie wordmark (dark tone)
+ * - bottom agreement panel: check + change label + agreed change text
  */
 
+import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_SHARED_PHOTO_SHARE } from '@/constants/child-post-game-layout';
 import { SHARE_HEADLINE_SCRIBBLE_PATH } from '@/constants/share-headline-scribble-path';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 import {
+  CHILD_SHARED_PHOTO_CHANGE_LABEL,
   CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS,
   CHILD_SHARED_PHOTO_SHARE_HEADLINE_PREFIX,
 } from '@/lib/onboarding/childPostGameCopy';
@@ -22,6 +25,11 @@ const LOGO_VIEWBOX_W = 161;
 const LOGO_VIEWBOX_H = 78;
 const SCRIBBLE_VIEWBOX_W = 257;
 const SCRIBBLE_VIEWBOX_H = 27;
+
+export type ComposeShareCardOptions = {
+  /** Child's first agreed change — printed on the agreement band. */
+  changeText?: string | null;
+};
 
 function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -83,6 +91,8 @@ async function ensureRubikReady(fontSizePx: number, family: string): Promise<voi
   if (typeof document === 'undefined' || !document.fonts?.load) return;
   try {
     await Promise.all([
+      document.fonts.load(`400 ${fontSizePx}px ${family}`),
+      document.fonts.load(`700 ${fontSizePx}px ${family}`),
       document.fonts.load(`800 ${fontSizePx}px ${family}`),
       document.fonts.load(`900 ${fontSizePx}px ${family}`),
       document.fonts.load(`800 ${fontSizePx}px Rubik`),
@@ -154,12 +164,41 @@ function buildLogoSvg(width: number): string {
 </svg>`;
 }
 
+function wrapCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string[] {
+  const paragraphs = text.split('\n');
+  const lines: string[] = [];
+  for (const paragraph of paragraphs) {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      lines.push('');
+      continue;
+    }
+    let current = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const next = `${current} ${words[i]}`;
+      if (ctx.measureText(next).width <= maxWidth) {
+        current = next;
+      } else {
+        lines.push(current);
+        current = words[i];
+      }
+    }
+    lines.push(current);
+  }
+  return lines;
+}
+
 /**
  * Draw selfie (cover, bottom-aligned) + logo + RTL headline + mint scribble
- * in the same 375×812 layout as the share step overlay.
+ * + agreement change band — same layout as share step / Figma 14283:17885.
  */
 export async function composeShareCardWithHeadline(
-  source: Blob | string
+  source: Blob | string,
+  options: ComposeShareCardOptions = {}
 ): Promise<Blob> {
   const img =
     typeof source === 'string'
@@ -171,9 +210,12 @@ export async function composeShareCardWithHeadline(
   const height = V03_SCREEN_HEIGHT * unit;
 
   const frame = CHILD_SHARED_PHOTO_SHARE.headline;
+  const panel = CHILD_SHARED_PHOTO_SHARE.agreementPanel;
+  const changeBlock = panel.changeBlock;
+  const changeText = options.changeText?.trim() || '';
   const fontFamily = resolveRubikFamily();
   const fontSize = frame.fontSize * unit;
-  await ensureRubikReady(fontSize, fontFamily);
+  await ensureRubikReady(Math.max(fontSize, changeBlock.changeFontSize * unit), fontFamily);
 
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -233,6 +275,81 @@ export async function composeShareCardWithHeadline(
     (frame.left + underline.left) * unit - scribblePad,
     (frame.top + underline.top) * unit - scribblePad
   );
+
+  if (changeText) {
+    const labelFontSize = changeBlock.labelFontSize * unit;
+    const changeFontSize = changeBlock.changeFontSize * unit;
+    const textMaxWidth = changeBlock.textWidth * unit;
+
+    ctx.save();
+    ctx.direction = 'rtl';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    if ('letterSpacing' in ctx) {
+      (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing =
+        `${changeBlock.changeLetterSpacing * unit}px`;
+    }
+    ctx.font = `700 ${changeFontSize}px ${fontFamily}`;
+    const changeLines = wrapCanvasText(ctx, changeText, textMaxWidth);
+    ctx.restore();
+
+    const labelBlockH = labelFontSize * changeBlock.labelLineHeight;
+    const changeBlockH =
+      changeLines.length * changeFontSize * changeBlock.changeLineHeight;
+    const innerH =
+      changeBlock.checkSize * unit +
+      changeBlock.gap * unit +
+      labelBlockH +
+      changeBlock.textGap * unit +
+      changeBlockH;
+    const panelContentH = changeBlock.padding * 2 * unit + innerH;
+    const panelH =
+      panel.paddingTop * unit + panelContentH + panel.paddingBottom * unit;
+    const panelTop = height - panelH;
+
+    ctx.fillStyle = '#092125';
+    ctx.fillRect(0, panelTop, width, panelH);
+
+    let y = panelTop + panel.paddingTop * unit + changeBlock.padding * unit;
+    const centerX = width / 2;
+
+    try {
+      const checkImg = await loadImageFromUrl(CHILD_ONBOARDING_ASSETS.shareChangeCheck);
+      const checkSize = changeBlock.checkSize * unit;
+      ctx.drawImage(checkImg, centerX - checkSize / 2, y, checkSize, checkSize);
+      y += checkSize + changeBlock.gap * unit;
+    } catch {
+      // Continue without check if asset fails to load.
+      y += changeBlock.checkSize * unit + changeBlock.gap * unit;
+    }
+
+    ctx.save();
+    ctx.direction = 'rtl';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.shadowColor = 'transparent';
+
+    if ('letterSpacing' in ctx) {
+      (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing =
+        `${changeBlock.labelLetterSpacing * unit}px`;
+    }
+    ctx.font = `400 ${labelFontSize}px ${fontFamily}`;
+    ctx.fillStyle = changeBlock.labelColor;
+    ctx.fillText(CHILD_SHARED_PHOTO_CHANGE_LABEL, centerX, y);
+    y += labelBlockH + changeBlock.textGap * unit;
+
+    if ('letterSpacing' in ctx) {
+      (ctx as CanvasRenderingContext2D & { letterSpacing: string }).letterSpacing =
+        `${changeBlock.changeLetterSpacing * unit}px`;
+    }
+    ctx.font = `700 ${changeFontSize}px ${fontFamily}`;
+    ctx.fillStyle = '#FFFFFF';
+    const changeLineH = changeFontSize * changeBlock.changeLineHeight;
+    for (let i = 0; i < changeLines.length; i++) {
+      ctx.fillText(changeLines[i], centerX, y + i * changeLineH);
+    }
+    ctx.restore();
+  }
 
   return new Promise((resolve, reject) => {
     canvas.toBlob(

@@ -325,7 +325,7 @@ export function ChildSelfiePatternStep({
               type="button"
               onClick={() => void handleCapture()}
               disabled={capturing}
-              className="mx-auto flex w-full max-w-v03-content cursor-pointer touch-manipulation items-center justify-center rounded-[22px] bg-v03-turquoise-300 font-simpler text-[18px] font-bold leading-[1.2] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
+              className="mx-auto flex w-full max-w-v03-content cursor-pointer touch-manipulation items-center justify-center rounded-[22px] bg-v03-turquoise-300 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
               style={{
                 maxWidth: capture.width,
                 height: capture.height,

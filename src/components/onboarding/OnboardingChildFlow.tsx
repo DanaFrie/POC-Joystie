@@ -240,13 +240,14 @@ export function OnboardingChildFlow() {
 
 
 
-  const parentName = bonding?.parentName ?? urlMeta.parentName ?? 'אבא';
+  // Invite URL wins over stored bonding (avoids RTDB/session flash flipping gender/art).
+  const parentName = urlMeta.parentName ?? bonding?.parentName ?? 'אבא';
 
-  const childName = bonding?.childName?.trim() || urlMeta.childName || 'הילד/ה';
+  const childName = urlMeta.childName?.trim() || bonding?.childName?.trim() || 'הילד/ה';
 
-  const childGender = bonding?.childGender ?? urlMeta.childGender ?? 'boy';
+  const childGender = urlMeta.childGender ?? bonding?.childGender ?? 'boy';
 
-  const parentGender = bonding?.parentGender ?? urlMeta.parentGender ?? 'male';
+  const parentGender = urlMeta.parentGender ?? bonding?.parentGender ?? 'male';
 
   const parentId = bonding?.parentId ?? null;
 
@@ -599,6 +600,7 @@ export function OnboardingChildFlow() {
             parentName={parentName}
             parentGender={parentGender}
             parentId={parentId}
+            changeText={postGame.childChangeText}
             onShareReached={() => {
               if (parentId) {
                 void signalChildOnboardingMilestone(parentId, 'selfie_mission_done');

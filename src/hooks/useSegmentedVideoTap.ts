@@ -25,8 +25,55 @@ function equalSegmentRange(
   return { start, end };
 }
 
+/** Prefer rAF over `timeupdate` — browsers throttle timeupdate (~4Hz) and it feels laggy. */
+function watchUntilTime(
+  video: HTMLVideoElement,
+  endTime: number,
+  onReach: () => void
+): () => void {
+  let rafId = 0;
+  let cancelled = false;
+
+  const tick = () => {
+    if (cancelled) return;
+    if (video.currentTime >= endTime - 0.02 || video.ended) {
+      onReach();
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  };
+
+  rafId = requestAnimationFrame(tick);
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(rafId);
+  };
+}
+
+function seekThenPlay(video: HTMLVideoElement, startTime: number): Promise<void> {
+  return new Promise((resolve) => {
+    const nearEnough = Math.abs(video.currentTime - startTime) < 0.04;
+    const startPlayback = () => {
+      void video.play().then(resolve).catch(() => resolve());
+    };
+
+    if (nearEnough && !video.seeking) {
+      startPlayback();
+      return;
+    }
+
+    const onSeeked = () => {
+      video.removeEventListener('seeked', onSeeked);
+      startPlayback();
+    };
+    video.addEventListener('seeked', onSeeked);
+    video.currentTime = startTime;
+  });
+}
+
 /**
  * Advance a single video in time slices per tap (equal by default; custom ranges optional).
+ * One pending tap may queue while a segment plays so rapid taps stay responsive.
  */
 export function useSegmentedVideoTap(
   segmentCount: number,
@@ -36,6 +83,10 @@ export function useSegmentedVideoTap(
 ) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const segmentIndexRef = useRef(0);
+  const isPlayingRef = useRef(false);
+  const pendingTapRef = useRef(false);
+  const stopWatchRef = useRef<(() => void) | null>(null);
+  const playNextSegmentRef = useRef<() => void>(() => {});
   const [segmentIndex, setSegmentIndex] = useState(0);
   const [isPlayingSegment, setIsPlayingSegment] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
@@ -46,8 +97,13 @@ export function useSegmentedVideoTap(
 
   const playNextSegment = useCallback(() => {
     const video = videoRef.current;
-    if (!video || isPlayingSegment) return;
+    if (!video) return;
     if (segmentIndexRef.current >= segmentCount) return;
+
+    if (isPlayingRef.current) {
+      pendingTapRef.current = true;
+      return;
+    }
 
     const runSegment = () => {
       if (!Number.isFinite(video.duration) || video.duration <= 0) return;
@@ -59,31 +115,36 @@ export function useSegmentedVideoTap(
       const endTime = Math.min(end, video.duration);
       const playbackRate = getPlaybackRate?.(currentIndex, segmentCount) ?? 1;
 
+      isPlayingRef.current = true;
       setIsPlayingSegment(true);
       video.playbackRate = playbackRate;
-      video.currentTime = startTime;
 
       const finishSegment = () => {
+        stopWatchRef.current?.();
+        stopWatchRef.current = null;
         video.pause();
         video.playbackRate = 1;
-        video.removeEventListener('timeupdate', onTimeUpdate);
         segmentIndexRef.current = nextIndex;
         setSegmentIndex(nextIndex);
+        isPlayingRef.current = false;
         setIsPlayingSegment(false);
+
         if (nextIndex >= segmentCount) {
+          pendingTapRef.current = false;
           onAllSegmentsComplete();
+          return;
+        }
+
+        if (pendingTapRef.current) {
+          pendingTapRef.current = false;
+          queueMicrotask(() => playNextSegmentRef.current());
         }
       };
 
-      const onTimeUpdate = () => {
-        if (video.currentTime >= endTime - 0.04) {
-          finishSegment();
-        }
-      };
-
-      video.addEventListener('timeupdate', onTimeUpdate);
-      void video.play().catch(() => {
-        finishSegment();
+      void seekThenPlay(video, startTime).then(() => {
+        if (segmentIndexRef.current !== currentIndex) return;
+        stopWatchRef.current?.();
+        stopWatchRef.current = watchUntilTime(video, endTime, finishSegment);
       });
     };
 
@@ -100,10 +161,11 @@ export function useSegmentedVideoTap(
   }, [
     getPlaybackRate,
     getSegmentRange,
-    isPlayingSegment,
     onAllSegmentsComplete,
     segmentCount,
   ]);
+
+  playNextSegmentRef.current = playNextSegment;
 
   return {
     videoRef,

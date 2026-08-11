@@ -43,8 +43,14 @@ function LoginPageContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
-  const [loginError, setLoginError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [oauthError, setOauthError] = useState('');
   const router = useRouter();
+
+  const clearAuthErrors = () => {
+    setPasswordError('');
+    setOauthError('');
+  };
 
   const showResumeSignupBanner = searchParams?.get('existing') === '1';
   const showPasswordProviderBanner = searchParams?.get('method') === 'password';
@@ -101,7 +107,7 @@ function LoginPageContent() {
           await auth.signOutUser();
           clearSession();
         }
-        setLoginError(getUnknownOAuthAccountMessage());
+        setOauthError(getUnknownOAuthAccountMessage());
         return;
       }
 
@@ -179,14 +185,14 @@ function LoginPageContent() {
 
       setOauthLoading(null);
       setIsSubmitting(true);
-      setLoginError('');
+      clearAuthErrors();
 
       try {
         clearOAuthSessionFlags();
         await handleOAuthLoginResult(result);
       } catch (error) {
         logger.error('OAuth redirect login error:', error);
-        setLoginError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
+        setOauthError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
       } finally {
         setIsSubmitting(false);
       }
@@ -210,8 +216,8 @@ function LoginPageContent() {
       });
     }
 
-    if (loginError) {
-      setLoginError('');
+    if (passwordError || oauthError) {
+      clearAuthErrors();
     }
   };
 
@@ -246,7 +252,7 @@ function LoginPageContent() {
     }
 
     setIsSubmitting(true);
-    setLoginError('');
+    clearAuthErrors();
 
     try {
       const email = formData.email.trim().toLowerCase();
@@ -255,7 +261,7 @@ function LoginPageContent() {
     } catch (error) {
       logger.error('Login error:', error);
       const errorMessage = getAuthErrorFromUnknown(error);
-      setLoginError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
+      setPasswordError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
       setIsSubmitting(false);
     }
   };
@@ -265,14 +271,14 @@ function LoginPageContent() {
       return;
     }
     if (isRestrictedOAuthEnvironment()) {
-      setLoginError(getRestrictedOAuthMessage());
+      setOauthError(getRestrictedOAuthMessage());
       return;
     }
     if (isSubmitting || oauthLoading) {
       return;
     }
 
-    setLoginError('');
+    clearAuthErrors();
     setOauthLoading(provider);
 
     const useRedirect = prefersOAuthRedirect();
@@ -286,7 +292,7 @@ function LoginPageContent() {
 
       if (!result.ok) {
         if (result.errorCode !== 'auth/popup-closed-by-user') {
-          setLoginError(result.errorMessage);
+          setOauthError(result.errorMessage);
         }
         return;
       }
@@ -294,7 +300,7 @@ function LoginPageContent() {
       await handleOAuthLoginResult(result);
     } catch (error) {
       logger.error('OAuth login error:', error);
-      setLoginError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
+      setOauthError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
     } finally {
       setOauthLoading(null);
       clearOAuthSessionFlags();
@@ -311,7 +317,8 @@ function LoginPageContent() {
       email={formData.email}
       password={formData.password}
       errors={errors}
-      loginError={loginError}
+      passwordError={passwordError}
+      oauthError={oauthError}
       showResumeSignupBanner={showResumeSignupBanner}
       showPasswordProviderBanner={showPasswordProviderBanner}
       isSubmitting={isSubmitting}

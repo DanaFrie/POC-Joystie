@@ -53,7 +53,7 @@ export function SignupIntroSection({
     <div className="flex w-full flex-col items-stretch gap-4 v03-funnel-enter-1">
       <div className="flex w-full flex-col items-end">
         <div className="flex w-full flex-col items-end gap-1 self-stretch">
-          <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white">
+          <h1 className="w-full text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
             יצירת חשבון בגו׳יסטי
           </h1>
         </div>

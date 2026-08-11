@@ -41,7 +41,7 @@ export function PickFirstChildStep({
           gap: PICK_FIRST_CHILD_HEADER_GAP_PX,
         }}
       >
-        <h1 className="w-full text-right font-simpler text-[30px] font-black leading-[34.5px] text-white">
+        <h1 className="w-full text-right font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
           עם מי מתחילים?
         </h1>
         <p className="w-full text-right font-simpler text-[20px] font-normal text-[#CADCD6]">

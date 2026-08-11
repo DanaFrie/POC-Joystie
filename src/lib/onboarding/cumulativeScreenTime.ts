@@ -8,8 +8,15 @@ export type ChildCumulativeProjection = {
   name: string;
   gender: ChildGender;
   hoursPerDay: number;
+  /** Total projected screen days until 18. */
+  totalDays: number;
   durationLabel: string;
 };
+
+/** Under 2 months («חודשיים») — show encouraging copy instead of a duration badge. */
+export function isLowCumulativeScreenTime(totalDays: number): boolean {
+  return totalDays < 60;
+}
 
 function hebrewYears(n: number): string {
   if (n === 1) return 'שנה';
@@ -66,6 +73,7 @@ const FALLBACK_PROJECTIONS: ChildCumulativeProjection[] = [
     name: 'יואב',
     gender: 'boy',
     hoursPerDay: 3,
+    totalDays: 365 + 5 * 30 + 3,
     durationLabel: 'שנה, 5 חודשים ו3 ימים',
   },
 ];
@@ -90,6 +98,7 @@ export function getChildCumulativeProjections(): ChildCumulativeProjection[] {
       name,
       gender: detail.gender,
       hoursPerDay: screen.hours,
+      totalDays: days,
       durationLabel: formatCumulativeDurationHebrew(days),
     });
   }

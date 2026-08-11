@@ -48,11 +48,11 @@ export function ChildrenPhoneCountStep({
         className="flex w-full max-w-v03-content flex-col items-center"
         style={{ gap: layout.contentGap }}
       >
-        <header className="v03-funnel-enter-1 flex w-full flex-col items-center justify-center gap-1 px-[15px]">
-          <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-white">
+        <header className="v03-funnel-enter-1 flex w-full flex-col items-stretch justify-center gap-1 self-stretch px-[15px]">
+          <h1 className="w-full self-stretch text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
             כמה מהילדים במשפחה משתמשים בטלפון?
           </h1>
-          <p className="w-full text-center font-simpler text-[24px] font-normal leading-[30px] text-white/80">
+          <p className="w-full self-stretch text-center font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
             בין הגילאים 6-14
           </p>
         </header>

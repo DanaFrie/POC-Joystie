@@ -90,7 +90,7 @@ export function recoverOAuthRedirectSignIn(): Promise<OAuthRedirectRecoveryOutco
           return {
             status: 'error',
             message: isFirebaseAppHostingOrigin()
-              ? 'לא הצלחנו להשלים את ההתחברות. ודאו שהדומיין של App Hosting מאושר ב-Firebase Authentication, ונסו שוב.'
+              ? 'לא הצלחנו להשלים את ההתחברות עם Google/Apple. סגרו חלונות כפולים, אפשרו חלונות קופצים, ונסו שוב — או הירשמו עם דוא״ל וסיסמה.'
               : 'לא הצלחנו להשלים את ההתחברות. נסו שוב.',
           };
         }

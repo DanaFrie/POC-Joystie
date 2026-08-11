@@ -1,13 +1,20 @@
+'use client';
+
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
+import { ONBOARDING_LANDING_COPY_TOP_PX } from '@/constants/onboarding-figma';
+
 type OnboardingCopyProps = {
-  /** Flow layout inside `FunnelStepForeground` — gaps flex with viewport height. */
+  /** Flow layout inside 100vh `FunnelStepForeground` — no absolute Y. */
   flow?: boolean;
 };
 
 /**
  * Frame 1430108622 — Figma 12703:41514.
- * Fixed: top 402. Flow: middle band of landing foreground stack.
+ * Flow: middle band of landing 100vh stack. Absolute: top 402 (proportional).
  */
 export function OnboardingCopy({ flow = false }: OnboardingCopyProps) {
+  const topPx = useFunnelProportionalTopPx(ONBOARDING_LANDING_COPY_TOP_PX);
+
   if (flow) {
     return (
       <section
@@ -23,7 +30,8 @@ export function OnboardingCopy({ flow = false }: OnboardingCopyProps) {
   return (
     <section
       dir="ltr"
-      className="pointer-events-none absolute left-v03-gutter top-[402px] z-[10] flex h-[198px] w-v03-content flex-col items-end gap-2"
+      className="pointer-events-none absolute left-v03-gutter z-[10] flex h-[198px] w-v03-content flex-col items-end gap-2"
+      style={{ top: topPx }}
       aria-label="מידע על Joystie"
     >
       <CopyContent />
@@ -33,21 +41,19 @@ export function OnboardingCopy({ flow = false }: OnboardingCopyProps) {
 
 function CopyContent() {
   return (
-    <>
-      <div className="flex w-full justify-end">
-        <p className="max-w-[184px] text-center font-simpler text-[18px] font-normal leading-[30px] tracking-[3.78px] text-v03-green-200">
-          השינוי מתחיל כאן
-        </p>
-      </div>
+    <div className="flex w-full flex-col items-end justify-center gap-2">
+      <p className="h-[30px] w-full text-center font-simpler text-[18px] font-normal leading-[30px] tracking-[3.78px] text-v03-green-200">
+        השינוי מתחיל כאן
+      </p>
 
       <div className="flex w-full flex-col items-end gap-3">
-        <h1 className="w-full text-right font-simpler text-[40px] font-black leading-[44px] text-white [text-shadow:0_0_15px_rgba(255,255,255,0.2)]">
+        <h1 className="w-full text-center font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:0_0_15px_rgba(255,255,255,0.2)]">
           הארנק הדיגיטלי שמשנה הרגלי מסך
         </h1>
-        <p className="w-full max-w-[293px] text-right font-simpler text-[24px] font-normal leading-[30px] text-white">
+        <p className="w-full text-center font-simpler text-[26px] font-normal leading-[1.35] tracking-[-0.78px] text-white">
           הילדים שלכם לומדים לבחור, לחסוך ולהוביל
         </p>
       </div>
-    </>
+    </div>
   );
 }

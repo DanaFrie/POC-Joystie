@@ -50,6 +50,8 @@ export function SignupHeroFrame() {
                 width: SIGNUP_HERO_IMAGE_WIDTH_PX,
                 height: SIGNUP_HERO_IMAGE_HEIGHT_PX,
                 left: -SIGNUP_HERO_IMAGE_OFFSET_X_PX,
+                /* Match Figma punch — same boost as landing mountains */
+                filter: 'saturate(1.75) contrast(1.08)',
               }}
               draggable={false}
               onError={() => setImageFailed(true)}

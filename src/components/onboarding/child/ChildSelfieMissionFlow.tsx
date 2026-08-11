@@ -25,6 +25,8 @@ type ChildSelfieMissionFlowProps = {
   parentName?: string | null;
   parentGender?: 'female' | 'male' | null;
   parentId?: string | null;
+  /** Child's first agreed change — shown on results + baked into printed agreement. */
+  changeText?: string | null;
   /** Fired once when share screen is shown — parent leaves waiting. */
   onShareReached: () => void;
 };
@@ -39,6 +41,7 @@ export function ChildSelfieMissionFlow({
   parentName,
   parentGender,
   parentId,
+  changeText = null,
   onShareReached,
 }: ChildSelfieMissionFlowProps) {
   const router = useRouter();
@@ -79,7 +82,9 @@ export function ChildSelfieMissionFlow({
           '@/lib/onboarding/composeShareCardWithHeadline'
         );
         const base = blob ?? skipPhotoSrc;
-        const composed = await composeShareCardWithHeadline(base);
+        const composed = await composeShareCardWithHeadline(base, {
+          changeText: changeText?.trim() || null,
+        });
         composedShareBlobRef.current = composed;
 
         await saveChildShareCard({
@@ -94,7 +99,7 @@ export function ChildSelfieMissionFlow({
         logger.warn('Share card persist failed:', error);
       }
     },
-    [parentId, skipPhotoSrc],
+    [changeText, parentId, skipPhotoSrc],
   );
 
   const goToShareWithoutPhoto = useCallback(() => {
@@ -215,19 +220,21 @@ export function ChildSelfieMissionFlow({
         );
         const base = photoBlobRef.current ?? photoSrcRef.current;
         if (!base) return;
-        blob = await composeShareCardWithHeadline(base);
+        blob = await composeShareCardWithHeadline(base, {
+          changeText: changeText?.trim() || null,
+        });
         composedShareBlobRef.current = blob;
       }
       await shareImageFile({
         imageBlob: blob,
-        fileName: 'joystie-selfie.jpg',
+        fileName: 'joystie-handshake.jpg',
         title: 'Joystie',
         text: 'התמונה שלנו ב־Joystie',
       });
     } catch (error) {
       logger.warn('Share failed:', error);
     }
-  }, []);
+  }, [changeText]);
 
   if (phase === 'pattern') {
     return (
@@ -267,6 +274,7 @@ export function ChildSelfieMissionFlow({
   return (
     <ChildSharedPhotoShareStep
       photoSrc={photoSrc}
+      changeText={changeText}
       onShare={() => void handleShare()}
       onWallet={() => {
         void (async () => {

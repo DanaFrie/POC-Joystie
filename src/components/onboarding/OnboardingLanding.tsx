@@ -19,8 +19,8 @@ type OnboardingLandingProps = {
 };
 
 /**
- * Step 1 — landing (`/onboarding`).
- * 100vh foreground stack (logo → copy → footer); bleed layers stay absolute.
+ * Step 1 — landing (`/onboarding`) — Figma 12703:42224.
+ * 100vh foreground stack: logo → copy → footer (proportions from flex, not absolute Y).
  */
 export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
   const handleStart = () => {
@@ -33,7 +33,12 @@ export function OnboardingLanding({ onStart }: OnboardingLandingProps) {
       <FunnelStepRoot aria-label="Joystie onboarding landing" fitViewport>
         <TrackAnalyticsEvent event={AnalyticsEvents.LANDING_ONBOARDING} />
         <OnboardingKingdomEllipsesBackdrop />
-        <FunnelStepForeground distribution="between" padTopPx={0} padBottomPx={16} fitViewport>
+        <FunnelStepForeground
+          distribution="between"
+          padTopPx={0}
+          padBottomPx={16}
+          fitViewport
+        >
           <FunnelStepSection className="v03-funnel-enter-0">
             <OnboardingLogo flow />
           </FunnelStepSection>

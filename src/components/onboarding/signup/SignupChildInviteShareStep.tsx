@@ -156,9 +156,9 @@ export function SignupChildInviteShareStep({
             type="button"
             onClick={handleWhatsApp}
             disabled={preparing || !inviteReady}
-            className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} bg-v03-turquoise-300 text-v03-turquoise-950 hover:brightness-105 disabled:opacity-60`}
+            className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} bg-v03-turquoise-300 text-v03-green-900 hover:brightness-105 disabled:opacity-60`}
           >
-            <span className="whitespace-nowrap text-center">
+            <span className="whitespace-nowrap text-right">
               {preparing
                 ? 'מכינים לינק...'
                 : !inviteReady

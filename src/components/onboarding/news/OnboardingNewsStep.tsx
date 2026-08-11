@@ -5,9 +5,7 @@ import {
   ONBOARDING_NEWS_HERO_FALLBACK,
   ONBOARDING_NEWS_HERO_IMAGE,
 } from '@/constants/onboarding-figma';
-
-const headlineClass =
-  'w-full text-center font-simpler text-[30px] font-black leading-[34.5px] text-v03-text-on-light';
+import { REVEAL_HEADLINE_CLASS } from '@/constants/reveal-typography';
 
 /** Good/bad news intro — staggered fade: icon → line 1 → line 2 (footer on page). */
 export function OnboardingNewsStep() {
@@ -35,10 +33,10 @@ export function OnboardingNewsStep() {
 
         <div className="flex w-full max-w-v03-content flex-col items-center gap-[19px]">
           <div className="flex w-full flex-col items-center gap-1">
-            <h1 className={`v03-funnel-enter-reveal-1 ${headlineClass}`}>
+            <h1 className={`v03-funnel-enter-reveal-1 ${REVEAL_HEADLINE_CLASS}`}>
               אז... יש לנו חדשות טובות
             </h1>
-            <p className={`v03-funnel-enter-reveal-2 ${headlineClass}`}>
+            <p className={`v03-funnel-enter-reveal-2 ${REVEAL_HEADLINE_CLASS}`}>
               וחדשות פחות-טובות
             </p>
           </div>

@@ -31,7 +31,7 @@ export function ChildrenScreenTimeStep({
   return (
     <div
       dir="rtl"
-      className="flex w-full flex-col items-center px-v03-gutter pb-6 pt-0"
+      className="flex w-full flex-col items-center pt-0"
       aria-label="שעות מסך יומיות"
     >
       <div className="flex w-v03-content flex-col items-center gap-[19px]">
@@ -47,14 +47,14 @@ export function ChildrenScreenTimeStep({
         </div>
 
         <div className="w-full shrink-0 px-[15px]">
-          <h1 className="v03-funnel-enter-1 w-full text-center font-simpler text-[30px] leading-[34.5px] text-white">
-            <span className="font-black">כמה שעות ביום </span>
+          <h1 className="v03-funnel-enter-1 w-full self-stretch text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
+            <span className="font-extrabold">כמה שעות ביום </span>
             <span className="font-normal">(בערך) </span>
-            <span className="font-black">הילדים במסך לדעתך?</span>
+            <span className="font-extrabold">הילדים במסך לדעתך?</span>
           </h1>
         </div>
 
-        <div className="flex w-full flex-col items-end gap-[35px] pb-4">
+        <div className="flex w-full flex-col items-end gap-[35px]">
           {entries.map((entry, index) => (
             <ChildScreenTimeCard
               key={`${entry.name}-${index}`}

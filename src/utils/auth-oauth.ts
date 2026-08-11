@@ -310,12 +310,13 @@ export async function signInWithOAuth(
   }
   const providerId = toOAuthProviderId(provider);
   const useRedirect = options?.useRedirect ?? prefersOAuthRedirect();
+  const onAppHosting = isFirebaseAppHostingOrigin();
   oauthLog.log('oauth:mode', {
     provider,
     providerId,
     useRedirect,
     restricted: isRestrictedOAuthEnvironment(),
-    appHosting: isFirebaseAppHostingOrigin(),
+    appHosting: onAppHosting,
   });
 
   if (useRedirect) {
@@ -325,6 +326,19 @@ export async function signInWithOAuth(
 
   const result = await signInWithProviderPopup(providerId);
   if (!result.ok && result.errorCode === 'auth/popup-blocked') {
+    // Redirect fallback is broken on App Hosting (getRedirectResult often null).
+    if (onAppHosting || isLocalDevHost()) {
+      oauthLog.warn('popup-blocked:no-redirect-fallback', {
+        providerId,
+        appHosting: onAppHosting,
+      });
+      return {
+        ok: false,
+        errorCode: 'auth/popup-blocked',
+        errorMessage:
+          'הדפדפן חסם את חלון ההתחברות. אפשרו חלונות קופצים עבור האתר ונסו שוב, או השתמשו בדוא״ל וסיסמה.',
+      };
+    }
     await signInWithProviderRedirect(providerId);
     return { ok: true, redirecting: true };
   }

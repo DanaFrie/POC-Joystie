@@ -47,6 +47,8 @@ export const CHILD_ONBOARDING_ASSETS = {
   confettiRed: '/onboarding/child/conffeti_red.gif',
   castleChangeConfirmIcon: '/onboarding/child/V-icon.png',
   castleChangeDeclineIcon: '/onboarding/child/X-icon.png',
+  /** Share / printed agreement — Figma 14283:17062 checkmark. */
+  shareChangeCheck: '/onboarding/child/share-change-check.svg',
 } as const;
 
 /** Tap segments for egg-hatch video — 20 taps; last 2 cover 15% of duration. */
@@ -60,6 +62,8 @@ export const CHILD_EGG_HATCH_LATE_DURATION_SHARE = 0.15;
 export const CHILD_EGG_HATCH_FAST_HEAD_TAPS = 2;
 export const CHILD_EGG_HATCH_FAST_TAIL_TAPS = 2;
 export const CHILD_EGG_HATCH_FAST_PLAYBACK_RATE = 2.75;
+/** Middle taps — slight speedup so each crack feels snappy (~20 taps / ~7s clip). */
+export const CHILD_EGG_HATCH_MID_PLAYBACK_RATE = 1.85;
 export const CHILD_EGG_HATCH_NORMAL_PLAYBACK_RATE = 1;
 
 /** Grey egg→Dori bridge + mint handoff screens (ms). */

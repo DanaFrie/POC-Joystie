@@ -180,7 +180,7 @@ export function SignupOAuthTermsSheet({
             <button
               type="button"
               onClick={onContinue}
-              className={`inline-flex w-full shrink-0 items-center justify-center gap-2 self-stretch rounded-[22px] px-[15px] py-2 text-center font-simpler text-[18px] font-bold leading-[21.6px] shadow-v03-button transition ${
+              className={`inline-flex w-full shrink-0 items-center justify-center gap-2 self-stretch rounded-[22px] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right shadow-v03-button transition ${
                 termsAccepted
                   ? 'bg-white text-v03-green-900 hover:brightness-95'
                   : 'bg-white/30 text-white hover:bg-white/35'

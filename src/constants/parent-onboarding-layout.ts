@@ -26,11 +26,6 @@ export const PARENT_CHILDREN_DETAILS_STEP = {
   childBlockGap: 20,
   childRowGap: 12,
   scrollPadBottomPx: 0,
-  /** Hero clip frame */
+  /** Hero frame — full illustration via object-contain (no crop) */
   heroFramePx: 180,
-  /** Overflow art inside clip — image 102 */
-  heroImagePx: 250.8,
-  heroImageTopPx: -26.4,
-  /** `left: calc(50% - Npx)` inside hero clip */
-  heroImageCenterOffsetPx: 29.6,
 } as const;

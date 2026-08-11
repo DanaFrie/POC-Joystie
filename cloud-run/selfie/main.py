@@ -21,12 +21,13 @@ BACKGROUND_IMAGE_PATH = os.getenv(
 )
 ASSETS_BUCKET_NAME = os.getenv("ASSETS_BUCKET_NAME", "")
 BACKGROUND_BLOB_NAME = os.getenv("BACKGROUND_BLOB_NAME", "onboarding/child/castle-dori-selfie.webp")
-# Match reference framing — tighter stairs/castle crop (full asset is wider/taller).
-BACKGROUND_ZOOM = float(os.getenv("BACKGROUND_ZOOM", "1.38"))
-# Vertical focus for crop window (0=top, 1=bottom). Reference sits on mid stairs, less cobble.
-BACKGROUND_FOCUS_Y = float(os.getenv("BACKGROUND_FOCUS_Y", "0.40"))
+# Framing — zoom 1 = full castle asset (no extra crop). Focus unused when zoom is 1.
+BACKGROUND_ZOOM = 1.0
+BACKGROUND_FOCUS_Y = 0.4
 # Share UI headline band (~top 86–236 on 812) — keep faces/Dori below this fraction.
 UI_HEADROOM_FRAC = 0.30
+# Share agreement footer (change + CTAs) — keep figures above this bottom band.
+UI_FOOTER_FRAC = 0.35
 
 BACKGROUND_IMAGE: Optional[Image.Image] = None
 DORI_REFERENCE: Optional[Image.Image] = None
@@ -106,38 +107,13 @@ def find_dori_bbox(img: Image.Image) -> tuple[int, int, int, int]:
     )
 
 
-def erase_region_with_neighbors(
-    img: Image.Image, box: tuple[int, int, int, int]
-) -> Image.Image:
-    """Fill Dori's standing spot with a left→right blend of neighboring stairs."""
-    out = img.copy()
-    left, top, right, bottom = box
-    width, height = out.size
-    left = max(0, left)
-    top = max(0, top)
-    right = min(width, right)
-    bottom = min(height, bottom)
-    pixels = out.load()
-    span = max(1, right - left)
-    for y in range(top, bottom):
-        left_color = pixels[max(0, left - 1), y]
-        right_color = pixels[min(width - 1, right), y]
-        for x in range(left, right):
-            a = (x - left) / span
-            pixels[x, y] = tuple(
-                int(left_color[i] * (1 - a) + right_color[i] * a) for i in range(3)
-            )
-    return out
-
-
 def prepare_scene_and_dori(raw: Image.Image) -> tuple[Image.Image, Image.Image]:
     """
-    Split standing Dori out of the background so the model cannot leave him on the stairs.
-    Returns (zoomed castle without standing Dori, Dori character crop).
+    Keep the castle background intact (erasing Dori was splitting the scene).
+    Still crop Dori as a character reference for shoulder placement.
     """
     box = find_dori_bbox(raw)
     dori = raw.crop(box).convert("RGB")
-    # Keep a usable reference size for the model.
     dori_side = max(dori.size)
     if dori_side < 384:
         scale = 384 / dori_side
@@ -145,9 +121,9 @@ def prepare_scene_and_dori(raw: Image.Image) -> tuple[Image.Image, Image.Image]:
             (max(1, int(dori.size[0] * scale)), max(1, int(dori.size[1] * scale))),
             Image.Resampling.LANCZOS,
         )
-    cleared = erase_region_with_neighbors(raw, box)
-    zoomed = zoom_background(cleared)
-    print(f"Dori extracted bbox={box}, crop={dori.size[0]}x{dori.size[1]}")
+    # Do NOT wipe Dori from the BG — crude fill broke stairs/castle continuity.
+    zoomed = zoom_background(raw)
+    print(f"Dori ref bbox={box}, crop={dori.size[0]}x{dori.size[1]} (BG kept intact)")
     return zoomed, dori
 
 
@@ -200,19 +176,32 @@ def build_dynamic_prompt(parent_gender: str, child_gender: str) -> str:
         else "son"
     )
     headroom_pct = int(round(UI_HEADROOM_FRAC * 100))
+    footer_pct = int(round(UI_FOOTER_FRAC * 100))
     return (
-        f"Tall phone portrait on the castle stairs. "
+        f"Tall phone portrait. Keep the castle background continuous and unbroken — "
+        "same stairs-to-castle scene as the background image; no horizontal seam, "
+        "no floating castle, no split layers. "
         f"LAYOUT (camera view): {parent} on the LEFT, {child} on the RIGHT — do not swap. "
         f"{parent} kneels on the left; {child} age 8–12 stands on the right; both look at camera. "
         "CLOTHES: modern casual everyday wear only — t-shirt/jeans/sneakers. "
-        "Forbidden: medieval, fantasy, costumes, tunics, dresses of armor, period outfits. "
-        "FACES: exact face-swap from the parent/child photos — same identity, photoreal, no avatar. "
-        "Natural head-to-body scale. "
-        f"Dori: place the provided Dori piggyback ONLY on the {child}'s shoulders (right side). "
-        f"Dori must NOT sit on the {parent}. Exactly one Dori. "
-        "Castle background has no dragon on the stairs. "
-        f"Leave the top {headroom_pct}% clear (sky/castle only) for UI text. "
-        "Match sunny lighting. Do not squash people."
+        "Forbidden: medieval, fantasy costumes. "
+        "FACES: exact face-swap from the parent/child photos — photoreal, no avatar. "
+        "Parent face: keep natural adult proportions from the source photo — "
+        "do not enlarge eyes, mouth, smile, jaw, or cheeks; no stretched or bobblehead look. "
+        "Natural head-to-body scale for both. "
+        f"Dori: move the background's green dragon piggyback ONLY onto the {child}'s shoulders. "
+        f"Exactly one Dori — remove the standing Dori from empty stairs. Not on the {parent}. "
+        f"COMPOSITION: top {headroom_pct}% sky/castle only; bottom {footer_pct}% empty stairs/path; "
+        "people+Dori fully on mid stairs. Show full bodies including feet/sneakers — "
+        "do not crop or cut off legs, knees, or shoes. "
+        f"FEET: keep the {child}'s feet centered on the stair tread, well inside the step — "
+        "not on the outer edge, margin, or corner of the stairs; leave clear stone margin "
+        "between sneakers and the side of the path. "
+        "LIGHTING: match the figures to the sunny castle light — same warm sunlight direction, "
+        "highlights, and soft ground shadows as the background; do not leave people looking "
+        "flat, cool, or pasted-on. "
+        "NO UI in the image (no footer/menu/buttons/text bars). Clean photo only. "
+        "Do not squash people."
     )
 
 
@@ -234,9 +223,9 @@ def run_generation(
     response = client.models.generate_content(
         model=MODEL_NAME,
         contents=[
-            "Castle stairs background (NO dragon on the stairs):",
+            "Castle background — keep this scene continuous and unbroken:",
             BACKGROUND_IMAGE,
-            "Dori character — place ONLY on the CHILD's shoulders (piggyback), never on the parent:",
+            "Dori character look — place ONLY on the CHILD's shoulders (piggyback), never on the parent:",
             DORI_REFERENCE,
             "PARENT face (person on the LEFT) — copy exactly:",
             parent_img,

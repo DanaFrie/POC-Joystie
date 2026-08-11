@@ -132,3 +132,31 @@ export function postGameParentSuggestedChangeText(
   if (typeof text === 'string' && text.trim()) return text.trim();
   return undefined;
 }
+
+/**
+ * Combine child's first change + parent's second when both exist (selfie / share card).
+ * Matches finalizeParentOnboardingCompletion `collectOnboardingChanges` membership.
+ */
+export function formatAgreedChangeText(
+  first: string | null | undefined,
+  second: string | null | undefined
+): string | undefined {
+  const changes: string[] = [];
+  const a = first?.trim();
+  if (a) changes.push(a);
+  const b = second?.trim();
+  if (b && b !== a) changes.push(b);
+  if (changes.length === 0) return undefined;
+  if (changes.length === 1) return changes[0];
+  return `${changes[0]}\nוגם ${changes[1]}`;
+}
+
+/** Agreed change copy for results / printed agreement image. */
+export function postGameAgreedChangeText(
+  merged: PostGameMergedProgress
+): string | undefined {
+  return formatAgreedChangeText(
+    postGameChildChangeText(merged),
+    postGameParentSuggestedChangeText(merged)
+  );
+}

@@ -152,7 +152,7 @@ function CompanionOverlayLegacyContent({
       <button
         type="button"
         onClick={onContinue}
-        className="v03-funnel-enter-3 inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[22px] bg-v03-accent px-[15px] py-2 font-simpler text-[18px] font-bold text-[#031D15] shadow-v03-button transition hover:brightness-105"
+        className="v03-funnel-enter-3 inline-flex shrink-0 items-center justify-center overflow-hidden rounded-[22px] bg-v03-accent px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-v03-green-900 shadow-v03-button transition hover:brightness-105"
         style={{
           width: cta.width,
           minHeight: cta.height,

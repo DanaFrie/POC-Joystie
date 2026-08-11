@@ -31,10 +31,17 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
     if (!access || access.status !== 'ready') return;
 
     const urlMeta = parseBondingInviteQueryParams(searchParams ?? new URLSearchParams());
-    let childName = urlMeta.childName ?? '';
-    let childGender = urlMeta.childGender;
-    let parentName = urlMeta.parentName ?? 'אבא';
-    let parentGender = urlMeta.parentGender;
+    // Invite query params are authoritative for this open — do not let stale RTDB
+    // meta/public (e.g. previous invite as father) flip gender/names after first paint.
+    const urlChildName = urlMeta.childName?.trim() || '';
+    const urlChildGender = urlMeta.childGender;
+    const urlParentName = urlMeta.parentName?.trim() || '';
+    const urlParentGender = urlMeta.parentGender;
+
+    let childName = urlChildName;
+    let childGender = urlChildGender;
+    let parentName = urlParentName || 'אבא';
+    let parentGender = urlParentGender;
 
     setChildBondingContext({
       parentId: access.parentId,
@@ -57,12 +64,15 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
 
       const meta = await readOnboardingBondingMeta(access.parentId);
       if (meta) {
-        if (meta.childName) childName = meta.childName;
-        if (meta.childGender === 'boy' || meta.childGender === 'girl') {
+        if (!urlChildName && meta.childName) childName = meta.childName;
+        if (
+          !urlChildGender &&
+          (meta.childGender === 'boy' || meta.childGender === 'girl')
+        ) {
           childGender = meta.childGender;
         }
-        if (meta.parentName) parentName = meta.parentName;
-        if (meta.parentGender) parentGender = meta.parentGender;
+        if (!urlParentName && meta.parentName) parentName = meta.parentName;
+        if (!urlParentGender && meta.parentGender) parentGender = meta.parentGender;
       }
 
       try {
@@ -70,8 +80,8 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
           parentId: access.parentId,
           inviteId,
         });
-        if (resolved.childName) childName = resolved.childName;
-        if (resolved.parentName) parentName = resolved.parentName;
+        if (!urlChildName && resolved.childName) childName = resolved.childName;
+        if (!urlParentName && resolved.parentName) parentName = resolved.parentName;
         if (resolved.inviteId) inviteId = resolved.inviteId;
       } catch (e) {
         logger.warn('resolveBondingGameRoom on bootstrap failed', e);
@@ -79,12 +89,15 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
 
       const pub = await readOnboardingBondingPublic(access.parentId);
       if (pub) {
-        if (pub.childName) childName = pub.childName;
-        if (pub.childGender === 'boy' || pub.childGender === 'girl') {
+        if (!urlChildName && pub.childName) childName = pub.childName;
+        if (
+          !urlChildGender &&
+          (pub.childGender === 'boy' || pub.childGender === 'girl')
+        ) {
           childGender = pub.childGender;
         }
-        if (pub.parentName) parentName = pub.parentName;
-        if (pub.parentGender) parentGender = pub.parentGender;
+        if (!urlParentName && pub.parentName) parentName = pub.parentName;
+        if (!urlParentGender && pub.parentGender) parentGender = pub.parentGender;
       }
 
       setChildBondingContext({

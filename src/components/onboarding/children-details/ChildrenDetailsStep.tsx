@@ -45,7 +45,7 @@ export function ChildrenDetailsStep({
   return (
     <section
       dir="rtl"
-      className="pointer-events-auto flex w-full flex-col items-center px-v03-gutter"
+      className="pointer-events-auto flex w-full flex-col items-center"
       style={{
         paddingTop: topPx,
         paddingBottom: layout.scrollPadBottomPx,
@@ -60,7 +60,7 @@ export function ChildrenDetailsStep({
         }}
       >
         <div
-          className="v03-funnel-enter-0 relative shrink-0 overflow-hidden"
+          className="v03-funnel-enter-0 relative shrink-0"
           style={{
             width: layout.heroFramePx,
             height: layout.heroFramePx,
@@ -70,13 +70,7 @@ export function ChildrenDetailsStep({
             <OnboardingLazyImage
               src={ONBOARDING_CHILDREN_DETAILS_IMAGE}
               alt=""
-              className="pointer-events-none absolute max-w-none object-contain object-bottom"
-              style={{
-                top: layout.heroImageTopPx,
-                left: `calc(50% - ${layout.heroImageCenterOffsetPx}px)`,
-                width: layout.heroImagePx,
-                height: layout.heroImagePx,
-              }}
+              className="pointer-events-none h-full w-full object-contain object-center"
               onError={() => setImageFailed(true)}
             />
           )}
@@ -87,7 +81,7 @@ export function ChildrenDetailsStep({
           style={{ gap: layout.contentFrameGap }}
         >
           <header className="v03-funnel-enter-1 w-full">
-            <h1 className="w-full text-right font-simpler text-[30px] font-black leading-[1.1] tracking-[-0.6px] text-white">
+            <h1 className="w-full text-right font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
               {titleText}
             </h1>
           </header>

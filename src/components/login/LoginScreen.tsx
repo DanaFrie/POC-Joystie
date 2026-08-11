@@ -1,21 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef } from 'react';
 import { JoystieCompactMark } from '@/components/brand/JoystieCompactMark';
 import { GoogleIcon, AppleIcon } from '@/components/onboarding/signup/SignupOAuthIcons';
 import { SignupHeroFrame } from '@/components/onboarding/signup/SignupHeroFrame';
 import { FunnelRouteEnter } from '@/components/ui/FunnelRouteEnter';
 import {
-  FunnelStepFooter,
+  FunnelInlineActions,
   FunnelStepForeground,
   FunnelStepMain,
   FunnelStepRoot,
 } from '@/components/ui/funnel-layout';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
-import { getFunnelScrollFrameBottomInsetPx } from '@/constants/funnel-vertical-layout';
+import { FUNNEL_FOREGROUND_PAD_BOTTOM_PX } from '@/constants/funnel-vertical-layout';
 import { getLoginScrollTopPx } from '@/constants/login-layout';
-import { useScrollOverflow } from '@/hooks/useScrollOverflow';
 import { getForgotPasswordPath } from '@/lib/auth/postLoginNavigation';
 import {
   IS_APPLE_OAUTH_ENABLED,
@@ -29,16 +27,19 @@ const oauthButtonClass =
 const fieldWrapClass = 'flex w-full flex-col items-start gap-0.5';
 
 const labelClass =
-  'px-2.5 text-left font-simpler text-[16px] font-normal leading-[21.6px] text-white';
+  'px-2.5 text-left font-simpler text-[16px] font-normal leading-[1.28] tracking-[-0.32px] text-white';
 
 const inputClass =
-  'h-[49px] w-full rounded-[18px] border border-white/20 bg-white/5 px-[15px] py-[14px] text-right font-simpler text-[16px] font-normal leading-[21.6px] text-white outline-none focus:border-white/40';
+  'h-[49px] w-full rounded-[18px] border border-white/20 bg-white/5 px-[15px] py-[14px] text-right font-simpler text-[16px] font-normal leading-[1.28] tracking-[-0.32px] text-white outline-none focus:border-white/40';
 
 type LoginScreenProps = {
   email: string;
   password: string;
   errors: Record<string, string>;
-  loginError?: string;
+  /** Password / email-auth failure — shown above the primary CTA. */
+  passwordError?: string;
+  /** OAuth failure — shown above the «או» divider. */
+  oauthError?: string;
   showResumeSignupBanner?: boolean;
   showPasswordProviderBanner?: boolean;
   isSubmitting: boolean;
@@ -144,7 +145,8 @@ export function LoginScreen({
   email,
   password,
   errors,
-  loginError,
+  passwordError,
+  oauthError,
   showResumeSignupBanner = false,
   showPasswordProviderBanner = false,
   isSubmitting,
@@ -157,16 +159,6 @@ export function LoginScreen({
 }: LoginScreenProps) {
   const formLocked = isSubmitting || oauthLoading !== null;
   const showTopBanner = showResumeSignupBanner || showPasswordProviderBanner;
-  const loginScrollRef = useRef<HTMLDivElement>(null);
-  const scrollOverflows = useScrollOverflow(loginScrollRef, [
-    showResumeSignupBanner,
-    showPasswordProviderBanner,
-    loginError,
-    errors,
-    email,
-    password,
-    oauthLoading,
-  ]);
   const loginPadTopPx = useFunnelProportionalTopPx(getLoginScrollTopPx(showTopBanner));
   const forgotPasswordHref = getForgotPasswordPath({
     email,
@@ -181,12 +173,11 @@ export function LoginScreen({
         <FunnelStepForeground
           distribution="between"
           padTopPx={loginPadTopPx}
-          padBottomPx={getFunnelScrollFrameBottomInsetPx({ showSignupLink: true })}
+          padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
           fitViewport
         >
           <FunnelStepMain
             scroll
-            scrollRef={loginScrollRef}
             className="relative min-h-0 w-full flex-1"
           >
             <form
@@ -202,7 +193,7 @@ export function LoginScreen({
                 />
 
                 <div className="flex w-full flex-col items-end justify-center gap-[15px] v03-funnel-enter-1">
-                  <h1 className="w-full text-center font-simpler text-[30px] font-black leading-[33px] text-white">
+                  <h1 className="w-full text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
                     התחברות לג׳ויסטי
                   </h1>
 
@@ -231,6 +222,12 @@ export function LoginScreen({
                         />
                       </div>
                     </div>
+
+                    {oauthError ? (
+                      <p className="w-full text-center font-simpler text-sm text-red-300">
+                        {oauthError}
+                      </p>
+                    ) : null}
 
                     <div className="flex w-full items-center gap-5">
                       <div className="h-0 flex-1 border-t-[0.7px] border-v03-green-300" />
@@ -275,24 +272,22 @@ export function LoginScreen({
                     </div>
                   </div>
                 </div>
+
+                <FunnelInlineActions
+                  className="v03-funnel-enter-3"
+                  variant="secondary"
+                  showSignupLink
+                  disabled={formLocked}
+                  type="submit"
+                  formId={LOGIN_FORM_ID}
+                  errorMessage={passwordError}
+                  onSignupClick={onSignupClick}
+                >
+                  {isSubmitting ? 'מתחבר...' : 'התחברות'}
+                </FunnelInlineActions>
               </div>
             </form>
           </FunnelStepMain>
-
-          <FunnelStepFooter
-            className="v03-funnel-enter-3"
-            variant="secondary"
-            showSignupLink
-            overlay
-            blur={scrollOverflows}
-            disabled={formLocked}
-            type="submit"
-            formId={LOGIN_FORM_ID}
-            errorMessage={loginError}
-            onSignupClick={onSignupClick}
-          >
-            {isSubmitting ? 'מתחבר...' : 'התחברות'}
-          </FunnelStepFooter>
         </FunnelStepForeground>
       </FunnelStepRoot>
     </FunnelRouteEnter>

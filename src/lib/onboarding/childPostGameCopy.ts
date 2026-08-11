@@ -137,6 +137,15 @@ export const CHILD_SHARED_PHOTO_SHARE_HEADLINE_PREFIX = 'גם אנחנו חלק'
 
 export const CHILD_SHARED_PHOTO_SHARE_HEADLINE_EMPHASIS = 'מהשינוי הדיגיטלי!';
 
-export const CHILD_SHARED_PHOTO_SHARE_PRIMARY_LABEL = 'שליחת התמונה לחברים או משפחה';
+/** Figma 13674:16159 — share CTA (side-by-side with wallet). */
+export const CHILD_SHARED_PHOTO_SHARE_PRIMARY_LABEL = 'שיתוף';
 
-export const CHILD_SHARED_PHOTO_WALLET_LABEL = 'כניסה לארנק שלי';
+/** @deprecated Use CHILD_SHARED_PHOTO_SHARE_PRIMARY_LABEL */
+export const CHILD_SHARED_PHOTO_SHARE_LONG_LABEL =
+  'שליחת התמונה לחברים או משפחה';
+
+/** Figma 13674:16159 — continue to wallet. */
+export const CHILD_SHARED_PHOTO_WALLET_LABEL = 'המשך לארנק';
+
+/** Figma 14283:17885 — printed agreement change label. */
+export const CHILD_SHARED_PHOTO_CHANGE_LABEL = 'השינוי הראשון שלנו';

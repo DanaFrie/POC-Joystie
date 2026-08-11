@@ -25,7 +25,7 @@ export function ChildScreenTimeCard({
   return (
     <div className="flex w-full flex-col items-end gap-0.5">
       <div className="w-full px-2.5 text-right">
-        <span className="font-simpler text-base font-normal leading-[21.6px] text-white">
+        <span className="font-simpler text-[16px] font-normal leading-[1.28] tracking-[-0.32px] text-white">
           {roleLabel}
         </span>
       </div>

@@ -13,5 +13,5 @@ export const ONBOARDING_SELECTABLE_OPTION = {
     blur: '61.49px',
   },
   primaryCtaClass:
-    'inline-flex h-[55px] w-full items-center justify-center gap-2 rounded-[22px] bg-[#00FFB3] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95 disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex h-[55px] w-full items-center justify-center gap-2 rounded-[22px] bg-[#00FFB3] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95 disabled:pointer-events-none disabled:opacity-50',
 } as const;
