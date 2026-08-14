@@ -2,7 +2,7 @@
  * RTDB public bonding snapshot — lets child device discover parent's game room
  * without a deployed Firestore callable (local dev + fallback).
  */
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, remove } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { createContextLogger } from '@/utils/logger';
 
@@ -69,6 +69,16 @@ export async function publishOnboardingBondingPublic(
     updatedAt: payload.updatedAt,
   });
   logger.log('publish', { parentId, roomId: record.roomId });
+}
+
+/** Drop bonding public + meta snapshots after onboarding completes. */
+export async function clearOnboardingBondingSnapshots(parentId: string): Promise<void> {
+  const db = await getDatabaseInstance();
+  await Promise.all([
+    remove(ref(db, publicPathFor(parentId))),
+    remove(ref(db, metaPathFor(parentId))),
+  ]);
+  logger.log('clearSnapshots', { parentId });
 }
 
 export async function readOnboardingBondingPublic(

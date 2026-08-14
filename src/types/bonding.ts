@@ -23,6 +23,8 @@ export interface FirestoreBondingInvite {
   whatsappSharedAt?: string;
   childLinkOpenedAt?: string;
   eggCompletedAt?: string;
+  /** ISO timestamp — invite consumed after parent onboarding completed. */
+  completedAt?: string;
   gameRoomId?: string;
   gameJoinCode?: string;
 }

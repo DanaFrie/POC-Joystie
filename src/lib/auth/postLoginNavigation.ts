@@ -144,6 +144,24 @@ export async function resolveAuthenticatedUserDestination(
     return { path: '/dashboard', kind, user: resolvedUser };
   }
 
+  // Logged-in visit to /login or /onboarding: incomplete → always «איך מתחילים?» (signupIntro).
+  if (source === 'login' || source === 'onboarding_gate') {
+    clearOnboardingChildrenSession();
+    const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
+    if (!hydrated && children?.length) {
+      hydrateOnboardingChildrenFromChildrenDocs(children);
+    }
+    const resumeKind: UserOnboardingRouteKind =
+      kind === 'v03_resume' || kind === 'v02_legacy' ? kind : 'fresh';
+    prepareOnboardingIntroReturn(resumeKind);
+    logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
+      uid: resolvedUser.id,
+      source,
+      resumeKind,
+    });
+    return { path: '/onboarding', kind: resumeKind, user: resolvedUser };
+  }
+
   if (kind === 'v03_resume' || (isSignupExisting && appliedFunnelKids)) {
     if (!appliedFunnelKids) {
       clearOnboardingChildrenSession();
@@ -163,12 +181,6 @@ export async function resolveAuthenticatedUserDestination(
   }
 
   if (kind === 'v02_legacy') {
-    if (source === 'login') {
-      clearOnboardingChildrenSession();
-      prepareV02LegacyKidsCollectionStart();
-      return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
-    }
-
     if (source === 'signup_existing') {
       if (!appliedFunnelKids) {
         try {
@@ -188,13 +200,13 @@ export async function resolveAuthenticatedUserDestination(
     return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
   }
 
-  // fresh — Auth/Firestore with no kids payload.
+  // fresh — signup_existing with no kids payload.
   if (appliedFunnelKids) {
     prepareOnboardingIntroReturn('v03_resume');
     return { path: '/onboarding', kind: 'v03_resume', user: resolvedUser };
   }
 
-  if (source === 'login' || source === 'signup_existing') {
+  if (source === 'signup_existing') {
     clearOnboardingChildrenSession();
     prepareFreshOnboardingEntry();
   } else {
@@ -218,10 +230,10 @@ export async function finishAuthenticatedUserNavigation(
   uid: string,
   router: { push: (path: string) => void },
   options?: NavigateAfterLoginOptions
-): Promise<void> {
+): Promise<UserOnboardingRouteKind> {
   createSession(uid);
   const userData = await ensureUserProfileForLogin(uid);
-  await navigateAfterLogin(userData, router, options);
+  return navigateAfterLogin(userData, router, options);
 }
 
 /**
@@ -243,8 +255,8 @@ export async function resolveOnboardingEntryForAuthenticatedUser(
   return {
     path,
     kind,
-    // fresh → landing; v02_legacy / v03_resume → parent funnel
-    enterParentFlow: path === '/onboarding' && kind !== 'fresh',
+    // Logged-in + incomplete → parent funnel at «איך מתחילים?» (never marketing landing).
+    enterParentFlow: path === '/onboarding',
   };
 }
 

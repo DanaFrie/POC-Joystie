@@ -37,21 +37,37 @@ export default function SubscriptionPaySuccessPage() {
   useEffect(() => {
     if (!ready || loading || !subscriptionReady) return;
 
-    if (!trialTrackedRef.current) {
-      trialTrackedRef.current = true;
-      void import('@/utils/meta-pixel').then(({ trackMetaTrialStarted }) => {
-        trackMetaTrialStarted({ content_name: 'cardcom_trial_30d' });
-      });
-      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
-        void logEventOnce(
-          `trial_payment_success:${uid ?? 'anon'}`,
-          AnalyticsEvents.TRIAL_PAYMENT_SUCCESS,
-          { provider: 'cardcom' }
-        );
-      });
-    }
+    let cancelled = false;
 
-    router.replace(DASHBOARD_CHALLENGE_SETUP_PATH);
+    const trackAndRedirect = async () => {
+      if (!trialTrackedRef.current) {
+        trialTrackedRef.current = true;
+        try {
+          const { trackMetaTrialStarted } = await import('@/utils/meta-pixel');
+          trackMetaTrialStarted({ content_name: 'cardcom_trial_30d' });
+        } catch {
+          // non-critical
+        }
+        try {
+          const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
+          await logEventOnce(
+            `trial_payment_success:${uid ?? 'anon'}`,
+            AnalyticsEvents.TRIAL_PAYMENT_SUCCESS,
+            { provider: 'cardcom' }
+          );
+        } catch {
+          // non-critical
+        }
+      }
+      if (!cancelled) {
+        router.replace(DASHBOARD_CHALLENGE_SETUP_PATH);
+      }
+    };
+
+    void trackAndRedirect();
+    return () => {
+      cancelled = true;
+    };
   }, [ready, loading, subscriptionReady, router, uid]);
 
   if (timedOut && !subscriptionReady) {

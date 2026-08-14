@@ -77,9 +77,9 @@ export async function signalChildOnboardingMilestone(
     try {
       const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
       await logEventOnce(
-        `agreement_done:child:${parentId}`,
+        `agreement_done:${parentId}`,
         AnalyticsEvents.AGREEMENT_DONE,
-        { path: 'child_accept' }
+        { via: 'child_accept' }
       );
     } catch (error) {
       logger.warn('Agreement analytics failed', error);

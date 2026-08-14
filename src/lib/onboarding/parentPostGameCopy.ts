@@ -1,5 +1,19 @@
 /** Gender-aware Hebrew copy — parent post-game funnel on `/game`. */
 
+/** Post-win screen 1 (4s) — cooperation intro. */
+export function parentPostWinCoopHeadline(
+  childName: string,
+  parentGender: 'female' | 'male'
+): string {
+  const you = parentGender === 'female' ? 'ואת' : 'ואתה';
+  return `מעולה!\n${childName} ${you} מתחילים לשתף פעולה דרך המסך`;
+}
+
+/** Post-win screen 2 (7s) — walls / together message. */
+export function parentPostWinWallsHeadline(childName: string): string {
+  return `המשחק נועד כדי לשבור חומות בינך לבין ${childName} בכל מה שקשור למסך, ולהבין שאתם ביחד בזה`;
+}
+
 export function parentWaitingChildChangeHeadline(
   childName: string,
   gender: 'boy' | 'girl'

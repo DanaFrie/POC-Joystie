@@ -36,17 +36,15 @@ export default function OnboardingPage() {
 
     void (async () => {
       try {
-        const { isAuthenticated } = await import('@/utils/auth');
-        const authenticated = await isAuthenticated();
+        // Wait for Auth persistence — isAuthenticated() alone used to race and
+        // show landing while a completed parent session was still restoring.
+        const uid = await getCurrentUserIdAsync();
+        if (cancelled) return;
 
-        if (!authenticated) {
-          if (cancelled) return;
+        if (!uid) {
           setPhase(hasParentFlowStarted() ? 'parent' : 'landing');
           return;
         }
-
-        const uid = await getCurrentUserIdAsync();
-        if (!uid || cancelled) return;
 
         const entry = await resolveOnboardingEntryForAuthenticatedUser(uid);
         if (cancelled) return;
@@ -56,12 +54,8 @@ export default function OnboardingPage() {
           return;
         }
 
-        if (entry.enterParentFlow || hasParentFlowStarted()) {
-          setPhase('parent');
-          return;
-        }
-
-        setPhase('landing');
+        // Incomplete logged-in session → parent funnel at «איך מתחילים?»
+        setPhase('parent');
       } catch (error) {
         logger.warn('Onboarding auth gate failed — showing landing', error);
         if (!cancelled) {

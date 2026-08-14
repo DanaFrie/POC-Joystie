@@ -20,7 +20,8 @@ export function useGrowFunnelCanvasHeight(
     }
 
     const sync = () => {
-      const nextHeight = Math.max(V03_SCREEN_HEIGHT, Math.ceil(content.offsetHeight));
+      const measured = Math.max(content.scrollHeight, content.offsetHeight);
+      const nextHeight = Math.max(V03_SCREEN_HEIGHT, Math.ceil(measured));
       const prev = funnelRoot.style.getPropertyValue(V03_ACTIVE_CANVAS_HEIGHT_VAR);
       if (prev === `${nextHeight}px`) {
         return;

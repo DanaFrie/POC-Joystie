@@ -8,12 +8,25 @@ export const LANDING_ASSETS = {
   footerMountainMobile: '/landing/mountains-mobile.webp',
   howItWorksHero: '/signup/child-invite/hero.webp',
   howItWorksCircle: '/landing/how-it-works-circle.webp',
+  howItWorksSliderTrack: '/landing/how-it-works/slider-track.svg',
+  howItWorksSliderFill: '/landing/how-it-works/slider-fill.svg',
+  howItWorksSliderThumb: '/landing/how-it-works/slider-thumb.svg',
+  howItWorksTrendArrow: '/landing/how-it-works/trend-arrow.svg',
+  howItWorksCheckBg: '/landing/how-it-works/check-bg.svg',
+  howItWorksCheckTick: '/landing/how-it-works/check-tick.svg',
   doriResearchVideo: '/landing/dori-research.mp4',
   firstDiff: '/landing/first-diff.webp',
   secondDiff: '/landing/second-diff.webp',
   thirdDiff: '/landing/third-diff.webp',
   logoWordmark: '/brand/logo-joystie.png',
   logoFooter: '/brand/logo-joystie.png',
+  navMenuIcon: '/landing/nav/menu-01.svg',
+  navUserIcon: '/landing/nav/user-02.svg',
+  navSep: '/landing/nav/line-sep.svg',
+  navLogoWord: '/landing/nav/joystie-word.svg',
+  navLogoUnderline: '/landing/nav/logo-underline.svg',
+  navLoginChevron: '/landing/nav/login-chevron.svg',
+  navUserWhite: '/landing/nav/user-white.svg',
   presentingLogo: '/landing/figma/presenting-logo.svg',
   ctaArrow: '/landing/figma/cta-arrow.svg',
   ctaArrowDark: '/landing/figma/cta-arrow-dark.svg',
@@ -31,9 +44,12 @@ export const LANDING_ASSETS = {
   blog1: '/landing/figma/blog-1.webp',
   blog2: '/landing/figma/blog-2.webp',
   blog3: '/landing/figma/blog-3.webp',
-  ideaYoutube: '/landing/ideas/first_idea.jpg',
-  ideaDunning: '/landing/ideas/second_idea.jpg',
-  ideaScreenTime: '/landing/ideas/third_idea.jpg',
+  ideaYoutube: '/landing/ideas/youtube_idea.jpg',
+  ideaDunning: '/landing/ideas/curve_idea.jpg',
+  ideaScreenTime: '/landing/ideas/ai_idea.jpg',
+  thumbYoutube: '/landing/ideas/youtube_brand.webp',
+  thumbDunning: '/landing/ideas/curve_brand.webp',
+  thumbScreenTime: '/landing/ideas/ai_brand.webp',
   founderAvatar: '/landing/meir_img.webp',
   menuGlow: '/landing/figma/menu-glow.svg',
   menuChevron: '/landing/figma/menu-chevron.svg',
@@ -164,6 +180,7 @@ export type LandingBlogBlock =
   | { type: 'p'; text: string }
   | { type: 'h'; text: string }
   | { type: 'ol'; items: readonly string[] }
+  | { type: 'figure' }
   | {
       type: 'howto';
       title: string;
@@ -182,7 +199,10 @@ export type LandingBlogPost = {
   avatar: string;
   title: string;
   excerpt: string;
+  /** Full article illustration */
   image: string;
+  /** Card + article thumbnail (brand) */
+  thumb?: string;
   body?: readonly LandingBlogBlock[];
 };
 
@@ -195,11 +215,13 @@ export const LANDING_BLOG: readonly LandingBlogPost[] = [
     excerpt:
       'יוטיוב יכול להיות כלי מעולה — או סם ממכר. כשמסך הבית ריק כמו חיפוש בגוגל, הילדים בוחרים במכוון מה לראות.',
     image: LANDING_ASSETS.ideaYoutube,
+    thumb: LANDING_ASSETS.thumbYoutube,
     body: [
       {
         type: 'p',
         text: 'בהרצאות שואלים אותי לא מעט על YouTube Shorts; מסתבר שלא מעט מבוגרים מבלים מולו שעות אל תוך הלילה… אבל מה עם הילדים? בבתים רבים, החשבון במחשב הביתי שייך לאחד ההורים, והילדים – שמשתמשים בו – נחשפים ליוטיוב, שיכול להיות כלי מעולה ומיטיב, אך מנגד גם סם ממכר של ממש.',
       },
+      { type: 'figure' },
       {
         type: 'p',
         text: 'אפשר גם אחרת, ובשני צעדים פשוטים.',
@@ -296,6 +318,7 @@ export const LANDING_BLOG: readonly LandingBlogPost[] = [
     excerpt:
       'בעידן שבו כולם נהיו מומחים, איך הילדים שלנו ידעו מהו מוצר טוב, מי מורה טוב, ואיך להתייחס לעצה עם הרבה לייקים?',
     image: LANDING_ASSETS.ideaDunning,
+    thumb: LANDING_ASSETS.thumbDunning,
     body: [
       {
         type: 'p',
@@ -345,6 +368,7 @@ export const LANDING_BLOG: readonly LandingBlogPost[] = [
         type: 'p',
         text: "לתופעה של 'מומחיות' כזו קוראים 'אפקט דאנינג-קרוגר'. מצד אחד, אנשים בעלי ידע מועט שמעריכים את עצמם יתר על המידה; ומצד שני, דוקטורנט מצטיין או אינסטלטור עם עשר שנות ניסיון שמהססים כשהם מביעים עמדה בנושא שהם יודעים היטב.",
       },
+      { type: 'figure' },
       {
         type: 'p',
         text: "זה קורה בגלל סיבות עם שמות כמו הטיה קוגניטיבית או מטא-קוגניציה, אבל בינינו מדובר במה שמכונה 'זחיחות' - הרגע הזה שבו פידבק חיובי גורם לנו להרגיש חשובים וממריץ אותנו לנסות שוב. אם להודות על האמת, גם אני חוטא בזה לא פעם; העולם היום דוחף את ה'אני' לצאת החוצה: \"בנה את המותג שלך\", \"בדל את עצמך מאחרים\". עולם שלם של עיצוב התנהגות שדוחף את כולנו להיות מומחים. לכולנו יש את החבר הזה שנותן סקירות גאופוליטיות אחרי רפרוף של כמה דקות ב'אבו עלי אקספרס'.",
@@ -395,11 +419,13 @@ export const LANDING_BLOG: readonly LandingBlogPost[] = [
     excerpt:
       'הגיל הממוצע לסמארטפון ראשון הוא 6.2. הפתרון אינו שוטר מול גנב של זמן מסך — אלא כוונתיות ודחיית סיפוקים מהרגע הראשון.',
     image: LANDING_ASSETS.ideaScreenTime,
+    thumb: LANDING_ASSETS.thumbScreenTime,
     body: [
       {
         type: 'p',
         text: 'זמן המסך היומי של הילדים הפך השנה למטרד של ממש. דוח בזק האחרון קובע כי הגיל הממוצע שבו ילד מקבל את הסמארטפון הראשון שלו הוא 6.2 (לשם השוואה, זה הגיל הממוצע!).',
       },
+      { type: 'figure' },
       {
         type: 'p',
         text: 'אבל בתוך הדוח מסתתר נתון משמעותי עוד יותר, שמרמז על המגמה העתידית: המגמה אינה חיובית. הדוח מצביע על כך שקצב האימוץ של הטכנולוגיה הוא המהיר ביותר אי פעם. אם נוסיף לכך את החרדה המלווה אותנו בשנים האחרונות בשל המצב הביטחוני, נקבל נוסחה מסוכנת שעלולה להוביל לכך שילדים יקבלו את המכשיר בגיל צעיר אף יותר.',

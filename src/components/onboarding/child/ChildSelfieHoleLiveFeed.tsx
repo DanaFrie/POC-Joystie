@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, type RefObject } from 'react';
 import type { SelfieFaceHole } from '@/components/onboarding/child/ChildSelfieFaceMask';
-import { CHILD_SELFIE_ARTBOARD } from '@/components/onboarding/child/childSelfieArtboard';
-import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
+import { useSelfieCoverLayout } from '@/components/onboarding/child/useSelfieCoverLayout';
 import { drawMirroredCoverVideo } from '@/lib/onboarding/drawSelfieCoverVideo';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
@@ -41,7 +40,7 @@ export function ChildSelfieHoleLiveFeed({
   parentHole,
   active,
 }: ChildSelfieHoleLiveFeedProps) {
-  const bleedStyle = useFunnelFullBleed();
+  const { coverStyle, artboardStyle } = useSelfieCoverLayout();
   const sourceCanvasRef = useRef<HTMLCanvasElement>(null);
   const parentCanvasRef = useRef<HTMLCanvasElement>(null);
   const childCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -85,7 +84,7 @@ export function ChildSelfieHoleLiveFeed({
   const childDiameter = Math.round(childHole.r * 2);
 
   return (
-    <div className="pointer-events-none absolute z-[4]" style={bleedStyle} aria-hidden>
+    <div className="pointer-events-none absolute z-[4]" style={coverStyle} aria-hidden>
       <canvas
         ref={sourceCanvasRef}
         width={V03_SCREEN_WIDTH}
@@ -93,13 +92,7 @@ export function ChildSelfieHoleLiveFeed({
         className="absolute opacity-0"
         aria-hidden
       />
-      <div
-        className="relative"
-        style={{
-          width: CHILD_SELFIE_ARTBOARD.width,
-          height: CHILD_SELFIE_ARTBOARD.height,
-        }}
-      >
+      <div className="relative" style={artboardStyle}>
         <canvas
           ref={parentCanvasRef}
           width={parentDiameter}

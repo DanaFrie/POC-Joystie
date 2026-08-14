@@ -6,10 +6,16 @@ import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingHowGlow } from '@/components/landing/LandingDecor';
 
 /** Story dwell per step — active badge fills turquoise, then advances. */
-const STORY_MS = 5000;
+const STORY_MS = 8000;
+
+const CARD_GRAD =
+  'linear-gradient(180deg, rgb(255, 255, 255) 0%, rgb(205, 205, 205) 100%), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.05) 100%)';
+
+const STATS_GRAD =
+  'linear-gradient(180deg, rgb(255, 255, 255) 0%, rgb(205, 205, 205) 100%), linear-gradient(90deg, rgba(5, 22, 26, 0.3) 0%, rgba(5, 22, 26, 0.3) 100%)';
 
 /** Figma Story circle — white→#CDCDCD gradient frame + how-it-works-circle.webp */
-function StepImage({ className = '' }: { className?: string }) {
+function StepCircle({ className = '' }: { className?: string }) {
   return (
     <div
       className={`relative z-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-white to-[#cdcdcd] ${className}`}
@@ -27,20 +33,206 @@ function StepImage({ className = '' }: { className?: string }) {
   );
 }
 
-/** Non-interactive step badges — active one is a turquoise loader for STORY_MS. */
+/** Capsule 2 — Figma 15143:1261 stacked screen-time slider cards */
+function GoalsFrame({ className = '' }: { className?: string }) {
+  return (
+    <div className={`relative shrink-0 ${className}`} aria-hidden>
+      {/* Back card — offset stack */}
+      <div
+        className="absolute left-[11px] top-[11px] flex w-[261px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[18px] border border-white/25 px-[17px] pb-[13px] pt-[15px] shadow-[2px_2px_14px_rgba(0,0,0,0.08)]"
+        style={{ backgroundImage: CARD_GRAD }}
+      >
+        <GoalsSliderContent />
+      </div>
+      {/* Front card */}
+      <div
+        className="relative z-10 flex w-[261px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[17px] border border-white/25 px-[17px] pb-[13px] pt-[15px] shadow-[2px_2px_14px_rgba(0,0,0,0.08)]"
+        style={{ backgroundImage: CARD_GRAD }}
+      >
+        <GoalsSliderContent />
+      </div>
+    </div>
+  );
+}
+
+function GoalsSliderContent() {
+  return (
+    <>
+      <div className="flex w-full items-center justify-between" dir="rtl">
+        <p className="font-rubik text-[23px] font-bold leading-[29px] tracking-[-0.35px] text-[#05161a]">
+          יואב
+        </p>
+        <p className="font-rubik text-[19px] font-normal leading-[1.2] tracking-[-0.29px] text-[#05161a]">
+          40 דקות
+        </p>
+      </div>
+      <div className="relative w-full">
+        <div className="relative mb-[-10px] h-5 w-full">
+          {/* Track */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LANDING_ASSETS.howItWorksSliderTrack}
+            alt=""
+            className="absolute left-0 right-0 top-1/2 h-[8px] w-full -translate-y-1/2"
+            draggable={false}
+          />
+          {/* Teal fill (~40/360) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LANDING_ASSETS.howItWorksSliderFill}
+            alt=""
+            className="absolute left-0 top-[calc(50%-2px)] h-[4px] w-[28px] -translate-y-1/2"
+            draggable={false}
+          />
+          {/* Thumb */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LANDING_ASSETS.howItWorksSliderThumb}
+            alt=""
+            className="absolute left-[20px] top-[-1px] size-5"
+            draggable={false}
+          />
+        </div>
+        <div className="flex w-full items-start justify-between font-rubik text-[15px] leading-[29px] text-[#05161a]">
+          <span>0</span>
+          <span>360</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Capsule 3 — Figma 15099:1172 stacked daily-average stats cards */
+function HabitsFrame({ className = '' }: { className?: string }) {
+  return (
+    <div className={`relative shrink-0 ${className}`} aria-hidden>
+      {/* Back card */}
+      <div
+        className="absolute left-[11px] top-[11px] flex w-[247px] flex-col items-center justify-center rounded-[33px] border border-white py-5"
+        style={{ backgroundImage: STATS_GRAD }}
+      >
+        <HabitsStatsContent muted />
+      </div>
+      {/* Front card */}
+      <div
+        className="relative z-10 flex w-[247px] flex-col items-center justify-center rounded-[33px] border border-[#f2f2f2] py-5 shadow-[2px_2px_6px_rgba(0,0,0,0.25)]"
+        style={{ backgroundImage: STATS_GRAD }}
+      >
+        <HabitsStatsContent />
+      </div>
+    </div>
+  );
+}
+
+function HabitsStatsContent({ muted = false }: { muted?: boolean }) {
+  return (
+    <div className="flex w-full flex-col items-center gap-[11px] px-4">
+      <p className="whitespace-nowrap text-center font-rubik text-[14px] font-normal leading-[19px] tracking-[-0.29px] text-[#8d9495]">
+        ממוצע דק׳ יומי של יואב
+      </p>
+      <div className="relative flex flex-col items-center justify-center gap-3">
+        <div className="relative">
+          <p className="whitespace-nowrap font-rubik text-[35px] font-bold leading-[41px] text-[#05161a]">
+            52 דק׳
+          </p>
+          {!muted ? (
+            <div className="absolute -left-6 top-3 size-[18px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={LANDING_ASSETS.howItWorksCheckBg}
+                alt=""
+                className="absolute inset-0 size-full"
+                draggable={false}
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={LANDING_ASSETS.howItWorksCheckTick}
+                alt=""
+                className="absolute left-[15%] right-[11%] top-[2px] h-[60%] w-[74%]"
+                draggable={false}
+              />
+            </div>
+          ) : null}
+        </div>
+        <div
+          className={`flex items-center gap-1.5 rounded-[9px] px-1.5 pb-0.5 pt-[3px] ${
+            muted ? 'bg-[#172a2c] opacity-40' : 'bg-[#1becae]'
+          }`}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LANDING_ASSETS.howItWorksTrendArrow}
+            alt=""
+            className={`size-4 ${muted ? 'brightness-0 invert' : ''}`}
+            draggable={false}
+          />
+          <p
+            className={`whitespace-nowrap text-center font-rubik text-[13px] font-normal leading-[1.3] ${
+              muted ? 'text-white' : 'text-[#05161a]'
+            }`}
+          >
+            15%- ביחס לשבוע שעבר
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepVisual({
+  step,
+  layout,
+}: {
+  step: number;
+  layout: 'mobile' | 'desktop';
+}) {
+  if (step === 1) {
+    return (
+      <GoalsFrame
+        className={
+          layout === 'mobile'
+            ? 'origin-center scale-[0.55] sm:scale-[0.65]'
+            : 'origin-center scale-[0.92]'
+        }
+      />
+    );
+  }
+  if (step === 2) {
+    return (
+      <HabitsFrame
+        className={
+          layout === 'mobile'
+            ? 'origin-center scale-[0.55] sm:scale-[0.65]'
+            : 'origin-center scale-[0.92]'
+        }
+      />
+    );
+  }
+  return (
+    <StepCircle
+      className={
+        layout === 'mobile' ? 'h-[100px] w-[100px] sm:h-[119px] sm:w-[119px]' : 'h-full w-full'
+      }
+    />
+  );
+}
+
+/** Step capsules — clickable story tabs; active one fills turquoise over STORY_MS. */
 function StepBadges({
   active,
   layout,
   progress,
+  onSelect,
 }: {
   active: number;
   layout: 'mobile' | 'desktop';
   /** 0–1 fill on the active badge */
   progress: number;
+  onSelect: (index: number) => void;
 }) {
   const isMobile = layout === 'mobile';
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const activeRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<HTMLButtonElement>(null);
 
   // Horizontal-only: scroll the badge row, never the page (text/image stay put).
   useEffect(() => {
@@ -68,19 +260,21 @@ function StepBadges({
             'flex w-full flex-row gap-2 overflow-x-auto v03-scroll-hidden'
           : 'flex w-auto min-w-[220px] flex-col gap-4'
       }
-      role="list"
+      role="tablist"
       aria-label="שלבי התהליך"
     >
       {isMobile ? <div className="w-6 shrink-0" aria-hidden /> : null}
       {LANDING_HOW_STEPS.map((item, index) => {
         const isActive = index === active;
         return (
-          <div
+          <button
             key={item.tab}
+            type="button"
             ref={isActive ? activeRef : undefined}
-            role="listitem"
-            aria-current={isActive ? 'step' : undefined}
-            className={`relative shrink-0 overflow-hidden rounded-full text-center font-rubik select-none pointer-events-none ${
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onSelect(index)}
+            className={`relative shrink-0 overflow-hidden rounded-full text-center font-rubik transition-[border-color,background-color,color] duration-300 ${
               isMobile
                 ? 'px-3 py-1.5 text-sm tracking-[-0.21px]'
                 : 'px-7 py-2.5 text-[20px] tracking-[-0.3px]'
@@ -88,7 +282,7 @@ function StepBadges({
               isActive
                 ? /* Light chip from the start so label stays readable over the fill */
                   'border border-[#00ffb3] bg-white font-bold text-[#05161a]'
-                : 'border border-[#ebebeb] bg-transparent font-normal text-[#ebebeb]'
+                : 'border border-[#ebebeb] bg-transparent font-normal text-[#ebebeb] hover:border-[#00ffb3]/60 hover:text-white'
             }`}
           >
             {isActive ? (
@@ -99,7 +293,7 @@ function StepBadges({
               />
             ) : null}
             <span className="relative z-10">{item.tab}</span>
-          </div>
+          </button>
         );
       })}
       {isMobile ? <div className="w-6 shrink-0" aria-hidden /> : null}
@@ -116,6 +310,18 @@ export function MarketingHowItWorks() {
   const [progress, setProgress] = useState(0);
 
   const step = LANDING_HOW_STEPS[active] ?? LANDING_HOW_STEPS[0];
+
+  const selectStep = (index: number) => {
+    if (index === active) {
+      // Restart fill timer on re-tap of the current step.
+      setStoryKey((k) => k + 1);
+      return;
+    }
+    startedRef.current = true;
+    setActive(index);
+    setStoryKey((k) => k + 1);
+    setStoryPlaying(true);
+  };
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -242,14 +448,19 @@ export function MarketingHowItWorks() {
 
             <LandingReveal delayMs={160} className="relative z-[1] w-full">
               <div className="flex w-full flex-col gap-5 sm:gap-6">
-                <StepBadges active={active} layout="mobile" progress={progress} />
+                <StepBadges
+                  active={active}
+                  layout="mobile"
+                  progress={progress}
+                  onSelect={selectStep}
+                />
                 <div
                   key={active}
-                  className="relative flex w-full items-start justify-between gap-4 px-6 pb-2 landing-step-swap sm:gap-[21px]"
+                  className="relative flex w-full items-center justify-between gap-4 px-6 pb-2 landing-step-swap sm:gap-[21px]"
                   dir="ltr"
                 >
-                  <div className="relative shrink-0">
-                    <StepImage className="h-[100px] w-[100px] sm:h-[119px] sm:w-[119px]" />
+                  <div className="relative flex h-[119px] w-[140px] shrink-0 items-center justify-center sm:w-[160px]">
+                    <StepVisual step={active} layout="mobile" />
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-3 text-right sm:gap-4" dir="rtl">
                     <h3 className="font-rubik text-[22px] font-bold leading-[1.15] tracking-[-0.66px] text-white sm:text-2xl sm:tracking-[-0.72px]">
@@ -273,7 +484,12 @@ export function MarketingHowItWorks() {
               dir="rtl"
             >
               <div className="relative z-10 shrink-0">
-                <StepBadges active={active} layout="desktop" progress={progress} />
+                <StepBadges
+                  active={active}
+                  layout="desktop"
+                  progress={progress}
+                  onSelect={selectStep}
+                />
               </div>
 
               <div
@@ -291,10 +507,14 @@ export function MarketingHowItWorks() {
 
             {/* Sibling of dashed card — not clipped by story overflow/border */}
             <div
-              className="pointer-events-none absolute left-[-22px] top-[25px] z-20 h-[254px] w-[254px]"
+              className={`pointer-events-none absolute z-20 flex items-center justify-center ${
+                active === 0
+                  ? 'left-[-22px] top-[25px] h-[254px] w-[254px]'
+                  : 'left-[-40px] top-1/2 h-auto w-[280px] -translate-y-1/2'
+              }`}
               aria-hidden
             >
-              <StepImage className="h-full w-full" />
+              <StepVisual step={active} layout="desktop" />
             </div>
           </div>
         </LandingReveal>

@@ -1,7 +1,7 @@
 'use client';
 
 import nextDynamic from 'next/dynamic';
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import type { ParentPostGamePhase } from '@/components/onboarding/parent/ParentGamePostWinFlow';
@@ -24,6 +24,15 @@ function ParentGameInner() {
   const childName = getSelectedFirstChildName();
   const childGender = getSelectedFirstChildGender();
   const [postGamePhase, setPostGamePhase] = useState<ParentPostGamePhase>('game');
+  const [parentId, setParentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void import('@/utils/auth').then(({ getCurrentUserId }) => {
+      void getCurrentUserId().then((uid) => {
+        if (uid) setParentId(uid);
+      });
+    });
+  }, []);
 
   const onParentGameWon = useCallback(() => {
     void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
@@ -57,7 +66,7 @@ function ParentGameInner() {
     }
     sessionStorage.setItem(ONBOARDING_PARENT_GAME_WON_KEY, '1');
     sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'parentPostGame');
-    router.push('/onboarding');
+    router.push('/onboarding', { scroll: false });
   }, [roomId, router]);
 
   return (
@@ -78,6 +87,7 @@ function ParentGameInner() {
       childJoinBlocked={childJoinBlocked}
       parentAsChildError={parentAsChildError}
       setupError={setupError}
+      parentId={parentId}
     />
   );
 }

@@ -20,11 +20,15 @@ export function FunnelRouteLoading({
 }: FunnelRouteLoadingProps) {
   return (
     <div
-      className="absolute inset-0 overflow-hidden"
+      className="absolute inset-0 overflow-hidden bg-v03-green-900"
       role="status"
       aria-live="polite"
       aria-busy
-      style={surface === 'dark' ? { background: '#092125' } : undefined}
+      style={{
+        minHeight: '100%',
+        height: '100%',
+        ...(surface === 'dark' ? { background: '#092125' } : null),
+      }}
     >
       {surface === 'mint' ? <OnboardingMintGridBackdrop showGrid /> : null}
       <OnboardingWaitingScreenShell

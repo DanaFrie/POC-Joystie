@@ -1,7 +1,7 @@
 /**
  * RTDB child funnel milestones — parent subscribes while waiting.
  */
-import { ref, onValue, update, get, type Unsubscribe } from 'firebase/database';
+import { ref, onValue, update, get, remove, type Unsubscribe } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { createContextLogger } from '@/utils/logger';
 
@@ -68,6 +68,13 @@ export async function resetOnboardingChildProgress(parentId: string): Promise<vo
     updatedAt: new Date().toISOString(),
   });
   logger.log('reset', { parentId });
+}
+
+/** Drop child funnel RTDB after onboarding completes. */
+export async function removeOnboardingChildProgress(parentId: string): Promise<void> {
+  const db = await getDatabaseInstance();
+  await remove(ref(db, pathFor(parentId)));
+  logger.log('remove', { parentId });
 }
 
 export async function publishOnboardingChildProgress(

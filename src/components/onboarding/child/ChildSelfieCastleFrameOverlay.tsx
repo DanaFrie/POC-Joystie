@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { useFunnelBleedBarStyle } from '@/components/ui/FunnelViewportContext';
+import { useSelfieCoverLayout } from '@/components/onboarding/child/useSelfieCoverLayout';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 import type { SelfieFaceHole } from '@/components/onboarding/child/ChildSelfieFaceMask';
 
@@ -17,7 +17,7 @@ export function ChildSelfieCastleFrameOverlay({
   childHole,
   parentHole,
 }: ChildSelfieCastleFrameOverlayProps) {
-  const coverStyle = useFunnelBleedBarStyle(0);
+  const { coverStyle, artboardStyle } = useSelfieCoverLayout();
   const uid = useId().replace(/:/g, '');
   const maskId = `child-selfie-castle-frame-${uid}`;
 
@@ -27,43 +27,45 @@ export function ChildSelfieCastleFrameOverlay({
       style={coverStyle}
       aria-hidden
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox={`0 0 ${V03_SCREEN_WIDTH} ${V03_SCREEN_HEIGHT}`}
-        fill="none"
-        className="absolute inset-0 size-full"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <mask id={maskId} maskUnits="userSpaceOnUse">
-            <rect width={V03_SCREEN_WIDTH} height={V03_SCREEN_HEIGHT} fill="white" />
-            <circle cx={childHole.cx} cy={childHole.cy} r={childHole.r} fill="black" />
-            <circle cx={parentHole.cx} cy={parentHole.cy} r={parentHole.r} fill="black" />
-          </mask>
-        </defs>
-        <foreignObject
-          x="0"
-          y="0"
-          width={V03_SCREEN_WIDTH}
-          height={V03_SCREEN_HEIGHT}
-          mask={`url(#${maskId})`}
+      <div style={artboardStyle}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox={`0 0 ${V03_SCREEN_WIDTH} ${V03_SCREEN_HEIGHT}`}
+          fill="none"
+          className="absolute inset-0 size-full"
+          preserveAspectRatio="none"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={src}
-            alt=""
+          <defs>
+            <mask id={maskId} maskUnits="userSpaceOnUse">
+              <rect width={V03_SCREEN_WIDTH} height={V03_SCREEN_HEIGHT} fill="white" />
+              <circle cx={childHole.cx} cy={childHole.cy} r={childHole.r} fill="black" />
+              <circle cx={parentHole.cx} cy={parentHole.cy} r={parentHole.r} fill="black" />
+            </mask>
+          </defs>
+          <foreignObject
+            x="0"
+            y="0"
             width={V03_SCREEN_WIDTH}
             height={V03_SCREEN_HEIGHT}
-            style={{
-              display: 'block',
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center bottom',
-            }}
-          />
-        </foreignObject>
-      </svg>
+            mask={`url(#${maskId})`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt=""
+              width={V03_SCREEN_WIDTH}
+              height={V03_SCREEN_HEIGHT}
+              style={{
+                display: 'block',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center bottom',
+              }}
+            />
+          </foreignObject>
+        </svg>
+      </div>
     </div>
   );
 }

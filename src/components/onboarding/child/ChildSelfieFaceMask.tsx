@@ -1,7 +1,7 @@
 'use client';
 
 import { useId } from 'react';
-import { useFunnelBleedBarStyle } from '@/components/ui/FunnelViewportContext';
+import { useSelfieCoverLayout } from '@/components/onboarding/child/useSelfieCoverLayout';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
 export type SelfieFaceHole = {
@@ -34,10 +34,9 @@ export function ChildSelfieFaceMask({
   showFrost = true,
   showRings = true,
 }: ChildSelfieFaceMaskProps) {
-  const coverStyle = useFunnelBleedBarStyle(0);
+  const { coverStyle, artboardStyle } = useSelfieCoverLayout();
   const uid = useId().replace(/:/g, '');
   const maskId = `child-selfie-mask-${uid}`;
-
   const holes = [childHole, parentHole];
 
   return (
@@ -46,57 +45,65 @@ export function ChildSelfieFaceMask({
       style={coverStyle}
       aria-hidden
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox={`0 0 ${V03_SCREEN_WIDTH} ${V03_SCREEN_HEIGHT}`}
-        fill="none"
-        className="absolute inset-0 size-full"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <mask id={maskId} maskUnits="userSpaceOnUse">
-            <rect width={V03_SCREEN_WIDTH} height={V03_SCREEN_HEIGHT} fill="white" />
-            {holes.map((hole) => (
-              <circle key={`${hole.cx}-${hole.cy}`} cx={hole.cx} cy={hole.cy} r={hole.r} fill="black" />
-            ))}
-          </mask>
-        </defs>
+      <div style={artboardStyle}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox={`0 0 ${V03_SCREEN_WIDTH} ${V03_SCREEN_HEIGHT}`}
+          fill="none"
+          className="absolute inset-0 size-full"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <mask id={maskId} maskUnits="userSpaceOnUse">
+              <rect width={V03_SCREEN_WIDTH} height={V03_SCREEN_HEIGHT} fill="white" />
+              {holes.map((hole) => (
+                <circle
+                  key={`${hole.cx}-${hole.cy}`}
+                  cx={hole.cx}
+                  cy={hole.cy}
+                  r={hole.r}
+                  fill="black"
+                />
+              ))}
+            </mask>
+          </defs>
 
-        {showFrost ? (
-          <foreignObject
-            x="0"
-            y="0"
-            width={V03_SCREEN_WIDTH}
-            height={V03_SCREEN_HEIGHT}
-            mask={`url(#${maskId})`}
-          >
-            <div
-              style={{
-                backdropFilter: `blur(${blur}px)`,
-                WebkitBackdropFilter: `blur(${blur}px)`,
-                background: overlay,
-                height: '100%',
-                width: '100%',
-              }}
-            />
-          </foreignObject>
-        ) : null}
-
-        {showRings
-          ? holes.map((hole) => (
-              <circle
-                key={`ring-${hole.cx}-${hole.cy}`}
-                cx={hole.cx}
-                cy={hole.cy}
-                r={hole.r}
-                stroke="white"
-                strokeOpacity={ringOpacity}
-                strokeWidth={ringStroke}
-                fill="none"
+          {showFrost ? (
+            <foreignObject
+              x="0"
+              y="0"
+              width={V03_SCREEN_WIDTH}
+              height={V03_SCREEN_HEIGHT}
+              mask={`url(#${maskId})`}
+            >
+              <div
+                style={{
+                  backdropFilter: `blur(${blur}px)`,
+                  WebkitBackdropFilter: `blur(${blur}px)`,
+                  background: overlay,
+                  height: '100%',
+                  width: '100%',
+                }}
               />
-            ))
-          : null}
-      </svg>
+            </foreignObject>
+          ) : null}
+
+          {showRings
+            ? holes.map((hole) => (
+                <circle
+                  key={`ring-${hole.cx}-${hole.cy}`}
+                  cx={hole.cx}
+                  cy={hole.cy}
+                  r={hole.r}
+                  stroke="white"
+                  strokeOpacity={ringOpacity}
+                  strokeWidth={ringStroke}
+                  fill="none"
+                />
+              ))
+            : null}
+        </svg>
+      </div>
     </div>
   );
 }

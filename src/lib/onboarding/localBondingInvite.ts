@@ -2,12 +2,17 @@
  * RTDB bonding invites — localhost + intgr App Hosting (callable-free).
  * Production uses Firestore via `recordBondingInvite` / `resolveBondingInvite`.
  */
-import { get, ref, set } from 'firebase/database';
+import { get, ref, set, update } from 'firebase/database';
 import { FirebaseError } from 'firebase/app';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { getBondingShareBaseUrl } from '@/lib/share/bondingBaseUrl';
+import { getUser } from '@/lib/api/users';
 import { ONBOARDING_CHILD_PATH } from '@/utils/url-encoding';
 import { getCurrentUserId } from '@/utils/auth';
+import {
+  INVITE_COMPLETED_ERROR_MESSAGE,
+  INVITE_EXPIRED_ERROR_MESSAGE,
+} from '@/lib/onboarding/inviteAccessErrors';
 
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -40,8 +45,10 @@ export type LocalBondingInviteRecord = {
   challengeId?: string;
   childName?: string;
   parentName?: string;
+  status?: 'pending_share' | 'shared' | 'child_opened' | 'completed';
   expiresAt: string;
   createdAt: string;
+  completedAt?: string;
 };
 
 function invitePath(inviteId: string): string {
@@ -57,6 +64,7 @@ function buildInviteRecord(
 ): LocalBondingInviteRecord {
   const record: LocalBondingInviteRecord = {
     parentId,
+    status: 'pending_share',
     expiresAt: expiresAt.toISOString(),
     createdAt: createdAt.toISOString(),
   };
@@ -110,9 +118,30 @@ export async function resolveLocalBondingInvite(
   }
 
   const data = snap.val() as LocalBondingInviteRecord;
+  if (data.status === 'completed') {
+    throw new FirebaseError(
+      'functions/failed-precondition',
+      INVITE_COMPLETED_ERROR_MESSAGE
+    );
+  }
+
   const expiresMs = Date.parse(data.expiresAt);
   if (Number.isNaN(expiresMs) || Date.now() > expiresMs) {
-    throw new FirebaseError('functions/failed-precondition', 'Invite expired');
+    throw new FirebaseError('functions/failed-precondition', INVITE_EXPIRED_ERROR_MESSAGE);
+  }
+
+  try {
+    const parent = await getUser(data.parentId, false);
+    if (parent?.onboarding === true) {
+      throw new FirebaseError(
+        'functions/failed-precondition',
+        INVITE_COMPLETED_ERROR_MESSAGE
+      );
+    }
+  } catch (error) {
+    if (error instanceof FirebaseError && error.message === INVITE_COMPLETED_ERROR_MESSAGE) {
+      throw error;
+    }
   }
 
   return {
@@ -123,4 +152,22 @@ export async function resolveLocalBondingInvite(
     childName: data.childName ?? null,
     parentName: data.parentName ?? null,
   };
+}
+
+/** Mark RTDB invite consumed so `?invite=` can no longer start child onboarding. */
+export async function consumeLocalBondingInvite(inviteId: string): Promise<void> {
+  const trimmed = inviteId.trim();
+  if (!trimmed) return;
+
+  const db = await getDatabaseInstance();
+  const inviteRef = ref(db, invitePath(trimmed));
+  const snap = await get(inviteRef);
+  if (!snap.exists()) return;
+
+  const now = new Date().toISOString();
+  await update(inviteRef, {
+    status: 'completed',
+    completedAt: now,
+    expiresAt: now,
+  });
 }

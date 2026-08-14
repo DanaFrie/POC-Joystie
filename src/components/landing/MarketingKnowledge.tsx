@@ -27,7 +27,7 @@ function KnowledgeCard({
         }
       >
         <Image
-          src={post.image}
+          src={post.thumb ?? post.image}
           alt=""
           fill
           loading="lazy"

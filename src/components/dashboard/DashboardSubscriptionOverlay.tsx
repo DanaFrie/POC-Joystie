@@ -46,9 +46,19 @@ export function DashboardSubscriptionOverlay({
   if (!visible && !checkoutBusy) return null;
 
   return (
-    <div className="absolute inset-0 z-[70] overflow-hidden" role="dialog" aria-modal="true">
-      <FunnelViewport surface="dark" scaleMode="scroll" className="font-simpler text-v03-text-on-dark">
-        <div className="relative h-full w-full">
+    <div
+      className="absolute inset-0 z-[70] overflow-hidden overscroll-none"
+      role="dialog"
+      aria-modal="true"
+    >
+      <FunnelViewport
+        surface="dark"
+        scaleMode="scroll"
+        ignoreSafeArea
+        lockScroll
+        className="h-full font-simpler text-v03-text-on-dark"
+      >
+        <div className="relative h-full w-full overflow-hidden">
           {checkoutBusy ? (
             <>
               <OnboardingMintGridBackdrop showGrid />

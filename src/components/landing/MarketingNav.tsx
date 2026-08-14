@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { LANDING_ASSETS, LANDING_NAV_LINKS } from '@/constants/landing-marketing';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { LandingMenuGlow } from '@/components/landing/LandingDecor';
@@ -28,6 +28,30 @@ type MarketingNavProps = {
    */
   chrome?: 'onDark' | 'onLight';
 };
+
+/** Mobile logo — Figma 15461:4448 Joystie wordmark + turquoise swoosh */
+function MobileNavLogo({ onClick }: { onClick?: () => void }) {
+  return (
+    <Link href="/" className="relative shrink-0" aria-label="Joystie" onClick={onClick}>
+      <span className="relative block h-[32px] w-[65px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LANDING_ASSETS.navLogoWord}
+          alt=""
+          className="absolute left-[0.6px] top-[3.5px] h-[18.5px] w-[64px]"
+          draggable={false}
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LANDING_ASSETS.navLogoUnderline}
+          alt=""
+          className="absolute left-[4px] top-[24.5px] h-[6.5px] w-[24px] origin-center rotate-[4.6deg]"
+          draggable={false}
+        />
+      </span>
+    </Link>
+  );
+}
 
 export function MarketingNav({
   activeHref,
@@ -104,27 +128,73 @@ export function MarketingNav({
           className={`pointer-events-auto flex h-[58px] w-full items-center justify-between px-6 lg:hidden ${barGlass}`}
           aria-label="ניווט ראשי"
         >
-          <Link href="/" className="shrink-0" aria-label="Joystie">
-              <Image
-                src={LANDING_ASSETS.logoWordmark}
-                alt="Joystie"
-                width={65}
-                height={34}
-                className="h-8 w-auto"
-                priority
-                unoptimized
-              />
-            </Link>
+          {/* RTL: logo on the right (start) — Figma 15461:4447 */}
+          <MobileNavLogo />
+
+          {/* RTL: actions on the left (end) — Figma 15461:4442 menu | sep | user */}
+          <div className="flex items-center gap-4" dir="ltr">
             <button
               type="button"
-              className="rounded-lg p-1 text-white"
+              className="flex size-6 shrink-0 items-center justify-center text-white"
               aria-label="פתח תפריט"
               onClick={() => setOpen(true)}
             >
-              <Menu size={24} />
+              {/* Inline strokes — Figma menu-01.svg as <img> often fails to paint */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="size-6"
+                aria-hidden
+              >
+                <path
+                  d="M4 5H20"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4 12H20"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M4 19H20"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
-          </nav>
-        ) : null}
+            <div
+              className="h-3.5 w-px shrink-0 bg-[#518ED4]"
+              aria-hidden
+            />
+            <Link
+              href="/login"
+              className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.667px]"
+              style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
+              aria-label="התחברות"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={LANDING_ASSETS.navUserIcon}
+                alt=""
+                width={17.5}
+                height={17.5}
+                className="block h-[17.5px] w-[17.5px] max-w-none"
+                draggable={false}
+              />
+            </Link>
+          </div>
+        </nav>
+      ) : null}
 
       {/* Desktop: logo + links on the right (start), CTAs on the left (end) */}
       <nav
@@ -208,17 +278,9 @@ export function MarketingNav({
         >
           <LandingMenuGlow />
 
+          {/* Figma 15461:5021 — 58px bar, px 24 */}
           <div className="relative z-10 flex h-[58px] w-full shrink-0 items-center justify-between px-6">
-            <Link href="/" className="shrink-0" aria-label="Joystie" onClick={() => setOpen(false)}>
-              <Image
-                src={LANDING_ASSETS.logoWordmark}
-                alt="Joystie"
-                width={65}
-                height={34}
-                className="h-8 w-auto"
-                unoptimized
-              />
-            </Link>
+            <MobileNavLogo onClick={() => setOpen(false)} />
             <button
               type="button"
               className="rounded-lg p-1 text-white"
@@ -229,75 +291,125 @@ export function MarketingNav({
             </button>
           </div>
 
-          <div className="relative z-10 mx-auto flex min-h-0 w-full max-w-[327px] flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-10 sm:pb-8">
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
-              {LANDING_NAV_LINKS.map((link) => {
-                const showChevron =
-                  link.href === '#knowledge' || link.href === '/about';
-                return (
-                  <a
-                    key={link.href}
-                    href={resolveHref(link.href)}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      goTo(link.href);
-                    }}
-                    className="relative flex min-h-0 flex-1 items-center justify-start border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-4 text-right backdrop-blur-[10px] last:border-b-0 sm:py-6"
-                  >
-                    {showChevron ? (
-                      <Image
-                        src={LANDING_ASSETS.menuChevron}
-                        alt=""
-                        width={6}
-                        height={11}
-                        className="absolute left-5 top-1/2 h-[11px] w-[6px] -translate-y-1/2 opacity-90"
-                        unoptimized
-                      />
-                    ) : null}
-                    <span className="flex items-center gap-3 pe-0">
-                      <Image
-                        src={LANDING_ASSETS.menuGlow}
-                        alt=""
-                        width={16}
-                        height={16}
-                        className="size-4 shrink-0"
-                        unoptimized
-                      />
-                      <span className="font-rubik text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-white">
-                        {link.label}
+          {/*
+            Figma 15462:5511 — 24px side gutters + 327 content column.
+            Do NOT put px-6 on the 327 max-width itself (that made it ~279px / “narrow”).
+          */}
+          <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-6 pb-6 pt-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="mx-auto flex min-h-0 w-full max-w-[327px] flex-1 flex-col gap-[30px]">
+              {/* Menu list — flex-1 so rows share height; py 24 / px 20 */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
+                {LANDING_NAV_LINKS.map((link) => {
+                  const showChevron =
+                    link.href === '#knowledge' || link.href === '/about';
+                  return (
+                    <a
+                      key={link.href}
+                      href={resolveHref(link.href)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        goTo(link.href);
+                      }}
+                      className="relative flex min-h-0 flex-1 items-center justify-between border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-6 text-right backdrop-blur-[10px] last:border-b-0"
+                    >
+                      {/* RTL: first = right (label + glow), second = left (chevron) */}
+                      <span className="flex min-w-0 flex-1 items-center gap-3">
+                        <Image
+                          src={LANDING_ASSETS.menuGlow}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="size-4 shrink-0"
+                          unoptimized
+                        />
+                        <span className="font-rubik text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-white">
+                          {link.label}
+                        </span>
                       </span>
-                    </span>
-                  </a>
-                );
-              })}
-            </div>
+                      {showChevron ? (
+                        <Image
+                          src={LANDING_ASSETS.menuChevron}
+                          alt=""
+                          width={6}
+                          height={11}
+                          className="h-[11px] w-[6px] shrink-0 opacity-90"
+                          unoptimized
+                        />
+                      ) : (
+                        <span className="w-[6px] shrink-0" aria-hidden />
+                      )}
+                    </a>
+                  );
+                })}
+              </div>
 
-            <div className="relative h-[160px] w-full shrink-0 overflow-hidden rounded-[36px] sm:h-[194px]">
-              <Image
-                src={LANDING_ASSETS.footerMountainMobile}
-                alt=""
-                fill
-                className="object-cover object-top [filter:saturate(1.75)_contrast(1.08)]"
-                sizes="327px"
-              />
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage:
-                    'linear-gradient(42.73deg, rgba(0, 0, 0, 0) 26.66%, rgba(0, 0, 0, 0.4) 67.26%)',
-                }}
-                aria-hidden
-              />
-              <div className="absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-start justify-center gap-4 px-5 text-right sm:gap-5 sm:px-6">
-                <p className="w-full font-rubik text-[26px] font-bold leading-[1.15] tracking-[-0.8px] text-white sm:text-[30px] sm:tracking-[-0.9px]">
-                  הדרך החדשה לנהל הרגלי מסך בריאים
-                </p>
-                <MarketingCtaButton
-                  href="/onboarding"
-                  label="הצטרפות לג׳ויסטי"
-                  size="compact"
+              {/* Figma 15765:7029 — mountain CTA (upper crop) + login row */}
+              <div className="flex w-full shrink-0 flex-col items-center gap-5">
+                <div className="relative h-[194px] w-full overflow-hidden rounded-[36px]">
+                  <Image
+                    src={LANDING_ASSETS.footerMountainMobile}
+                    alt=""
+                    fill
+                    className="object-cover object-top [filter:saturate(1.75)_contrast(1.08)]"
+                    sizes="327px"
+                  />
+                  <div
+                    className="absolute inset-0 rounded-[36px]"
+                    style={{
+                      backgroundImage:
+                        'linear-gradient(42.73deg, rgba(0, 0, 0, 0) 26.66%, rgba(0, 0, 0, 0.4) 67.26%)',
+                    }}
+                    aria-hidden
+                  />
+                  <div className="absolute inset-x-0 top-1/2 z-10 flex w-full -translate-y-1/2 flex-col items-start justify-center gap-5 px-[22.5px] text-right">
+                    <p className="w-full max-w-[282px] font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
+                      הדרך החדשה לנהל הרגלי מסך בריאים
+                    </p>
+                    {/* RTL: justify/items-start → visual right (Figma CTA on the right) */}
+                    <div className="inline-flex w-full items-start justify-start">
+                      <MarketingCtaButton
+                        href="/onboarding"
+                        label="הצטרפות לג׳ויסטי"
+                        size="compact"
+                        onClick={() => setOpen(false)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  href="/login"
                   onClick={() => setOpen(false)}
-                />
+                  className="flex w-full items-center justify-between ps-5 pe-[35px]"
+                  aria-label="התחברות לחשבון"
+                >
+                  <span className="flex items-center gap-3">
+                    <span
+                      className="flex shrink-0 items-center justify-center rounded-full bg-[#8c00ff]"
+                      style={{ width: 26, height: 26, minWidth: 26, minHeight: 26 }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={LANDING_ASSETS.navUserWhite}
+                        alt=""
+                        width={16.25}
+                        height={16.25}
+                        className="block h-[16.25px] w-[16.25px] max-w-none"
+                        draggable={false}
+                      />
+                    </span>
+                    <span className="font-rubik text-base font-bold leading-[1.28] tracking-[-0.32px] text-white">
+                      התחברות לחשבון
+                    </span>
+                  </span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={LANDING_ASSETS.navLoginChevron}
+                    alt=""
+                    className="h-[9px] w-[4.5px] shrink-0"
+                    draggable={false}
+                  />
+                </Link>
               </div>
             </div>
           </div>

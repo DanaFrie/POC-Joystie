@@ -297,7 +297,7 @@ export function ChildRunToCastleStep({
             appearance={{
               paddingLeft: bubble.paddingLeft,
               paddingRight: bubble.paddingRight,
-              gap: bubble.gap,
+              gap: 0,
               borderRadius: bubble.borderRadius,
               border: bubble.border,
               background: bubble.background,
@@ -306,8 +306,27 @@ export function ChildRunToCastleStep({
               useBorder: true,
             }}
           >
-            <p className="w-full flex-[1_0_0] text-center font-simpler text-[16px] font-semibold leading-[1.35] tracking-[-0.24px] text-white">
-              זה הזמן להיכנס לארמון ההחלטות - שם נבחר שינוי לחיים!
+            <p
+              className="w-full flex-[1_0_0] text-center font-simpler font-normal text-white"
+              style={{
+                fontSize: 16,
+                lineHeight: '128%',
+                letterSpacing: '-0.32px',
+              }}
+            >
+              {`${childName}, זה הזמן להיכנס לארמון ההחלטות:`}
+              <br />
+              <span
+                className="font-simpler text-white"
+                style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  lineHeight: '128%',
+                  letterSpacing: '-0.32px',
+                }}
+              >
+                שם נבחר שינוי לחיים!
+              </span>
             </p>
           </ChildSpeechBubble>
         </div>

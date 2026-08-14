@@ -14,6 +14,7 @@ import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
 import { httpsCallable } from 'firebase/functions';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
+import { INVITE_COMPLETED_ERROR_MESSAGE } from '@/lib/onboarding/inviteAccessErrors';
 
 const logger = createContextLogger('BondingAPI');
 
@@ -120,8 +121,11 @@ async function resolveBondingGameRoomFromRtdb(
       const invite = await resolveLocalBondingInvite(input.inviteId);
       childName = invite.childName;
       parentName = invite.parentName;
-    } catch {
-      // invite record is optional enrichment for display names
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message === INVITE_COMPLETED_ERROR_MESSAGE || /completed|expired/i.test(message)) {
+        throw error;
+      }
     }
   }
 
@@ -196,4 +200,13 @@ export async function getChildOnboardingProgress(): Promise<ChildOnboardingProgr
   );
   const { data } = await fn({});
   return data;
+}
+
+export async function consumeBondingInvite(inviteId?: string | null): Promise<void> {
+  const functions = await getFunctionsInstance();
+  const fn = httpsCallable<{ inviteId?: string }, { ok: boolean }>(
+    functions,
+    'consumeBondingInvite'
+  );
+  await fn(inviteId ? { inviteId } : {});
 }

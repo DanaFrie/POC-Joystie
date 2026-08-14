@@ -14,6 +14,30 @@ type ChildInvalidInviteStepProps = {
 const DEFAULT_TITLE = 'הקישור לא תקין';
 const DEFAULT_DETAIL = 'בקשו מההורה לשלוח את הלינק פעם נוספת';
 
+export function ChildInviteAccessFailure({
+  status,
+}: {
+  status: 'invalid' | 'expired' | 'consumed' | 'missing';
+}) {
+  if (status === 'consumed') {
+    return (
+      <ChildInvalidInviteStep
+        title="ההרשמה הושלמה"
+        detail="בדקו עם אבא או אמא לינק חדש"
+      />
+    );
+  }
+  if (status === 'expired') {
+    return (
+      <ChildInvalidInviteStep
+        title="הקישור פג תוקף"
+        detail={DEFAULT_DETAIL}
+      />
+    );
+  }
+  return <ChildInvalidInviteStep title={DEFAULT_TITLE} detail={DEFAULT_DETAIL} />;
+}
+
 /** Invalid/expired child invite — full funnel height + bottom-left mint ellipse. */
 export function ChildInvalidInviteStep({
   title = DEFAULT_TITLE,

@@ -25,7 +25,8 @@ Must remain visible:
 
 Do **not** reintroduce these — save will fail:
 
-**HTML** — forbidden tags: `embed`, `object`, `frameset`, `frame`, `iframe`, `meta`, `link`, `style`
+**HTML** — forbidden tags: `embed`, `object`, `frameset`, `frame`, `iframe`, `meta`, `link`, `style`  
+Also **no inline event handlers** (`onclick`, `onfocus`, `onerror`, …).
 
 **CSS**
 
@@ -45,6 +46,10 @@ Do **not** reintroduce these — save will fail:
 | Button אישור | `value="אישור"` without `buttonText` bind |
 | Short field labels | Static labels (no Knockout `text:` overwrite) |
 | Expiry + CVV one row | `display:table` (floats break in Cardcom) |
+| CVV max 3 digits | `maxlength="3"` on `#txtCvv` |
+| תוקף / CVV labels | `text-align: right` on split `.fieldName` |
+| Month / year placeholders | `חודש` / `שנה` when empty; hidden from open list (`hidden` + CSS) |
+| Phone for 3DS | Visible when `cardOwnerPhone.hide` is false |
 | No מספר תשלומים | `.payments-count-row { display:none }` |
 | Card icon | Inline SVG in `.card-icon` |
 | Info icon | Inline SVG in `.totalPill-info` |

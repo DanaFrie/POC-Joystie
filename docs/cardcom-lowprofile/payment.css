@@ -387,7 +387,7 @@ h1.hero-title {
   direction: ltr !important;
   margin: 0 0 20px !important;
   float: none !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   font-size: 0 !important;
   text-align: left !important;
 }
@@ -399,7 +399,7 @@ h1.hero-title {
   float: none !important;
   font-size: 16px !important;
   direction: ltr !important;
-  text-align: center !important;
+  text-align: right !important;
   box-sizing: border-box !important;
 }
 
@@ -417,14 +417,17 @@ h1.hero-title {
   padding: 0 !important;
 }
 
+/* Align label text with field content start (15px inset), not centered / not past the field */
 .blockDetailsIn .formRow.formRow--split .fieldName {
   display: block !important;
   width: 100% !important;
-  padding: 0 10px 2px !important;
+  box-sizing: border-box !important;
+  padding: 0 15px 2px 0 !important;
   margin: 0 !important;
-  text-align: center !important;
+  text-align: right !important;
   float: none !important;
   font-size: 16px !important;
+  line-height: 20.48px !important;
 }
 
 .blockDetailsIn .formRow.formRow--split .split-cvv .fieldInput,
@@ -455,6 +458,12 @@ h1.hero-title {
 
 .blockDetailsIn .formRow.formRow--split .validityDate-cell--year {
   margin-left: 8px !important;
+}
+
+/* Show חודש / שנה as closed placeholders only — hide from open dropdown list */
+.blockDetailsIn .formRow.formRow--split .validityDate-cell select option[value=""],
+.blockDetailsIn .formRow.formRow--split .validityDate-cell select option[hidden] {
+  display: none !important;
 }
 
 .blockDetailsIn .formRow.formRow--split .split-cvv .fieldInput input,

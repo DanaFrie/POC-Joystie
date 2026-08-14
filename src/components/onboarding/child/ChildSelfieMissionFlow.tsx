@@ -9,6 +9,10 @@ import { ChildSharedPhotoReviewStep } from '@/components/onboarding/child/ChildS
 import { ChildSharedPhotoShareStep } from '@/components/onboarding/child/ChildSharedPhotoShareStep';
 import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
 import { getChildBondingContext } from '@/lib/onboarding/childBondingContext';
+import {
+  readPersistedChildAgreedChange,
+  writePersistedChildAgreedChange,
+} from '@/lib/onboarding/childFlowSession';
 import { generateSelfieImage, getSelfieTransport } from '@/lib/api/selfie';
 import { saveChildShareCard } from '@/lib/api/shareCard';
 import { shareImageFile } from '@/lib/share/shareImage';
@@ -27,9 +31,13 @@ type ChildSelfieMissionFlowProps = {
   parentId?: string | null;
   /** Child's first agreed change — shown on results + baked into printed agreement. */
   changeText?: string | null;
-  /** Fired once when share screen is shown — parent leaves waiting. */
+  /** Fired once when share card is stored — parent may leave waiting for Screen 66. */
   onShareReached: () => void;
 };
+
+function resolveInitialChangeText(changeText?: string | null): string | null {
+  return changeText?.trim() || readPersistedChildAgreedChange() || null;
+}
 
 /**
  * Mission 3 selfie loop — pattern → preview → loader → review → share.
@@ -51,6 +59,18 @@ export function ChildSelfieMissionFlow({
     [childGender],
   );
 
+  /** Keep agreement copy for share UI even if RTDB clears after selfie_mission_done. */
+  const [latchedChangeText, setLatchedChangeText] = useState<string | null>(() =>
+    resolveInitialChangeText(changeText)
+  );
+
+  useEffect(() => {
+    const next = changeText?.trim();
+    if (!next) return;
+    setLatchedChangeText(next);
+    writePersistedChildAgreedChange(next);
+  }, [changeText]);
+
   const [phase, setPhase] = useState<SelfieMissionPhase>('pattern');
   const [attempt, setAttempt] = useState(0);
   const [uploadTask, setUploadTask] = useState<Promise<unknown> | null>(null);
@@ -64,12 +84,12 @@ export function ChildSelfieMissionFlow({
   const persistStartedRef = useRef(false);
 
   const persistShareCard = useCallback(
-    async (source: 'ai' | 'default', blob: Blob | null) => {
+    async (source: 'ai' | 'default', blob: Blob | null): Promise<boolean> => {
       const ctx = getChildBondingContext();
       const resolvedParentId = parentId || ctx?.parentId;
       if (!resolvedParentId) {
         logger.warn('Skip persist — no parentId');
-        return;
+        return false;
       }
       const rawChildId = ctx?.childId;
       const inviteFromUrl =
@@ -83,7 +103,7 @@ export function ChildSelfieMissionFlow({
         );
         const base = blob ?? skipPhotoSrc;
         const composed = await composeShareCardWithHeadline(base, {
-          changeText: changeText?.trim() || null,
+          changeText: latchedChangeText,
         });
         composedShareBlobRef.current = composed;
 
@@ -95,11 +115,13 @@ export function ChildSelfieMissionFlow({
           imageBlob: composed,
         });
         logger.log('Share card persisted', { source, hasInviteId: Boolean(inviteId) });
+        return true;
       } catch (error) {
         logger.warn('Share card persist failed:', error);
+        return false;
       }
     },
-    [changeText, parentId, skipPhotoSrc],
+    [latchedChangeText, parentId, skipPhotoSrc],
   );
 
   const goToShareWithoutPhoto = useCallback(() => {
@@ -142,12 +164,7 @@ export function ChildSelfieMissionFlow({
     setPhase('pattern');
   }, []);
 
-  useEffect(() => {
-    if (phase !== 'share' || shareSignaledRef.current) return;
-    shareSignaledRef.current = true;
-    onShareReached();
-  }, [phase, onShareReached]);
-
+  /** Persist to Storage first — only then signal parent (completion waits on cloud card). */
   useEffect(() => {
     if (phase !== 'share' || persistStartedRef.current) return;
     persistStartedRef.current = true;
@@ -155,8 +172,27 @@ export function ChildSelfieMissionFlow({
       !photoBlobRef.current ||
       photoSrcRef.current === skipPhotoSrc ||
       Boolean(photoSrcRef.current && !photoSrcRef.current.startsWith('blob:'));
-    void persistShareCard(isDefault ? 'default' : 'ai', photoBlobRef.current);
-  }, [phase, persistShareCard, skipPhotoSrc]);
+    const source = isDefault ? 'default' : 'ai';
+    const blob = photoBlobRef.current;
+
+    void (async () => {
+      const maxAttempts = 3;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const ok = await persistShareCard(source, blob);
+        if (ok) {
+          if (!shareSignaledRef.current) {
+            shareSignaledRef.current = true;
+            onShareReached();
+          }
+          return;
+        }
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => window.setTimeout(r, 800 * (attempt + 1)));
+        }
+      }
+      logger.error('Share card not stored — parent will stay on waiting');
+    })();
+  }, [phase, persistShareCard, skipPhotoSrc, onShareReached]);
 
   useEffect(
     () => () => {
@@ -221,7 +257,7 @@ export function ChildSelfieMissionFlow({
         const base = photoBlobRef.current ?? photoSrcRef.current;
         if (!base) return;
         blob = await composeShareCardWithHeadline(base, {
-          changeText: changeText?.trim() || null,
+          changeText: latchedChangeText,
         });
         composedShareBlobRef.current = blob;
       }
@@ -234,7 +270,7 @@ export function ChildSelfieMissionFlow({
     } catch (error) {
       logger.warn('Share failed:', error);
     }
-  }, [changeText]);
+  }, [latchedChangeText]);
 
   if (phase === 'pattern') {
     return (
@@ -274,7 +310,7 @@ export function ChildSelfieMissionFlow({
   return (
     <ChildSharedPhotoShareStep
       photoSrc={photoSrc}
-      changeText={changeText}
+      changeText={latchedChangeText}
       onShare={() => void handleShare()}
       onWallet={() => {
         void (async () => {

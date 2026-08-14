@@ -4,7 +4,6 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import {
   FUNNEL_CTA_HEIGHT_PX,
-  FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
   FUNNEL_FOOTER_INNER_GAP_PX,
   V03_CTA_LABEL_CLASS,
 } from '@/constants/funnel-vertical-layout';
@@ -96,12 +95,6 @@ export function FunnelInlineActions({
           </Link>
         </p>
       ) : null}
-
-      <div
-        className="w-full shrink-0"
-        style={{ height: FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX }}
-        aria-hidden
-      />
     </div>
   );
 }

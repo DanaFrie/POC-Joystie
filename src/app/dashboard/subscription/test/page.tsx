@@ -55,9 +55,15 @@ export default function SubscriptionTestPage() {
   }
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-v03-green-900">
-      <FunnelViewport surface="dark" scaleMode="scroll" className="font-simpler text-v03-text-on-dark">
-        <div className="relative h-full w-full">
+    <div className="absolute inset-0 overflow-hidden overscroll-none bg-v03-green-900">
+      <FunnelViewport
+        surface="dark"
+        scaleMode="scroll"
+        ignoreSafeArea
+        lockScroll
+        className="h-full font-simpler text-v03-text-on-dark"
+      >
+        <div className="relative h-full w-full overflow-hidden">
           {checkoutBusy ? (
             <>
               <OnboardingMintGridBackdrop showGrid />

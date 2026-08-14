@@ -1,6 +1,7 @@
 'use client';
 
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
+import { ONBOARDING_WAITING_HEADLINE_CLASS } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
 import { SIGNUP_CHILD_INVITE_WAITING_LOGO } from '@/constants/onboarding-figma';
 import {
   SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX,
@@ -36,12 +37,7 @@ export function OnboardingWaitingOverlay({
           gap: SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX,
         }}
       >
-        <p
-          className="w-full text-center font-simpler text-[22px] font-black leading-[1.25] tracking-[-0.36px] text-white"
-          style={{ textShadow: '0 0 20px rgba(255, 255, 255, 0.5)' }}
-        >
-          {headline}
-        </p>
+        <p className={ONBOARDING_WAITING_HEADLINE_CLASS}>{headline}</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={SIGNUP_CHILD_INVITE_WAITING_LOGO}

@@ -1,7 +1,6 @@
 'use client';
 
-import type React from 'react';
-import { useFunnelBleedBarStyle } from '@/components/ui/FunnelViewportContext';
+import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
 
 type ChildSelfieCameraViewportProps = {
   videoRef: (node: HTMLVideoElement | null) => void;
@@ -15,7 +14,7 @@ export function ChildSelfieCameraViewport({
   streamActive,
   onVideoReady,
 }: ChildSelfieCameraViewportProps) {
-  const coverStyle = useFunnelBleedBarStyle(0);
+  const coverStyle = useFunnelFullBleed();
 
   if (!streamActive) return null;
 
@@ -30,10 +29,7 @@ export function ChildSelfieCameraViewport({
         playsInline
         muted
         autoPlay
-        className="absolute inset-0 size-full object-cover"
-        style={{
-          objectPosition: 'center center',
-        }}
+        className="absolute inset-0 size-full object-cover object-center"
         onLoadedData={onVideoReady}
       />
     </div>

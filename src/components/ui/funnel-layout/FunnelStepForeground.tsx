@@ -20,6 +20,8 @@ type FunnelStepForegroundProps = {
   padBottomPx?: number;
   /** Match foreground height to visible viewport (pair with `FunnelStepRoot fitViewport`). */
   fitViewport?: boolean;
+  /** Match foreground to full 100vh canvas (pair with `FunnelStepRoot fillViewport`). */
+  fillViewport?: boolean;
   style?: CSSProperties;
 };
 
@@ -40,25 +42,38 @@ export function FunnelStepForeground({
   padTopPx = FUNNEL_FOREGROUND_PAD_TOP_PX,
   padBottomPx = FUNNEL_FOREGROUND_PAD_BOTTOM_PX,
   fitViewport = false,
+  fillViewport = false,
   style,
 }: FunnelStepForegroundProps) {
-  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const { usableCanvasHeightPx, canvasHeightPx, viewportHeight, scale } =
+    useFunnelViewportMetrics();
+  const fillHeightPx = Math.max(
+    1,
+    Math.round(viewportHeight / Math.max(scale, 0.0001))
+  );
+  const lockHeight = fillViewport || fitViewport;
+  const heightPx = fillViewport
+    ? Math.max(canvasHeightPx, fillHeightPx)
+    : fitViewport
+      ? usableCanvasHeightPx
+      : undefined;
 
-  const heightStyle: CSSProperties | undefined = fitViewport
-    ? { height: usableCanvasHeightPx, maxHeight: usableCanvasHeightPx }
-    : undefined;
+  const heightStyle: CSSProperties | undefined =
+    heightPx != null ? { height: heightPx, maxHeight: heightPx } : undefined;
 
   return (
     <div
       className={`relative z-10 flex min-h-0 w-full flex-col px-v03-gutter ${distributionClass[distribution]} ${
-        fitViewport ? '' : 'h-full'
+        lockHeight ? '' : 'h-full'
       } ${className}`}
       style={{
         paddingTop: padTopPx,
-        paddingBottom: fitViewport
-          ? `${padBottomPx}px`
-          : `max(${padBottomPx}px, env(safe-area-inset-bottom, 0px))`,
-        gap: fitViewport ? FUNNEL_SECTION_GAP_MIN_PX : undefined,
+        // `0` = flush to canvas bottom (login/signup scroll). Otherwise keep safe-area floor.
+        paddingBottom:
+          padBottomPx <= 0
+            ? 0
+            : `max(${padBottomPx}px, env(safe-area-inset-bottom, 0px))`,
+        gap: lockHeight ? FUNNEL_SECTION_GAP_MIN_PX : undefined,
         ...heightStyle,
         ...style,
       }}

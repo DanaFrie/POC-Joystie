@@ -257,6 +257,18 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
   });
 
   try {
+    const { consumeOnboardingInviteRecords } = await import(
+      '@/lib/onboarding/consumeOnboardingInvite'
+    );
+    await consumeOnboardingInviteRecords({
+      parentId,
+      inviteId: bondingInviteId,
+    });
+  } catch (error) {
+    logger.warn('Could not consume onboarding invite records:', error);
+  }
+
+  try {
     const { trackMetaOnboardingComplete } = await import('@/utils/meta-pixel');
     trackMetaOnboardingComplete({ content_name: 'parent_onboarding_complete' });
   } catch (error) {

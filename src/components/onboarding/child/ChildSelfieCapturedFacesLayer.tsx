@@ -1,11 +1,8 @@
 'use client';
 
 import type { SelfieFaceHole } from '@/components/onboarding/child/ChildSelfieFaceMask';
-import {
-  CHILD_SELFIE_ARTBOARD,
-  holeFaceClipStyle,
-} from '@/components/onboarding/child/childSelfieArtboard';
-import { useFunnelFullBleed } from '@/components/ui/FunnelViewportContext';
+import { holeFaceClipStyle } from '@/components/onboarding/child/childSelfieArtboard';
+import { useSelfieCoverLayout } from '@/components/onboarding/child/useSelfieCoverLayout';
 
 type ChildSelfieHoleFaceProps = {
   src: string;
@@ -39,25 +36,19 @@ export function ChildSelfieCapturedFacesLayer({
   fading = false,
   fadeMs = 400,
 }: ChildSelfieCapturedFacesLayerProps) {
-  const bleedStyle = useFunnelFullBleed();
+  const { coverStyle, artboardStyle } = useSelfieCoverLayout();
 
   return (
     <div
       className="pointer-events-none absolute z-[4]"
       style={{
-        ...bleedStyle,
+        ...coverStyle,
         opacity: fading ? 0 : 1,
         transition: `opacity ${fadeMs}ms ease-out`,
       }}
       aria-hidden
     >
-      <div
-        className="relative"
-        style={{
-          width: CHILD_SELFIE_ARTBOARD.width,
-          height: CHILD_SELFIE_ARTBOARD.height,
-        }}
-      >
+      <div className="relative" style={artboardStyle}>
         <HoleFaceImage src={parentSrc} hole={parentHole} />
         <HoleFaceImage src={childSrc} hole={childHole} />
       </div>

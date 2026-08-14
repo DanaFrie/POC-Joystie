@@ -39,7 +39,17 @@ type FunnelStepRootProps = {
   'aria-label'?: string;
   /** Shrink canvas + root to visible viewport height (no outer scroll on short phones). */
   fitViewport?: boolean;
+  /**
+   * Lock canvas + root to exactly 100vh (grow on tall phones, shrink on short).
+   * Use for full-bleed media (selfie castle) — no letterbox, no page scroll.
+   */
+  fillViewport?: boolean;
 };
+
+/** Exact canvas px for one viewport tall (`100vh` / `100dvh`). */
+function viewportFillCanvasHeightPx(viewportHeight: number, scale: number): number {
+  return Math.max(1, Math.round(viewportHeight / Math.max(scale, 0.0001)));
+}
 
 /** Step root — holds background + foreground siblings. */
 export function FunnelStepRoot({
@@ -48,17 +58,32 @@ export function FunnelStepRoot({
   style,
   'aria-label': ariaLabel,
   fitViewport = false,
+  fillViewport = false,
 }: FunnelStepRootProps) {
-  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const { usableCanvasHeightPx, viewportHeight, scale } = useFunnelViewportMetrics();
   const isCompactViewport = usableCanvasHeightPx < V03_SCREEN_HEIGHT;
+  const fillCanvasHeightPx = viewportFillCanvasHeightPx(viewportHeight, scale);
+  const activeFit = fitViewport && !fillViewport;
 
   useLayoutEffect(() => {
-    if (!fitViewport) {
+    const funnelRoot = document.querySelector('[data-v03-funnel]');
+    if (!(funnelRoot instanceof HTMLElement)) {
       return undefined;
     }
 
-    const funnelRoot = document.querySelector('[data-v03-funnel]');
-    if (!(funnelRoot instanceof HTMLElement)) {
+    if (fillViewport) {
+      funnelRoot.style.setProperty(
+        V03_ACTIVE_CANVAS_HEIGHT_VAR,
+        `${fillCanvasHeightPx}px`
+      );
+      window.dispatchEvent(new Event('resize'));
+      return () => {
+        funnelRoot.style.removeProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR);
+        window.dispatchEvent(new Event('resize'));
+      };
+    }
+
+    if (!activeFit) {
       return undefined;
     }
 
@@ -72,20 +97,24 @@ export function FunnelStepRoot({
       funnelRoot.style.removeProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR);
       window.dispatchEvent(new Event('resize'));
     };
-  }, [fitViewport, usableCanvasHeightPx]);
+  }, [activeFit, fillViewport, fillCanvasHeightPx, usableCanvasHeightPx]);
 
-  const heightStyle = fitViewport
-    ? isCompactViewport
-      ? { height: usableCanvasHeightPx, maxHeight: usableCanvasHeightPx }
-      : { height: '100%', minHeight: usableCanvasHeightPx }
-    : undefined;
+  const heightStyle = fillViewport
+    ? { height: fillCanvasHeightPx, minHeight: fillCanvasHeightPx, maxHeight: fillCanvasHeightPx }
+    : activeFit
+      ? isCompactViewport
+        ? { height: usableCanvasHeightPx, maxHeight: usableCanvasHeightPx }
+        : { height: '100%', minHeight: usableCanvasHeightPx }
+      : undefined;
 
   return (
     <div
       dir="rtl"
       className={`relative w-full min-h-0 ${
-        fitViewport && isCompactViewport ? 'overflow-hidden' : 'overflow-visible'
-      } ${fitViewport ? (isCompactViewport ? '' : 'h-full') : 'h-full'} ${className}`}
+        fillViewport || (activeFit && isCompactViewport)
+          ? 'overflow-hidden'
+          : 'overflow-visible'
+      } ${fillViewport || (activeFit && !isCompactViewport) || !activeFit ? 'h-full' : ''} ${className}`}
       style={{ ...heightStyle, ...style }}
       aria-label={ariaLabel}
     >

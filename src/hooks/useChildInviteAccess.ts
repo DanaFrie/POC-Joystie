@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { FirebaseError } from 'firebase/app';
 import { resolveBondingInvite } from '@/lib/api/bonding';
+import { inviteAccessFailureStatus } from '@/lib/onboarding/inviteAccessErrors';
 
 export type ChildInviteAccess =
   | { status: 'loading' }
   | { status: 'missing' }
   | { status: 'invalid' }
   | { status: 'expired' }
+  | { status: 'consumed' }
   | {
       status: 'ready';
       parentId: string;
@@ -49,16 +50,7 @@ export function useChildInviteAccess(): ChildInviteAccess {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        const code = error instanceof FirebaseError ? error.code : '';
-        if (code.includes('failed-precondition')) {
-          setAccess({ status: 'expired' });
-          return;
-        }
-        if (code.includes('not-found') || code.includes('invalid-argument')) {
-          setAccess({ status: 'invalid' });
-          return;
-        }
-        setAccess({ status: 'invalid' });
+        setAccess({ status: inviteAccessFailureStatus(error) });
       });
 
     return () => {

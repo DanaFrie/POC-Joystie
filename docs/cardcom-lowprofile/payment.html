@@ -152,12 +152,12 @@
           </span>
         </div>
 
-        <!-- 2. Figma 14239:13069 — LTR: [CVV 101] gap20 [חודש] gap8 [שנה] -->
+        <!-- 2. Figma 14239:13069 — LTR: [CVV 101] gap20 [חודש] gap8 [שנה]; labels right-aligned -->
         <div class="formRow formRow--split">
           <div class="split-cvv" data-bind="hide:cvv.hide, css:cvv.CssValid">
             <label class="fieldName" for="txtCvv">CVV</label>
             <span class="fieldInput">
-              <input maxlength="4" data-bind="hide:cvv.hide,value:cvv.value" data-testid="credit-card-cvv-field" id="txtCvv" placeholder="xxx">
+              <input maxlength="3" inputmode="numeric" pattern="[0-9]*" data-bind="hide:cvv.hide,value:cvv.value" data-testid="credit-card-cvv-field" id="txtCvv" placeholder="xxx">
             </span>
           </div>
           <div class="split-expiry">
@@ -165,7 +165,8 @@
             <span class="fieldInput validityDate">
               <span class="validityDate-cell validityDate-cell--month">
                 <select id="validityMonth" class="tiny" name="validityMonth" data-testid="credit-card-months-field" data-bind="value: expirationMonth.value, disable: expirationMonth.disabled, att:{'aria-label':expirationMonth.label}">
-                  <option value="">חודש</option>
+                  <!-- Placeholder only — hidden from open list via [hidden] + CSS -->
+                  <option value="" selected disabled hidden>חודש</option>
                   <option value="1">01</option>
                   <option value="2">02</option>
                   <option value="3">03</option>
@@ -199,12 +200,14 @@
           <span class="fieldInput"><input type="text" maxlength="50" data-bind="value:cardOwnerName.value, attr: { placeholder: '' }" data-testid="credit-card-number-field" id="txtCardOwnerName" placeholder=""></span>
         </div>
 
+        <!-- 5. Phone — shown when Cardcom requires it (3DS / IsCardOwnerPhoneRequired) -->
+        <div class="formRow cardRow" data-bind="hide:cardOwnerPhone.hide, css:cardOwnerPhone.CssValid">
+          <label class="fieldName" for="txtCardOwnerPhone">מספר טלפון בעל הכרטיס</label>
+          <span class="fieldInput"><input type="tel" maxlength="20" inputmode="tel" data-bind="value:cardOwnerPhone.value, attr: { placeholder: '' }" data-testid="credit-card-phone-field" id="txtCardOwnerPhone" placeholder=""></span>
+        </div>
+
         <!-- Extra Cardcom fields — not in Figma; keep for Knockout, force-hidden -->
         <div id="joy-extra-fields" style="display:none !important;visibility:hidden;height:0;overflow:hidden;margin:0;padding:0;">
-          <div class="formRow cardRow" data-bind="hide:cardOwnerPhone.hide, css:cardOwnerPhone.CssValid">
-            <label class="fieldName" data-bind="text:cardOwnerPhone.label" for="txtCardOwnerPhone"></label>
-            <span class="fieldInput"><input type="tel" maxlength="20" data-bind="value:cardOwnerPhone.value" id="txtCardOwnerPhone"></span>
-          </div>
           <div class="formRow cardRow" data-bind="hide:cardOwnerEmail.hide, css:cardOwnerEmail.CssValid">
             <label class="fieldName" data-bind="text:cardOwnerEmail.label" for="txtCardOwnerEmail"></label>
             <span class="fieldInput"><input type="email" class="directionLTR" maxlength="150" data-bind="value:cardOwnerEmail.value" id="txtCardOwnerEmail"></span>

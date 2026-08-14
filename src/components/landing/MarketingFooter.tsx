@@ -65,15 +65,16 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
             <div
               className="absolute inset-0 md:hidden"
               style={{
-                backgroundImage:
-                  'linear-gradient(117deg, rgba(0,0,0,0) 33%, rgba(0,0,0,0.4) 77%)',
+                backgroundImage: light
+                  ? 'linear-gradient(117deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.22) 72%)'
+                  : 'linear-gradient(117deg, rgba(0,0,0,0) 33%, rgba(0,0,0,0.4) 77%)',
               }}
               aria-hidden
             />
-            {/* Bottom seam into page chrome — mobile only */}
+            {/* Bottom seam into page chrome — mobile only (no hard edge / black line) */}
             {light ? (
               <div
-                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[48px] bg-gradient-to-b from-transparent to-white md:hidden"
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-[96px] bg-gradient-to-b from-transparent from-0% via-white/80 via-[55%] to-white to-100% md:hidden"
                 aria-hidden
               />
             ) : (

@@ -1,6 +1,15 @@
 /** Parent post-game funnel — Figma 13615:10485 / 13615:10486. */
 
 export const PARENT_POST_GAME_WIN_FADE_MS = 1_000;
+/** Post-win message 1 — «מעולה! … מתחילים לשתף פעולה». */
+export const PARENT_POST_GAME_WAIT_COOP_MS = 4_000;
+/** Post-win message 2 — «המשחק נועד כדי לשבור חומות…». */
+export const PARENT_POST_GAME_WAIT_WALLS_MS = 7_000;
+/** Idea bulb above walls message — Figma top 213 / left 168 / 34×34. */
+export const PARENT_POST_WIN_WALLS_IDEA_ICON = '/onboarding/parent/idea-01.svg' as const;
+export const PARENT_POST_WIN_WALLS_IDEA_TOP_PX = 213;
+export const PARENT_POST_WIN_WALLS_IDEA_LEFT_PX = 168;
+export const PARENT_POST_WIN_WALLS_IDEA_SIZE_PX = 34;
 export const PARENT_POST_GAME_WAIT_CHILD_CHANGE_MS = 6_000;
 export const PARENT_POST_GAME_WAIT_ADDITIONAL_CHANGE_MS = 6_000;
 export const PARENT_POST_GAME_WAIT_DORI_SELFIE_MS = 6_000;

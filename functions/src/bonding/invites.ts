@@ -33,6 +33,47 @@ function isInviteExpired(data: FirestoreBondingInvite): boolean {
   return Date.now() > getInviteExpiresAtMs(data);
 }
 
+function isInviteCompleted(data: FirestoreBondingInvite): boolean {
+  return data.status === 'completed';
+}
+
+async function isParentOnboardingComplete(parentId: string): Promise<boolean> {
+  const snap = await getDb().collection('users').doc(parentId).get();
+  return snap.data()?.onboarding === true;
+}
+
+async function assertInviteStillOpen(data: FirestoreBondingInvite): Promise<void> {
+  if (isInviteCompleted(data) || (await isParentOnboardingComplete(data.parentId))) {
+    throw new functions.https.HttpsError('failed-precondition', 'Invite completed');
+  }
+  if (isInviteExpired(data)) {
+    throw new functions.https.HttpsError('failed-precondition', 'Invite expired');
+  }
+}
+
+async function clearParentOnboardingRtdb(parentId: string, roomIds: string[]): Promise<void> {
+  const rtdb = admin.database();
+  const uniqueRoomIds = [...new Set(roomIds.filter(Boolean))];
+  await Promise.all([
+    rtdb.ref(`onboardingBondingPublic/${parentId}`).remove(),
+    rtdb.ref(`onboardingBondingMeta/${parentId}`).remove(),
+    rtdb.ref(`onboardingChildProgress/${parentId}`).remove(),
+    rtdb.ref(`onboardingParentProgress/${parentId}`).remove(),
+    ...uniqueRoomIds.map((roomId) => rtdb.ref(`gameRooms/${roomId}`).remove()),
+  ]);
+}
+
+async function tombstoneRtdbInvite(inviteId: string, now: string): Promise<void> {
+  const inviteRef = admin.database().ref(`onboardingBondingInvites/${inviteId}`);
+  const snap = await inviteRef.get();
+  if (!snap.exists()) return;
+  await inviteRef.update({
+    status: 'completed',
+    completedAt: now,
+    expiresAt: now,
+  });
+}
+
 export const recordBondingInvite = functions.https.onCall(
   {
     region: 'us-central1',
@@ -100,9 +141,7 @@ export const resolveBondingInvite = functions.https.onCall(
     }
 
     const data = snap.data() as FirestoreBondingInvite;
-    if (isInviteExpired(data)) {
-      throw new functions.https.HttpsError('failed-precondition', 'Invite expired');
-    }
+    await assertInviteStillOpen(data);
 
     return {
       inviteId: snap.id,
@@ -126,6 +165,10 @@ export const markBondingWhatsAppShared = functions.https.onCall(
     const snap = await ref.get();
     if (!snap.exists || snap.data()?.parentId !== request.auth.uid) {
       throw new functions.https.HttpsError('permission-denied', 'Invalid invite');
+    }
+    const data = snap.data() as FirestoreBondingInvite;
+    if (isInviteCompleted(data)) {
+      return { ok: true };
     }
     const now = new Date().toISOString();
     await ref.update({
@@ -179,6 +222,7 @@ export const resolveBondingGameRoom = functions.https.onCall(
     }
 
     const data = invite.data() as FirestoreBondingInvite;
+    await assertInviteStillOpen(data);
     return {
       parentId,
       inviteId: invite.id,
@@ -199,6 +243,8 @@ export const markBondingChildLinkOpened = functions.https.onCall(
     if (!snap.exists) {
       throw new functions.https.HttpsError('not-found', 'Invite not found');
     }
+    const data = snap.data() as FirestoreBondingInvite;
+    await assertInviteStillOpen(data);
     const now = new Date().toISOString();
     await ref.update({
       status: 'child_opened',
@@ -236,6 +282,10 @@ export const reportChildOnboardingMilestone = functions.https.onCall(
     const invite = await findLatestInviteForParent(parentId);
     if (!invite) {
       return { ok: false, reason: 'no_invite' as const };
+    }
+    const inviteData = invite.data() as FirestoreBondingInvite;
+    if (isInviteCompleted(inviteData)) {
+      return { ok: false, reason: 'completed' as const };
     }
 
     const now = new Date().toISOString();
@@ -287,5 +337,52 @@ export const getChildOnboardingProgress = functions.https.onCall(
       linkOpened: data.status === 'child_opened' || Boolean(data.childLinkOpenedAt),
       eggComplete: Boolean(data.eggCompletedAt),
     };
+  }
+);
+
+/** Parent — consume invite links + drop live RTDB funnel records after onboarding. */
+export const consumeBondingInvite = functions.https.onCall(
+  { region: 'us-central1' },
+  async (request) => {
+    if (!request.auth?.uid) {
+      throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
+    }
+    const parentId = request.auth.uid;
+    const { inviteId } = request.data as { inviteId?: string };
+    const now = new Date().toISOString();
+
+    const invitesSnap = await getDb()
+      .collection(COLLECTION)
+      .where('parentId', '==', parentId)
+      .get();
+
+    const roomIds: string[] = [];
+    if (!invitesSnap.empty) {
+      const batch = getDb().batch();
+      for (const docSnap of invitesSnap.docs) {
+        const data = docSnap.data() as FirestoreBondingInvite;
+        if (data.gameRoomId) roomIds.push(data.gameRoomId);
+        batch.update(docSnap.ref, {
+          status: 'completed',
+          completedAt: now,
+          expiresAt: now,
+          updatedAt: now,
+        });
+      }
+      await batch.commit();
+    }
+
+    const publicSnap = await admin.database().ref(`onboardingBondingPublic/${parentId}`).get();
+    const publicRoomId = publicSnap.val()?.roomId as string | undefined;
+    if (publicRoomId) roomIds.push(publicRoomId);
+
+    await clearParentOnboardingRtdb(parentId, roomIds);
+
+    const rtdbInviteIds = new Set(
+      invitesSnap.docs.map((docSnap) => docSnap.id).concat(inviteId?.trim() ? [inviteId.trim()] : [])
+    );
+    await Promise.all([...rtdbInviteIds].map((id) => tombstoneRtdbInvite(id, now)));
+
+    return { ok: true };
   }
 );

@@ -30,6 +30,8 @@ type FunnelViewportProps = {
   scaleMode?: FunnelScaleMode;
   /** Skip safe-area inset math — full-bleed funnel (e.g. `/onboarding/child`). */
   ignoreSafeArea?: boolean;
+  /** Force no vertical scroll (subscription popup — content scales to 100vh). */
+  lockScroll?: boolean;
 };
 
 function funnelSurfaceClass(surface: FunnelSurface): string {
@@ -58,15 +60,18 @@ const SSR_FUNNEL_METRICS: FunnelViewportMetrics = {
 const V03_CONTENT_GUTTER_TOTAL = 48;
 
 function readActiveCanvasHeightPx(): number {
-  const funnelRoot = document.querySelector('[data-v03-funnel]');
+  const funnelRoot =
+    document.querySelector('[data-v03-funnel]') ??
+    document.querySelector('[data-v03-funnel-canvas]');
   if (!(funnelRoot instanceof HTMLElement)) {
     return V03_SCREEN_HEIGHT;
   }
   const compact = parseFloat(
     funnelRoot.style.getPropertyValue(V03_ACTIVE_CANVAS_HEIGHT_VAR) || '0'
   );
+  // fitViewport may shrink below 812; grow-for-scroll / fillViewport may change height.
   if (compact > 0) {
-    return Math.min(V03_SCREEN_HEIGHT, compact);
+    return compact;
   }
   return V03_SCREEN_HEIGHT;
 }
@@ -201,6 +206,7 @@ export function FunnelViewport({
   surface = 'dark',
   scaleMode = 'cover',
   ignoreSafeArea = false,
+  lockScroll = false,
 }: FunnelViewportProps) {
   const [layoutReady, setLayoutReady] = useState(false);
   const [layout, setLayout] = useState<FunnelLayout>({
@@ -269,19 +275,22 @@ export function FunnelViewport({
 
   const { metrics, isDesktop } = layout;
   const isScrollMode = scaleMode === 'scroll';
-  const viewportOverflowClass = isScrollMode
-    ? metrics.needsVerticalScroll
-      ? 'overflow-x-hidden overflow-y-auto v03-scroll-hidden'
-      : 'overflow-x-hidden overflow-y-hidden'
-    : 'overflow-visible';
+  const viewportOverflowClass = lockScroll
+    ? 'overflow-hidden overscroll-none'
+    : isScrollMode
+      ? metrics.needsVerticalScroll
+        ? 'overflow-x-hidden overflow-y-auto v03-scroll-hidden'
+        : 'overflow-x-hidden overflow-y-hidden'
+      : 'overflow-visible';
   const scaledVisualWidth = metrics.designWidth * metrics.scale;
   const scaledVisualHeight = metrics.canvasHeightPx * metrics.scale;
-  const scrollSafePadding = isScrollMode && !ignoreSafeArea
-    ? {
-        paddingTop: metrics.offsetY,
-        paddingBottom: 'var(--v03-safe-bottom)',
-      }
-    : undefined;
+  const scrollSafePadding =
+    isScrollMode && !ignoreSafeArea && !lockScroll
+      ? {
+          paddingTop: metrics.offsetY,
+          paddingBottom: 'var(--v03-safe-bottom)',
+        }
+      : undefined;
 
   const canvasStyle = {
     width: metrics.designWidth,
@@ -321,6 +330,7 @@ export function FunnelViewport({
                 className={`absolute left-0 top-0 overflow-visible ${
                   isLightFunnel ? surfaceClass : 'bg-transparent'
                 }`}
+                data-v03-funnel-canvas
                 style={canvasStyle}
               >
                 {children}
@@ -331,6 +341,7 @@ export function FunnelViewport({
               className={`absolute overflow-visible ${
                 isLightFunnel ? surfaceClass : 'bg-transparent'
               }`}
+              data-v03-funnel-canvas
               style={{
                 left: metrics.offsetX,
                 top: metrics.offsetY,

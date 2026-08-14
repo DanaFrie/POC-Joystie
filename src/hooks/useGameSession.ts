@@ -223,7 +223,10 @@ export function useGameSession({
     setChildJoinBlocked(false);
     setBusy(true);
     try {
-      await ensureAnonymousChildAuth();
+      const uid = await ensureAnonymousChildAuth();
+      if (!uid) {
+        throw new Error('Must be signed in');
+      }
       await joinGameRoom({ roomId: roomIdParam, joinCode: joinCodeParam });
       setRoomId(roomIdParam);
       setJoinCode(joinCodeParam);
@@ -280,7 +283,7 @@ export function useGameSession({
 
     let effectiveRole = role;
     if (!effectiveRole && room) {
-      const uid = await getCurrentUserId();
+      const uid = await getCurrentUserId({ allowAnonymous: true });
       if (uid && uid === room.parentId) effectiveRole = 'parent';
       else if (uid && uid === room.childUid) effectiveRole = 'child';
     }
@@ -295,6 +298,9 @@ export function useGameSession({
       await updatePlayReady(roomId, effectiveRole, true);
       if (!role) setRole(effectiveRole);
       logGamePhase('waiting_ready', { roomId, role: effectiveRole, playReady: true });
+      if (effectiveRole === 'parent') {
+        await beginCountdown(roomId);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'אישור מוכנות נכשל');
     } finally {
@@ -332,7 +338,7 @@ export function useGameSession({
       !room.hasStartedRound &&
       (room.phase === 'waiting_ready' || room.phase === 'waiting_child')
     ) {
-      const key = `${roomId}:countdown`;
+      const key = `${roomId}:${room.childUid}:countdown`;
       if (countdownStartedRef.current === key) return;
       countdownStartedRef.current = key;
       void beginCountdown(roomId).catch((err) => {

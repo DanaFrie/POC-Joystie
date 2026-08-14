@@ -169,6 +169,7 @@ import {
 import {
   getFunnelScrollFrameBottomInsetPx,
   FUNNEL_FOREGROUND_PAD_BOTTOM_PX,
+  FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
 } from '@/constants/funnel-vertical-layout';
 
 const logger = createContextLogger('OnboardingParentFlow');
@@ -227,6 +228,21 @@ function readStoredFlowStep(): ParentFlowStep | null {
   if (typeof window === 'undefined') return null;
   const raw = sessionStorage.getItem(FLOW_STEP_STORAGE_KEY);
   return normalizeStoredFlowStep(raw);
+}
+
+/**
+ * `router.push('/onboarding')` is a no-op when already on this page — React state
+ * (e.g. signupForm) would stick. Apply the step that post-login navigation wrote.
+ */
+function resolveStoredResumeStep(): ParentFlowStep {
+  const saved = readStoredFlowStep();
+  if (saved && isValidFlowStep(saved) && saved !== 'signupForm' && saved !== 'role') {
+    return saved;
+  }
+  if (typeof window !== 'undefined' && sessionStorage.getItem(LANDING_ACTIVE_KEY) === '1') {
+    return 'role';
+  }
+  return 'signupIntro';
 }
 
 const REVEAL_STEPS: ParentFlowStep[] = [
@@ -368,7 +384,7 @@ export function OnboardingParentFlow({
     null
   );
   const [parentPostGamePhase, setParentPostGamePhase] =
-    useState<ParentPostGamePhase>('waitingChildChange');
+    useState<ParentPostGamePhase>('postWinCoop');
   const [parentPostGameParentId, setParentPostGameParentId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -473,6 +489,34 @@ export function OnboardingParentFlow({
     if (typeof window !== 'undefined') {
       sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'signupIntro');
     }
+  }, []);
+
+  /** After login routing while already on `/onboarding` (same-route push is a no-op). */
+  const applySameRouteOnboardingResume = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (!window.location.pathname.startsWith('/onboarding')) return;
+
+    const hydratedChildren = getOnboardingChildrenDetails();
+    const hydratedTimes = getOnboardingChildrenScreenTime();
+    if (hydratedChildren?.length) {
+      setCount(hydratedChildren.length);
+      setChildren(hydratedChildren);
+      setScreenTimes(
+        hydratedTimes?.length
+          ? hydratedTimes
+          : createScreenTimesFromChildren(hydratedChildren)
+      );
+    }
+
+    const next = resolveStoredResumeStep();
+    setAccountCreated(true);
+    if (next === 'signupIntro') {
+      postSignupIntroNavigatedRef.current = true;
+      clearOAuthSignupWelcomePending();
+      setJourneyStage(0);
+    }
+    logger.log('Same-route onboarding resume', { next });
+    setStep(next);
   }, []);
 
   const handleWelcomeContinue = useCallback(() => {
@@ -695,9 +739,14 @@ export function OnboardingParentFlow({
         try {
           const registered = await isRegisteredJoystieAccount(outcome.result.user.uid);
           if (registered) {
-            await finishAuthenticatedUserNavigation(outcome.result.user.uid, router, {
-              source: 'signup_existing',
-            });
+            const kind = await finishAuthenticatedUserNavigation(
+              outcome.result.user.uid,
+              router,
+              { source: 'signup_existing' }
+            );
+            if (kind !== 'complete') {
+              applySameRouteOnboardingResume();
+            }
             return;
           }
           // Auth stub / incomplete Apple-Google retry — complete Joystie signup evidence.
@@ -895,9 +944,12 @@ export function OnboardingParentFlow({
         try {
           const registered = await isRegisteredJoystieAccount(result.user.uid);
           if (registered) {
-            await finishAuthenticatedUserNavigation(result.user.uid, router, {
+            const kind = await finishAuthenticatedUserNavigation(result.user.uid, router, {
               source: 'signup_existing',
             });
+            if (kind !== 'complete') {
+              applySameRouteOnboardingResume();
+            }
             return;
           }
           // Same Apple/Google Auth uid as a prior incomplete attempt — persist signup.
@@ -1021,9 +1073,12 @@ export function OnboardingParentFlow({
       if (accountStatus === 'complete') {
         try {
           const existingUser = await signIn(email, values.password);
-          await finishAuthenticatedUserNavigation(existingUser.uid, router, {
+          const kind = await finishAuthenticatedUserNavigation(existingUser.uid, router, {
             source: 'signup_existing',
           });
+          if (kind !== 'complete') {
+            applySameRouteOnboardingResume();
+          }
         } catch {
           router.push(getLoginPath({ email }));
         }
@@ -1523,13 +1578,14 @@ export function OnboardingParentFlow({
             <FunnelStepForeground
               distribution="between"
               padTopPx={signupFormPadTopPx}
-              padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
+              padBottomPx={0}
               fitViewport
             >
               <FunnelStepMain
                 scroll
                 scrollRef={signupScrollRef}
                 className="relative min-h-0 w-full flex-1"
+                footerOverlayReservePx={FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX}
               >
                 <div className="relative z-[20] mx-auto flex w-v03-content flex-col items-stretch gap-5">
                   <OnboardingSignupForm
@@ -1639,7 +1695,7 @@ export function OnboardingParentFlow({
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}
-              padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
+              padBottomPx={0}
               fitViewport
             >
               <FunnelStepMain
@@ -1676,6 +1732,11 @@ export function OnboardingParentFlow({
                     >
                       המשך
                     </FunnelInlineActions>
+                    <div
+                      className="w-full shrink-0"
+                      style={{ height: FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX }}
+                      aria-hidden
+                    />
                   </div>
                 </div>
               </FunnelStepMain>

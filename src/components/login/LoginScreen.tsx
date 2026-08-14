@@ -12,7 +12,9 @@ import {
   FunnelStepRoot,
 } from '@/components/ui/funnel-layout';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
-import { FUNNEL_FOREGROUND_PAD_BOTTOM_PX } from '@/constants/funnel-vertical-layout';
+import {
+  FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
+} from '@/constants/funnel-vertical-layout';
 import { getLoginScrollTopPx } from '@/constants/login-layout';
 import { getForgotPasswordPath } from '@/lib/auth/postLoginNavigation';
 import {
@@ -173,12 +175,13 @@ export function LoginScreen({
         <FunnelStepForeground
           distribution="between"
           padTopPx={loginPadTopPx}
-          padBottomPx={FUNNEL_FOREGROUND_PAD_BOTTOM_PX}
+          padBottomPx={0}
           fitViewport
         >
           <FunnelStepMain
             scroll
             className="relative min-h-0 w-full flex-1"
+            footerOverlayReservePx={FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX}
           >
             <form
               id={LOGIN_FORM_ID}

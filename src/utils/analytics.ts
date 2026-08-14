@@ -44,46 +44,56 @@ async function getAnalytics(): Promise<Analytics | null> {
   return initPromise;
 }
 
-/** Log an event to Firebase Analytics (GA4 via Firebase). */
+/** Log an event to Firebase Analytics (GA4 via Firebase). Returns false if skipped/failed. */
 export async function logEvent(
   eventName: string,
   eventParams?: Record<string, string | number | boolean>
-): Promise<void> {
+): Promise<boolean> {
   try {
     const analytics = await getAnalytics();
     if (!analytics) {
       console.warn('[Analytics] Analytics not available, skipping event:', eventName);
-      return;
+      return false;
     }
 
     const { logEvent: firebaseLogEvent } = await import('firebase/analytics');
     firebaseLogEvent(analytics, eventName, eventParams);
+    return true;
   } catch (error) {
     console.error('[Analytics] Error logging event:', {
       eventName,
       error: error instanceof Error ? error.message : String(error),
     });
+    return false;
   }
 }
 
 /**
  * Fire at most once per browser tab session (avoids Strict Mode / remount doubles).
- * `onceKey` should be unique per logical conversion (e.g. `game_win:parent`).
+ * Only marks the once-key after a successful send so a failed first attempt can retry.
  */
 export async function logEventOnce(
   onceKey: string,
   eventName: string,
   eventParams?: Record<string, string | number | boolean>
-): Promise<void> {
-  if (typeof window === 'undefined') return;
+): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
   const storageKey = `joystie_analytics_once:${onceKey}`;
   try {
-    if (sessionStorage.getItem(storageKey)) return;
-    sessionStorage.setItem(storageKey, '1');
+    if (sessionStorage.getItem(storageKey)) return false;
   } catch {
     // private mode / blocked storage — still attempt to log
   }
-  await logEvent(eventName, eventParams);
+
+  const ok = await logEvent(eventName, eventParams);
+  if (ok) {
+    try {
+      sessionStorage.setItem(storageKey, '1');
+    } catch {
+      // ignore
+    }
+  }
+  return ok;
 }
 
 /** Set Firebase Analytics user ID (after auth). */

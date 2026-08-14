@@ -112,13 +112,13 @@ type ParentDashboardScreenProps = {
 export function DashboardLoadingState() {
   return (
     <div
-      className="absolute inset-0 overflow-hidden"
+      className="absolute inset-0 overflow-hidden bg-v03-green-900"
       style={{ background: PARENT_DASHBOARD_COLORS.canvas }}
       role="status"
       aria-live="polite"
       aria-busy
     >
-      <FunnelViewport surface="dark" scaleMode="scroll" className="font-simpler text-v03-text-on-dark">
+      <FunnelViewport surface="dark" scaleMode="scroll" className="h-full font-simpler text-v03-text-on-dark">
         <OnboardingMintGridBackdrop showGrid />
         <OnboardingWaitingScreenShell skipMintGlow zIndex={20} ariaBusy staticLayout>
           <OnboardingWaitingCenterContent headline="" ariaLabel="טוען" />

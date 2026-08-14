@@ -47,7 +47,7 @@ export function OnboardingFunnelFrame({
     <FunnelViewport
       surface={surface}
       scaleMode="scroll"
-      ignoreSafeArea={isGameRoute}
+      ignoreSafeArea={isGameRoute || isChildRoute}
       className={`font-simpler text-v03-text-on-dark ${className}`}
     >
       <div className="relative h-full w-full">

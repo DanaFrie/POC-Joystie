@@ -7,6 +7,7 @@ import { GAME_WIN_SCORE } from '@/constants/game';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { gameRoomPath, GAME_ROOMS_PATH } from '@/lib/game/paths';
 import { DEFAULT_PADDLE_WIDTH } from '@/lib/game/physics';
+import { beginCountdown } from '@/lib/game/rooms';
 import { getCurrentUserId } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -78,7 +79,7 @@ export async function createGameRoomLocal(input: GameOnboardingContext = {}) {
 }
 
 export async function joinGameRoomLocal(roomId: string, joinCode: string) {
-  const uid = await getCurrentUserId();
+  const uid = await getCurrentUserId({ allowAnonymous: true });
   if (!uid) throw new Error('Must be signed in');
 
   const db = await getDatabaseInstance();
@@ -90,6 +91,8 @@ export async function joinGameRoomLocal(roomId: string, joinCode: string) {
     joinCode?: string;
     parentId?: string;
     childUid?: string | null;
+    phase?: string;
+    playReady?: { parent?: boolean; child?: boolean };
   };
   const normalized = joinCode.trim().toUpperCase();
   if (room.joinCode !== normalized) throw new Error('Invalid join code');
@@ -100,17 +103,35 @@ export async function joinGameRoomLocal(roomId: string, joinCode: string) {
     throw new Error('Room already has a child');
   }
 
+  if (room.childUid === uid) {
+    logger.log('joinGameRoomLocal already joined', { roomId, childUid: uid });
+    return {
+      roomId,
+      phase: (room.phase as 'waiting_ready') ?? 'waiting_ready',
+      winScore: GAME_WIN_SCORE,
+    };
+  }
+
   const now = new Date().toISOString();
+  const parentAlreadyReady = room.playReady?.parent === true;
+  // Do not rewrite playReady — parent may already have tapped consent.
   await update(roomRef, {
     childUid: uid,
+    parentId: room.parentId,
     phase: 'waiting_ready',
-    playReady: { parent: false, child: false },
-    hasStartedRound: false,
-    ball: defaultBall(now),
     updatedAt: now,
   });
 
-  logger.log('joinGameRoomLocal', { roomId, childUid: uid });
+  logger.log('joinGameRoomLocal', {
+    roomId,
+    childUid: uid,
+    parentAlreadyReady,
+  });
+
+  if (parentAlreadyReady) {
+    await beginCountdown(roomId);
+  }
+
   return { roomId, phase: 'waiting_ready' as const, winScore: GAME_WIN_SCORE };
 }
 

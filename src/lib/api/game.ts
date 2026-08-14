@@ -97,7 +97,12 @@ export async function createGameRoom(
 export async function joinGameRoom(input: JoinGameRoomInput): Promise<JoinGameRoomResult> {
   if (useLocalGameRooms()) {
     logger.log('joinGameRoom (local RTDB)', { roomId: input.roomId });
-    return joinGameRoomLocal(input.roomId, input.joinCode);
+    try {
+      return await joinGameRoomLocal(input.roomId, input.joinCode);
+    } catch (error) {
+      logger.warn('joinGameRoom local failed', error);
+      throw error;
+    }
   }
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<JoinGameRoomInput, JoinGameRoomResult>(functions, 'joinGameRoom');

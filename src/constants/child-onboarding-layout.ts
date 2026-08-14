@@ -78,9 +78,11 @@ export const CHILD_COMPANION_PICK_FRAME = {
     backdropBlur: 11.409310340881348,
     boxShadow: '0 5.493px 5.493px 0 rgba(0, 0, 0, 0.25)',
     fontSize: 24,
-    lineHeightRegular: 1.25,
-    lineHeightBold: 30,
-    letterSpacing: -0.36,
+    /** 24px/Regular — line-height 135% */
+    lineHeightRegular: 1.35,
+    /** 24px/Bold — line-height 110% */
+    lineHeightBold: 1.1,
+    letterSpacing: -0.72,
   },
   companion: {
     size: 269,
@@ -107,7 +109,10 @@ export const CHILD_COMPANION_PICK_FRAME = {
     paddingY: 8,
     borderRadius: 22,
     fontSize: 18,
+    lineHeight: 1.2,
+    letterSpacing: -0.36,
     color: '#031D15',
+    label: 'לחץ כאן כדי להמשיך',
   },
 } as const;
 
@@ -196,18 +201,19 @@ export function getChildDoriMediaTopPx(): number {
   );
 }
 
-/** Screen 6 — Dori hero + continue (Figma 13656:6594). */
+/** Post–egg hatch — Dori hero + thank-you / 3-missions bubble (merged former screens 6+8). */
 export const CHILD_DORI_REVEALED = {
   media: CHILD_DORI_MEDIA_FRAME,
   mediaTop: getChildDoriMediaTopPx(),
   bubble: {
     top: CHILD_DORI_REVEALED_BUBBLE_TOP_PX,
-    width: 265,
-    left: centerX(265),
+    width: 327,
+    left: centerX(327),
     tailLeft: CHILD_DORI_SPEECH_TAIL.left,
     tailBorderOverlap: CHILD_DORI_SPEECH_TAIL.borderOverlap,
     paddingTop: 16,
     paddingBottom: 14,
+    contentGap: 8,
   },
   continue: CHILD_DORI_CONTINUE_FOOTER,
 } as const;

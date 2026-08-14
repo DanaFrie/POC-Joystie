@@ -7,19 +7,18 @@ import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_MISSION_TWO_INTRO } from '@/constants/child-post-game-layout';
+import { parentCourtLabel } from '@/lib/onboarding/childBondingLabels';
 
 /** Mission 2 intro — notebook hero + copy; turquoise CTA קדימה! */
 export function ChildMissionTwoIntroStep({
-  parentName,
   parentGender = 'male',
   onContinue,
 }: {
-  parentName: string;
   parentGender?: 'female' | 'male';
   onContinue?: () => void;
 }) {
   const layout = CHILD_MISSION_TWO_INTRO;
-  const parentLabel = parentGender === 'female' ? 'אמא' : parentName || 'אבא';
+  const parentLabel = parentCourtLabel(parentGender);
   const scaleY = useFunnelProportionalTopPx;
 
   const frameTopPx = scaleY(layout.frame.top);

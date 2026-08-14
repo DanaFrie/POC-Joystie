@@ -17,8 +17,14 @@ import { ParentReviewChildChangeStep } from '@/components/onboarding/parent/Pare
 import {
   PARENT_POST_GAME_WAIT_ADDITIONAL_CHANGE_MS,
   PARENT_POST_GAME_WAIT_CHILD_CHANGE_MS,
+  PARENT_POST_GAME_WAIT_COOP_MS,
   PARENT_POST_GAME_WAIT_DORI_SELFIE_MS,
+  PARENT_POST_GAME_WAIT_WALLS_MS,
   PARENT_POST_GAME_WIN_FADE_MS,
+  PARENT_POST_WIN_WALLS_IDEA_ICON,
+  PARENT_POST_WIN_WALLS_IDEA_LEFT_PX,
+  PARENT_POST_WIN_WALLS_IDEA_SIZE_PX,
+  PARENT_POST_WIN_WALLS_IDEA_TOP_PX,
 } from '@/constants/parent-post-game-layout';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { useCelebrationBall } from '@/hooks/useCelebrationBall';
@@ -27,17 +33,26 @@ import { endOnboardingGameRoom } from '@/lib/api/game';
 import type { BallVector } from '@/lib/game/physics';
 import {
   PARENT_WAITING_DORI_SELFIE_HEADLINE,
+  parentPostWinCoopHeadline,
+  parentPostWinWallsHeadline,
   parentWaitingAdditionalChangeApprovalHeadline,
   parentWaitingChildChangeHeadline,
 } from '@/lib/onboarding/parentPostGameCopy';
 import { finishParentOnboardingAndGoToDashboard } from '@/lib/onboarding/finishParentOnboarding';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
+import { prefetchParentCompletionAgreement } from '@/lib/onboarding/prefetchParentCompletionAgreement';
 import { useOnboardingLightFunnel } from '@/lib/onboarding/useOnboardingLightFunnel';
+import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import type { GameRoomState } from '@/types/game';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('ParentGamePostWinFlow');
 
 export type ParentPostGamePhase =
   | 'game'
   | 'winFadeOut'
+  | 'postWinCoop'
+  | 'postWinWalls'
   | 'waitingChildChange'
   | 'reviewChange'
   | 'additionalChange'
@@ -54,7 +69,7 @@ type ParentGamePostWinFlowProps = {
   childGender: 'boy' | 'girl';
   parentName: string;
   parentGender: 'female' | 'male';
-  /** When set, `/game` exits to onboarding after win fade instead of waitingChildChange. */
+  /** When set, `/game` exits to onboarding after win fade instead of post-win waits. */
   onWinFadeComplete?: () => void;
   onArenaPointer: (clientX: number, clientY: number, rect: DOMRect) => void;
   onConfirmReady: () => void;
@@ -74,6 +89,11 @@ function ballSnapshotFromRoom(room: GameRoomState | null): BallVector | null {
   const { x, y, vx, vy, toward } = room.ball;
   return { x, y, vx, vy, toward };
 }
+
+const LOCAL_POST_WIN_INTRO_PHASES: ParentPostGamePhase[] = [
+  'postWinCoop',
+  'postWinWalls',
+];
 
 /** Parent `/game` — cooperative win through review, frame wait, and completion. */
 export function ParentGamePostWinFlow({
@@ -97,10 +117,20 @@ export function ParentGamePostWinFlow({
 }: ParentGamePostWinFlowProps) {
   const router = useRouter();
   const cleanupStarted = useRef(false);
+  const completionPrefetchStarted = useRef(false);
   const [fadeOpacity, setFadeOpacity] = useState(0);
   const [localAdditionalChange, setLocalAdditionalChange] = useState(false);
   const [awaitingChildOnProposal, setAwaitingChildOnProposal] = useState(false);
-  const syncEnabled = Boolean(parentId) && phase !== 'game' && phase !== 'winFadeOut';
+  /** Preloaded Storage URL — completion page mounts only after this is set (or fallback null). */
+  const [agreementImageUrl, setAgreementImageUrl] = useState<string | null | undefined>(
+    undefined
+  );
+  const isPostWinIntro = LOCAL_POST_WIN_INTRO_PHASES.includes(phase);
+  const syncEnabled =
+    Boolean(parentId) &&
+    phase !== 'game' &&
+    phase !== 'winFadeOut' &&
+    !isPostWinIntro;
   const postGame = usePostGameSync({
     parentId,
     role: 'parent',
@@ -111,6 +141,7 @@ export function ParentGamePostWinFlow({
     celebrationSeed,
     phase === 'winFadeOut' || phase === 'waitingChildChange'
   );
+  const wallsIdeaTopPx = useFunnelProportionalTopPx(PARENT_POST_WIN_WALLS_IDEA_TOP_PX);
 
   useOnboardingLightFunnel(phase === 'onboardingComplete');
 
@@ -131,7 +162,7 @@ export function ParentGamePostWinFlow({
       if (onWinFadeComplete) {
         onWinFadeComplete();
       } else {
-        onPhaseChange('waitingChildChange');
+        onPhaseChange('postWinCoop');
       }
     }, PARENT_POST_GAME_WIN_FADE_MS);
     return () => {
@@ -139,6 +170,44 @@ export function ParentGamePostWinFlow({
       window.clearTimeout(advance);
     };
   }, [phase, onPhaseChange, onWinFadeComplete]);
+
+  useEffect(() => {
+    if (phase !== 'postWinCoop') return;
+    const t = window.setTimeout(
+      () => onPhaseChange('postWinWalls'),
+      PARENT_POST_GAME_WAIT_COOP_MS
+    );
+    return () => window.clearTimeout(t);
+  }, [phase, onPhaseChange]);
+
+  useEffect(() => {
+    if (phase !== 'postWinWalls') return;
+    const t = window.setTimeout(
+      () => onPhaseChange('waitingChildChange'),
+      PARENT_POST_GAME_WAIT_WALLS_MS
+    );
+    return () => window.clearTimeout(t);
+  }, [phase, onPhaseChange]);
+
+  /** Prefetch Storage agreement on waiting screen, then open Screen 66 (no in-page load). */
+  const openCompletionAfterPrefetch = useCallback(() => {
+    if (completionPrefetchStarted.current) return;
+    completionPrefetchStarted.current = true;
+    if (phase !== 'waitingDoriSelfie') {
+      onPhaseChange('waitingDoriSelfie');
+    }
+    void (async () => {
+      try {
+        const result = await prefetchParentCompletionAgreement(parentId);
+        setAgreementImageUrl(result.agreementImageUrl);
+      } catch (error) {
+        logger.warn('Completion agreement prefetch failed:', error);
+        setAgreementImageUrl(null);
+      } finally {
+        onPhaseChange('onboardingComplete');
+      }
+    })();
+  }, [phase, onPhaseChange, parentId]);
 
   useEffect(() => {
     if (!syncEnabled || !postGame.parentPhase) return;
@@ -176,6 +245,38 @@ export function ParentGamePostWinFlow({
       setLocalAdditionalChange(false);
     }
 
+    // Stay on Dori selfie wait until Storage card URL is prefetched — no load on Screen 66.
+    if (targetPhase === 'onboardingComplete') {
+      if (phase === 'onboardingComplete') return;
+      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+        if (!parentId) return;
+        void logEventOnce(`selfie_done:${parentId}`, AnalyticsEvents.SELFIE_DONE, {
+          content_name: 'onboarding_accomplished',
+          source: 'parent_observe',
+        });
+      });
+      openCompletionAfterPrefetch();
+      return;
+    }
+
+    // Finalize clears RTDB child progress — never sync-downgrade off selfie wait / Screen 66.
+    if (
+      completionPrefetchStarted.current ||
+      phase === 'onboardingComplete' ||
+      phase === 'waitingDoriSelfie'
+    ) {
+      return;
+    }
+
+    if (targetPhase === 'waitingDoriSelfie') {
+      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+        if (!parentId) return;
+        void logEventOnce(`agreement_done:${parentId}`, AnalyticsEvents.AGREEMENT_DONE, {
+          via: 'parent_observe',
+        });
+      });
+    }
+
     if (targetPhase !== phase) {
       onPhaseChange(targetPhase);
     }
@@ -186,6 +287,8 @@ export function ParentGamePostWinFlow({
     postGame.parentPhase,
     phase,
     onPhaseChange,
+    openCompletionAfterPrefetch,
+    parentId,
   ]);
 
   useEffect(() => {
@@ -212,12 +315,11 @@ export function ParentGamePostWinFlow({
   useEffect(() => {
     if (syncEnabled) return;
     if (phase !== 'waitingDoriSelfie') return;
-    const t = window.setTimeout(
-      () => onPhaseChange('onboardingComplete'),
-      PARENT_POST_GAME_WAIT_DORI_SELFIE_MS
-    );
+    const t = window.setTimeout(() => {
+      openCompletionAfterPrefetch();
+    }, PARENT_POST_GAME_WAIT_DORI_SELFIE_MS);
     return () => window.clearTimeout(t);
-  }, [phase, onPhaseChange, syncEnabled]);
+  }, [phase, syncEnabled, openCompletionAfterPrefetch]);
 
   const goToPostChangeWaiting = useCallback(
     (changeText: string) => {
@@ -253,25 +355,35 @@ export function ParentGamePostWinFlow({
     void finishParentOnboardingAndGoToDashboard(router, { subscription: true });
   }, [router, onFlowComplete]);
 
-  if (phase === 'onboardingComplete') {
+  if (phase === 'onboardingComplete' && agreementImageUrl !== undefined) {
     return (
       <OnboardingFunnelStepSlot stepKey="parentOnboardingComplete" clipOverflow={false}>
-        <ParentOnboardingCompletionStep onContinue={handleCompletionContinue} />
+        <ParentOnboardingCompletionStep
+          agreementImageUrl={agreementImageUrl}
+          onContinue={handleCompletionContinue}
+        />
       </OnboardingFunnelStepSlot>
     );
   }
 
   if (
+    phase === 'postWinCoop' ||
+    phase === 'postWinWalls' ||
     phase === 'waitingChildChange' ||
     phase === 'waitingAdditionalChangeApproval' ||
-    phase === 'waitingDoriSelfie'
+    phase === 'waitingDoriSelfie' ||
+    (phase === 'onboardingComplete' && agreementImageUrl === undefined)
   ) {
     const headline =
-      phase === 'waitingChildChange'
-        ? parentWaitingChildChangeHeadline(childName, childGender)
-        : phase === 'waitingAdditionalChangeApproval'
-          ? parentWaitingAdditionalChangeApprovalHeadline(childName, childGender)
-          : PARENT_WAITING_DORI_SELFIE_HEADLINE;
+      phase === 'postWinCoop'
+        ? parentPostWinCoopHeadline(childName, parentGender)
+        : phase === 'postWinWalls'
+          ? parentPostWinWallsHeadline(childName)
+          : phase === 'waitingChildChange'
+            ? parentWaitingChildChangeHeadline(childName, childGender)
+            : phase === 'waitingAdditionalChangeApproval'
+              ? parentWaitingAdditionalChangeApprovalHeadline(childName, childGender)
+              : PARENT_WAITING_DORI_SELFIE_HEADLINE;
 
     return (
       <>
@@ -292,6 +404,21 @@ export function ParentGamePostWinFlow({
         ) : null}
         <OnboardingGridLayer className="!z-[15]" />
         <OnboardingWaitingScreenShell skipMintGlow staticLayout zIndex={20}>
+          {phase === 'postWinWalls' ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={PARENT_POST_WIN_WALLS_IDEA_ICON}
+              alt=""
+              className="pointer-events-none absolute z-[25]"
+              style={{
+                top: wallsIdeaTopPx,
+                left: PARENT_POST_WIN_WALLS_IDEA_LEFT_PX,
+                width: PARENT_POST_WIN_WALLS_IDEA_SIZE_PX,
+                height: PARENT_POST_WIN_WALLS_IDEA_SIZE_PX,
+              }}
+              decoding="async"
+            />
+          ) : null}
           <OnboardingWaitingCenterContent
             headline={headline}
             ariaLabel={headline}

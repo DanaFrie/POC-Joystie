@@ -1,7 +1,7 @@
 /**
  * RTDB parent post-game milestones — child subscribes while on suggested-change screens.
  */
-import { ref, onValue, update, get, type Unsubscribe } from 'firebase/database';
+import { ref, onValue, update, get, remove, type Unsubscribe } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { getCurrentUserId } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
@@ -41,6 +41,14 @@ export async function resetOnboardingParentProgress(parentId: string): Promise<v
     updatedAt: new Date().toISOString(),
   });
   logger.log('reset', { parentId });
+}
+
+/** Drop parent funnel RTDB after onboarding completes. */
+export async function removeOnboardingParentProgress(parentId: string): Promise<void> {
+  await assertParentProgressWriteAuth(parentId);
+  const db = await getDatabaseInstance();
+  await remove(ref(db, pathFor(parentId)));
+  logger.log('remove', { parentId });
 }
 
 export async function publishOnboardingParentProgress(

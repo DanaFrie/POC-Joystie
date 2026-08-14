@@ -10,7 +10,10 @@ import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContex
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import { CHILD_DORI_REVEALED } from '@/constants/child-onboarding-layout';
 
-/** Screen 6 — Figma 13656:6594. Dori revealed after egg hatch. */
+/**
+ * Post–egg hatch — Dori animation + combined thank-you / 3-missions bubble, then game.
+ * Merges former screens 6 + 8 (Figma 13656).
+ */
 export function ChildDoriRevealedStep({
   childName,
   onContinue,
@@ -31,7 +34,11 @@ export function ChildDoriRevealedStep({
   }, []);
 
   return (
-    <FunnelStepRoot fitViewport aria-label="דורי מתעורר" className="overflow-hidden bg-transparent">
+    <FunnelStepRoot
+      fitViewport
+      aria-label="דורי מתעורר — שלוש משימות"
+      className="overflow-hidden bg-transparent"
+    >
       <OnboardingMintGlow />
 
       <ChildSpeechBubble
@@ -42,12 +49,28 @@ export function ChildDoriRevealedStep({
         tailPosition="bottom"
         paddingTop={bubble.paddingTop}
         paddingBottom={bubble.paddingBottom}
-        appearance={{ gap: 0 }}
+        appearance={{ gap: bubble.contentGap }}
       >
-        <p className="w-full text-center font-simpler text-[24px] font-normal leading-[1.25] tracking-[-0.36px] text-white">
-          {`אין עליך ${childName}!`}
-          <br />
-          <span className="font-black">תודה שהערת אותי!</span>
+        <p
+          className="w-full text-center font-simpler font-normal text-white"
+          style={{
+            fontSize: 24,
+            lineHeight: '135%',
+            letterSpacing: '-0.72px',
+          }}
+        >
+          {`תודה שהערת אותי, ${childName}!`}
+        </p>
+        <p
+          className="w-full text-center font-simpler font-black text-white"
+          style={{
+            fontSize: 24,
+            fontWeight: 800,
+            lineHeight: '110%',
+            letterSpacing: '-0.72px',
+          }}
+        >
+          כדי לצאת לדרך, עלינו לעבור יחד 3 משימות!
         </p>
       </ChildSpeechBubble>
 

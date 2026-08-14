@@ -15,7 +15,8 @@ import {
   FunnelStepRoot,
   FunnelStepSection,
 } from '@/components/ui/funnel-layout';
-import { useFunnelBleedBarStyle, useFunnelFullBleed, useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
+import { useSelfieCoverLayout } from '@/components/onboarding/child/useSelfieCoverLayout';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import {
   CHILD_SELFIE_CAPTURE_PREVIEW,
@@ -58,15 +59,22 @@ function SelfieBlurredHole({
 }
 
 function ChildSelfieStaticBackdrop() {
-  const coverStyle = useFunnelBleedBarStyle(0);
+  const { coverStyle, artboardStyle } = useSelfieCoverLayout();
   return (
-    <OnboardingLazyImage
-      src={CHILD_ONBOARDING_ASSETS.castleDoriSelfie}
-      alt=""
-      className="pointer-events-none absolute z-0 object-cover"
-      style={{ ...coverStyle, objectPosition: 'center center' }}
-      priority
-    />
+    <div
+      className="pointer-events-none absolute z-0 overflow-hidden"
+      style={coverStyle}
+      aria-hidden
+    >
+      <div className="relative" style={artboardStyle}>
+        <OnboardingLazyImage
+          src={CHILD_ONBOARDING_ASSETS.castleDoriSelfie}
+          alt=""
+          className="absolute inset-0 size-full object-cover object-center"
+          priority
+        />
+      </div>
+    </div>
   );
 }
 
@@ -95,7 +103,7 @@ export function ChildSelfiePatternStep({
 }: ChildSelfiePatternStepProps) {
   const layout = CHILD_SELFIE_PATTERN;
   const previewTiming = CHILD_SELFIE_CAPTURE_PREVIEW;
-  const fullBleedStyle = useFunnelFullBleed();
+  const { coverStyle, artboardStyle } = useSelfieCoverLayout();
   const { usableCanvasHeightPx } = useFunnelViewportMetrics();
   const scale = usableCanvasHeightPx / 812;
   const parentLabel = resolveParentCourtLabel(parentGender, parentName);
@@ -135,7 +143,7 @@ export function ChildSelfiePatternStep({
   const parentBadge = layout.parentBadge;
 
   const badgeLayerStyle: CSSProperties = {
-    ...fullBleedStyle,
+    ...coverStyle,
     zIndex: 20,
   };
 
@@ -211,8 +219,12 @@ export function ChildSelfiePatternStep({
   }, [capturing, onFacesReady, releaseCamera, useLiveCamera, videoRef]);
 
   return (
-    <FunnelStepRoot fitViewport className="overflow-hidden bg-v03-green-900" aria-label="סלפי עם דורי">
-      <div className="pointer-events-none absolute z-0 bg-v03-green-900" style={fullBleedStyle} aria-hidden />
+    <FunnelStepRoot
+      fillViewport
+      className="overflow-hidden bg-v03-green-900"
+      aria-label="סלפי עם דורי"
+    >
+      <div className="pointer-events-none absolute z-0 bg-v03-green-900" style={coverStyle} aria-hidden />
 
       <ChildSelfieStaticBackdrop />
 
@@ -253,8 +265,8 @@ export function ChildSelfiePatternStep({
       />
 
       {showBlurredHoles ? (
-        <div className="pointer-events-none absolute z-[15]" style={fullBleedStyle} aria-hidden>
-          <div className="relative" style={{ width: 375, height: 812 }}>
+        <div className="pointer-events-none absolute z-[15]" style={coverStyle} aria-hidden>
+          <div className="relative" style={artboardStyle}>
             <SelfieBlurredHole hole={parentHole} blurPx={blurPx} strokePx={strokePx} />
             <SelfieBlurredHole hole={childHole} blurPx={blurPx} strokePx={strokePx} />
           </div>
@@ -262,7 +274,7 @@ export function ChildSelfiePatternStep({
       ) : null}
 
       <div className="pointer-events-none absolute" style={badgeLayerStyle}>
-        <div className="relative" style={{ width: 375, height: 812 }}>
+        <div className="relative" style={artboardStyle}>
           <span
             className="inline-flex items-center justify-center bg-v03-green-700"
             style={{
@@ -313,7 +325,7 @@ export function ChildSelfiePatternStep({
 
       {useLiveCamera && !previewUrls ? (
         <FunnelStepForeground
-          fitViewport
+          fillViewport
           distribution="between"
           padTopPx={0}
           padBottomPx={Math.max(24, Math.round(34 * scale))}

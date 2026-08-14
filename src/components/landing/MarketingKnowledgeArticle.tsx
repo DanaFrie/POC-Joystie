@@ -3,7 +3,28 @@ import type { LandingBlogBlock, LandingBlogPost } from '@/constants/landing-mark
 import { MarketingNav } from '@/components/landing/MarketingNav';
 import { MarketingFooter } from '@/components/landing/MarketingFooter';
 
-function ArticleBlocks({ blocks }: { blocks: readonly LandingBlogBlock[] }) {
+function ArticleFigure({ src }: { src: string }) {
+  return (
+    <div className="flex justify-center py-2">
+      <Image
+        src={src}
+        alt=""
+        width={1600}
+        height={1200}
+        className="h-auto w-full max-w-[420px] rounded-[18px] md:w-1/2 md:max-w-none"
+        sizes="(max-width: 767px) 100vw, 410px"
+      />
+    </div>
+  );
+}
+
+function ArticleBlocks({
+  blocks,
+  figureSrc,
+}: {
+  blocks: readonly LandingBlogBlock[];
+  figureSrc: string;
+}) {
   return (
     <div className="space-y-5 text-right font-rubik text-base leading-[1.55] tracking-[-0.2px] text-[#1a2b2f] md:space-y-6 md:text-[18px] md:leading-[1.5]">
       {blocks.map((block, i) => {
@@ -28,6 +49,9 @@ function ArticleBlocks({ blocks }: { blocks: readonly LandingBlogBlock[] }) {
               ))}
             </ol>
           );
+        }
+        if (block.type === 'figure') {
+          return <ArticleFigure key={i} src={figureSrc} />;
         }
         return (
           <div key={i} className="space-y-6 py-2">
@@ -92,19 +116,21 @@ export function MarketingKnowledgeArticle({ post }: { post: LandingBlogPost }) {
             </div>
           </div>
 
-          <div className="mb-8 flex justify-center md:mb-12">
-            <Image
-              src={post.image}
-              alt=""
-              width={1600}
-              height={1200}
-              priority
-              className="h-auto w-full md:w-1/2"
-              sizes="(max-width: 767px) 100vw, 50vw"
-            />
-          </div>
+          {post.thumb ? (
+            <div className="mb-8 flex justify-center md:mb-12">
+              <Image
+                src={post.thumb}
+                alt=""
+                width={800}
+                height={640}
+                priority
+                className="h-auto w-full max-w-[420px] rounded-[18px] md:w-1/2 md:max-w-none"
+                sizes="(max-width: 767px) 100vw, 410px"
+              />
+            </div>
+          ) : null}
 
-          {post.body ? <ArticleBlocks blocks={post.body} /> : null}
+          {post.body ? <ArticleBlocks blocks={post.body} figureSrc={post.image} /> : null}
         </main>
 
         {/* Full-bleed footer — same max-w-[1786px] as about (not capped at article column) */}

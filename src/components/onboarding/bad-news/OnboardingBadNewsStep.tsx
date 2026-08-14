@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import { CumulativeScreenTimeCard } from '@/components/onboarding/bad-news/CumulativeScreenTimeCard';
 import { ChildStoryProgress } from '@/components/onboarding/bad-news/ChildStoryProgress';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
   ONBOARDING_BAD_NEWS_HERO_FALLBACK,
   ONBOARDING_BAD_NEWS_HERO_IMAGE,
 } from '@/constants/onboarding-figma';
+import { getFunnelStackedFooterShellHeightPx } from '@/constants/funnel-vertical-layout';
+import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
   getChildCumulativeProjections,
   type ChildCumulativeProjection,
@@ -22,11 +25,37 @@ const CARD_FADE_MS = 420;
 /** After staggered reveal enters, start the story timer. */
 const STORY_START_MS = 600 + 720 + 200;
 
+/** Figma @ 812 — gap between copy block and kids report. */
+const COPY_REPORT_GAP_MAX_PX = 65;
+/** Floor so short viewports still separate the two sections. */
+const COPY_REPORT_GAP_MIN_PX = 20;
+const TOP_PAD_MAX_PX = 30;
+const TOP_PAD_MIN_PX = 10;
+const HERO_MAX_PX = 150;
+const HERO_MIN_PX = 112;
+
 /**
  * Figma Screen 7 (12703:42214) — bad-news facts with story loader between
- * children; fills the 100vh main band above the pinned footer.
+ * children. Fills the 100vh main band above the pinned footer; kids report
+ * stacks under the copy. On short viewports, vertical gaps (and hero) shrink
+ * so the stack still fits without clipping.
  */
 export function OnboardingBadNewsStep() {
+  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
+  const footerH = getFunnelStackedFooterShellHeightPx();
+  const mainBandPx = Math.max(1, usableCanvasHeightPx - footerH);
+  const fullMainBandPx = V03_SCREEN_HEIGHT - footerH;
+  const heightScale = Math.min(1, mainBandPx / fullMainBandPx);
+  const topPadPx = Math.max(TOP_PAD_MIN_PX, Math.round(TOP_PAD_MAX_PX * heightScale));
+  const copyReportGapPx = Math.max(
+    COPY_REPORT_GAP_MIN_PX,
+    Math.round(COPY_REPORT_GAP_MAX_PX * heightScale)
+  );
+  const heroSizePx = Math.max(HERO_MIN_PX, Math.round(HERO_MAX_PX * heightScale));
+  const heroCopyGapPx = Math.max(4, Math.round(9 * heightScale));
+  const headlineBodyGapPx = Math.max(8, Math.round(16 * heightScale));
+  const reportStackGapPx = Math.max(8, Math.round(15 * heightScale));
+
   const [heroSrc, setHeroSrc] = useState<string>(ONBOARDING_BAD_NEWS_HERO_IMAGE);
   const [children, setChildren] = useState<ChildCumulativeProjection[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -92,18 +121,25 @@ export function OnboardingBadNewsStep() {
 
   return (
     <section
-      className="flex h-full min-h-0 w-full flex-col items-center px-v03-gutter"
+      className="flex h-full min-h-0 w-full flex-1 flex-col items-center px-v03-gutter"
       aria-label="החדשות הפחות טובות"
     >
-      <div className="flex h-full min-h-0 w-full max-w-[337px] flex-1 flex-col items-center justify-between gap-[65px] pb-1 pt-[30px]">
-        <div className="flex w-full max-w-v03-content shrink-0 flex-col items-center gap-[9px]">
+      <div
+        className="flex h-full min-h-0 w-full max-w-[337px] flex-1 flex-col items-center pb-1"
+        style={{ paddingTop: topPadPx }}
+      >
+        <div
+          className="flex w-full max-w-v03-content shrink-0 flex-col items-center"
+          style={{ gap: heroCopyGapPx }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={heroSrc}
             alt=""
-            width={150}
-            height={150}
-            className="v03-funnel-enter-reveal-0 size-[150px] shrink-0 object-contain"
+            width={HERO_MAX_PX}
+            height={HERO_MAX_PX}
+            className="v03-funnel-enter-reveal-0 shrink-0 object-contain"
+            style={{ width: heroSizePx, height: heroSizePx }}
             onError={() => {
               if (heroSrc !== ONBOARDING_BAD_NEWS_HERO_FALLBACK) {
                 setHeroSrc(ONBOARDING_BAD_NEWS_HERO_FALLBACK);
@@ -111,7 +147,10 @@ export function OnboardingBadNewsStep() {
             }}
           />
 
-          <div className="flex w-full flex-col items-center gap-4 text-center">
+          <div
+            className="flex w-full flex-col items-center text-center"
+            style={{ gap: headlineBodyGapPx }}
+          >
             <h1 className={`v03-funnel-enter-reveal-1 ${REVEAL_HEADLINE_CLASS}`}>
               החדשות הפחות טובות הן:
             </h1>
@@ -124,7 +163,22 @@ export function OnboardingBadNewsStep() {
           </div>
         </div>
 
-        <div className="flex w-full shrink-0 flex-col items-center gap-[15px]">
+        {/* Prefer Figma 65px; shrink on short main bands so report stays in 100vh. */}
+        <div
+          className="w-full"
+          style={{
+            height: copyReportGapPx,
+            minHeight: COPY_REPORT_GAP_MIN_PX,
+            maxHeight: COPY_REPORT_GAP_MAX_PX,
+            flexShrink: 1,
+          }}
+          aria-hidden
+        />
+
+        <div
+          className="flex w-full shrink-0 flex-col items-center"
+          style={{ gap: reportStackGapPx }}
+        >
           <div className="flex w-full flex-col items-center gap-[5px]">
             <p className="v03-funnel-enter-reveal-3 w-full text-center font-simpler text-[20px] font-normal leading-[1.2] tracking-[-0.4px] text-[#6d6d6d]">
               לפי החישוב, עד גיל 18:
@@ -151,6 +205,9 @@ export function OnboardingBadNewsStep() {
             />
           </div>
         </div>
+
+        {/* Leftover main-band height on tall phones — keeps CTA pinned via footer. */}
+        <div className="min-h-0 w-full flex-1" aria-hidden />
       </div>
     </section>
   );

@@ -146,6 +146,8 @@ export function useOnboardingGame({
   useEffect(() => {
     if (role !== 'child' || missionPhase || roomIdParam) return;
     if (!parentId) {
+      // Invite resolve supplies parentId on `/game/child?invite=` — wait, don't fail.
+      if (inviteId) return;
       setResolveError('קישור לא תקין — חסר מזהה הורה');
       return;
     }
@@ -257,10 +259,10 @@ export function useOnboardingGame({
     if (role === 'parent') {
       sessionStorage.setItem(ONBOARDING_PARENT_GAME_WON_KEY, '1');
       sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'parentPostGame');
-      router.push('/onboarding');
+      router.push('/onboarding', { scroll: false });
     } else {
       sessionStorage.setItem(ONBOARDING_CHILD_GAME_WON_KEY, '1');
-      router.push('/onboarding/child');
+      router.push('/onboarding/child', { scroll: false });
     }
   }, [role, router]);
 

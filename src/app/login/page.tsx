@@ -116,42 +116,26 @@ function LoginPageContent() {
     [completeOAuthLogin]
   );
 
-  const checkUserAndRedirect = useCallback(async () => {
-    try {
-      const userId = await getCurrentUserIdAsync();
-      if (!userId) {
-        router.push('/login');
-        return;
-      }
-
-      await finishLogin(userId);
-    } catch (error) {
-      logger.error('Error checking user:', error);
-      router.push('/onboarding');
-    }
-  }, [finishLogin, router]);
-
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      if (!isLoggedIn()) {
-        return;
-      }
-
       try {
-        const { isAuthenticated } = await import('@/utils/auth');
-        const authenticated = await isAuthenticated();
-        if (authenticated) {
-          await checkUserAndRedirect();
-        } else {
-          logger.warn('localStorage session exists but Firebase Auth not authenticated');
-          clearSession();
-          try {
-            const { signOutUser } = await import('@/utils/auth');
-            await signOutUser();
-          } catch (_) {
-            // Ignore sign-out errors
+        // Prefer Auth restore over localStorage-only session (avoids false "logged out").
+        const userId = await getCurrentUserIdAsync();
+        if (!userId) {
+          if (isLoggedIn()) {
+            logger.warn('localStorage session exists but Firebase Auth not authenticated');
+            clearSession();
+            try {
+              const { signOutUser } = await import('@/utils/auth');
+              await signOutUser();
+            } catch (_) {
+              // Ignore sign-out errors
+            }
           }
+          return;
         }
+
+        await finishLogin(userId);
       } catch (error) {
         logger.error('Error checking auth:', error);
         clearSession();
@@ -164,8 +148,8 @@ function LoginPageContent() {
       }
     };
 
-    checkAuthAndRedirect();
-  }, [checkUserAndRedirect]);
+    void checkAuthAndRedirect();
+  }, [finishLogin]);
 
   useEffect(() => {
     primeOAuthRedirectCapture();

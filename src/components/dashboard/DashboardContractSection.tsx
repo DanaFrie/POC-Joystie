@@ -52,7 +52,6 @@ export function DashboardContractSection({
 
   const isPending = weeklyUpload?.status === 'pending';
   const hasShareCard = Boolean(shareCardStored || shareImageUrl);
-  const imageUrl = resolvedUrl || PARENT_DASHBOARD_ASSETS.agreementThumb;
 
   const sectionTitle =
     variant === 'child'
@@ -196,6 +195,20 @@ export function DashboardContractSection({
         }}
       >
         <div className="flex w-full items-start justify-center gap-[15px]">
+          <div
+            className="relative h-[96.64px] w-[85px] shrink-0 overflow-hidden rounded-[12.44px]"
+            style={{ outline: '0.62px solid white', outlineOffset: -0.62 }}
+          >
+            <Image
+              src={PARENT_DASHBOARD_ASSETS.agreementThumb}
+              alt=""
+              fill
+              className="object-contain p-2"
+              sizes="85px"
+              unoptimized
+            />
+          </div>
+
           <div className="flex flex-1 flex-col items-start gap-3">
             <button
               type="button"
@@ -235,40 +248,6 @@ export function DashboardContractSection({
                 </button>
               </div>
             )}
-          </div>
-
-          <div
-            className="relative h-[96.64px] w-[85px] shrink-0 overflow-hidden rounded-[12.44px]"
-            style={{ outline: '0.62px solid white', outlineOffset: -0.62 }}
-          >
-            <Image
-              src={imageUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="85px"
-              unoptimized
-            />
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(0, 0, 0, 0) 15%, rgba(0, 0, 0, 0.40) 85%)',
-              }}
-              aria-hidden
-            />
-            <Image
-              src={PARENT_DASHBOARD_ASSETS.agreementThumb}
-              alt=""
-              width={43}
-              height={48}
-              className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 object-contain"
-              style={{
-                width: '50%',
-                height: '50%',
-              }}
-              unoptimized
-            />
           </div>
         </div>
       </div>

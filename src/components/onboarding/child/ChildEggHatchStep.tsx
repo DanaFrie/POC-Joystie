@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
 import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import {
   useFunnelHeroBleedInsets,
@@ -48,7 +47,6 @@ const eggHatchPlaybackRate: SegmentPlaybackRateFn = (segmentIndex, segmentCount)
 type ChildEggHatchStepProps = {
   childGender?: 'boy' | 'girl';
   onComplete: () => void;
-  onBack?: () => void;
 };
 
 function eggTapHint(gender: 'boy' | 'girl') {
@@ -90,7 +88,6 @@ const eggHatchSegmentRange: SegmentRangeFn = (segmentIndex, segmentCount, durati
 export function ChildEggHatchStep({
   childGender = 'boy',
   onComplete,
-  onBack,
 }: ChildEggHatchStepProps) {
   const intro = CHILD_EGG_INTRO_FRAME;
   const eggFrame = CHILD_EGG_VIDEO_FRAME;
@@ -143,10 +140,6 @@ export function ChildEggHatchStep({
 
   return (
     <FunnelStepRoot fitViewport aria-label="ביצת הדרקון" className="overflow-hidden bg-transparent">
-      {onBack ? (
-        <OnboardingBackButton tone="light" onClick={onBack} />
-      ) : null}
-
       {/* Egg video — soft oval mask drops the white square plate from the MP4 */}
       <div
         className="absolute z-[2] overflow-hidden"

@@ -1,5 +1,4 @@
 import { V03_SCREEN_WIDTH } from '@/constants/v03-screen';
-import { ONBOARDING_COMPLETION } from '@/constants/onboarding-completion-layout';
 
 function centerX(width: number): number {
   return (V03_SCREEN_WIDTH - width) / 2;
@@ -122,7 +121,7 @@ export const CHILD_RUN_TO_CASTLE = {
     backdropBlur: 11.409310340881348,
     boxShadow: '0 5.493px 5.493px rgba(0, 0, 0, 0.25)',
   },
-  glowButton: { left: 263, top: 256 },
+  glowButton: { left: 255, top: 256 },
   uiFadeMs: 500,
   castleDissolveMs: 2_400,
   headerFadeMs: 500,
@@ -155,17 +154,21 @@ export const CHILD_RUN_TO_CASTLE = {
 
 /** Shared slider card chrome — Figma Frame 1597882555. */
 export const CHILD_CASTLE_SLIDER_CARD_STYLE = {
-  paddingTop: 16.7,
-  paddingBottom: 12.99,
-  paddingX: 20.89,
+  width: 229,
+  height: 94,
+  rotateDeg: -1.632,
+  paddingTop: 16,
+  paddingBottom: 16,
+  paddingLeft: 12,
+  paddingRight: 12,
   borderRadius: 16,
   border: '1px solid #FFF',
-  background: 'rgba(255, 255, 255, 0.05)',
-  boxShadow: '0 5.493px 5.493px rgba(0, 0, 0, 0.25)',
+  background: 'rgba(0, 0, 0, 0.05)',
+  boxShadow: '0 5.493px 5.493px 0 rgba(0, 0, 0, 0.25)',
   backdropBlur: 11.409310340881348,
-  contentGap: 10.32,
-  textPaddingX: 10.32,
-  textGap: 2.75,
+  contentGap: 0,
+  textPaddingX: 0,
+  textGap: 0,
   glow: {
     width: 77.671,
     height: 77.671,
@@ -184,10 +187,10 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
     placeTop: 142,
     placeLeft: 119 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: 0,
-    width: 229.03,
-    height: 82.58,
-    rotateDeg: -2,
-    titleStyle: { fontSize: 16.52, lineHeight: 20.65, minHeight: 46.02 },
+    width: CHILD_CASTLE_SLIDER_CARD_STYLE.width,
+    height: CHILD_CASTLE_SLIDER_CARD_STYLE.height,
+    rotateDeg: CHILD_CASTLE_SLIDER_CARD_STYLE.rotateDeg,
+    titleStyle: { fontSize: 16, lineHeight: 20, minHeight: 0 },
   },
   {
     id: 'save-money',
@@ -195,10 +198,10 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
     placeTop: 239.1729,
     placeLeft: 18.2168 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: -1.06,
-    width: 227.7,
-    height: 78.4,
-    rotateDeg: -2,
-    titleStyle: { fontSize: 16.52, lineHeight: 20.65, minHeight: 42.94 },
+    width: CHILD_CASTLE_SLIDER_CARD_STYLE.width,
+    height: CHILD_CASTLE_SLIDER_CARD_STYLE.height,
+    rotateDeg: CHILD_CASTLE_SLIDER_CARD_STYLE.rotateDeg,
+    titleStyle: { fontSize: 16, lineHeight: 20, minHeight: 0 },
   },
   {
     id: 'quality-time',
@@ -206,10 +209,10 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
     placeTop: 339.9998,
     placeLeft: 107 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: 2.29,
-    width: 231.63,
-    height: 91.5,
-    rotateDeg: -2,
-    titleStyle: { fontSize: 16, lineHeight: 20, minHeight: 52.59 },
+    width: CHILD_CASTLE_SLIDER_CARD_STYLE.width,
+    height: CHILD_CASTLE_SLIDER_CARD_STYLE.height,
+    rotateDeg: CHILD_CASTLE_SLIDER_CARD_STYLE.rotateDeg,
+    titleStyle: { fontSize: 16, lineHeight: 20, minHeight: 0 },
   },
   {
     id: 'no-phone-bedroom',
@@ -217,10 +220,10 @@ export const CHILD_CASTLE_INTERIOR_CARDS = [
     placeTop: 475,
     placeLeft: 17 + CHILD_RUN_TO_CASTLE_SHIFT_X + CHILD_CASTLE_CARD_EXTRA_SHIFT_X,
     placeRotateDeg: -7.36,
-    width: 233.42,
-    height: 98.41,
-    rotateDeg: -2,
-    titleStyle: { fontSize: 16.52, lineHeight: 20.65, minHeight: 57.71 },
+    width: CHILD_CASTLE_SLIDER_CARD_STYLE.width,
+    height: CHILD_CASTLE_SLIDER_CARD_STYLE.height,
+    rotateDeg: CHILD_CASTLE_SLIDER_CARD_STYLE.rotateDeg,
+    titleStyle: { fontSize: 16, lineHeight: 20, minHeight: 0 },
   },
 ] as const;
 
@@ -238,7 +241,7 @@ export const CHILD_CASTLE_FIRST_CARD = {
   rotateDeg: CHILD_CASTLE_INTERIOR_CARDS[1].rotateDeg,
   paddingTop: CHILD_CASTLE_SLIDER_CARD_STYLE.paddingTop,
   paddingBottom: CHILD_CASTLE_SLIDER_CARD_STYLE.paddingBottom,
-  paddingX: CHILD_CASTLE_SLIDER_CARD_STYLE.paddingX,
+  paddingX: CHILD_CASTLE_SLIDER_CARD_STYLE.paddingLeft,
   borderRadius: CHILD_CASTLE_SLIDER_CARD_STYLE.borderRadius,
   outlineWidth: 1,
   boxShadow: CHILD_CASTLE_SLIDER_CARD_STYLE.boxShadow,
@@ -474,7 +477,11 @@ export const CHILD_CONTINUE_FOOTER_CLIP_HEIGHT = 108;
 
 export const CHILD_WAIT_PARENT_APPROVAL_MS = 6_000;
 /** Confetti GIF on king screen — advance when playback ends (tune to asset). */
-export const CHILD_KING_CONFETTI_MS = 2_800;
+export const CHILD_KING_CONFETTI_LOOP_MS = 3_010;
+export const CHILD_KING_CONFETTI_LOOPS = 3;
+/** Wait for three purple-confetti GIF loops before leaving king screen. */
+export const CHILD_KING_CONFETTI_MS =
+  CHILD_KING_CONFETTI_LOOP_MS * CHILD_KING_CONFETTI_LOOPS;
 
 export type ChildPostGameEllipseVariant = 'upper' | 'lowerLeft' | 'none';
 
@@ -597,16 +604,21 @@ export const CHILD_CONTRACT_CELEBRATION = {
   },
 } as const;
 
-/** Mission 3 selfie intro — same content frame as parent onboarding completion. */
+/** Mission 3 selfie intro — content frame (independent of Screen 66 card layout). */
 export const CHILD_MISSION_THREE_SELFIE = {
-  content: ONBOARDING_COMPLETION.content,
-  header: ONBOARDING_COMPLETION.header,
+  content: { top: 117, width: 327, gap: 17 },
+  header: { gap: 24 },
   badge: { paddingX: 19, paddingY: 10 },
   title: {
     fontSize: 40,
     lineHeight: 44,
   },
-  hero: ONBOARDING_COMPLETION.hero,
+  hero: {
+    width: 321.919,
+    height: 346,
+    imageSize: 321.919,
+    glowSize: 263.619,
+  },
   footer: {
     gap: 15,
     columnWidth: 332,

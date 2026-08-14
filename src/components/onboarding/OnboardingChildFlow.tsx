@@ -19,18 +19,9 @@ import { ChildMissionOneWinStep } from '@/components/onboarding/child/ChildMissi
 
 import { ChildMissionTwoIntroStep } from '@/components/onboarding/child/ChildMissionTwoIntroStep';
 
-import {
-  ChildMissionTwoChangeIntroStep,
-  ChildMissionTwoNotebookStep,
-} from '@/components/onboarding/child/ChildMissionTwoShellSteps';
-
 import { ChildRunToCastleStep } from '@/components/onboarding/child/ChildRunToCastleStep';
 
-import { ChildDoriMissionIntroStep } from '@/components/onboarding/child/ChildDoriMissionIntroStep';
-
 import { ChildDoriRevealedStep } from '@/components/onboarding/child/ChildDoriRevealedStep';
-
-import { ChildDoriTransitionStep } from '@/components/onboarding/child/ChildDoriTransitionStep';
 
 import { ChildEggHatchStep } from '@/components/onboarding/child/ChildEggHatchStep';
 
@@ -49,8 +40,6 @@ import {
 } from '@/components/onboarding/child/ChildKingdomPhaseStep';
 
 import { ChildWelcomeStep } from '@/components/onboarding/child/ChildWelcomeStep';
-
-import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
 
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 
@@ -77,14 +66,11 @@ import {
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
 
 import {
+  readPersistedChildAgreedChange,
   readPersistedChildFlowStep,
+  writePersistedChildAgreedChange,
   writePersistedChildFlowStep,
 } from '@/lib/onboarding/childFlowSession';
-
-import {
-  childReviewBackTone,
-  getChildReviewPreviousStep,
-} from '@/lib/onboarding/childFlowReviewNav';
 
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 
@@ -106,17 +92,9 @@ type PostEggPhase =
 
   | 'doriRevealed'
 
-  | 'doriTransition'
-
-  | 'doriMissionIntro'
-
   | 'missionOneWin'
 
   | 'missionTwoIntro'
-
-  | 'missionTwoDoriShell'
-
-  | 'missionTwoChangeIntro'
 
   | 'runToCastle'
 
@@ -153,11 +131,9 @@ function childFlowStepKey(step: ChildFlowStep): string {
   if (step === 'eggHatch') return 'eggHatch';
 
   if (step === 'eggTransition') return 'eggTransition';
-  if (step === 'doriMissionIntro') return 'doriMissionIntro';
+  if (step === 'doriRevealed') return 'doriRevealed';
   if (step === 'missionOneWin') return 'missionOneWin';
   if (step === 'missionTwoIntro') return 'missionTwoIntro';
-  if (step === 'missionTwoDoriShell') return 'missionTwoDoriShell';
-  if (step === 'missionTwoChangeIntro') return 'missionTwoChangeIntro';
   if (step === 'runToCastle') return 'runToCastle';
   if (step === 'changeKing') return 'changeKing';
   if (step === 'waitingParentApproval') return 'waitingParentApproval';
@@ -357,6 +333,14 @@ export function OnboardingChildFlow() {
 
 
   useEffect(() => {
+    if (postGame.agreedChangeText) {
+      writePersistedChildAgreedChange(postGame.agreedChangeText);
+    } else if (postGame.childChangeText) {
+      writePersistedChildAgreedChange(postGame.childChangeText);
+    }
+  }, [postGame.agreedChangeText, postGame.childChangeText]);
+
+  useEffect(() => {
     writePersistedChildFlowStep(step);
   }, [step]);
 
@@ -375,7 +359,7 @@ export function OnboardingChildFlow() {
   }, [bonding?.inviteId, bonding?.parentId, router]);
 
   useEffect(() => {
-    if (step !== 'doriMissionIntro' && step !== 'doriTransition') return;
+    if (step !== 'doriRevealed') return;
     const inviteId =
       bonding?.inviteId ?? new URLSearchParams(window.location.search).get('invite');
     router.prefetch(inviteId ? buildGameChildUrlWithInvite(inviteId) : '/game/child');
@@ -403,22 +387,9 @@ export function OnboardingChildFlow() {
 
 
 
-  const reviewPreviousStep = getChildReviewPreviousStep(step);
-
-  const handleReviewBack = useCallback(() => {
-    const previous = getChildReviewPreviousStep(step);
-    if (previous) setStep(previous as ChildFlowStep);
-  }, [step]);
-
-
-
   return (
 
     <>
-
-      {reviewPreviousStep ? (
-        <OnboardingBackButton tone={childReviewBackTone(step)} onClick={handleReviewBack} />
-      ) : null}
 
       {isLightStep(step) ? (
         <ChildFunnelLightBackground whiteStopPercent={lightBackgroundWhiteStop(step)} />
@@ -485,31 +456,10 @@ export function OnboardingChildFlow() {
 
 
         {step === 'doriRevealed' ? (
-
           <ChildDoriRevealedStep
-
             childName={childName}
-
-            onContinue={() => setStep('doriTransition')}
-
+            onContinue={goToBallGame}
           />
-
-        ) : null}
-
-
-
-        {step === 'doriTransition' ? (
-
-          <ChildDoriTransitionStep onComplete={() => setStep('doriMissionIntro')} />
-
-        ) : null}
-
-
-
-        {step === 'doriMissionIntro' ? (
-
-          <ChildDoriMissionIntroStep onContinue={goToBallGame} />
-
         ) : null}
 
 
@@ -523,21 +473,7 @@ export function OnboardingChildFlow() {
 
         {step === 'missionTwoIntro' ? (
           <ChildMissionTwoIntroStep
-            parentName={parentName}
             parentGender={parentGender}
-            onContinue={() => setStep('missionTwoDoriShell')}
-          />
-        ) : null}
-
-        {step === 'missionTwoDoriShell' ? (
-          <ChildMissionTwoNotebookStep
-            childName={childName}
-            onContinue={() => setStep('missionTwoChangeIntro')}
-          />
-        ) : null}
-
-        {step === 'missionTwoChangeIntro' ? (
-          <ChildMissionTwoChangeIntroStep
             onContinue={() => setStep('runToCastle')}
           />
         ) : null}
@@ -547,9 +483,10 @@ export function OnboardingChildFlow() {
             childName={childName}
             childGender={childGender}
             onChangeConfirmed={(changeText) => {
+              writePersistedChildAgreedChange(changeText);
               void postGame.signalChangeSelected(changeText);
             }}
-            onContinue={() => setStep('waitingParentApproval')}
+            onContinue={() => setStep('changeKing')}
           />
         ) : null}
 
@@ -571,6 +508,9 @@ export function OnboardingChildFlow() {
             parentGender={parentGender}
             changeText={postGame.parentSuggestedChangeText}
             onAccept={() => {
+              if (postGame.agreedChangeText) {
+                writePersistedChildAgreedChange(postGame.agreedChangeText);
+              }
               void postGame.acceptParentChange();
             }}
             onDecline={() => {
@@ -600,7 +540,11 @@ export function OnboardingChildFlow() {
             parentName={parentName}
             parentGender={parentGender}
             parentId={parentId}
-            changeText={postGame.childChangeText}
+            changeText={
+              postGame.agreedChangeText ??
+              postGame.childChangeText ??
+              readPersistedChildAgreedChange()
+            }
             onShareReached={() => {
               if (parentId) {
                 void signalChildOnboardingMilestone(parentId, 'selfie_mission_done');

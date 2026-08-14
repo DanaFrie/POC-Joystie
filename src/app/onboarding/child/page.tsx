@@ -3,7 +3,7 @@
 import nextDynamic from 'next/dynamic';
 import { Suspense } from 'react';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
-import { ChildInvalidInviteStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
+import { ChildInviteAccessFailure } from '@/components/onboarding/child/ChildInvalidInviteStep';
 import { useChildBondingBootstrap } from '@/hooks/useChildBondingBootstrap';
 import { useChildInviteAccess } from '@/hooks/useChildInviteAccess';
 
@@ -26,31 +26,8 @@ function OnboardingChildPageInner() {
     return <FunnelRouteLoading />;
   }
 
-  if (access.status === 'invalid') {
-    return (
-      <ChildInvalidInviteStep
-        title="הקישור לא תקין"
-        detail="בקשו מההורה לשלוח את הלינק פעם נוספת"
-      />
-    );
-  }
-
-  if (access.status === 'expired') {
-    return (
-      <ChildInvalidInviteStep
-        title="הקישור פג תוקף"
-        detail="בקשו מההורה לשלוח את הלינק פעם נוספת"
-      />
-    );
-  }
-
-  if (access.status === 'missing') {
-    return (
-      <ChildInvalidInviteStep
-        title="הקישור לא תקין"
-        detail="בקשו מההורה לשלוח את הלינק פעם נוספת"
-      />
-    );
+  if (access.status !== 'ready') {
+    return <ChildInviteAccessFailure status={access.status} />;
   }
 
   return <OnboardingChildFlow />;

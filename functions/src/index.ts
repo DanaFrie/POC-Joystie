@@ -11,6 +11,7 @@ import {
   resolveBondingGameRoom,
   reportChildOnboardingMilestone,
   getChildOnboardingProgress,
+  consumeBondingInvite,
 } from './bonding/invites';
 import {
   createGameRoom,
@@ -48,6 +49,7 @@ export {
   resolveBondingGameRoom,
   reportChildOnboardingMilestone,
   getChildOnboardingProgress,
+  consumeBondingInvite,
   createGameRoom,
   joinGameRoom,
   getGameOnboardingStatus,

@@ -19,6 +19,8 @@ export function ChildDoriSpeechBubble({
 }: ChildDoriSpeechBubbleProps) {
   const speech = CHILD_COMPANION_PICK_FRAME.speechBubble;
   const s = scale;
+  const letterSpacing = `${speech.letterSpacing * s}px`;
+  const fontSize = speech.fontSize * s;
 
   return (
     <div
@@ -39,16 +41,22 @@ export function ChildDoriSpeechBubble({
       }}
     >
       <p
-        className="flex-[1_0_0] text-right font-simpler text-white"
+        className="min-w-0 flex-[1_0_0] text-right font-simpler text-white"
         style={{
-          fontSize: speech.fontSize * s,
-          letterSpacing: `${speech.letterSpacing * s}px`,
+          fontSize,
+          letterSpacing,
         }}
       >
         <span
-          className="font-normal"
+          className="font-simpler"
           style={{
-            lineHeight: `${speech.lineHeightRegular * 100}%`,
+            color: '#FFF',
+            textAlign: 'right',
+            fontSize,
+            fontStyle: 'normal',
+            fontWeight: 400,
+            lineHeight: '135%',
+            letterSpacing,
           }}
         >
           היי!{' '}
@@ -56,15 +64,21 @@ export function ChildDoriSpeechBubble({
         <span
           className="font-bold"
           style={{
-            lineHeight: `${speech.lineHeightBold * s}px`,
+            lineHeight: `${speech.lineHeightBold * 100}%`,
+            letterSpacing,
           }}
         >
           אני דורי הדרקון
         </span>
         <span
-          className="font-normal"
+          className="font-simpler"
           style={{
-            lineHeight: `${speech.lineHeightRegular * 100}%`,
+            color: '#FFF',
+            fontSize,
+            fontStyle: 'normal',
+            fontWeight: 400,
+            lineHeight: '135%',
+            letterSpacing,
           }}
         >
           {' '}

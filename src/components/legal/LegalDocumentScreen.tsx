@@ -29,7 +29,8 @@ export function LegalDocumentScreen({
   children,
 }: LegalDocumentScreenProps) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
+  /** Full text by default so `/terms` + `/privacy` page-scroll immediately. */
+  const [expanded, setExpanded] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
   useGrowFunnelCanvasHeight(rootRef, [expanded]);
 
@@ -40,7 +41,7 @@ export function LegalDocumentScreen({
     <div
       ref={rootRef}
       dir="rtl"
-      className="relative z-[10] w-full bg-v03-green-900 px-v03-gutter pb-8 v03-funnel-screen"
+      className="relative z-[10] w-full overflow-visible bg-v03-green-900 px-v03-gutter pb-8 v03-funnel-screen"
       style={{ paddingTop: contentTopPadPx, minHeight: '100%' }}
     >
       <FunnelMintEllipse />
@@ -57,12 +58,16 @@ export function LegalDocumentScreen({
             {updatedLabel}
           </p>
 
-          <div className="relative flex w-v03-content flex-col items-center gap-5 overflow-hidden rounded-[18px] border-[1.5px] border-white/25 bg-v03-green-900/40 px-5 py-[15px] backdrop-blur-[2px] v03-funnel-enter-2">
+          <div
+            className={`relative flex w-v03-content flex-col items-center gap-5 rounded-[18px] border-[1.5px] border-white/25 bg-v03-green-900/40 px-5 py-[15px] backdrop-blur-[2px] v03-funnel-enter-2 ${
+              expanded ? 'overflow-visible' : 'overflow-hidden'
+            }`}
+          >
             <p className="w-full text-center font-simpler text-[14px] font-normal leading-[17.5px] text-[#E3EDEA]">
               {intro}
             </p>
 
-            <div className="relative w-full">
+            <div className="relative w-full overflow-visible">
               {children(expanded)}
 
               {!expanded ? (

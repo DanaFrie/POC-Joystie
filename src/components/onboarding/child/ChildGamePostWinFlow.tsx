@@ -57,6 +57,7 @@ export function ChildGamePostWinFlow({
   setupBusy,
   childJoinBlocked,
   parentAsChildError,
+  setupError,
 }: ChildGamePostWinFlowProps) {
   const router = useRouter();
   const navigated = useRef(false);
@@ -72,7 +73,7 @@ export function ChildGamePostWinFlow({
     navigated.current = true;
     sessionStorage.setItem(ONBOARDING_CHILD_GAME_WON_KEY, '1');
     const path = `/onboarding/child${window.location.search}`;
-    router.push(path);
+    router.push(path, { scroll: false });
   }, [router]);
 
   useEffect(() => {
@@ -93,6 +94,13 @@ export function ChildGamePostWinFlow({
             <BallGameFunnelBackground />
             <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 px-6 text-center font-assistant text-white">
               <p>{parentAsChildError}</p>
+            </div>
+          </FunnelStepRoot>
+        ) : setupError ? (
+          <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
+            <BallGameFunnelBackground />
+            <div className="relative z-10 flex h-full flex-col items-center justify-center gap-4 px-6 text-center font-assistant text-white">
+              <p>{setupError}</p>
             </div>
           </FunnelStepRoot>
         ) : (

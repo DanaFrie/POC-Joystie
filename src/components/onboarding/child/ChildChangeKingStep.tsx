@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { ChildPostGameFunnelShell } from '@/components/onboarding/child/ChildPostGameFunnelShell';
 import {
@@ -40,10 +40,15 @@ export function ChildChangeKingStep({
   const heroSize = Math.round(layout.heroSize * Math.min(1, gapScale + 0.04));
   const titleSize = Math.max(32, Math.round(layout.title.fontSize * Math.min(1, gapScale + 0.05)));
 
+  const onConfettiEndRef = useRef(onConfettiEnd);
+  onConfettiEndRef.current = onConfettiEnd;
+
   useEffect(() => {
-    const timer = window.setTimeout(onConfettiEnd, CHILD_KING_CONFETTI_MS);
+    const timer = window.setTimeout(() => {
+      onConfettiEndRef.current();
+    }, CHILD_KING_CONFETTI_MS);
     return () => window.clearTimeout(timer);
-  }, [onConfettiEnd]);
+  }, []);
 
   return (
     <ChildPostGameFunnelShell ellipse="upper">

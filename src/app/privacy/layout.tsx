@@ -1,10 +1,6 @@
 import type { Metadata } from 'next';
 import { OnboardingFunnelRoot } from '@/components/onboarding/OnboardingFunnelRoot';
 import { FunnelViewport } from '@/components/ui/FunnelViewport';
-import {
-  FunnelHeroPortalMount,
-  FunnelStepContentLayer,
-} from '@/components/ui/FunnelHeroPortalMount';
 
 export const metadata: Metadata = {
   title: 'מדיניות פרטיות',
@@ -16,7 +12,7 @@ export const metadata: Metadata = {
   },
 };
 
-/** `/privacy` — same funnel chrome + desktop mobile-only gate as terms. */
+/** `/privacy` — same funnel chrome as help; overflow-visible so tall legal copy page-scrolls. */
 export default function PrivacyLayout({ children }: { children: React.ReactNode }) {
   return (
     <OnboardingFunnelRoot>
@@ -25,10 +21,7 @@ export default function PrivacyLayout({ children }: { children: React.ReactNode 
         scaleMode="scroll"
         className="font-simpler text-v03-text-on-dark"
       >
-        <div className="relative h-full w-full">
-          <FunnelHeroPortalMount />
-          <FunnelStepContentLayer>{children}</FunnelStepContentLayer>
-        </div>
+        <div className="relative min-h-full w-full overflow-visible">{children}</div>
       </FunnelViewport>
     </OnboardingFunnelRoot>
   );

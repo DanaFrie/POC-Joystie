@@ -1,26 +1,45 @@
 /** Parent onboarding completion — Figma 13057:16567 (Screen 66). */
 export const ONBOARDING_COMPLETION = {
-  content: { top: 117, width: 327, gap: 17 },
-  header: { gap: 24 },
-  check: { size: 49 },
+  /** Content column top on 812 canvas (Figma absolute Y). */
+  content: { top: 88, width: 327, gap: 20 },
+  header: { gap: 8 },
+  check: { size: 30 },
   title: {
     fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.36,
+    lineHeight: 1.35,
+    letterSpacing: -0.72,
   },
   headline: {
     fontSize: 30,
     lineHeight: 1.1,
-    letterSpacing: -0.6,
+    letterSpacing: -0.9,
   },
-  hero: {
-    width: 321.919,
-    height: 346,
-    imageSize: 321.919,
-    glowSize: 263.619,
+  textGap: 4,
+  card: {
+    paddingX: 16,
+    paddingY: 12,
+    radius: 29,
+    gap: 12,
+  },
+  preview: {
+    /**
+     * Share-card aspect (375×812). Frame squeezes inside 100vh;
+     * max size is Figma on a full canvas — short viewports shrink below this.
+     */
+    aspectWidth: 375,
+    aspectHeight: 812,
+    maxWidth: 210,
+    maxHeight: Math.round(210 * (812 / 375)),
+    radius: 24,
+  },
+  shareLink: {
+    fontSize: 16,
+    lineHeight: 1.28,
+    letterSpacing: -0.32,
   },
 } as const;
 
+/** Fallback when stored share card is unavailable. */
 export const ONBOARDING_COMPLETION_IMAGE =
   '/onboarding/parent/onboarding-completion.webp' as const;
 

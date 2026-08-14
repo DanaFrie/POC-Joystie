@@ -6,6 +6,13 @@ import type {
 import { getAuthInstance } from '@/lib/firebase';
 import { getAuthErrorMessage } from '@/utils/auth-errors';
 
+async function waitAuthStateReady(auth: object): Promise<void> {
+  const ready = (auth as { authStateReady?: () => Promise<void> }).authStateReady;
+  if (typeof ready === 'function') {
+    await ready();
+  }
+}
+
 /**
  * Sign up a new user with email and password
  */
@@ -75,38 +82,46 @@ export async function onAuthStateChange(callback: (user: User | null) => void): 
 }
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated (non-anonymous).
+ * Waits for Firebase Auth persistence to restore — do not use a raw
+ * `currentUser` snapshot on first paint (it is often null briefly).
  */
 export async function isAuthenticated(): Promise<boolean> {
   const auth = await getAuthInstance();
-  return auth.currentUser !== null;
+  await waitAuthStateReady(auth);
+  const user = auth.currentUser;
+  return Boolean(user && !user.isAnonymous);
 }
 
 /**
  * Get current user ID
  * Waits for auth state to be ready if needed
+ * @param allowAnonymous — child game/onboarding uses anonymous Auth; default false for parent gates
  */
-export async function getCurrentUserId(): Promise<string | null> {
+export async function getCurrentUserId(options?: {
+  allowAnonymous?: boolean;
+}): Promise<string | null> {
   const auth = await getAuthInstance();
-  
-  // If we have a current user, return it immediately
-  if (auth.currentUser) {
+  const allowAnonymous = options?.allowAnonymous === true;
+
+  await waitAuthStateReady(auth);
+
+  if (auth.currentUser && (allowAnonymous || !auth.currentUser.isAnonymous)) {
     return auth.currentUser.uid;
   }
-  
-  // Otherwise, wait a bit for auth state to initialize
-  // Firebase Auth persists sessions, but it might take a moment to restore
+
+  // Fallback if authStateReady is unavailable / raced
   return new Promise(async (resolve) => {
     const { onAuthStateChanged } = await import('firebase/auth');
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe(); // Only listen once
-      resolve(user?.uid || null);
+      unsubscribe();
+      resolve(user && (allowAnonymous || !user.isAnonymous) ? user.uid : null);
     });
-    
-    // Timeout after 2 seconds if auth state doesn't change
+
     setTimeout(() => {
       unsubscribe();
-      resolve(auth.currentUser?.uid || null);
+      const u = auth.currentUser;
+      resolve(u && (allowAnonymous || !u.isAnonymous) ? u.uid : null);
     }, 2000);
   });
 }

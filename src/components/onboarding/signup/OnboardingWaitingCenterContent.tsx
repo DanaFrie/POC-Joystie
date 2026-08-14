@@ -9,6 +9,10 @@ import {
   SIGNUP_CHILD_INVITE_WAITING_TEXT_W_PX,
 } from '@/constants/signup-child-invite-layout';
 
+/** Shared waiting headline — 24 ExtraBold, white glow. */
+export const ONBOARDING_WAITING_HEADLINE_CLASS =
+  'w-full whitespace-pre-line text-center font-simpler text-[24px] font-extrabold leading-[1.1] tracking-[-0.72px] text-white [text-shadow:0_0_20px_rgba(255,255,255,0.5)]';
+
 type OnboardingWaitingCenterContentProps = {
   headline: string;
   ariaLabel: string;
@@ -38,13 +42,7 @@ export function OnboardingWaitingCenterContent({
         }}
       >
         {headline ? (
-          <p
-            className="w-full text-center font-simpler text-2xl font-black leading-[30px] text-white transition-opacity duration-300"
-            style={{
-              letterSpacing: '-0.36px',
-              textShadow: '0 0 20px rgba(255, 255, 255, 0.5)',
-            }}
-          >
+          <p className={`${ONBOARDING_WAITING_HEADLINE_CLASS} transition-opacity duration-300`}>
             {headline}
           </p>
         ) : null}

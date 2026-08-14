@@ -37,18 +37,30 @@ function FeatureEllipse({
 const MOCKUP_FADE_BG =
   'linear-gradient(180deg, rgba(5, 22, 26, 0.00) 0%, #05161A 89.22%)';
 
+/** Figma mobile mockup frame — 327 content × 435 phone footprint. */
+const MOBILE_MOCKUP_FRAME_W = 327;
+const MOBILE_MOCKUP_FRAME_H = 435;
+/** Phone x inside the 327 frame — (327 − 210) / 2 ≈ 58. */
+const MOBILE_PHONE_LEFT = 58;
+const MOBILE_PHONE_W = 210;
+/** Fade — Figma Rectangle 6555, relative to mockup frame. */
+const MOBILE_FADE_TOP = 268;
+
 /** Visible phone image — 5% above previous 142.8px. */
 const MOBILE_IMAGE_MAX_PX = Math.round(142.8 * 1.05 * 10) / 10; // 149.9
 
 /**
- * Mobile-only fade rectangle at bottom of mockup area (Figma Rectangle 6555).
- * Fixed 327×167 — spans content column, not the smaller phone image.
+ * Mobile-only fade (Figma Rectangle 6555).
+ * 327×167 @ top 268 — full mockup-frame width (phone sits at left 58 in the 327 design).
  */
 function MobileMockupFade() {
   return (
     <div
-      className="pointer-events-none absolute bottom-0 left-1/2 z-[2] h-[167px] w-[327px] -translate-x-1/2 lg:hidden"
-      style={{ background: MOCKUP_FADE_BG }}
+      className="pointer-events-none absolute inset-x-0 z-[2] h-[167px] w-full lg:hidden"
+      style={{
+        top: MOBILE_FADE_TOP,
+        background: MOCKUP_FADE_BG,
+      }}
       aria-hidden
     />
   );
@@ -95,6 +107,7 @@ export function MarketingPresenting() {
             <article
               key={feature.badge}
               className={`relative grid w-full max-w-[327px] items-start gap-5 overflow-visible md:max-w-none md:gap-12 ${
+                /* gap-5 = 20px — Figma space between mockup and first badge tag */
                 useAbsoluteDesktop
                   ? `lg:block ${isSection2 ? 'lg:min-h-[657px]' : 'lg:min-h-[654px]'}`
                   : feature.reverse
@@ -140,11 +153,22 @@ export function MarketingPresenting() {
                 <LandingReveal delayMs={180 + index * 40} className="relative z-[1] overflow-visible">
                   <LandingFeatureEllipse showDesktop={!useArticleEllipse} />
                   <div className="relative mx-auto w-full overflow-visible md:aspect-[320/663] md:max-w-[320px] md:overflow-hidden">
-                    {/* Mobile slot — fixed footprint */}
+                    {/*
+                      Mobile mockup frame — Figma 327×435, gap-5 (20px) to badge below.
+                      Phone @ left 58 / width 210; fade @ top 268 × full 327 width.
+                    */}
                     <div
-                      className="relative mx-auto aspect-[210/435] w-full max-w-[210px] overflow-visible md:hidden"
+                      className="relative mx-auto w-full max-w-[327px] overflow-visible md:hidden"
+                      style={{ height: MOBILE_MOCKUP_FRAME_H }}
                     >
-                      <div className="absolute inset-0 flex items-center justify-center">
+                      <div
+                        className="absolute top-0 flex items-center justify-center overflow-hidden"
+                        style={{
+                          left: `${(MOBILE_PHONE_LEFT / MOBILE_MOCKUP_FRAME_W) * 100}%`,
+                          width: `${(MOBILE_PHONE_W / MOBILE_MOCKUP_FRAME_W) * 100}%`,
+                          height: MOBILE_MOCKUP_FRAME_H,
+                        }}
+                      >
                         <div
                           className="relative overflow-hidden"
                           style={{

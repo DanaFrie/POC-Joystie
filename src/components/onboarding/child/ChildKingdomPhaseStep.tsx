@@ -66,7 +66,9 @@ export function ChildKingdomPhaseStep({
           </div>
 
           <FunnelStepFooter blur={false} onClick={onCompanionContinue}>
-            המשך
+            <span className="font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right text-[#031D15]">
+              לחץ כאן כדי להמשיך
+            </span>
           </FunnelStepFooter>
         </FunnelStepForeground>
       ) : null}

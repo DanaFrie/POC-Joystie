@@ -74,7 +74,13 @@ export function ChildDoriContinueFooter({
       <ChildContinueGlowIcon
         className={enabled ? '' : '[&_.child-continue-glow-flicker]:!animate-none'}
       />
-      <span className="relative z-[1] w-full text-center font-simpler text-[24px] font-normal leading-[1.25] tracking-[-0.36px] text-[#CADCD6]">
+      <span
+        className="relative z-[1] self-stretch text-right font-simpler text-[24px] font-normal text-[#CADCD6]"
+        style={{
+          lineHeight: '135%',
+          letterSpacing: '-0.72px',
+        }}
+      >
         {CONTINUE_LABEL}
       </span>
     </button>

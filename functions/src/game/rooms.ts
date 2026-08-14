@@ -139,25 +139,39 @@ export const joinGameRoom = functions.https.onCall(
     if (room.childUid && room.childUid !== uid) {
       throw new functions.https.HttpsError('failed-precondition', 'Room already has a child');
     }
+    if (room.childUid === uid) {
+      functions.logger.info('joinGameRoom already joined', { roomId, childUid: uid });
+      return { roomId, phase: room.phase, winScore: GAME_WIN_SCORE };
+    }
 
     const now = new Date().toISOString();
+    const parentAlreadyReady = room.playReady?.parent === true;
+    const hasStartedRound = (room as { hasStartedRound?: boolean }).hasStartedRound === true;
     await roomRef.update({
       childUid: uid,
+      parentId: room.parentId,
       phase: 'waiting_ready',
-      playReady: { parent: false, child: false },
-      ball: {
-        x: 0.5,
-        y: 0.5,
-        vx: 0,
-        vy: 0,
-        updatedBy: 'parent',
-        updatedAt: now,
-      },
       updatedAt: now,
     });
 
-    functions.logger.info('joinGameRoom', { roomId, childUid: uid, phase: 'waiting_ready' });
-    return { roomId, phase: 'waiting_ready' as const, winScore: GAME_WIN_SCORE };
+    if (parentAlreadyReady && !hasStartedRound) {
+      await roomRef.update({
+        phase: 'countdown',
+        countdownAt: now,
+        updatedAt: now,
+      });
+    }
+
+    functions.logger.info('joinGameRoom', {
+      roomId,
+      childUid: uid,
+      phase: parentAlreadyReady ? 'countdown' : 'waiting_ready',
+    });
+    return {
+      roomId,
+      phase: parentAlreadyReady ? ('countdown' as const) : ('waiting_ready' as const),
+      winScore: GAME_WIN_SCORE,
+    };
   }
 );
 

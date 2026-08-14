@@ -22,13 +22,19 @@ export function ChildCastleTiltCard({
   const sliderStyle = CHILD_CASTLE_SLIDER_CARD_STYLE;
 
   const cardStyle: CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: isSlider ? 'flex-start' : undefined,
+    alignItems: isSlider ? 'stretch' : undefined,
+    flexShrink: isSlider ? 0 : undefined,
+    boxSizing: 'border-box',
     width: layout.width,
     minHeight: layout.height,
-    height: isSlider ? 'auto' : layout.height,
+    height: layout.height,
     paddingTop: isSlider ? sliderStyle.paddingTop : layout.paddingTop,
     paddingBottom: isSlider ? sliderStyle.paddingBottom : layout.paddingBottom,
-    paddingLeft: isSlider ? sliderStyle.paddingX : layout.paddingX,
-    paddingRight: isSlider ? sliderStyle.paddingX : layout.paddingX,
+    paddingLeft: isSlider ? sliderStyle.paddingLeft : layout.paddingX,
+    paddingRight: isSlider ? sliderStyle.paddingRight : layout.paddingX,
     left: layout.left,
     top: layout.top,
     transform: `rotate(${layout.rotateDeg}deg)`,
@@ -71,11 +77,13 @@ export function ChildCastleTiltCard({
         />
       ) : null}
       <div
-        className="relative z-[1] flex w-full flex-col items-center"
+        className="relative z-[1] flex w-full flex-col items-stretch"
         style={{ gap: isSlider ? sliderStyle.contentGap : layout.contentGap }}
       >
         <div
-          className="flex w-full flex-col items-end justify-center"
+          className={`flex w-full flex-col ${
+            isSlider ? 'items-stretch justify-start' : 'items-end justify-center'
+          }`}
           style={{
             paddingLeft: isSlider ? sliderStyle.textPaddingX : layout.textPaddingX,
             paddingRight: isSlider ? sliderStyle.textPaddingX : layout.textPaddingX,

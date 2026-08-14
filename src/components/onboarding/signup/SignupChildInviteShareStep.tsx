@@ -20,7 +20,6 @@ import {
 } from '@/lib/onboarding/bondingShare';
 import { getBondingChildUrl } from '@/lib/onboarding/bondingInvite';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
-import { buildWhatsAppChildInviteMessage } from '@/lib/share/whatsapp';
 import { AnalyticsEvents } from '@/utils/analytics';
 import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
@@ -120,21 +119,13 @@ export function SignupChildInviteShareStep({
   const handleCopy = async () => {
     try {
       const url = await ensureInvite();
-      const message = buildWhatsAppChildInviteMessage({
-        childUrl: url,
-        parentGender: getParentGenderForMessage(),
-      });
-      await navigator.clipboard.writeText(message);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
       onShared?.();
     } catch {
       const url = childUrl || getBondingChildUrl();
-      const message = buildWhatsAppChildInviteMessage({
-        childUrl: url,
-        parentGender: getParentGenderForMessage(),
-      });
-      window.prompt('העתיקו את ההודעה:', message);
+      window.prompt('העתיקו את הלינק:', url);
       onShared?.();
     }
   };

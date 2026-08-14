@@ -103,7 +103,11 @@ export function getFunnelScrollContentEndPadPx(): number {
 
 export type FunnelForegroundDistribution = 'between' | 'start' | 'center';
 
-/** Set on `[data-v03-funnel]` when a step uses `fitViewport` to shrink canvas to visible height. */
+/**
+ * Set on `[data-v03-funnel]`:
+ * - `fitViewport` may set below 812 (shrink to visible height)
+ * - grow-for-scroll (legal/help) may set above 812 so FunnelViewport page-scrolls
+ */
 export const V03_ACTIVE_CANVAS_HEIGHT_VAR = '--v03-active-canvas-height';
 
 /** Screen layout template — guides migration batches. */

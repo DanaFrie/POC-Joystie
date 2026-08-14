@@ -40,9 +40,9 @@ export async function signalParentPostGameMilestone(
     try {
       const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
       await logEventOnce(
-        `agreement_done:parent:${parentId}`,
+        `agreement_done:${parentId}`,
         AnalyticsEvents.AGREEMENT_DONE,
-        { path: 'parent_approve' }
+        { via: 'parent_approve' }
       );
     } catch (error) {
       logger.warn('Agreement analytics failed', error);
