@@ -54,11 +54,14 @@ export function ParentSubscriptionStep({
     1,
     Math.round(viewportHeight / Math.max(scale, 0.0001))
   );
-  /** 1 @ iPhone 12 / 812 canvas; ~0.82 on SE — drives layout shrink. */
-  const heightScale = Math.min(1, fillH / V03_SCREEN_HEIGHT);
+  /** 1 @ iPhone 12 / 812 canvas; ~0.82 on SE — drives layout shrink. >1 on tall (Pixel). */
+  const heightScaleRaw = fillH / V03_SCREEN_HEIGHT;
+  const heightScale = Math.min(1, heightScaleRaw);
   const isShort = heightScale < 0.98;
+  /** Extra canvas px on tall phones — stretch the hero so the stack fills 100vh. */
+  const tallExtraPx = Math.max(0, fillH - V03_SCREEN_HEIGHT);
 
-  const heroH = sx(hero.height, heightScale, 280);
+  const heroH = sx(hero.height, heightScale, 280) + Math.round(tallExtraPx * 0.5);
   const heroBleedStyle = useFunnelHeroBleed(heroH);
   const { bleedX, width: bleedWidth } = useFunnelHeroBleedInsets();
 
@@ -99,7 +102,9 @@ export function ParentSubscriptionStep({
   const disclaimerPx = sx(cta.disclaimerSize, heightScale, 13);
   const ctaMinH = sx(FUNNEL_CTA_HEIGHT_PX, heightScale, 48);
 
-  const heroBackground = `${hero.gradient}, url(${hero.image}) ${SUBSCRIPTION_SCREEN_BG} ${hero.imagePosition} / ${hero.imageSize} no-repeat`;
+  const heroBackground = tallExtraPx > 0
+    ? `${hero.gradient}, url(${hero.image}) ${SUBSCRIPTION_SCREEN_BG} center top / cover no-repeat`
+    : `${hero.gradient}, url(${hero.image}) ${SUBSCRIPTION_SCREEN_BG} ${hero.imagePosition} / ${hero.imageSize} no-repeat`;
 
   return (
     <FunnelStepRoot

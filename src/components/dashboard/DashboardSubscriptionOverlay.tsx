@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ParentSubscriptionStep } from '@/components/onboarding/parent/ParentSubscriptionStep';
 import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
 import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
@@ -28,6 +29,11 @@ export function DashboardSubscriptionOverlay({
   const [selectedPlan, setSelectedPlan] = useState<OnboardingSubscriptionPlan | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleStartTrial = useCallback(async () => {
     if (!selectedPlan || checkoutBusy) return;
@@ -43,11 +49,13 @@ export function DashboardSubscriptionOverlay({
     }
   }, [selectedPlan, checkoutBusy]);
 
-  if (!visible && !checkoutBusy) return null;
+  if ((!visible && !checkoutBusy) || !mounted) return null;
 
-  return (
+  const overlay = (
     <div
-      className="absolute inset-0 z-[70] overflow-hidden overscroll-none"
+      data-v03-funnel
+      className="fixed inset-0 z-[70] overflow-hidden overscroll-none bg-[#092125]"
+      style={{ width: '100vw', height: '100dvh' }}
       role="dialog"
       aria-modal="true"
     >
@@ -56,9 +64,9 @@ export function DashboardSubscriptionOverlay({
         scaleMode="scroll"
         ignoreSafeArea
         lockScroll
-        className="h-full font-simpler text-v03-text-on-dark"
+        className="h-full min-h-0 font-simpler text-v03-text-on-dark"
       >
-        <div className="relative h-full w-full overflow-hidden">
+        <div className="relative h-full w-full min-h-0 overflow-hidden">
           {checkoutBusy ? (
             <>
               <OnboardingMintGridBackdrop showGrid />
@@ -90,4 +98,6 @@ export function DashboardSubscriptionOverlay({
       </FunnelViewport>
     </div>
   );
+
+  return createPortal(overlay, document.body);
 }

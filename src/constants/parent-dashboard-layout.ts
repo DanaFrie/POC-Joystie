@@ -26,14 +26,31 @@ export const PARENT_DASHBOARD_COLORS = {
 
 export const PARENT_DASHBOARD_ASSETS = {
   challengeBanner: '/dashboard/dori-fly.webp',
+  doriNotepad: '/dashboard/dori-notebook-close.webp',
+  doriMoneySit: '/onboarding/child/dori-money-sit.webp',
   agreementThumb: '/signup/journey/agreements.webp',
   completionCheck: '/onboarding/parent/completion-check.svg',
+  /** Mint tick for quick-action success (copy / add-to-home). */
+  quickActionTick: '/onboarding/parent/subscription-feature-check.svg',
+  quickCopy: '/dashboard/quick-actions/copy-01.svg',
+  dealInfo: '/dashboard/info.svg',
+  dealHourInfo: '/dashboard/screen-hour-info.svg',
+  timeCircle: '/dashboard/time-circle.svg',
+  /** Figma 14293:25679 — completed-deals row chevron. */
+  completedDealsChevron: '/dashboard/chevron-left.svg',
+  /** Figma 14293:25456 — completed-deals page back arrow (→). */
+  completedDealsBack: '/dashboard/arrow-right.svg',
+  dealEdit: '/dashboard/edit-03.svg',
 } as const;
 
 export const PARENT_DASHBOARD_LAYOUT = {
   topBarHeight: 56,
-  contentGap: 45,
-  contentTop: 97,
+  /** Side gutters — keep on Pixel / Samsung at 100vw. */
+  gutter: 24,
+  /** Major sections: deals → quick actions → השינוי. */
+  contentGap: 40,
+  /** Below blur top bar (no fillet / no top:10 offset). */
+  contentTop: 72,
   sectionGap: 12,
   frame1Gap: 15,
   frame2Gap: 8,

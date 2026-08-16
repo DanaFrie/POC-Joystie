@@ -31,6 +31,7 @@ type ChildChallengeSetupOverlayProps = {
   visible: boolean;
   childName: string;
   parentLabel: string;
+  childGender?: 'boy' | 'girl';
   weeklyBudget: number;
   hourlyRate: number;
   onClose: () => void;
@@ -43,6 +44,7 @@ export function ChildChallengeSetupOverlay({
   visible,
   childName,
   parentLabel,
+  childGender = 'boy',
   weeklyBudget,
   hourlyRate,
   onClose,
@@ -193,7 +195,9 @@ export function ChildChallengeSetupOverlay({
               {childName}, למה כדאי לשמור על הכסף בארנק השבוע?
             </ChallengeTitle>
             <ChallengeBody>
-              בחר/י מה הכי מתאים לך, ככה תזכור למה שווה לשמור על דמי הכיס בארנק.
+              {childGender === 'girl'
+                ? 'בחרי מה הכי מתאים לך, ככה תזכרי למה שווה לשמור על דמי הכיס בארנק.'
+                : 'בחר מה הכי מתאים לך, ככה תזכור למה שווה לשמור על דמי הכיס בארנק.'}
             </ChallengeBody>
           </div>
 
@@ -217,7 +221,7 @@ export function ChildChallengeSetupOverlay({
             <textarea
               value={customGoalText}
               onChange={(event) => setCustomGoalText(event.target.value)}
-              placeholder="כתוב/י מטרה משלך…"
+              placeholder={childGender === 'girl' ? 'כתבי מטרה משלך…' : 'כתוב מטרה משלך…'}
               rows={3}
               dir="rtl"
               className="min-h-[80px] w-full resize-none rounded-[16px] border border-white bg-white/[0.05] px-3 py-3 text-right font-simpler text-[14px] font-normal leading-[20px] text-white placeholder:text-white/40 focus:outline-none focus:outline-offset-0"

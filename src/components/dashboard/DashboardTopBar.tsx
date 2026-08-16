@@ -1,13 +1,18 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { JoyWordmarkLogo } from '@/components/brand/JoyWordmarkLogo';
-import { PARENT_DASHBOARD_COLORS } from '@/constants/parent-dashboard-layout';
+import { PARENT_DASHBOARD_LAYOUT } from '@/constants/parent-dashboard-layout';
 import { formatNumber } from '@/utils/formatting';
 
 type DashboardTopBarProps = {
   balance: number;
-  menuSlot: React.ReactNode;
+  menuSlot: ReactNode;
+  /**
+   * Physical side for the coin wallet (`dir="ltr"` so RTL screens cannot flip it).
+   * `'end'` = left (child dashboard + parent default), `'start'` = right.
+   */
+  walletSide?: 'start' | 'end';
 };
 
 function DashboardCoinIcon({ className = '', style }: { className?: string; style?: CSSProperties }) {
@@ -27,7 +32,7 @@ function DashboardCoinIcon({ className = '', style }: { className?: string; styl
         fill="#FDBF22"
       />
       <path
-        d="M5.9226 4.61374C7.44813 3.28448 9.63906 2.89216 11.6002 3.04508C11.9089 3.06914 12.225 3.06373 12.519 3.16984C12.8043 3.11909 13.8336 3.29585 14.1344 3.36522C16.0762 3.81296 17.757 5.28019 18.6881 7.0065C18.783 7.1824 18.9942 7.45676 18.9839 7.66177C18.9209 9.04105 18.9611 10.0301 18.35 11.3892C18.3073 11.4841 18.1894 11.7811 18.1352 11.8423C18.095 10.9024 18.1532 10.3369 17.8698 9.35972C17.5106 8.01079 16.445 6.48185 15.2276 5.77516C14.2381 5.20068 12.8319 4.84424 11.6926 5.14772C11.5332 5.1368 11.3673 5.19242 11.215 5.2343C8.65717 5.93754 6.84817 8.57122 6.67461 11.1548C6.48846 13.9256 8.01563 16.4479 10.6292 17.4C9.9659 17.6885 8.19445 17.5131 7.51112 17.3359C7.4002 17.3071 7.27047 17.253 7.15721 17.2536C6.88399 17.0029 6.65124 16.7277 6.41447 16.4434C6.29648 16.4273 6.15892 16.3578 6.04226 16.3223C5.81826 16.2542 4.39293 15.8172 4.24494 15.8252C3.822 15.2812 3.34423 14.1064 3.17243 13.4638C2.97952 12.8476 2.89784 12.0928 2.87753 11.4489C2.86845 11.3492 2.87564 11.2433 2.87646 11.1431C2.89673 8.657 3.97176 6.18858 5.9226 4.61374Z"
+        d="M5.9226 4.61374C7.44813 3.28448 9.63906 2.89216 11.6002 3.04508C11.9089 3.06914 12.225 3.06373 12.519 3.16984C12.8043 3.11909 13.8336 3.29585 14.1344 3.36522C16.0762 3.81296 17.757 5.28019 18.6881 7.0065C18.783 7.1824 18.9942 7.45676 18.9839 7.66177C18.9209 9.04105 18.9611 10.0301 18.35 11.3892C18.3073 11.4841 18.1894 11.7811 18.1352 11.8423C18.095 10.9024 18.1532 10.3369 17.8698 9.35972C17.5106 8.01079 16.445 6.48185 15.2276 5.77516C14.2381 5.20068 12.8319 4.84424 11.6926 5.14772C11.5332 5.1368 11.3673 5.19242 11.215 5.2343C8.65717 5.93754 6.84817 8.57122 6.67461 11.1548C6.48846 13.9256 8.01563 16.4479 10.6292 17.4C9.9659 17.6885 8.19445 17.5131 7.51112 17.3359C7.4002 17.3071 7.27047 17.253 7.15721 17.2536C6.88399 17.0029 6.65124 16.7277 6.41447 16.4434C6.29648 16.4273 6.15892 16.3578 6.04226 16.3223C5.81826 16.2542 4.39293 15.8172 4.24494 15.8252C3.822 15.2812 3.34423 14.1064 3.17243 13.4638C2.97952 12.8476 2.89784 12.0928 2.87753 11.4493C2.86845 11.3492 2.87564 11.2433 2.87646 11.1431C2.89673 8.657 3.97176 6.18858 5.9226 4.61374Z"
         fill="#FEE268"
       />
       <path
@@ -78,62 +83,71 @@ function DashboardDoubleCoins() {
   );
 }
 
-function DashboardNotificationIcon() {
-  return (
-    <span
-      className="flex h-6 w-6 items-center justify-center text-white/35"
-      aria-hidden
-    >
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M18 8.5C18 5.46 15.54 3 12.5 3S7 5.46 7 8.5V14L5 16.5H20L18 14V8.5Z"
-          stroke="currentColor"
-          strokeWidth="1"
-        />
-        <path d="M9.5 18.5H15.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-      </svg>
-    </span>
-  );
-}
+/** Landing-style top bar — blur glass, no fillet, flush top (safe-area is on layout). */
+export function DashboardTopBar({
+  balance,
+  menuSlot,
+  walletSide = 'end',
+}: DashboardTopBarProps) {
+  const headerRef = useRef<HTMLElement>(null);
+  const [scrolled, setScrolled] = useState(false);
 
-export function DashboardTopBar({ balance, menuSlot }: DashboardTopBarProps) {
-  return (
-    <header
-      className="absolute inset-x-0 z-20 w-full shrink-0 overflow-visible"
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const root = header.closest('[data-v03-dashboard-screen]');
+    const scroller = root?.querySelector<HTMLElement>('[data-dashboard-scroll]');
+    if (!scroller) return;
+
+    const update = () => setScrolled(scroller.scrollTop > 8);
+    update();
+    scroller.addEventListener('scroll', update, { passive: true });
+    return () => scroller.removeEventListener('scroll', update);
+  }, []);
+
+  const wallet = (
+    <div
+      className="flex h-[42px] items-center gap-1.5 rounded-full border px-3"
       style={{
-        top: 10,
-        borderRadius: '0 0 16px 16px',
-        boxShadow: '0 3px 12px 0 rgba(133, 139, 187, 0.16)',
-        background: PARENT_DASHBOARD_COLORS.canvas,
+        background: 'rgba(255, 255, 255, 0.03)',
+        borderColor: '#26514D',
       }}
     >
-      <div className="flex w-full flex-col items-start gap-2.5 px-[15px]">
-        <div className="relative flex h-14 w-full items-center justify-between" dir="ltr">
-          <div
-            className="flex h-[42px] items-center gap-1.5 rounded-full border px-3"
-            style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              borderColor: PARENT_DASHBOARD_COLORS.walletOutline,
-            }}
-          >
-            <DashboardDoubleCoins />
-            <div className="flex items-baseline gap-0.5 font-simpler text-white">
-              <span className="text-[13px] font-normal tracking-[0.65px]">₪</span>
-              <span className="text-[15px] font-black tracking-[0.75px]">
-                {formatNumber(balance, 0)}
-              </span>
-            </div>
-          </div>
+      <DashboardDoubleCoins />
+      <div className="flex items-baseline gap-0.5 font-simpler text-white">
+        <span className="text-[13px] font-normal tracking-[0.65px]">₪</span>
+        <span className="text-[15px] font-black tracking-[0.75px]">
+          {formatNumber(balance, 0)}
+        </span>
+      </div>
+    </div>
+  );
+  const menu = <div className="flex items-center">{menuSlot}</div>;
 
-          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <JoyWordmarkLogo className="h-[34px] w-auto" />
-          </div>
+  return (
+    <header
+      ref={headerRef}
+      className="pointer-events-none absolute inset-x-0 top-0 z-20 w-full shrink-0"
+    >
+      <div
+        className={`pointer-events-auto flex w-full items-center justify-between transition-[background-color,backdrop-filter] duration-200 ${
+          scrolled
+            ? 'bg-[rgba(6,28,30,0.82)] backdrop-blur-[20px]'
+            : 'bg-white/[0.02] backdrop-blur-[10px]'
+        }`}
+        style={{
+          height: PARENT_DASHBOARD_LAYOUT.topBarHeight,
+          paddingInline: PARENT_DASHBOARD_LAYOUT.gutter,
+        }}
+        dir="ltr"
+      >
+        {walletSide === 'end' ? wallet : menu}
 
-          <div className="flex items-center gap-4">
-            <DashboardNotificationIcon />
-            {menuSlot}
-          </div>
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <JoyWordmarkLogo className="h-[34px] w-auto" />
         </div>
+
+        {walletSide === 'end' ? menu : wallet}
       </div>
     </header>
   );

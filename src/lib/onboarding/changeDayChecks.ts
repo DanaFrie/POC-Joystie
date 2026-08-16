@@ -1,3 +1,35 @@
+const ISRAEL_TZ = 'Asia/Jerusalem';
+
+/** Sunday=0 … Saturday=6 in Asia/Jerusalem (matches א…ש tracker columns). */
+export function israelSundayBasedDayIndex(date = new Date()): number {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: ISRAEL_TZ,
+    weekday: 'short',
+  }).format(date);
+  switch (weekday) {
+    case 'Sun':
+      return 0;
+    case 'Mon':
+      return 1;
+    case 'Tue':
+      return 2;
+    case 'Wed':
+      return 3;
+    case 'Thu':
+      return 4;
+    case 'Fri':
+      return 5;
+    case 'Sat':
+      return 6;
+    default:
+      return date.getDay();
+  }
+}
+
+export function areAllDaysChecked(checks: boolean[] | undefined): boolean {
+  return Boolean(checks && checks.length === 7 && checks.every(Boolean));
+}
+
 /** Firestore-safe day-check rows (nested boolean[][] is rejected by Firestore). */
 export type ChangeDayChecksRow = {
   days: boolean[];

@@ -363,58 +363,6 @@ function DashboardPageContent() {
     }
   }, []);
 
-  const handleApproveWeeklyUpload = async () => {
-    try {
-      const userId = await getCurrentUserIdAsync();
-      if (!userId) throw new Error('User ID not found');
-
-      const challenge = await getActiveChallenge(userId);
-      if (!challenge) throw new Error('No active challenge found');
-
-      const { approveWeeklyUpload } = await import('@/lib/api/challenges');
-      await approveWeeklyUpload(challenge.id);
-
-      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
-      dataCache.invalidate(cacheKeys.dashboard(userId));
-
-      const updatedData = await getDashboardData(userId, false);
-      if (updatedData) {
-        setDashboardData(updatedData);
-      }
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('weeklyUploadApproved'));
-      }
-    } catch (approveError) {
-      logger.error('Error approving weekly upload:', approveError);
-      setError('שגיאה באישור ההעלאה. אנא רענן את הדף.');
-    }
-  };
-
-  const handleRejectWeeklyUpload = async () => {
-    try {
-      const userId = await getCurrentUserIdAsync();
-      if (!userId) throw new Error('User ID not found');
-
-      const challenge = await getActiveChallenge(userId);
-      if (!challenge) throw new Error('No active challenge found');
-
-      const { rejectWeeklyUpload } = await import('@/lib/api/challenges');
-      await rejectWeeklyUpload(challenge.id);
-
-      const { dataCache, cacheKeys } = await import('@/utils/data-cache');
-      dataCache.invalidate(cacheKeys.dashboard(userId));
-
-      const updatedData = await getDashboardData(userId, false);
-      if (updatedData) {
-        setDashboardData(updatedData);
-      }
-    } catch (rejectError) {
-      logger.error('Error rejecting weekly upload:', rejectError);
-      setError('שגיאה בדחיית ההעלאה. אנא רענן את הדף.');
-    }
-  };
-
   if (isLoading || !dashboardData) {
     return <DashboardLoadingState />;
   }
@@ -456,8 +404,6 @@ function DashboardPageContent() {
       activeChallengeData={activeChallengeData}
       childShareUrl={childShareUrl}
       noChallengeExists={noChallengeExists}
-      onApproveWeeklyUpload={handleApproveWeeklyUpload}
-      onRejectWeeklyUpload={handleRejectWeeklyUpload}
       initialSubscriptionOpen={openSubscription}
       initialChallengeSetupOpen={openChallengeSetup}
       challengeEnabled={challengeEnabled}

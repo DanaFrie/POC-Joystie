@@ -88,7 +88,7 @@ export function ChildDoriRevealedStep({
         />
       </ChildDoriMediaFrame>
 
-      <ChildDoriContinueFooter onClick={onContinue} />
+      <ChildDoriContinueFooter onClick={onContinue} enableAfterMs={0} />
     </FunnelStepRoot>
   );
 }

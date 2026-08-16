@@ -9,10 +9,17 @@ import { DashboardEnter } from '@/components/dashboard/DashboardEnter';
 import { DashboardDailyAverageCard } from '@/components/dashboard/DashboardDailyAverageCard';
 import {
   DashboardChallengeBanner,
-  ParentDealExtras,
 } from '@/components/dashboard/DashboardChallengeBanner';
 import { DashboardWeekTracker } from '@/components/dashboard/DashboardWeekTracker';
-import { DashboardContractSection } from '@/components/dashboard/DashboardContractSection';
+import { DashboardQuickActions } from '@/components/dashboard/DashboardQuickActions';
+import {
+  DashboardContractImageCard,
+  DashboardDealRunningCard,
+} from '@/components/dashboard/DashboardQuickActionCards';
+import {
+  DashboardCompletedDealsView,
+  DashboardDealsSection,
+} from '@/components/dashboard/DashboardDealsSection';
 import type { ParentChallengeSetupResult } from '@/components/dashboard/challenge/ParentChallengeSetupOverlay';
 import type { ParentRedemptionConfirmResult } from '@/components/dashboard/challenge/ParentRedemptionConfirmOverlay';
 import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
@@ -49,6 +56,8 @@ import {
 import { computeParentDailyAverageMetrics } from '@/lib/dashboard/parentDailyAverage';
 import { getUserChallenges } from '@/lib/api/challenges';
 import { resolveDashboardChildShareUrl } from '@/lib/api/bondingInvites';
+import { getChildShareCardAccess } from '@/lib/api/shareCard';
+import { shareImageFile } from '@/lib/share/shareImage';
 import { generateChildUrl } from '@/utils/url-encoding';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
@@ -81,6 +90,23 @@ const logger = createContextLogger('ParentDashboard');
 /** Re-show parent redemption card after dismiss without confirm. */
 const PARENT_REDEMPTION_REOPEN_MS = 15_000;
 
+type BeforeInstallPromptEventLike = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+};
+
+let deferredPwaInstall: BeforeInstallPromptEventLike | null = null;
+let pwaInstallListenerAttached = false;
+
+function ensurePwaInstallListener() {
+  if (typeof window === 'undefined' || pwaInstallListenerAttached) return;
+  pwaInstallListenerAttached = true;
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredPwaInstall = event as BeforeInstallPromptEventLike;
+  });
+}
+
 function isChildDashboardTokenUrl(url: string): boolean {
   try {
     const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://joystie.local');
@@ -98,8 +124,6 @@ type ParentDashboardScreenProps = {
   activeChallengeData: FirestoreChallenge | null;
   childShareUrl: string;
   noChallengeExists: boolean;
-  onApproveWeeklyUpload: () => Promise<void>;
-  onRejectWeeklyUpload: () => Promise<void>;
   /** Open subscription popup on load (e.g. after onboarding or failed checkout). */
   initialSubscriptionOpen?: boolean;
   /** Open challenge setup + confetti after successful Cardcom checkout. */
@@ -134,16 +158,12 @@ export function ParentDashboardScreen({
   weeklyUpload,
   childShareUrl,
   noChallengeExists,
-  onApproveWeeklyUpload,
-  onRejectWeeklyUpload,
   initialSubscriptionOpen = false,
   initialChallengeSetupOpen = false,
   challengeEnabled = true,
   onRefresh,
 }: ParentDashboardScreenProps) {
   const childName = dashboardData.child.name;
-  const parentName = dashboardData.parent.name || 'הורה';
-  const hasChallenge = !noChallengeExists && Boolean(childName);
 
   const shareUrl = childShareUrl || '#';
 
@@ -171,7 +191,10 @@ export function ParentDashboardScreen({
   const [parentRedemptionOpen, setParentRedemptionOpen] = useState(false);
   const [redemptionDismissedAt, setRedemptionDismissedAt] = useState<number | null>(null);
   const [challengesHistory, setChallengesHistory] = useState<FirestoreChallenge[]>([]);
-  const [copyHint, setCopyHint] = useState('');
+  const [completedDealsOpen, setCompletedDealsOpen] = useState(false);
+  const [contractImageOpen, setContractImageOpen] = useState(false);
+  const [contractImageUrl, setContractImageUrl] = useState<string | null>(null);
+  const [dealRunningOpen, setDealRunningOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [pageVisible, setPageVisible] = useState(
     () => typeof document === 'undefined' || document.visibilityState === 'visible'
@@ -195,6 +218,26 @@ export function ParentDashboardScreen({
   const countdownTarget = getRedemptionCountdownTarget(dashboardData.challenge.startDate);
   const countdownDone = Boolean(countdownTarget) && now >= (countdownTarget?.getTime() ?? Infinity);
   const summaryMode = dealSet && countdownDone;
+
+  const completedChallenges = useMemo(
+    () =>
+      challengesHistory.filter(
+        (c) =>
+          Boolean(c.redemptionAmount != null || c.redeemedAt) ||
+          (!c.isActive && Boolean(c.startDate))
+      ),
+    [challengesHistory]
+  );
+
+  /** Live deal card — not during freemium, setup-empty, or week-summary CTA. */
+  const showActiveDealCard = challengeEnabled && dealSet && !summaryMode;
+  /** Paid, no active deal, never redeemed — first-deal hero. */
+  const showFirstDealHero =
+    challengeEnabled && canSetup && completedChallenges.length === 0 && !dealSet;
+  /** Paid, no active deal, after at least one redemption. */
+  const showEmptyActiveDeals =
+    challengeEnabled && canSetup && completedChallenges.length > 0 && !dealSet;
+  const showQuickActions = true;
 
   const metrics = useMemo(
     () =>
@@ -260,21 +303,94 @@ export function ParentDashboardScreen({
     return generateChildUrl(parentId, childId);
   }, [dashboardData.parent.id, dashboardData.child.id, shareUrl]);
 
-  const handleCopyChildUrl = useCallback(async () => {
+  const handleCopyChildUrl = useCallback(async (): Promise<boolean> => {
     const url = await resolveChildShareUrl();
     if (!url || !isChildDashboardTokenUrl(url)) {
-      setCopyHint('לא ניתן ליצור קישור לילד');
-      window.setTimeout(() => setCopyHint(''), 2500);
-      return;
+      return false;
     }
     try {
       await navigator.clipboard.writeText(url);
-      setCopyHint('הקישור הועתק');
-      window.setTimeout(() => setCopyHint(''), 2000);
+      return true;
     } catch {
-      setCopyHint(url);
+      return false;
     }
   }, [resolveChildShareUrl]);
+
+  const resolveContractImageUrl = useCallback(async (): Promise<string | null> => {
+    const parentId = dashboardData.parent.id;
+    if (!parentId) return null;
+    try {
+      let imageUrl = dashboardData.child.shareCardUrl || '';
+      if (dashboardData.child.shareCardStored) {
+        const access = await getChildShareCardAccess({
+          parentId,
+          childId: dashboardData.child.id || undefined,
+        });
+        imageUrl = access?.url || imageUrl;
+      }
+      return imageUrl || null;
+    } catch (error) {
+      logger.warn('Could not resolve contract image:', error);
+      return null;
+    }
+  }, [
+    dashboardData.parent.id,
+    dashboardData.child.id,
+    dashboardData.child.shareCardUrl,
+    dashboardData.child.shareCardStored,
+  ]);
+
+  const handleViewContract = useCallback(async () => {
+    const imageUrl = await resolveContractImageUrl();
+    setContractImageUrl(imageUrl);
+    setContractImageOpen(true);
+  }, [resolveContractImageUrl]);
+
+  const handleShareContract = useCallback(async () => {
+    try {
+      const imageUrl = await resolveContractImageUrl();
+      if (!imageUrl) return;
+      await shareImageFile({
+        imageUrl,
+        title: childName ? `החוזה עם ${childName}` : 'החוזה',
+        text: childName ? `החוזה עם ${childName}` : 'החוזה',
+      });
+    } catch (error) {
+      logger.warn('Contract share failed:', error);
+    }
+  }, [resolveContractImageUrl, childName]);
+
+  const handleAddToHome = useCallback(async (): Promise<boolean> => {
+    ensurePwaInstallListener();
+    if (deferredPwaInstall) {
+      try {
+        await deferredPwaInstall.prompt();
+        const choice = await deferredPwaInstall.userChoice;
+        deferredPwaInstall = null;
+        return choice.outcome === 'accepted';
+      } catch {
+        return false;
+      }
+    }
+
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({
+          title: 'Joystie',
+          text: 'הוסיפו את ג׳ויסטי למסך הבית',
+          url: window.location.origin,
+        });
+        return true;
+      }
+    } catch {
+      // dismissed
+    }
+    return false;
+  }, []);
+
+  useEffect(() => {
+    ensurePwaInstallListener();
+  }, []);
 
   const tryOpenParentRedemption = useCallback(() => {
     if (!challengeEnabled || !countdownDone || !pageVisible) return;
@@ -334,6 +450,19 @@ export function ParentDashboardScreen({
     }
   };
 
+  /** Quick-action create deal — setup / subscription / already-running card. */
+  const handleCreateDeal = () => {
+    if (canSetup) {
+      setParentSetupOpen(true);
+      return;
+    }
+    if (!challengeEnabled) {
+      setSubscriptionOpen(true);
+      return;
+    }
+    setDealRunningOpen(true);
+  };
+
   const handleParentSetupSubmit = useCallback(
     async (result: ParentChallengeSetupResult) => {
       const parentId = dashboardData.parent.id;
@@ -369,15 +498,6 @@ export function ParentDashboardScreen({
     }
   }, [weeklyUpload?.status]);
 
-  const handleContractApprove = async () => {
-    if (challengeEnabled && countdownDone && weeklyUpload?.status === 'pending') {
-      setRedemptionDismissedAt(null);
-      setParentRedemptionOpen(true);
-      return;
-    }
-    await onApproveWeeklyUpload();
-  };
-
   useEffect(() => {
     if (initialSubscriptionOpen) setSubscriptionOpen(true);
   }, [initialSubscriptionOpen]);
@@ -396,21 +516,29 @@ export function ParentDashboardScreen({
   const closeSubscription = () => setSubscriptionOpen(false);
 
   const topBarBalance = dealSet ? weeklyBudget : dashboardData.weeklyTotals?.coinsEarned ?? 0;
+  const displayChildName = childName || 'יואב';
 
   return (
     <div
       className="absolute inset-0 flex h-full w-full min-w-0 max-w-none flex-col overflow-hidden"
       style={{ background: PARENT_DASHBOARD_COLORS.canvas }}
       dir="rtl"
+      data-v03-dashboard-screen
     >
       <DashboardEnter variant="fade" index={0} className="pointer-events-none absolute inset-x-0 top-0 z-20">
         <div className="pointer-events-auto">
-          <DashboardTopBar balance={topBarBalance} menuSlot={<DashboardHeaderMenu variant="parent" />} />
+          <DashboardTopBar
+            balance={topBarBalance}
+            menuSlot={<DashboardHeaderMenu variant="parent" />}
+          />
         </div>
       </DashboardEnter>
 
       {/* One scroll surface — background + cards move together. */}
-      <div className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-y-none v03-scroll-hidden">
+      <div
+        data-dashboard-scroll
+        className="absolute inset-0 overflow-x-hidden overflow-y-auto overscroll-y-none v03-scroll-hidden"
+      >
         <div className="relative min-h-full w-full max-w-[100vw] pb-10">
           <DashboardFigmaBackground mode="embedded" />
 
@@ -422,78 +550,132 @@ export function ParentDashboardScreen({
             <div
               className="flex w-full max-w-full flex-col items-center"
               style={{
-                width: 328,
-                maxWidth: '100%',
-                gap: 45,
+                gap: PARENT_DASHBOARD_LAYOUT.contentGap,
                 paddingTop: PARENT_DASHBOARD_LAYOUT.contentTop,
+                paddingInline: PARENT_DASHBOARD_LAYOUT.gutter,
               }}
             >
-              <div
-                className="flex w-full flex-col items-center"
-                style={{ gap: PARENT_DASHBOARD_LAYOUT.frame1Gap }}
-              >
+              {completedDealsOpen ? (
                 <DashboardEnter index={1} className="w-full">
-                  <DashboardDailyAverageCard
-                    childName={childName || 'יואב'}
-                    week={displayWeek}
-                    averageMinutes={metrics.averageMinutes}
-                    weekOverWeekPercent={metrics.weekOverWeekPercent}
+                  <DashboardCompletedDealsView
+                    childName={displayChildName}
+                    challenges={completedChallenges}
+                    onBack={() => setCompletedDealsOpen(false)}
                   />
                 </DashboardEnter>
-                <DashboardEnter index={2} className="w-full">
-                  <DashboardChallengeBanner
-                    childName={childName || 'יואב'}
-                    reductionPercent={reductionPercent}
-                    onClick={handleBannerClick}
-                    dealActive={dealSet}
-                    countdownTarget={countdownTarget}
-                    countdownStart={countdownStart}
-                    summaryMode={summaryMode}
-                    onCopyChildUrl={handleCopyChildUrl}
-                  />
-                </DashboardEnter>
-                <DashboardEnter index={3} className="w-full">
-                  <ParentDealExtras visible={dealSet} hourlyRate={hourlyRate} />
-                  {copyHint ? (
-                    <p className="text-center font-simpler text-[13px] text-white/70">{copyHint}</p>
+              ) : (
+                <>
+                  <div
+                    className="flex w-full flex-col items-center"
+                    style={{ gap: PARENT_DASHBOARD_LAYOUT.frame1Gap }}
+                  >
+                    <DashboardEnter index={1} className="w-full">
+                      <DashboardDailyAverageCard
+                        childName={displayChildName}
+                        week={displayWeek}
+                        averageMinutes={metrics.averageMinutes}
+                        weekOverWeekPercent={metrics.weekOverWeekPercent}
+                        withDori={showActiveDealCard}
+                      />
+                    </DashboardEnter>
+
+                    {!challengeEnabled ? (
+                      <DashboardEnter index={2} className="w-full">
+                        <DashboardChallengeBanner
+                          childName={displayChildName}
+                          reductionPercent={reductionPercent}
+                          onClick={handleBannerClick}
+                          dealActive={false}
+                        />
+                      </DashboardEnter>
+                    ) : null}
+
+                    {showFirstDealHero ? (
+                      <DashboardEnter index={2} className="w-full">
+                        <DashboardChallengeBanner
+                          childName={displayChildName}
+                          reductionPercent={reductionPercent}
+                          headline={`להתחלת הדיל הראשון עם ${displayChildName} >>`}
+                          onClick={handleBannerClick}
+                        />
+                      </DashboardEnter>
+                    ) : null}
+
+                    {showActiveDealCard || showEmptyActiveDeals ? (
+                      <DashboardEnter index={2} className="w-full">
+                        <DashboardDealsSection
+                          childName={displayChildName}
+                          reductionPercent={reductionPercent}
+                          activeChallenge={
+                            showActiveDealCard
+                              ? {
+                                  startDate: dashboardData.challenge.startDate,
+                                  challengeDays: dashboardData.challenge.challengeDays,
+                                  weeklyBudget,
+                                  hourlyRate,
+                                  countdownTarget,
+                                }
+                              : null
+                          }
+                          completedChallenges={completedChallenges}
+                          showEmptyActiveCta={showEmptyActiveDeals}
+                          onCreateDeal={handleCreateDeal}
+                          onOpenCompleted={() => setCompletedDealsOpen(true)}
+                        />
+                      </DashboardEnter>
+                    ) : null}
+
+                    {summaryMode ? (
+                      <DashboardEnter index={2} className="w-full">
+                        <DashboardChallengeBanner
+                          childName={displayChildName}
+                          reductionPercent={reductionPercent}
+                          onClick={handleBannerClick}
+                          dealActive
+                          countdownTarget={countdownTarget}
+                          countdownStart={countdownStart}
+                          summaryMode
+                          onCopyChildUrl={handleCopyChildUrl}
+                        />
+                      </DashboardEnter>
+                    ) : null}
+                  </div>
+
+                  {showQuickActions ? (
+                    <DashboardEnter index={3} className="w-full">
+                      <DashboardQuickActions
+                        childName={displayChildName}
+                        showCreateDeal
+                        onCreateDeal={handleCreateDeal}
+                        onCopyWalletLink={handleCopyChildUrl}
+                        onShareContract={() => void handleShareContract()}
+                        onViewContract={() => void handleViewContract()}
+                        onAddToHome={handleAddToHome}
+                      />
+                    </DashboardEnter>
                   ) : null}
-                </DashboardEnter>
-              </div>
 
-              <DashboardEnter index={4} className="w-full">
-                <DashboardContractSection
-                  childName={childName || 'יואב'}
-                  parentName={parentName}
-                  parentId={dashboardData.parent.id}
-                  childId={dashboardData.child.id}
-                  shareImageUrl={dashboardData.child.shareCardUrl}
-                  shareCardStored={Boolean(dashboardData.child.shareCardStored)}
-                  weeklyUpload={weeklyUpload}
-                  variant="parent"
-                  onApprove={hasChallenge ? handleContractApprove : undefined}
-                  onReject={hasChallenge ? onRejectWeeklyUpload : undefined}
-                />
-              </DashboardEnter>
-
-              <DashboardEnter
-                index={5}
-                className="flex w-full flex-col items-center"
-              >
-                <div
-                  className="flex w-full flex-col items-center"
-                  style={{ gap: PARENT_DASHBOARD_LAYOUT.frame3Gap }}
-                >
-                  <DashboardWeekTracker
-                    week={displayWeek}
-                    dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
-                    childName={childName || 'יואב'}
-                    childId={dashboardData.child.id}
-                    parentId={dashboardData.parent.id}
-                    changes={changeTexts}
-                    changeDayChecks={dashboardData.child.changeDayChecks}
-                  />
-                </div>
-              </DashboardEnter>
+                  <DashboardEnter
+                    index={5}
+                    className="flex w-full flex-col items-center"
+                  >
+                    <div
+                      className="flex w-full flex-col items-center"
+                      style={{ gap: PARENT_DASHBOARD_LAYOUT.frame3Gap }}
+                    >
+                      <DashboardWeekTracker
+                        week={displayWeek}
+                        dailyScreenTimeGoal={dashboardData.challenge.dailyScreenTimeGoal}
+                        childName={displayChildName}
+                        childId={dashboardData.child.id}
+                        parentId={dashboardData.parent.id}
+                        changes={changeTexts}
+                        changeDayChecks={dashboardData.child.changeDayChecks}
+                      />
+                    </div>
+                  </DashboardEnter>
+                </>
+              )}
             </div>
           </DashboardEnter>
         </div>
@@ -502,13 +684,13 @@ export function ParentDashboardScreen({
       {parentSetupOpen ? (
         <ParentChallengeSetupOverlay
           visible
-          childName={childName || 'יואב'}
+          childName={displayChildName}
           childGender={dashboardData.child.gender || 'boy'}
           estimatedDailyHours={estimatedDailyHours}
+          isFirstDeal={completedChallenges.length === 0}
           onClose={() => setParentSetupOpen(false)}
           onSubmit={handleParentSetupSubmit}
-        />
-      ) : null}
+        />      ) : null}
 
       {showChallengeConfetti ? (
         <div
@@ -532,7 +714,7 @@ export function ParentDashboardScreen({
       {parentRedemptionOpen ? (
         <ParentRedemptionConfirmOverlay
           visible
-          childName={childName || 'יואב'}
+          childName={displayChildName}
           weeklyBudget={weeklyBudget}
           hourlyRate={hourlyRate}
           initialTotalHours={
@@ -548,6 +730,20 @@ export function ParentDashboardScreen({
       {subscriptionOpen ? (
         <DashboardSubscriptionOverlay visible onClose={closeSubscription} />
       ) : null}
+
+      <DashboardContractImageCard
+        visible={contractImageOpen}
+        imageUrl={contractImageUrl}
+        childName={displayChildName}
+        onClose={() => setContractImageOpen(false)}
+      />
+
+      <DashboardDealRunningCard
+        visible={dealRunningOpen}
+        childName={displayChildName}
+        countdownTarget={countdownTarget}
+        onClose={() => setDealRunningOpen(false)}
+      />
     </div>
   );
 }

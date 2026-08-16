@@ -25,6 +25,7 @@ import {
   challengeStartDateFromSetup,
   projectedRemainingAtEstimatedUsage,
   redemptionOpenDateFromStart,
+  remainingOnCard,
   roundMoney,
   V03_CHALLENGE_DAYS,
 } from '@/lib/challenge/v03ChallengeMath';
@@ -44,6 +45,8 @@ type ParentChallengeSetupOverlayProps = {
   childName: string;
   childGender?: 'boy' | 'girl';
   estimatedDailyHours: number;
+  /** First-ever deal — show onboarding estimate + onboarding-based savings copy. */
+  isFirstDeal?: boolean;
   onClose: () => void;
   onSubmit: (result: ParentChallengeSetupResult) => void;
 };
@@ -66,6 +69,7 @@ export function ParentChallengeSetupOverlay({
   childName,
   childGender = 'boy',
   estimatedDailyHours,
+  isFirstDeal = true,
   onClose,
   onSubmit,
 }: ParentChallengeSetupOverlayProps) {
@@ -92,7 +96,23 @@ export function ParentChallengeSetupOverlay({
     [weeklyBudget, hourlyRate, estimatedDailyHours]
   );
 
-  const estimatedWeeklyHours = roundMoney(estimatedDailyHours * V03_CHALLENGE_DAYS, 1);
+  /** Hours that empty the wallet at the current rate (weekly total). */
+  const hoursUntilEmpty =
+    hourlyRate > 0 ? roundMoney(weeklyBudget / hourlyRate, 1) : 0;
+
+  /** Example daily usage for the savings line — onboarding (first) or 2h/day (return). */
+  const exampleDailyHours = isFirstDeal
+    ? roundMoney(Math.max(0, estimatedDailyHours), 1)
+    : 2;
+  const exampleWeeklyHours = roundMoney(exampleDailyHours * V03_CHALLENGE_DAYS, 1);
+  const exampleSaveAmount = roundMoney(
+    remainingOnCard(weeklyBudget, exampleWeeklyHours, hourlyRate)
+  );
+
+  const beOnScreen = childGender === 'girl' ? 'תהיה' : 'יהיה';
+  const pronoun = childGender === 'girl' ? 'היא' : 'הוא';
+  const canBe = childGender === 'girl' ? 'יכולה' : 'יכול';
+  const possessive = childGender === 'girl' ? 'שלה' : 'שלו';
 
   const startDate = challengeStartDateFromSetup();
   const redemptionOpen = redemptionOpenDateFromStart(startDate);
@@ -176,48 +196,58 @@ export function ParentChallengeSetupOverlay({
         <>
           <ChallengeEyebrow>הגדרת הדיל</ChallengeEyebrow>
           <ChallengeTitle id={titleId}>שחקו עם המספרים</ChallengeTitle>
-          <ChallengeBody>
-            קבעו כמה דמי כיס נכנסים לארנק וכמה כסף צפוי להישאר בו בסוף השבוע.
-          </ChallengeBody>
 
-          <div className="flex w-full flex-col items-center gap-2">
-            <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
-              התאימו את דמי הכיס השבועיים
+          {isFirstDeal ? (
+            <ChallengeBody>
+              {`הערכת את זמן המסך בכ־${formatNumber(exampleDailyHours)} שעות ביום.`}
+            </ChallengeBody>
+          ) : null}
+
+          <div className="flex w-full flex-col items-center gap-4">
+            <p className="w-full text-right font-simpler text-[15px] font-bold text-white" dir="rtl">
+              הדיל שאתה מציע:
             </p>
-            <BudgetStepper
-              value={weeklyBudget}
-              min={V03_CHALLENGE_BUDGET.min}
-              max={V03_CHALLENGE_BUDGET.max}
-              step={V03_CHALLENGE_BUDGET.step}
-              onChange={setWeeklyBudget}
-            />
+
+            <div className="flex w-full flex-col items-center gap-2">
+              <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
+                דמי כיס לארנק
+              </p>
+              <BudgetStepper
+                value={weeklyBudget}
+                min={V03_CHALLENGE_BUDGET.min}
+                max={V03_CHALLENGE_BUDGET.max}
+                step={V03_CHALLENGE_BUDGET.step}
+                onChange={setWeeklyBudget}
+              />
+            </div>
+
+            <div className="flex w-full flex-col items-center gap-2">
+              <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
+                שקלים לשעת מסך
+              </p>
+              <BudgetStepper
+                value={hourlyRate}
+                min={V03_CHALLENGE_HOURLY_RATE.min}
+                max={V03_CHALLENGE_HOURLY_RATE.max}
+                step={V03_CHALLENGE_HOURLY_RATE.step}
+                decimals={1}
+                onChange={setHourlyRate}
+              />
+            </div>
           </div>
 
-          <div className="flex w-full flex-col items-center gap-2">
-            <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
-              עלות שעת מסך
-            </p>
-            <BudgetStepper
-              value={hourlyRate}
-              min={V03_CHALLENGE_HOURLY_RATE.min}
-              max={V03_CHALLENGE_HOURLY_RATE.max}
-              step={V03_CHALLENGE_HOURLY_RATE.step}
-              decimals={1}
-              onChange={setHourlyRate}
-            />
-          </div>
-
-          <div className="flex w-full flex-col gap-2 rounded-[16px] bg-white/5 px-4 py-4 outline outline-1 outline-white/15">
-            <Row
-              label="שעות שבועיות על פי הערכה שלך"
-              value={`~${formatNumber(estimatedWeeklyHours)} שע׳`}
-            />
-            <div className="h-px w-full bg-white/10" />
-            <Row
-              label={`כמה כסף יישמר ל${childName}?`}
-              value={`₪${formatNumber(projected)}`}
-              emphasize
-            />
+          <div
+            className="flex w-full flex-col gap-3 rounded-[16px] bg-white/5 px-4 py-4 text-right outline outline-1 outline-white/15"
+            dir="rtl"
+          >
+            <ChallengeBody>
+              {isFirstDeal
+                ? `כמה זמן ${childName} ${beOnScreen} במסך — ${formatNumber(exampleDailyHours)} שעות ביום ותחסוך ${formatNumber(exampleSaveAmount)} ש״ח או יותר.`
+                : `במידה ו${childName} ${beOnScreen} במסך — שעתיים ביום במסך ותחסוך ${formatNumber(exampleSaveAmount)} ש״ח או יותר.`}
+            </ChallengeBody>
+            <ChallengeBody>
+              {`${pronoun} גם ${canBe} להיות ${formatNumber(hoursUntilEmpty)} שעות ולהישאר בלי דמי כיס השבוע, הבחירה ${possessive}, שבוע הבא שבוע חדש.`}
+            </ChallengeBody>
           </div>
         </>
       )}
@@ -245,31 +275,3 @@ export function ParentChallengeSetupOverlay({
   );
 }
 
-function Row({
-  label,
-  value,
-  emphasize,
-}: {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-}) {
-  return (
-    <div className="flex w-full items-center justify-between gap-3" dir="rtl">
-      <span
-        className={`font-simpler text-[14px] ${
-          emphasize ? 'font-bold text-white' : 'font-normal text-white/70'
-        }`}
-      >
-        {label}
-      </span>
-      <span
-        className={`font-simpler text-[16px] ${
-          emphasize ? 'font-black text-white' : 'font-bold text-white'
-        }`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}

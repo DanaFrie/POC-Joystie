@@ -265,7 +265,7 @@ export function ChildSelfieMissionFlow({
         imageBlob: blob,
         fileName: 'joystie-handshake.jpg',
         title: 'Joystie',
-        text: 'התמונה שלנו ב־Joystie',
+        text: 'החוזה שלנו ב- joystie.com',
       });
     } catch (error) {
       logger.warn('Share failed:', error);

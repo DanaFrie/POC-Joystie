@@ -62,10 +62,6 @@ export function HelpScreen() {
           עזרה
         </h1>
 
-        <p className="w-full px-2.5 text-center font-simpler text-[14px] font-normal leading-[17.5px] text-v03-green-100 v03-funnel-enter-2">
-          שאלות נפוצות ודרכי יצירת קשר
-        </p>
-
         <div className="flex w-full flex-col gap-3 rounded-[18px] border border-white/20 bg-v03-green-900/40 px-4 py-4 text-center backdrop-blur-[2px] v03-funnel-enter-3">
           <h2 className="font-simpler text-[16px] font-bold leading-[21.6px] text-white">
             צור קשר

@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { formatNumber } from '@/utils/formatting';
+import { JoyWordmarkLogo } from '@/components/brand/JoyWordmarkLogo';
 import { JoystieWordmarkLogo } from '@/components/brand/JoystieWordmarkLogo';
 import { CHILD_DASHBOARD_ASSETS } from '@/constants/child-dashboard-layout';
 
@@ -10,6 +11,7 @@ type DashboardSavingsCardProps = {
   childName?: string;
   dimmed?: boolean;
   variant?: 'parent' | 'child';
+  onClick?: () => void;
 };
 
 export function DashboardSavingsCard({
@@ -17,6 +19,7 @@ export function DashboardSavingsCard({
   childName,
   dimmed = false,
   variant = 'parent',
+  onClick,
 }: DashboardSavingsCardProps) {
   const isChild = variant === 'child';
   const label = isChild
@@ -31,8 +34,24 @@ export function DashboardSavingsCard({
       style={{ opacity: dimmed ? 0.5 : 1 }}
     >
       <div
-        className="absolute inset-x-0 top-[-10px] mx-auto flex w-full max-w-[314px] flex-col items-center justify-end rounded-[27px] p-2 backdrop-blur-[2px]"
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={
+          onClick
+            ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onClick();
+                }
+              }
+            : undefined
+        }
+        className={`absolute inset-x-0 top-[-10px] mx-auto flex w-full max-w-[314px] flex-col items-center justify-end rounded-[27px] p-2 backdrop-blur-[2px] ${
+          onClick ? 'cursor-pointer' : ''
+        }`}
         style={{ background: 'rgba(143, 143, 143, 0.20)' }}
+        aria-label={onClick ? label : undefined}
       >
         <div className="flex w-full max-w-[290px] flex-col items-start">
           <div className="relative h-[156px] w-full overflow-hidden rounded-[24px]">
@@ -40,14 +59,16 @@ export function DashboardSavingsCard({
               src={CHILD_DASHBOARD_ASSETS.savingsCardBg}
               alt=""
               fill
-              className="object-cover object-bottom"
+              className={`object-cover ${isChild ? 'object-top' : 'object-bottom'}`}
               unoptimized
             />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'rgba(0, 0, 0, 0.30)' }}
-              aria-hidden
-            />
+            {!isChild ? (
+              <div
+                className="absolute inset-0"
+                style={{ background: 'rgba(0, 0, 0, 0.30)' }}
+                aria-hidden
+              />
+            ) : null}
 
             <div
               className="pointer-events-none absolute left-[207px] top-[122px] h-[194px] w-[240px] origin-top-left rotate-[125deg] blur-[4.5px]"
@@ -66,16 +87,24 @@ export function DashboardSavingsCard({
               aria-hidden
             />
 
-            {/* Joystie SVG left · כרטיס החסכון שלי + balance right */}
+            {/* Child: Joy · Parent: Joystie */}
             <div
               className="absolute left-5 right-5 top-[23px] z-10 flex items-start justify-between"
               dir="ltr"
             >
-              <JoystieWordmarkLogo
-                className="h-[31px] w-auto shrink-0"
-                aria-label="Joystie"
-                role="img"
-              />
+              {isChild ? (
+                <JoyWordmarkLogo
+                  className="h-[31px] w-auto shrink-0"
+                  aria-label="Joy"
+                  role="img"
+                />
+              ) : (
+                <JoystieWordmarkLogo
+                  className="h-[31px] w-auto shrink-0"
+                  aria-label="Joystie"
+                  role="img"
+                />
+              )}
 
               <div className="flex min-w-[102px] flex-col items-end justify-center gap-[8.5px] text-right">
                 <p
@@ -88,7 +117,7 @@ export function DashboardSavingsCard({
                   className="font-simpler text-[32px] leading-9 text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.20)]"
                   dir="rtl"
                 >
-                  <span className="font-black">{formatNumber(balance, 0)}</span>
+                  <span className="font-black">{formatNumber(balance, isChild ? 1 : 0)}</span>
                   <span className="font-normal"> ₪</span>
                 </p>
               </div>

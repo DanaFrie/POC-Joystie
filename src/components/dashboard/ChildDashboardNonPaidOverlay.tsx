@@ -57,7 +57,7 @@ export function ChildDashboardNonPaidOverlay({
 
         <div className="flex w-full shrink-0 flex-col items-center gap-[15px] self-stretch">
           <p className="w-full shrink-0 text-center font-simpler text-[16px] font-normal leading-[21.6px] tracking-[-0.24px] text-white">
-            הגישה לאתגרים עדיין לא פתוחה
+            הגישה לדילים עדיין לא פתוחה
           </p>
           <p
             id="child-dashboard-non-paid-title"
