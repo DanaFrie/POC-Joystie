@@ -20,7 +20,7 @@ import { endOnboardingGameRoom } from '@/lib/api/game';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
 import { parentCourtLabel } from '@/lib/onboarding/childBondingLabels';
-import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
+import { signalChildOnboardingMilestone, signalOnboardingGameWon } from '@/lib/onboarding/childMilestones';
 import { getOnboardingChildIds } from '@/lib/onboarding/persistOnboardingAccount';
 import { getOnboardingFirstChildIndex } from '@/lib/onboarding/pickFirstChild';
 import {
@@ -81,6 +81,7 @@ export function useOnboardingGame({
   const parentWinHandled = useRef(false);
   const childWinHandled = useRef(false);
   const parentPublished = useRef(false);
+  const gameWonSignaled = useRef(false);
 
   const createRoomContext = useMemo((): GameOnboardingContext => {
     const childIds = getOnboardingChildIds();
@@ -281,6 +282,15 @@ export function useOnboardingGame({
   useEffect(() => {
     if (!session.room || !isGameWon(session.room)) return;
 
+    if (!gameWonSignaled.current) {
+      gameWonSignaled.current = true;
+      void (async () => {
+        const uid =
+          role === 'parent' ? await getCurrentUserId() : parentId?.trim() || null;
+        if (uid) await signalOnboardingGameWon(uid);
+      })();
+    }
+
     if (role === 'parent') {
       if (parentWinHandled.current) return;
       parentWinHandled.current = true;
@@ -309,7 +319,7 @@ export function useOnboardingGame({
       window.clearTimeout(t);
       wonNavigated.current = false;
     };
-  }, [session.room, role, onParentGameWon, onChildGameWon, navigateAfterWin]);
+  }, [session.room, role, onParentGameWon, onChildGameWon, navigateAfterWin, parentId]);
 
   const startPlaying = () => setMissionPhase(false);
 

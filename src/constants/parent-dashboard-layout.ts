@@ -41,4 +41,9 @@ export const PARENT_DASHBOARD_LAYOUT = {
   ringSize: 219,
   cardRadius: 32,
   contentWidth: 328,
+  /** Figma Ellipse 196 — pager under changes card. */
+  pagerDotSize: 9,
+  pagerDotGap: 8,
+  pagerTop: 12,
+  pagerCardGap: 12,
 } as const;

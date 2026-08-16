@@ -30,6 +30,9 @@ export type OnboardingChildProgress = {
   /** Post-game — child finished selfie mission. */
   selfieMissionDone?: boolean;
   selfieMissionDoneAt?: string;
+  /** Cooperative game won — survives room cleanup so resume is not confused with an active match. */
+  gameWon?: boolean;
+  gameWonAt?: string;
   updatedAt?: string;
 };
 
@@ -65,6 +68,8 @@ export async function resetOnboardingChildProgress(parentId: string): Promise<vo
     parentChangeRespondedAt: null,
     selfieMissionDone: false,
     selfieMissionDoneAt: null,
+    gameWon: false,
+    gameWonAt: null,
     updatedAt: new Date().toISOString(),
   });
   logger.log('reset', { parentId });

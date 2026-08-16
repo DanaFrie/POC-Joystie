@@ -205,7 +205,7 @@ async function initializeFirebase(): Promise<void> {
       // Dynamic import to avoid SSR issues
       const { initializeApp, getApps } = await import('firebase/app');
       const { getAuth } = await import('firebase/auth');
-      const { getFirestore } = await import('firebase/firestore');
+      const { initializeFirestore, getFirestore } = await import('firebase/firestore');
       const { getFunctions } = await import('firebase/functions');
       const { getDatabase } = await import('firebase/database');
 
@@ -247,7 +247,15 @@ async function initializeFirebase(): Promise<void> {
         primeOAuthRedirectCaptureWithAuth(authInstance);
       }
 
-      dbInstance = getFirestore(app);
+      // Auto-detect long polling — Chrome QUIC idle timeouts on Listen/Write
+      // channels otherwise log ERR_QUIC_PROTOCOL_ERROR with HTTP 200.
+      try {
+        dbInstance = initializeFirestore(app, {
+          experimentalAutoDetectLongPolling: true,
+        });
+      } catch {
+        dbInstance = getFirestore(app);
+      }
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
 
       const firebaseLogger = createContextLogger('Firebase');

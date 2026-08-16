@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import type { WeekDay } from '@/types/dashboard';
 import {
   PARENT_DASHBOARD_ASSETS,
   PARENT_DASHBOARD_COLORS,
+  PARENT_DASHBOARD_LAYOUT,
 } from '@/constants/parent-dashboard-layout';
 import { updateChild } from '@/lib/api/children';
 import {
@@ -159,6 +160,23 @@ function buildCardsFromChanges(
   }));
 }
 
+function activeCardIndexFromScroll(scroller: HTMLDivElement): number {
+  const children = Array.from(scroller.children) as HTMLElement[];
+  if (children.length === 0) return 0;
+  const mid = scroller.getBoundingClientRect().left + scroller.clientWidth / 2;
+  let best = 0;
+  let bestDist = Number.POSITIVE_INFINITY;
+  children.forEach((child, index) => {
+    const rect = child.getBoundingClientRect();
+    const dist = Math.abs(rect.left + rect.width / 2 - mid);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = index;
+    }
+  });
+  return best;
+}
+
 export function DashboardWeekTracker({
   childName,
   childId,
@@ -171,6 +189,8 @@ export function DashboardWeekTracker({
   cards: cardsProp,
 }: DashboardWeekTrackerProps) {
   const cards = cardsProp ?? buildCardsFromChanges(childName, changes, changeDayChecks, changeText);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const [checkedByCard, setCheckedByCard] = useState<Record<string, boolean[]>>(() => {
     const initial: Record<string, boolean[]> = {};
@@ -186,6 +206,7 @@ export function DashboardWeekTracker({
       next[card.id] = card.initialChecked ?? emptyChecks();
     });
     setCheckedByCard(next);
+    setActiveIndex(0);
     // Re-hydrate when Firestore child changes load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [childId, changes?.join('|'), JSON.stringify(changeDayChecks)]);
@@ -218,19 +239,98 @@ export function DashboardWeekTracker({
     });
   };
 
+  const syncActiveFromScroll = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setActiveIndex(activeCardIndexFromScroll(el));
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const onScroll = () => syncActiveFromScroll();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    el.addEventListener('scrollend', onScroll);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      el.removeEventListener('scrollend', onScroll);
+    };
+  }, [syncActiveFromScroll, cards.length]);
+
+  const goToCard = (index: number) => {
+    const el = scrollerRef.current;
+    const child = el?.children[index] as HTMLElement | undefined;
+    if (!child) return;
+    child.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    setActiveIndex(index);
+  };
+
   if (cards.length === 0) return null;
 
+  const dotSize = PARENT_DASHBOARD_LAYOUT.pagerDotSize;
+
   return (
-    <div className="flex w-full flex-col gap-3">
-      {cards.map((card) => (
-        <ChangeCard
-          key={card.id}
-          title={card.title}
-          changeText={card.changeText}
-          checkedDays={checkedByCard[card.id] ?? emptyChecks()}
-          onToggleDay={(dayIndex) => toggleDay(card.id, dayIndex)}
-        />
-      ))}
+    <div className="flex w-full flex-col items-center">
+      <div
+        ref={scrollerRef}
+        dir="rtl"
+        className="v03-scroll-hidden flex w-full snap-x snap-mandatory overflow-x-auto"
+        style={{ gap: PARENT_DASHBOARD_LAYOUT.pagerCardGap }}
+        aria-roledescription="carousel"
+        aria-label="מעקב שינויים"
+      >
+        {cards.map((card, index) => (
+          <div
+            key={card.id}
+            className="w-full min-w-full shrink-0 snap-start"
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${card.title} (${index + 1} מתוך ${cards.length})`}
+          >
+            <ChangeCard
+              title={card.title}
+              changeText={card.changeText}
+              checkedDays={checkedByCard[card.id] ?? emptyChecks()}
+              onToggleDay={(dayIndex) => toggleDay(card.id, dayIndex)}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div
+        className="flex items-center justify-center"
+        style={{
+          marginTop: PARENT_DASHBOARD_LAYOUT.pagerTop,
+          gap: PARENT_DASHBOARD_LAYOUT.pagerDotGap,
+        }}
+        role="tablist"
+        aria-label="בחירת שינוי"
+      >
+        {cards.map((card, index) => {
+          const active = index === activeIndex;
+          return (
+            <button
+              key={card.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-label={`שינוי ${index + 1}`}
+              onClick={() => goToCard(index)}
+              className="flex shrink-0 items-center justify-center p-1"
+            >
+              <span
+                className="block rounded-full"
+                style={{
+                  width: dotSize,
+                  height: dotSize,
+                  background: active ? '#FFFFFF' : 'rgba(255, 255, 255, 0.35)',
+                }}
+                aria-hidden
+              />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

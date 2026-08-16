@@ -28,6 +28,8 @@
 
         "selfieMissionDone": { ".validate": "newData.isBoolean()" },
 
+        "gameWon": { ".validate": "newData.isBoolean()" },
+
         "linkOpenedAt": { ".validate": "newData.isString()" },
 
         "welcomeReachedAt": { ".validate": "newData.isString()" },
@@ -45,6 +47,8 @@
         "parentChangeRespondedAt": { ".validate": "newData.isString()" },
 
         "selfieMissionDoneAt": { ".validate": "newData.isString()" },
+
+        "gameWonAt": { ".validate": "newData.isString()" },
 
         "updatedAt": { ".validate": "newData.isString()" }
 

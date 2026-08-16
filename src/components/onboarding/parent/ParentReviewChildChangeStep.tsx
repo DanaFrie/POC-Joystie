@@ -14,16 +14,17 @@ import {
 } from '@/constants/parent-post-game-layout';
 import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import {
-  PARENT_REVIEW_APPROVE_LABEL,
   PARENT_REVIEW_SUGGEST_MORE_DIVIDER,
-  PARENT_REVIEW_SUGGEST_MORE_LABEL,
   parentChildChangeCardLabel,
   parentChildDecidedChangeHeadline,
+  parentReviewApproveLabel,
+  parentReviewSuggestMoreLabel,
 } from '@/lib/onboarding/parentPostGameCopy';
 
 type ParentReviewChildChangeStepProps = {
   childName: string;
   childGender: 'boy' | 'girl';
+  parentGender?: 'female' | 'male';
   changeText?: string;
   onApprove: () => void;
   onSuggestMore: () => void;
@@ -33,6 +34,7 @@ type ParentReviewChildChangeStepProps = {
 export function ParentReviewChildChangeStep({
   childName,
   childGender,
+  parentGender = 'male',
   changeText = PARENT_POST_GAME_DEMO_CHILD_CHANGE,
   onApprove,
   onSuggestMore,
@@ -108,7 +110,7 @@ export function ParentReviewChildChangeStep({
           </div>
 
           <button type="button" onClick={onApprove} className={layout.primaryButtonClass}>
-            {PARENT_REVIEW_APPROVE_LABEL}
+            {parentReviewApproveLabel(parentGender)}
           </button>
           </div>
         </FunnelStepSection>
@@ -123,7 +125,7 @@ export function ParentReviewChildChangeStep({
             <div className="h-px flex-1 bg-[#90A79F]/70" aria-hidden />
           </div>
           <button type="button" onClick={onSuggestMore} className={layout.secondaryButtonClass}>
-            {PARENT_REVIEW_SUGGEST_MORE_LABEL}
+            {parentReviewSuggestMoreLabel(parentGender)}
           </button>
           </div>
         </FunnelStepSection>

@@ -54,7 +54,7 @@ export default function OnboardingPage() {
           return;
         }
 
-        // Incomplete logged-in session → parent funnel at «איך מתחילים?»
+        // Incomplete logged-in session → parent funnel (resume in-progress step if any)
         setPhase('parent');
       } catch (error) {
         logger.warn('Onboarding auth gate failed — showing landing', error);

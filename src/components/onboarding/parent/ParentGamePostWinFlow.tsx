@@ -259,7 +259,7 @@ export function ParentGamePostWinFlow({
       return;
     }
 
-    // Finalize clears RTDB child progress — never sync-downgrade off selfie wait / Screen 66.
+    // Tombstone clears the invite link — never sync-downgrade off selfie wait / Screen 66.
     if (
       completionPrefetchStarted.current ||
       phase === 'onboardingComplete' ||
@@ -376,9 +376,9 @@ export function ParentGamePostWinFlow({
   ) {
     const headline =
       phase === 'postWinCoop'
-        ? parentPostWinCoopHeadline(childName, parentGender)
+        ? parentPostWinCoopHeadline(childName, parentGender, childGender)
         : phase === 'postWinWalls'
-          ? parentPostWinWallsHeadline(childName)
+          ? parentPostWinWallsHeadline(childName, parentGender, childGender)
           : phase === 'waitingChildChange'
             ? parentWaitingChildChangeHeadline(childName, childGender)
             : phase === 'waitingAdditionalChangeApproval'
@@ -434,6 +434,7 @@ export function ParentGamePostWinFlow({
         <ParentReviewChildChangeStep
           childName={childName}
           childGender={childGender}
+          parentGender={parentGender}
           changeText={postGame.childChangeText}
           onApprove={handleApproveChildChange}
           onSuggestMore={handleSuggestMore}

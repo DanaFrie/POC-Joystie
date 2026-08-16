@@ -52,9 +52,10 @@ export function childChangeKingBody(childGender: 'boy' | 'girl'): string {
 export function childWaitingParentChangeApproval(
   parentGender?: 'female' | 'male' | null
 ): string {
-  return parentGender === 'female'
-    ? 'מחכים שאמא תאשר את השינוי'
-    : 'מחכים שאבא יאשר את השינוי';
+  if (parentGender === 'female') {
+    return 'מחכים שאמא תאשר את השינוי';
+  }
+  return 'מחכים שאבא יאשר את השינוי';
 }
 
 /** Figma 13674:16154 */

@@ -6,7 +6,6 @@ import { get, ref, set, update } from 'firebase/database';
 import { FirebaseError } from 'firebase/app';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { getBondingShareBaseUrl } from '@/lib/share/bondingBaseUrl';
-import { getUser } from '@/lib/api/users';
 import { ONBOARDING_CHILD_PATH } from '@/utils/url-encoding';
 import { getCurrentUserId } from '@/utils/auth';
 import {
@@ -128,20 +127,6 @@ export async function resolveLocalBondingInvite(
   const expiresMs = Date.parse(data.expiresAt);
   if (Number.isNaN(expiresMs) || Date.now() > expiresMs) {
     throw new FirebaseError('functions/failed-precondition', INVITE_EXPIRED_ERROR_MESSAGE);
-  }
-
-  try {
-    const parent = await getUser(data.parentId, false);
-    if (parent?.onboarding === true) {
-      throw new FirebaseError(
-        'functions/failed-precondition',
-        INVITE_COMPLETED_ERROR_MESSAGE
-      );
-    }
-  } catch (error) {
-    if (error instanceof FirebaseError && error.message === INVITE_COMPLETED_ERROR_MESSAGE) {
-      throw error;
-    }
   }
 
   return {

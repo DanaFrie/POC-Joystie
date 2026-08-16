@@ -8,6 +8,7 @@ import {
 import {
   FLOW_STEP_STORAGE_KEY,
   LANDING_ACTIVE_KEY,
+  isInProgressOnboardingFunnelStep,
 } from '@/lib/onboarding/parentFlowSession';
 import {
   clearOnboardingChildrenSession,
@@ -144,21 +145,37 @@ export async function resolveAuthenticatedUserDestination(
     return { path: '/dashboard', kind, user: resolvedUser };
   }
 
-  // Logged-in visit to /login or /onboarding: incomplete → always «איך מתחילים?» (signupIntro).
+  // Logged-in visit to /login: incomplete → always «איך מתחילים?» (signupIntro).
+  // `/onboarding` gate: keep an in-progress post-signup step (waiting / selfie / share).
   if (source === 'login' || source === 'onboarding_gate') {
-    clearOnboardingChildrenSession();
+    const savedStep =
+      typeof window !== 'undefined' ? sessionStorage.getItem(FLOW_STEP_STORAGE_KEY) : null;
+    const preserveInProgress =
+      source === 'onboarding_gate' && isInProgressOnboardingFunnelStep(savedStep);
+
+    if (!preserveInProgress) {
+      clearOnboardingChildrenSession();
+    }
     const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
     if (!hydrated && children?.length) {
       hydrateOnboardingChildrenFromChildrenDocs(children);
     }
     const resumeKind: UserOnboardingRouteKind =
       kind === 'v03_resume' || kind === 'v02_legacy' ? kind : 'fresh';
-    prepareOnboardingIntroReturn(resumeKind);
-    logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
-      uid: resolvedUser.id,
-      source,
-      resumeKind,
-    });
+    if (preserveInProgress) {
+      logger.log('Onboarding gate — keep in-progress funnel step', {
+        uid: resolvedUser.id,
+        savedStep,
+        resumeKind,
+      });
+    } else {
+      prepareOnboardingIntroReturn(resumeKind);
+      logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
+        uid: resolvedUser.id,
+        source,
+        resumeKind,
+      });
+    }
     return { path: '/onboarding', kind: resumeKind, user: resolvedUser };
   }
 
@@ -255,7 +272,7 @@ export async function resolveOnboardingEntryForAuthenticatedUser(
   return {
     path,
     kind,
-    // Logged-in + incomplete → parent funnel at «איך מתחילים?» (never marketing landing).
+    // Logged-in + incomplete → parent funnel (never marketing landing).
     enterParentFlow: path === '/onboarding',
   };
 }

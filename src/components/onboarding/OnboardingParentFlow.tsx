@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useParentChildProgress } from '@/hooks/useParentChildProgress';
+import { usePairingResume } from '@/hooks/usePairingResume';
 import { flushSync } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChildrenPhoneCountStep } from '@/components/onboarding/children-count/ChildrenPhoneCountStep';
@@ -392,6 +393,23 @@ export function OnboardingParentFlow({
       if (uid) setParentPostGameParentId(uid);
     });
   }, []);
+
+  const applyPairingResumeStep = useCallback(
+    (next: 'childInviteWaiting' | 'parentPostGame') => {
+      setAccountCreated(true);
+      setStep(next);
+    },
+    []
+  );
+
+  usePairingResume({
+    role: 'parent',
+    parentId: parentPostGameParentId,
+    currentPath: '/onboarding',
+    currentStep: step,
+    enabled: accountCreated && oauthFinishing === null,
+    onStep: applyPairingResumeStep,
+  });
 
   const funnelScrollOverflows = useScrollOverflow(funnelScrollRef, [
     step,

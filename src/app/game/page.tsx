@@ -7,8 +7,9 @@ import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import type { ParentPostGamePhase } from '@/components/onboarding/parent/ParentGamePostWinFlow';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { useOnboardingGame } from '@/hooks/useOnboardingGame';
+import { usePairingResume } from '@/hooks/usePairingResume';
 import { endOnboardingGameRoom } from '@/lib/api/game';
-import { getSelectedFirstChildGender, getSelectedFirstChildName } from '@/lib/onboarding/bondingInvite';
+import { getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName } from '@/lib/onboarding/bondingInvite';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
 
 const ParentGamePostWinFlow = nextDynamic(
@@ -22,7 +23,7 @@ const ParentGamePostWinFlow = nextDynamic(
 function ParentGameInner() {
   const router = useRouter();
   const childName = getSelectedFirstChildName();
-  const childGender = getSelectedFirstChildGender();
+  const childGender = getBondingChildGender() ?? getSelectedFirstChildGender();
   const [postGamePhase, setPostGamePhase] = useState<ParentPostGamePhase>('game');
   const [parentId, setParentId] = useState<string | null>(null);
 
@@ -58,6 +59,13 @@ function ParentGameInner() {
     role: 'parent',
     childName,
     onParentGameWon,
+  });
+
+  usePairingResume({
+    role: 'parent',
+    parentId,
+    currentPath: '/game',
+    enabled: Boolean(parentId) && postGamePhase === 'game',
   });
 
   const onWinFadeComplete = useCallback(() => {

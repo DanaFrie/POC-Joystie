@@ -13,6 +13,7 @@ import { useChildBondingBootstrap } from '@/hooks/useChildBondingBootstrap';
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 import { useChildInviteAccess } from '@/hooks/useChildInviteAccess';
 import { useOnboardingGame } from '@/hooks/useOnboardingGame';
+import { usePairingResume } from '@/hooks/usePairingResume';
 import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 
 const ChildGamePostWinFlow = nextDynamic(
@@ -65,6 +66,14 @@ function ChildGameInner() {
     parentName,
     showMissionIntro: true,
     onChildGameWon,
+  });
+
+  usePairingResume({
+    role: 'child',
+    parentId: inviteFailed ? null : parentId,
+    inviteId,
+    currentPath: '/game/child',
+    enabled: Boolean(parentId) && !inviteFailed && postGamePhase === 'game',
   });
 
   if (hasInvite && inviteAccess.status !== 'ready') {

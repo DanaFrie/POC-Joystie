@@ -37,13 +37,9 @@ function isInviteCompleted(data: FirestoreBondingInvite): boolean {
   return data.status === 'completed';
 }
 
-async function isParentOnboardingComplete(parentId: string): Promise<boolean> {
-  const snap = await getDb().collection('users').doc(parentId).get();
-  return snap.data()?.onboarding === true;
-}
-
 async function assertInviteStillOpen(data: FirestoreBondingInvite): Promise<void> {
-  if (isInviteCompleted(data) || (await isParentOnboardingComplete(data.parentId))) {
+  // Only this invite's status/TTL — a newer live invite for the same parent must still resolve.
+  if (isInviteCompleted(data)) {
     throw new functions.https.HttpsError('failed-precondition', 'Invite completed');
   }
   if (isInviteExpired(data)) {

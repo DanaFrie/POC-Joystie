@@ -19,6 +19,8 @@ import {
   shareBondingViaWhatsApp,
 } from '@/lib/onboarding/bondingShare';
 import { getBondingChildUrl } from '@/lib/onboarding/bondingInvite';
+import { getBondingInviteIdFromUrl } from '@/lib/onboarding/bondingInviteUrl';
+import { resolveBondingInvite } from '@/lib/api/bonding';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
 import { AnalyticsEvents } from '@/utils/analytics';
 import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
@@ -71,7 +73,17 @@ export function SignupChildInviteShareStep({
   const [preparing, setPreparing] = useState(false);
 
   const ensureInvite = async (): Promise<string> => {
-    if (inviteMatchesChild(childUrl, childName, childGender)) return childUrl;
+    if (inviteMatchesChild(childUrl, childName, childGender)) {
+      const inviteId = getBondingInviteIdFromUrl(childUrl);
+      if (inviteId) {
+        try {
+          await resolveBondingInvite(inviteId);
+          return childUrl;
+        } catch {
+          // Cached URL is consumed/expired — mint a new live invite below.
+        }
+      }
+    }
     setPreparing(true);
     setShareError(null);
     try {
@@ -92,8 +104,6 @@ export function SignupChildInviteShareStep({
   };
 
   useEffect(() => {
-    if (inviteMatchesChild(childUrl, childName, childGender)) return;
-    setChildUrl('');
     void ensureInvite().catch(() => {
       // shareError set inside ensureInvite
     });

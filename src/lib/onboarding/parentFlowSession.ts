@@ -6,6 +6,22 @@ export const FRESH_PARENT_FLOW_START_KEY = 'onboardingParentFreshStart';
 /** Set when user returns to landing — blocks stale parent-flow restore. */
 export const LANDING_ACTIVE_KEY = 'onboardingLandingActive';
 
+/** Funnel steps that must survive an `/onboarding` remount (auth gate, HMR). */
+const IN_PROGRESS_FUNNEL_STEPS = new Set([
+  'signupWelcome',
+  'pickChild',
+  'childInviteIntro',
+  'childInviteShare',
+  'childInviteWaiting',
+  'parentPostGame',
+  'onboardingComplete',
+  'subscription',
+]);
+
+export function isInProgressOnboardingFunnelStep(step: string | null | undefined): boolean {
+  return Boolean(step && IN_PROGRESS_FUNNEL_STEPS.has(step));
+}
+
 /** Fresh start from onboarding step 1 — land on parent role. */
 export function resetOnboardingParentFlowStart() {
   if (typeof window === 'undefined') return;

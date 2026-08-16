@@ -74,6 +74,8 @@ import {
 
 import { useChildBondingContext } from '@/hooks/useChildBondingContext';
 
+import { usePairingResume } from '@/hooks/usePairingResume';
+
 import { usePostGameSync } from '@/hooks/usePostGameSync';
 
 import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
@@ -226,6 +228,19 @@ export function OnboardingChildFlow() {
   const parentGender = urlMeta.parentGender ?? bonding?.parentGender ?? 'male';
 
   const parentId = bonding?.parentId ?? null;
+
+  const applyChildResumeStep = useCallback((next: string) => {
+    setStep(next as ChildFlowStep);
+  }, []);
+
+  usePairingResume({
+    role: 'child',
+    parentId,
+    inviteId: bonding?.inviteId ?? searchParams?.get('invite'),
+    currentPath: '/onboarding/child',
+    enabled: Boolean(parentId),
+    onFunnelStep: applyChildResumeStep,
+  });
 
   const postGameSyncEnabled =
     Boolean(parentId) &&

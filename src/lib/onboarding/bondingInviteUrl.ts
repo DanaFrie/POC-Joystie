@@ -26,6 +26,19 @@ export function withBondingInviteQueryParams(
   }
 }
 
+export function getBondingInviteIdFromUrl(url: string): string | null {
+  if (!url.trim()) return null;
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== 'undefined' ? window.location.origin : 'https://joystie.com'
+    );
+    return parsed.searchParams.get('invite')?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export function parseBondingInviteQueryParams(
   searchParams: Pick<URLSearchParams, 'get'>
 ): BondingInviteUrlMeta {

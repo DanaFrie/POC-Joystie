@@ -99,3 +99,15 @@ export async function signalChildOnboardingMilestone(
     }
   }
 }
+
+/** Persist cooperative win on child progress so resume does not treat a deleted room as an active match. */
+export async function signalOnboardingGameWon(parentId: string): Promise<void> {
+  try {
+    await publishOnboardingChildProgress(parentId, {
+      gameWon: true,
+      gameWonAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.warn('RTDB gameWon milestone failed', error);
+  }
+}

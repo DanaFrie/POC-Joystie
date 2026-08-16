@@ -1,6 +1,10 @@
 /**
  * After parent onboarding completes: consume invite links and drop live RTDB funnel state.
  * Invite tombstones stay so `?invite=` can resolve to "already completed" (Dori disappointed).
+ *
+ * Split: tombstone the link as soon as Screen 66 appears; delete live progress / public
+ * snapshots only when the parent actually leaves to dashboard. Deleting progress earlier
+ * desyncs waiting-for-selfie / completion screens back to the start of the funnel.
  */
 import { remove, ref } from 'firebase/database';
 import { consumeBondingInvite } from '@/lib/api/bonding';
@@ -26,6 +30,17 @@ async function clearLeftoverGameRoom(parentId: string): Promise<void> {
   await remove(ref(db, gameRoomPath(roomId)));
 }
 
+/** Mark this invite consumed so leftover `?invite=` links cannot re-enter the child funnel. */
+export async function tombstoneOnboardingInviteLink(inviteId?: string | null): Promise<void> {
+  const trimmed = inviteId?.trim();
+  if (!trimmed) return;
+  try {
+    await consumeLocalBondingInvite(trimmed);
+  } catch (error) {
+    logger.warn('tombstone RTDB invite failed', error);
+  }
+}
+
 async function clearOnboardingRtdb(parentId: string, inviteId?: string | null): Promise<void> {
   await clearLeftoverGameRoom(parentId).catch((error) => {
     logger.warn('clear leftover game room failed', error);
@@ -37,9 +52,7 @@ async function clearOnboardingRtdb(parentId: string, inviteId?: string | null): 
     removeOnboardingParentProgress(parentId),
   ]);
 
-  if (inviteId) {
-    await consumeLocalBondingInvite(inviteId);
-  }
+  await tombstoneOnboardingInviteLink(inviteId);
 }
 
 export async function consumeOnboardingInviteRecords(params: {

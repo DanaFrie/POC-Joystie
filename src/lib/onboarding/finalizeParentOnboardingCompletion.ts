@@ -21,6 +21,9 @@ import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('FinalizeOnboardingCompletion');
 
+let finalizeInFlight: Promise<{ childId: string | null }> | null = null;
+let finalizeDoneParentId: string | null = null;
+
 function collectOnboardingChanges(
   childText: string | null | undefined,
   parentText: string | null | undefined
@@ -105,7 +108,27 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
     return { childId: null };
   }
 
+  if (finalizeDoneParentId === parentId) {
+    const user = await getUser(parentId, false);
+    return { childId: user?.primaryChildId ?? null };
+  }
+
+  if (finalizeInFlight) return finalizeInFlight;
+
+  finalizeInFlight = runFinalizeParentOnboarding(parentId).finally(() => {
+    finalizeInFlight = null;
+  });
+  return finalizeInFlight;
+}
+
+async function runFinalizeParentOnboarding(parentId: string): Promise<{
+  childId: string | null;
+}> {
   const user = await getUser(parentId, false);
+  if (user?.onboarding === true && user.primaryChildId) {
+    finalizeDoneParentId = parentId;
+    return { childId: user.primaryChildId };
+  }
   const selected = resolveSelectedChildDraft(user?.kidsAges);
 
   let childProgress = null;
@@ -256,16 +279,15 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
         }),
   });
 
+  // Tombstone the invite link only — keep child/parent progress until dashboard
+  // so waiting-for-selfie / Screen 66 cannot desync if RTDB snapshots disappear.
   try {
-    const { consumeOnboardingInviteRecords } = await import(
+    const { tombstoneOnboardingInviteLink } = await import(
       '@/lib/onboarding/consumeOnboardingInvite'
     );
-    await consumeOnboardingInviteRecords({
-      parentId,
-      inviteId: bondingInviteId,
-    });
+    await tombstoneOnboardingInviteLink(bondingInviteId);
   } catch (error) {
-    logger.warn('Could not consume onboarding invite records:', error);
+    logger.warn('Could not tombstone onboarding invite link:', error);
   }
 
   try {
@@ -275,5 +297,6 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
     logger.warn('Meta onboarding-complete tracking failed:', error);
   }
 
+  finalizeDoneParentId = parentId;
   return { childId: child.id };
 }

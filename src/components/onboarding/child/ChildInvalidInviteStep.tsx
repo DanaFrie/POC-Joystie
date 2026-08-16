@@ -9,6 +9,8 @@ import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 type ChildInvalidInviteStepProps = {
   title?: string;
   detail?: string;
+  /** Defaults to disappointed Dori; consumed invite uses happy. */
+  doriSrc?: string;
 };
 
 const DEFAULT_TITLE = 'הקישור לא תקין';
@@ -23,7 +25,8 @@ export function ChildInviteAccessFailure({
     return (
       <ChildInvalidInviteStep
         title="ההרשמה הושלמה"
-        detail="בדקו עם אבא או אמא לינק חדש"
+        detail="בדקו עם אמא או אבא לינק חדש"
+        doriSrc={CHILD_ONBOARDING_ASSETS.doriHappy}
       />
     );
   }
@@ -42,6 +45,7 @@ export function ChildInviteAccessFailure({
 export function ChildInvalidInviteStep({
   title = DEFAULT_TITLE,
   detail = DEFAULT_DETAIL,
+  doriSrc = CHILD_ONBOARDING_ASSETS.doriDisappointed,
 }: ChildInvalidInviteStepProps) {
   return (
     <>
@@ -56,7 +60,7 @@ export function ChildInvalidInviteStep({
           <BallGameSliderCard>
             <div className="aspect-square h-[291px] w-[291px] shrink-0">
               <OnboardingLazyImage
-                src={CHILD_ONBOARDING_ASSETS.doriDisappointed}
+                src={doriSrc}
                 alt=""
                 className="size-full object-contain"
                 priority
