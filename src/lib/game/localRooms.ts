@@ -5,6 +5,7 @@ import { push, ref, set, update, get, remove } from 'firebase/database';
 import type { GameOnboardingContext } from '@/constants/game';
 import { GAME_WIN_SCORE } from '@/constants/game';
 import { getDatabaseInstance } from '@/lib/firebase';
+import { readOnboardingBondingPublic } from '@/lib/game/bondingPublic';
 import { gameRoomPath, GAME_ROOMS_PATH } from '@/lib/game/paths';
 import { DEFAULT_PADDLE_WIDTH } from '@/lib/game/physics';
 import { beginCountdown } from '@/lib/game/rooms';
@@ -26,6 +27,26 @@ function defaultBall(now: string) {
   return { x: 0.5, y: 0.5, vx: 0, vy: 0, updatedBy: 'parent', updatedAt: now };
 }
 
+function isReusableLiveRoom(room: {
+  parentId?: string;
+  phase?: string;
+  winner?: string | null;
+  onboardingAdvanced?: boolean;
+}): boolean {
+  if (room.onboardingAdvanced) return false;
+  const phase = room.phase;
+  if (
+    phase === 'waiting_child' ||
+    phase === 'waiting_ready' ||
+    phase === 'countdown' ||
+    phase === 'playing'
+  ) {
+    return true;
+  }
+  // Missed rally — both devices may still be on the court retrying.
+  return phase === 'finished' && !room.winner;
+}
+
 function compactOnboardingContext(
   input: GameOnboardingContext
 ): GameOnboardingContext | undefined {
@@ -43,6 +64,35 @@ export async function createGameRoomLocal(input: GameOnboardingContext = {}) {
   if (!uid) throw new Error('Must be signed in');
 
   const db = await getDatabaseInstance();
+
+  // Parent refresh / remount must not mint a second room while the child is
+  // already subscribed to the published one (empty court, frozen «מוכנים?»).
+  try {
+    const published = await readOnboardingBondingPublic(uid);
+    if (published?.roomId && published.joinCode) {
+      const existingSnap = await get(ref(db, gameRoomPath(published.roomId)));
+      if (existingSnap.exists()) {
+        const existing = existingSnap.val() as {
+          parentId?: string;
+          joinCode?: string;
+          phase?: string;
+          winner?: string | null;
+          onboardingAdvanced?: boolean;
+        };
+        if (existing.parentId === uid && isReusableLiveRoom(existing)) {
+          const joinCode = (existing.joinCode ?? published.joinCode).toUpperCase();
+          logger.log('createGameRoomLocal reuse', {
+            roomId: published.roomId,
+            phase: existing.phase,
+          });
+          return { roomId: published.roomId, joinCode, winScore: GAME_WIN_SCORE };
+        }
+      }
+    }
+  } catch (e) {
+    logger.warn('createGameRoomLocal reuse check failed', e);
+  }
+
   const roomRef = push(ref(db, GAME_ROOMS_PATH));
   const roomId = roomRef.key;
   if (!roomId) throw new Error('Failed to allocate room id');

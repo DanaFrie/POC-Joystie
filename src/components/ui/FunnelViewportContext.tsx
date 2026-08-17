@@ -147,11 +147,10 @@ export function useFunnelBleedBarBottomStyle(shellHeightPx: number): CSSProperti
 
 /** Fill letterbox gaps (contain scaling) — reveal light funnel background. */
 export function useFunnelFullBleed(): CSSProperties {
-  const { scale, offsetX, offsetY, designWidth, viewportHeight, canvasHeightPx } =
+  const { scale, offsetX, offsetY, viewportHeight, canvasHeightPx } =
     useFunnelViewportMetrics();
   const bleedX = offsetX / scale;
   const bleedY = offsetY / scale;
-  const width = designWidth;
   const scaledH = canvasHeightPx * scale;
   const bottomBleed = Math.max(0, (viewportHeight - offsetY - scaledH) / scale);
 
@@ -159,7 +158,7 @@ export function useFunnelFullBleed(): CSSProperties {
     position: 'absolute',
     top: -bleedY,
     left: -bleedX,
-    width,
-    height: canvasHeightPx + bleedY + bottomBleed,
+    right: -bleedX,
+    bottom: -bottomBleed,
   };
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import {
   FunnelStepForeground,
@@ -14,7 +14,7 @@ import {
   ONBOARDING_COMPLETION_CHECK_IMAGE,
   ONBOARDING_COMPLETION_IMAGE,
 } from '@/constants/onboarding-completion-layout';
-import { shareImageFile } from '@/lib/share/shareImage';
+import { loadImageBlob, shareImageFile } from '@/lib/share/shareImage';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('ParentOnboardingCompletion');
@@ -37,19 +37,41 @@ export function ParentOnboardingCompletionStep({
   const bleedStyle = useFunnelFullBleed();
   const [sharing, setSharing] = useState(false);
   const [shareHint, setShareHint] = useState<string | null>(null);
+  const agreementBlobRef = useRef<Blob | null>(null);
 
   const previewSrc = agreementImageUrl || ONBOARDING_COMPLETION_IMAGE;
+
+  useEffect(() => {
+    let cancelled = false;
+    agreementBlobRef.current = null;
+    void (async () => {
+      try {
+        const blob = await loadImageBlob({ imageUrl: previewSrc });
+        if (!cancelled) agreementBlobRef.current = blob;
+      } catch (error) {
+        logger.warn('Agreement image prefetch failed:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [previewSrc]);
 
   const handleShare = useCallback(async () => {
     if (sharing) return;
     setSharing(true);
     setShareHint(null);
     try {
+      let blob = agreementBlobRef.current;
+      if (!blob) {
+        blob = await loadImageBlob({ imageUrl: previewSrc });
+        agreementBlobRef.current = blob;
+      }
       const result = await shareImageFile({
-        imageUrl: previewSrc,
+        imageBlob: blob,
         fileName: 'joystie-handshake.jpg',
         title: 'Joystie',
-        text: 'החוזה שלנו ב־Joystie',
+        text: 'החוזה שלנו ב- joystie.com',
       });
       if (result === 'downloaded') {
         setShareHint('התמונה הורדה');

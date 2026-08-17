@@ -11,6 +11,7 @@ import { OnboardingWaitingScreenShell } from '@/components/onboarding/Onboarding
 import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
 import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
 import { ParentAdditionalChangeStep } from '@/components/onboarding/parent/ParentAdditionalChangeStep';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { ParentOnboardingCompletionStep } from '@/components/onboarding/parent/ParentOnboardingCompletionStep';
 import { ParentReviewChildChangeStep } from '@/components/onboarding/parent/ParentReviewChildChangeStep';
@@ -111,6 +112,7 @@ export function ParentGamePostWinFlow({
   setupBusy,
   childJoinBlocked,
   parentAsChildError,
+  setupError,
   onFlowComplete,
   parentId,
   onWinFadeComplete,
@@ -469,6 +471,15 @@ export function ParentGamePostWinFlow({
               <p>{parentAsChildError}</p>
             </div>
           </FunnelStepRoot>
+        ) : setupError ? (
+          <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
+            <BallGameFunnelBackground />
+            <div className="relative z-10 flex h-full items-center justify-center px-6 text-center font-assistant text-white">
+              <p>{setupError}</p>
+            </div>
+          </FunnelStepRoot>
+        ) : !room ? (
+          <FunnelRouteLoading headline="מתחברים למשחק" />
         ) : (
           <OnboardingBallGameScreen
             role="parent"

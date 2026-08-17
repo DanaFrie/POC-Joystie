@@ -304,9 +304,15 @@ export async function beginCountdown(roomId: string): Promise<void> {
 
 export async function startGamePlay(roomId: string): Promise<void> {
   const db = await getDatabaseInstance();
+  const roomRef = ref(db, gameRoomPath(roomId));
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+  const raw = snap.val() as Record<string, unknown>;
+  if (String(raw.phase ?? '') !== 'countdown') return;
+
   const start = createStartBall();
   const now = new Date().toISOString();
-  await update(ref(db, gameRoomPath(roomId)), {
+  await update(roomRef, {
     phase: 'playing',
     hasStartedRound: true,
     countdownAt: null,

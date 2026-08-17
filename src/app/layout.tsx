@@ -1,10 +1,12 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import Script from 'next/script'
+import { Suspense } from 'react'
 import { appRubik } from '@/lib/fonts'
 import { isMetaPixelEnabled, META_PIXEL_ID } from '@/constants/meta-pixel'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
+import { SessionRouteWaiter } from '@/components/auth/SessionRouteWaiter'
 
 export const metadata: Metadata = {
   title: 'Joy Wallet of Digital Balance',
@@ -38,6 +40,9 @@ fbq('init', '${META_PIXEL_ID}');
           <ConditionalMainWrapper>
             {children}
           </ConditionalMainWrapper>
+          <Suspense fallback={null}>
+            <SessionRouteWaiter />
+          </Suspense>
         </div>
       </body>
     </html>

@@ -23,7 +23,7 @@ export function CumulativeScreenTimeCard({
   child,
   className = '',
 }: CumulativeScreenTimeCardProps) {
-  const lowTime = isLowCumulativeScreenTime(child.totalDays);
+  const lowTime = isLowCumulativeScreenTime(child.hoursPerDay);
   const spendVerb = child.gender === 'girl' ? 'תבלה' : 'יבלה';
   const allowClause =
     child.gender === 'girl'

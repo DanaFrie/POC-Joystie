@@ -13,9 +13,9 @@ export type ChildCumulativeProjection = {
   durationLabel: string;
 };
 
-/** Under 2 months («חודשיים») — show encouraging copy instead of a duration badge. */
-export function isLowCumulativeScreenTime(totalDays: number): boolean {
-  return totalDays < 60;
+/** ≤ 30 minutes/day — show encouraging copy instead of a duration badge. */
+export function isLowCumulativeScreenTime(hoursPerDay: number): boolean {
+  return hoursPerDay <= 0.5;
 }
 
 function hebrewYears(n: number): string {

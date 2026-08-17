@@ -8,9 +8,61 @@ import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset'
 import { avgMinutesFromWeeklyScreenTime } from '@/lib/dashboard/parentDailyAverage';
 import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
 import type { FirestoreChallenge, FirestoreChild, FirestoreDailyUpload } from '@/types/firestore';
+import { dataCache, cacheKeys, cacheTTL } from '@/utils/data-cache';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('Dashboard');
+
+const DASHBOARD_PREFETCH_KEY = 'joystieDashboardPrefetch';
+const DASHBOARD_PREFETCH_TTL_MS = 60 * 1000;
+
+function dropSessionPrefetch(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(DASHBOARD_PREFETCH_KEY);
+  } catch {
+    // quota / private mode
+  }
+}
+
+export function clearPrefetchedDashboard(): void {
+  dropSessionPrefetch();
+}
+
+function rememberDashboardState(parentId: string, data: DashboardState): void {
+  dataCache.set(cacheKeys.dashboard(parentId), data, cacheTTL.dashboard);
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(
+      DASHBOARD_PREFETCH_KEY,
+      JSON.stringify({ uid: parentId, data, at: Date.now() })
+    );
+  } catch {
+    // quota / private mode
+  }
+}
+
+/** Memory + session snapshot from login/onboarding prefetch. One-shot session copy. */
+export function readPrefetchedDashboard(parentId: string): DashboardState | null {
+  if (typeof window === 'undefined' || !parentId) return null;
+  const mem = dataCache.get<DashboardState>(cacheKeys.dashboard(parentId));
+  if (mem) {
+    dropSessionPrefetch();
+    return mem;
+  }
+  try {
+    const raw = sessionStorage.getItem(DASHBOARD_PREFETCH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { uid?: string; data?: DashboardState; at?: number };
+    dropSessionPrefetch();
+    if (parsed.uid !== parentId || !parsed.data) return null;
+    if (!parsed.at || Date.now() - parsed.at > DASHBOARD_PREFETCH_TTL_MS) return null;
+    dataCache.set(cacheKeys.dashboard(parentId), parsed.data, cacheTTL.dashboard);
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
 
 function resolveChildShareCardFields(child: FirestoreChild): {
   shareCardUrl: string | null;
@@ -184,7 +236,6 @@ function generateWeek(
     const matchingUploads = uploads.filter(u => u.date === dateStr);
     const upload = matchingUploads.length > 0 ? matchingUploads[0] : null;
     
-    // Log if multiple uploads found for same date (data integrity issue)
     if (matchingUploads.length > 1) {
       logger.warn(`Multiple uploads found for date ${dateStr}:`, matchingUploads.map(u => ({
         id: u.id,
@@ -194,21 +245,7 @@ function generateWeek(
         uploadedAt: u.uploadedAt
       })));
     }
-    
-    // Log upload matching for debugging
-    if (upload) {
-      logger.log(`Matched upload for ${dateStr}:`, {
-        id: upload.id,
-        date: upload.date,
-        requiresApproval: upload.requiresApproval,
-        parentAction: upload.parentAction,
-        success: upload.success,
-        uploadedAt: upload.uploadedAt
-      });
-    } else {
-      logger.log(`No upload found for ${dateStr}`);
-    }
-    
+
     // Calculate coins
     const dailyGoalHours = challengeDailyGoalHours(challenge);
     const dailyBudget = challengeDailyBudget(challenge);
@@ -510,36 +547,28 @@ function buildBootstrapDashboardState(
 export async function getDashboardData(parentId: string, useCache: boolean = true): Promise<DashboardState | null> {
   // Check cache first
   if (useCache) {
-    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<DashboardState>(cacheKeys.dashboard(parentId));
     if (cached) {
-      logger.log(`Using cached dashboard data for ${parentId}`);
       return cached;
     }
   }
   try {
-    logger.log('Loading data for user:', parentId);
-    
-    // Get user data
     const user = await getUser(parentId);
     if (!user) {
       logger.warn('User not found in Firestore:', parentId);
       return null;
     }
-    logger.log('User found:', user.email);
 
     // Get challenge from Firestore only (no cache) so we have latest weeklyUpload after child upload
     let challenge = await getActiveChallenge(parentId, false);
     if (!challenge) {
       challenge = await getLatestChallenge(parentId);
       if (!challenge) {
-        logger.warn('No challenge found for user:', parentId);
         const child = await ensureChildForParent(parentId);
-        return buildBootstrapDashboardState(user, child);
+        const bootstrap = buildBootstrapDashboardState(user, child);
+        if (useCache) rememberDashboardState(parentId, bootstrap);
+        return bootstrap;
       }
-      logger.log('Using latest (pending) challenge:', challenge.id);
-    } else {
-      logger.log('Active challenge found:', challenge.id);
     }
 
     // Get child data
@@ -550,15 +579,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     
     // Get uploads for current week (include parentId for security rules)
     const uploads = await getUploadsByChallenge(challenge.id, parentId);
-    logger.log(`Fetched ${uploads.length} uploads for challenge ${challenge.id}:`, uploads.map(u => ({
-      id: u.id,
-      date: u.date,
-      requiresApproval: u.requiresApproval,
-      parentAction: u.parentAction,
-      success: u.success,
-      uploadedAt: u.uploadedAt
-    })));
-    
+
     // Check if challenge hasn't started yet
     const challengeNotStarted = !challenge.startDate || (() => {
       const startDate = new Date(challenge.startDate!);
@@ -616,10 +637,8 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       activeChallengeId: challenge.id
     };
     
-    // Cache the result (skip cache for pending challenges so we get fresh data after admin approval)
-    if (useCache && challenge.isActive) {
-      const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
-      dataCache.set(cacheKeys.dashboard(parentId), dashboardState, cacheTTL.dashboard);
+    if (useCache) {
+      rememberDashboardState(parentId, dashboardState);
     }
     
     return dashboardState;
@@ -627,5 +646,18 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     logger.error('Error getting dashboard data:', error);
     throw new Error('שגיאה בטעינת נתוני הדשבורד.');
   }
+}
+
+const dashboardInflight = new Map<string, Promise<DashboardState | null>>();
+
+/** One in-flight fetch per parent — login/onboarding prefetch and dashboard mount share it. */
+export function loadDashboardDataShared(parentId: string): Promise<DashboardState | null> {
+  const existing = dashboardInflight.get(parentId);
+  if (existing) return existing;
+  const pending = getDashboardData(parentId).finally(() => {
+    dashboardInflight.delete(parentId);
+  });
+  dashboardInflight.set(parentId, pending);
+  return pending;
 }
 

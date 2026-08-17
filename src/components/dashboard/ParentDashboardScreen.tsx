@@ -23,10 +23,7 @@ import {
 import type { ParentChallengeSetupResult } from '@/components/dashboard/challenge/ParentChallengeSetupOverlay';
 import type { ParentRedemptionConfirmResult } from '@/components/dashboard/challenge/ParentRedemptionConfirmOverlay';
 import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
-import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMintGridBackdrop';
-import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
-import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
-import { FunnelViewport } from '@/components/ui/FunnelViewport';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 
 import {
   PARENT_DASHBOARD_COLORS,
@@ -57,7 +54,7 @@ import { computeParentDailyAverageMetrics } from '@/lib/dashboard/parentDailyAve
 import { getUserChallenges } from '@/lib/api/challenges';
 import { resolveDashboardChildShareUrl } from '@/lib/api/bondingInvites';
 import { getChildShareCardAccess } from '@/lib/api/shareCard';
-import { shareImageFile } from '@/lib/share/shareImage';
+import { loadImageBlob, shareImageFile } from '@/lib/share/shareImage';
 import { generateChildUrl } from '@/utils/url-encoding';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
@@ -132,24 +129,9 @@ type ParentDashboardScreenProps = {
   onRefresh: () => Promise<void>;
 };
 
-/** Waiting-style loader for parent + child dashboard data fetch. */
+/** Direct /dashboard loader — session restore uses the root SessionRouteWaiter instead. */
 export function DashboardLoadingState() {
-  return (
-    <div
-      className="absolute inset-0 overflow-hidden bg-v03-green-900"
-      style={{ background: PARENT_DASHBOARD_COLORS.canvas }}
-      role="status"
-      aria-live="polite"
-      aria-busy
-    >
-      <FunnelViewport surface="dark" scaleMode="scroll" className="h-full font-simpler text-v03-text-on-dark">
-        <OnboardingMintGridBackdrop showGrid />
-        <OnboardingWaitingScreenShell skipMintGlow zIndex={20} ariaBusy staticLayout>
-          <OnboardingWaitingCenterContent headline="" ariaLabel="טוען" />
-        </OnboardingWaitingScreenShell>
-      </FunnelViewport>
-    </div>
-  );
+  return <FunnelRouteLoading />;
 }
 
 export function ParentDashboardScreen({
@@ -194,6 +176,7 @@ export function ParentDashboardScreen({
   const [completedDealsOpen, setCompletedDealsOpen] = useState(false);
   const [contractImageOpen, setContractImageOpen] = useState(false);
   const [contractImageUrl, setContractImageUrl] = useState<string | null>(null);
+  const contractBlobRef = useRef<Blob | null>(null);
   const [dealRunningOpen, setDealRunningOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [pageVisible, setPageVisible] = useState(
@@ -340,6 +323,33 @@ export function ParentDashboardScreen({
     dashboardData.child.shareCardStored,
   ]);
 
+  /** Prefetch agreement bytes so share stays inside the user-gesture window. */
+  useEffect(() => {
+    let cancelled = false;
+    contractBlobRef.current = null;
+    if (!dashboardData.child.shareCardStored && !dashboardData.child.shareCardUrl) {
+      return;
+    }
+    void (async () => {
+      try {
+        const imageUrl = await resolveContractImageUrl();
+        if (!imageUrl || cancelled) return;
+        const blob = await loadImageBlob({ imageUrl });
+        if (!cancelled) contractBlobRef.current = blob;
+      } catch (error) {
+        logger.warn('Contract image prefetch failed:', error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dashboardData.child.shareCardStored,
+    dashboardData.child.shareCardUrl,
+    dashboardData.child.id,
+    resolveContractImageUrl,
+  ]);
+
   const handleViewContract = useCallback(async () => {
     const imageUrl = await resolveContractImageUrl();
     setContractImageUrl(imageUrl);
@@ -348,17 +358,26 @@ export function ParentDashboardScreen({
 
   const handleShareContract = useCallback(async () => {
     try {
-      const imageUrl = await resolveContractImageUrl();
-      if (!imageUrl) return;
+      let blob = contractBlobRef.current;
+      if (!blob) {
+        const imageUrl = await resolveContractImageUrl();
+        if (!imageUrl) {
+          logger.warn('No contract image to share');
+          return;
+        }
+        blob = await loadImageBlob({ imageUrl });
+        contractBlobRef.current = blob;
+      }
       await shareImageFile({
-        imageUrl,
-        title: childName ? `החוזה עם ${childName}` : 'החוזה',
-        text: childName ? `החוזה עם ${childName}` : 'החוזה',
+        imageBlob: blob,
+        fileName: 'joystie-handshake.jpg',
+        title: 'Joystie',
+        text: 'החוזה שלנו ב- joystie.com',
       });
     } catch (error) {
       logger.warn('Contract share failed:', error);
     }
-  }, [resolveContractImageUrl, childName]);
+  }, [resolveContractImageUrl]);
 
   const handleAddToHome = useCallback(async (): Promise<boolean> => {
     ensurePwaInstallListener();

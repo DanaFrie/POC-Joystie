@@ -8,6 +8,10 @@ import { isLoggedIn, clearSession } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
 import { finishAuthenticatedUserNavigation } from '@/lib/auth/postLoginNavigation';
 import {
+  hideSessionWaiter,
+  showSessionWaiter,
+} from '@/lib/auth/sessionRouteWaiter';
+import {
   isRegisteredJoystieAccount,
 } from '@/lib/auth/signupAccountStatus';
 import {
@@ -55,10 +59,14 @@ function LoginPageContent() {
   const showResumeSignupBanner = searchParams?.get('existing') === '1';
   const showPasswordProviderBanner = searchParams?.get('method') === 'password';
 
+  const [sessionChecking, setSessionChecking] = useState(true);
+
   const finishLogin = useCallback(
-    async (uid: string) => {
+    async (uid: string, replace = true) => {
+      showSessionWaiter();
       await finishAuthenticatedUserNavigation(uid, router, {
         source: showResumeSignupBanner ? 'signup_existing' : 'login',
+        replace,
       });
     },
     [router, showResumeSignupBanner]
@@ -117,6 +125,7 @@ function LoginPageContent() {
   );
 
   useEffect(() => {
+    showSessionWaiter();
     const checkAuthAndRedirect = async () => {
       try {
         // Prefer Auth restore over localStorage-only session (avoids false "logged out").
@@ -132,10 +141,13 @@ function LoginPageContent() {
               // Ignore sign-out errors
             }
           }
+          hideSessionWaiter();
+          setSessionChecking(false);
           return;
         }
 
         await finishLogin(userId);
+        return;
       } catch (error) {
         logger.error('Error checking auth:', error);
         clearSession();
@@ -146,6 +158,8 @@ function LoginPageContent() {
           // Ignore sign-out errors
         }
       }
+      hideSessionWaiter();
+      setSessionChecking(false);
     };
 
     void checkAuthAndRedirect();
@@ -296,6 +310,10 @@ function LoginPageContent() {
     router.push('/onboarding');
   }, [router]);
 
+  if (sessionChecking) {
+    return null;
+  }
+
   return (
     <LoginScreen
       email={formData.email}
@@ -318,7 +336,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<FunnelRouteLoading surface="dark" />}>
+    <Suspense fallback={<FunnelRouteLoading />}>
       <LoginPageContent />
     </Suspense>
   );

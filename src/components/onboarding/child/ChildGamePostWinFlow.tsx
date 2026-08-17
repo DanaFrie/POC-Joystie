@@ -6,6 +6,7 @@ import { BallGameWinFadeOverlay } from '@/components/onboarding/game/BallGameWin
 import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
 import { OnboardingBallGameScreen } from '@/components/onboarding/game/OnboardingBallGameScreen';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { CHILD_POST_GAME_WIN_FADE_MS } from '@/constants/child-post-game-layout';
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
@@ -103,6 +104,8 @@ export function ChildGamePostWinFlow({
               <p>{setupError}</p>
             </div>
           </FunnelStepRoot>
+        ) : !room ? (
+          <FunnelRouteLoading headline="מתחברים למשחק" />
         ) : (
           <OnboardingBallGameScreen
             role="child"

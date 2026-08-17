@@ -1,11 +1,15 @@
 'use client';
 
-import nextDynamic from 'next/dynamic';
 import { useCallback, useLayoutEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { OnboardingLanding } from '@/components/onboarding/OnboardingLanding';
-import { resolveOnboardingEntryForAuthenticatedUser } from '@/lib/auth/postLoginNavigation';
+import { OnboardingParentFlow } from '@/components/onboarding/OnboardingParentFlow';
+import {
+  consumeLoggedInDestination,
+  prefetchDashboardData,
+  resolveOnboardingEntryForAuthenticatedUser,
+} from '@/lib/auth/postLoginNavigation';
 import {
   clearParentFlowSession,
   hasParentFlowStarted,
@@ -13,36 +17,45 @@ import {
 } from '@/lib/onboarding/parentFlowSession';
 import { getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
+import {
+  hideSessionWaiter,
+  showSessionWaiter,
+} from '@/lib/auth/sessionRouteWaiter';
 
 export const dynamic = 'force-dynamic';
 
 const logger = createContextLogger('OnboardingPage');
 
-const OnboardingParentFlow = nextDynamic<{ onBackToLanding?: () => void }>(
-  () =>
-    import('@/components/onboarding/OnboardingParentFlow').then((m) => ({
-      default: m.OnboardingParentFlow,
-    })),
-  { loading: () => <FunnelRouteLoading />, ssr: false }
-);
-
-/** `/onboarding` — landing; התחלה continues parent funnel on the same route. */
+/** `/onboarding` — landing; logged-in session routes to dashboard or signupIntro. */
 export default function OnboardingPage() {
   const router = useRouter();
   const [phase, setPhase] = useState<'loading' | 'landing' | 'parent'>('loading');
 
   useLayoutEffect(() => {
+    showSessionWaiter();
     let cancelled = false;
 
     void (async () => {
       try {
-        // Wait for Auth persistence — isAuthenticated() alone used to race and
-        // show landing while a completed parent session was still restoring.
         const uid = await getCurrentUserIdAsync();
         if (cancelled) return;
 
         if (!uid) {
+          hideSessionWaiter();
           setPhase(hasParentFlowStarted() ? 'parent' : 'landing');
+          return;
+        }
+
+        const pending = consumeLoggedInDestination();
+        if (pending === '/onboarding') {
+          hideSessionWaiter();
+          setPhase('parent');
+          return;
+        }
+        if (pending === '/dashboard') {
+          await prefetchDashboardData(uid);
+          if (cancelled) return;
+          router.replace('/dashboard');
           return;
         }
 
@@ -50,15 +63,18 @@ export default function OnboardingPage() {
         if (cancelled) return;
 
         if (entry.path === '/dashboard') {
+          await prefetchDashboardData(uid);
+          if (cancelled) return;
           router.replace('/dashboard');
           return;
         }
 
-        // Incomplete logged-in session → parent funnel (resume in-progress step if any)
+        hideSessionWaiter();
         setPhase('parent');
       } catch (error) {
         logger.warn('Onboarding auth gate failed — showing landing', error);
         if (!cancelled) {
+          hideSessionWaiter();
           setPhase(hasParentFlowStarted() ? 'parent' : 'landing');
         }
       }

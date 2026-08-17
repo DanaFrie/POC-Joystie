@@ -52,7 +52,7 @@ export function FunnelDesktopOverlay({
             textShadow: '0 0 20px rgba(255, 255, 255, 0.35)',
           }}
         >
-          אנחנו זמינים במובייל - מחכים לכם שם
+          אנחנו זמינים במובייל מחכים לכם שם
         </p>
 
         {/* eslint-disable-next-line @next/next/no-img-element */}

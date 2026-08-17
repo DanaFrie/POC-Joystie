@@ -350,7 +350,7 @@ export function MarketingNav({
                     src={LANDING_ASSETS.footerMountainMobile}
                     alt=""
                     fill
-                    className="object-cover object-top [filter:saturate(1.75)_contrast(1.08)]"
+                    className="object-cover object-top"
                     sizes="327px"
                   />
                   <div

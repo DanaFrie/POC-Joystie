@@ -8,7 +8,6 @@ import {
 import {
   FLOW_STEP_STORAGE_KEY,
   LANDING_ACTIVE_KEY,
-  isInProgressOnboardingFunnelStep,
 } from '@/lib/onboarding/parentFlowSession';
 import {
   clearOnboardingChildrenSession,
@@ -21,10 +20,32 @@ import {
   syncFunnelKidsAgesToUser,
 } from '@/lib/onboarding/persistOnboardingAccount';
 import type { FirestoreUser } from '@/types/firestore';
+import { showSessionWaiter } from '@/lib/auth/sessionRouteWaiter';
 import { createSession } from '@/utils/session';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('PostLoginNavigation');
+
+const LOGGED_IN_DEST_KEY = 'joystieLoggedInDest';
+
+export function markLoggedInDestination(path: '/dashboard' | '/onboarding') {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(LOGGED_IN_DEST_KEY, path);
+}
+
+export function clearLoggedInDestination() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(LOGGED_IN_DEST_KEY);
+}
+
+/** One-shot dest from /login session restore — skip a second gate on /onboarding. */
+export function consumeLoggedInDestination(): '/dashboard' | '/onboarding' | null {
+  if (typeof window === 'undefined') return null;
+  const value = sessionStorage.getItem(LOGGED_IN_DEST_KEY);
+  sessionStorage.removeItem(LOGGED_IN_DEST_KEY);
+  if (value === '/dashboard' || value === '/onboarding') return value;
+  return null;
+}
 
 export type NavigateAfterLoginOptions = {
   /**
@@ -33,7 +54,19 @@ export type NavigateAfterLoginOptions = {
    * Complete (dashboard): keep Firestore/children as-is — do not overwrite done kids.
    */
   source?: 'login' | 'signup_existing' | 'onboarding_gate';
+  /** Prefer replace so session-restore doesn't stack /login or /onboarding. */
+  replace?: boolean;
 };
+
+/** Warm dashboard cache so /dashboard can paint without a second waiter. */
+export async function prefetchDashboardData(uid: string): Promise<void> {
+  try {
+    const { loadDashboardDataShared } = await import('@/lib/api/dashboard');
+    await loadDashboardDataShared(uid);
+  } catch (error) {
+    logger.warn('Dashboard prefetch failed', error);
+  }
+}
 
 export function isUserOnboardingComplete(user: FirestoreUser): boolean {
   return user.onboarding === true;
@@ -145,37 +178,21 @@ export async function resolveAuthenticatedUserDestination(
     return { path: '/dashboard', kind, user: resolvedUser };
   }
 
-  // Logged-in visit to /login: incomplete → always «איך מתחילים?» (signupIntro).
-  // `/onboarding` gate: keep an in-progress post-signup step (waiting / selfie / share).
+  // Logged-in visit to /login or /onboarding: incomplete → «איך מתחילים?» (signupIntro).
   if (source === 'login' || source === 'onboarding_gate') {
-    const savedStep =
-      typeof window !== 'undefined' ? sessionStorage.getItem(FLOW_STEP_STORAGE_KEY) : null;
-    const preserveInProgress =
-      source === 'onboarding_gate' && isInProgressOnboardingFunnelStep(savedStep);
-
-    if (!preserveInProgress) {
-      clearOnboardingChildrenSession();
-    }
+    clearOnboardingChildrenSession();
     const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
     if (!hydrated && children?.length) {
       hydrateOnboardingChildrenFromChildrenDocs(children);
     }
     const resumeKind: UserOnboardingRouteKind =
       kind === 'v03_resume' || kind === 'v02_legacy' ? kind : 'fresh';
-    if (preserveInProgress) {
-      logger.log('Onboarding gate — keep in-progress funnel step', {
-        uid: resolvedUser.id,
-        savedStep,
-        resumeKind,
-      });
-    } else {
-      prepareOnboardingIntroReturn(resumeKind);
-      logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
-        uid: resolvedUser.id,
-        source,
-        resumeKind,
-      });
-    }
+    prepareOnboardingIntroReturn(resumeKind);
+    logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
+      uid: resolvedUser.id,
+      source,
+      resumeKind,
+    });
     return { path: '/onboarding', kind: resumeKind, user: resolvedUser };
   }
 
@@ -234,18 +251,27 @@ export async function resolveAuthenticatedUserDestination(
 
 export async function navigateAfterLogin(
   user: FirestoreUser,
-  router: { push: (path: string) => void },
+  router: { push: (path: string) => void; replace: (path: string) => void },
   options?: NavigateAfterLoginOptions
 ): Promise<UserOnboardingRouteKind> {
   const { path, kind } = await resolveAuthenticatedUserDestination(user, options);
-  router.push(path);
+  if (path === '/dashboard') {
+    showSessionWaiter();
+    await prefetchDashboardData(user.id);
+  }
+  markLoggedInDestination(path);
+  if (options?.replace) {
+    router.replace(path);
+  } else {
+    router.push(path);
+  }
   return kind;
 }
 
 /** Shared post-auth routing for login and returning OAuth sign-up users. */
 export async function finishAuthenticatedUserNavigation(
   uid: string,
-  router: { push: (path: string) => void },
+  router: { push: (path: string) => void; replace: (path: string) => void },
   options?: NavigateAfterLoginOptions
 ): Promise<UserOnboardingRouteKind> {
   createSession(uid);

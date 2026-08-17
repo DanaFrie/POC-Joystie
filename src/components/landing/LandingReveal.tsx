@@ -18,7 +18,8 @@ type LandingRevealProps = {
 };
 
 /**
- * Soft float-up + fade when scrolled into view (or on mount if `immediate`).
+ * Visible in SSR / before JS. After hydration, off-screen blocks hide then
+ * float in when they enter the viewport — no empty wait for chunk load.
  */
 export function LandingReveal({
   children,
@@ -31,19 +32,14 @@ export function LandingReveal({
   dir,
 }: LandingRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const [phase, setPhase] = useState<'in' | 'pending'>('in');
   const onVisibleRef = useRef(onVisible);
   onVisibleRef.current = onVisible;
 
   useEffect(() => {
-    if (!visible) return;
-    onVisibleRef.current?.();
-  }, [visible]);
-
-  useEffect(() => {
     if (immediate) {
-      const id = window.requestAnimationFrame(() => setVisible(true));
-      return () => window.cancelAnimationFrame(id);
+      onVisibleRef.current?.();
+      return;
     }
 
     const el = ref.current;
@@ -53,47 +49,34 @@ export function LandingReveal({
     const reveal = () => {
       if (done) return;
       done = true;
-      setVisible(true);
+      setPhase('in');
+      onVisibleRef.current?.();
       observer.disconnect();
     };
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // Root is inset so a hit means the block is in the main reading band —
-        // not just peeking at the bottom edge of the screen.
         if (entries.some((entry) => entry.isIntersecting)) {
           reveal();
         }
       },
-      {
-        threshold: 0,
-        // Top/bottom inset: animate only once the user has scrolled to the section.
-        rootMargin: '-14% 0px -22% 0px',
-      }
+      { threshold: 0, rootMargin: '0px 0px -8% 0px' }
     );
 
+    const rect = el.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const alreadyOnScreen = rect.bottom > 0 && rect.top < vh;
+
+    if (alreadyOnScreen) {
+      observer.disconnect();
+      onVisibleRef.current?.();
+      return;
+    }
+
+    setPhase('pending');
     observer.observe(el);
 
-    // Hash nav / late hydration: reveal only if already in the same reading band
-    const checkAlreadyVisible = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.height <= 0 && rect.width <= 0) return;
-      const vh = window.innerHeight || document.documentElement.clientHeight;
-      const bandTop = vh * 0.14;
-      const bandBottom = vh * 0.78;
-      const overlapsBand = rect.top < bandBottom && rect.bottom > bandTop;
-      if (overlapsBand) {
-        reveal();
-      }
-    };
-    const raf = window.requestAnimationFrame(checkAlreadyVisible);
-    const t = window.setTimeout(checkAlreadyVisible, 120);
-
-    return () => {
-      observer.disconnect();
-      window.cancelAnimationFrame(raf);
-      window.clearTimeout(t);
-    };
+    return () => observer.disconnect();
   }, [immediate]);
 
   const style = {
@@ -101,13 +84,14 @@ export function LandingReveal({
   } as CSSProperties;
 
   const variantClass = variant === 'fade' ? ' landing-reveal--fade' : '';
+  const phaseClass = phase === 'pending' ? ' is-pending' : ' is-in';
 
   return (
     <div
       ref={ref}
       id={id}
       dir={dir}
-      className={`landing-reveal${variantClass}${visible ? ' is-in' : ''}${className ? ` ${className}` : ''}`}
+      className={`landing-reveal${variantClass}${phaseClass}${className ? ` ${className}` : ''}`}
       style={style}
     >
       {children}

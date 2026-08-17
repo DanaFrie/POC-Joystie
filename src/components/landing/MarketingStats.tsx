@@ -25,24 +25,19 @@ function ReadingWords({
   words,
   offset,
   activeIndex,
-  tone = 'body',
 }: {
   words: string[];
   offset: number;
   activeIndex: number;
-  tone?: 'body' | 'highlight';
 }) {
   return (
     <>
       {words.map((word, i) => {
         const index = offset + i;
         const lit = index <= activeIndex;
-        const colorClass =
-          tone === 'highlight'
-            ? 'text-white'
-            : lit
-              ? 'text-white'
-              : 'text-[#254851] md:text-[#527079]';
+        const colorClass = lit
+          ? 'text-white'
+          : 'text-[#254851] md:text-[#527079]';
         return (
           <span key={`${offset}-${i}-${word}`}>
             {i > 0 ? ' ' : null}
@@ -78,14 +73,23 @@ export function MarketingStats() {
 
   const sectionRef = useRef<HTMLElement>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [progress, setProgress] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+
+  const highlightCount = highlightWords.length;
+  const highlightFill = reduceMotion
+    ? 1
+    : clamp(progress * (totalWords / Math.max(highlightCount, 1)), 0, 1);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const apply = () => {
       const reduce = mq.matches;
       setReduceMotion(reduce);
-      if (reduce) setActiveIndex(totalWords - 1);
+      if (reduce) {
+        setActiveIndex(totalWords - 1);
+        setProgress(1);
+      }
     };
     apply();
     mq.addEventListener('change', apply);
@@ -105,16 +109,18 @@ export function MarketingStats() {
       const scrollable = el.offsetHeight - window.innerHeight;
       if (scrollable <= 0) {
         setActiveIndex(totalWords - 1);
+        setProgress(1);
         return;
       }
       const scrolled = clamp(-rect.top, 0, scrollable);
-      const progress = scrolled / scrollable;
+      const nextProgress = scrolled / scrollable;
       const index =
-        progress <= 0
+        nextProgress <= 0
           ? -1
-          : progress >= 1
+          : nextProgress >= 1
             ? totalWords - 1
-            : Math.min(totalWords - 1, Math.floor(progress * totalWords));
+            : Math.min(totalWords - 1, Math.floor(nextProgress * totalWords));
+      setProgress(nextProgress);
       setActiveIndex(index);
     };
 
@@ -160,19 +166,24 @@ export function MarketingStats() {
               className="relative mx-auto max-w-[850px] text-center font-rubik text-[24px] font-bold leading-[1.2] tracking-[-0.72px] md:pt-[26px] md:text-[50px] md:leading-[1.05] md:tracking-[-1.5px]"
               aria-label={`${HIGHLIGHT} ${LINE1} ${LINE2}`}
             >
-              {/* 5 שעות ביום. + Purple-700 #8D00FF (Figma Rectangle 6549) */}
+              {/* 5 שעות ביום. — purple highlighter hugs the text, fills RTL as you scrub */}
               <p className="relative z-10 mx-auto inline-block isolate">
-                <span
-                  className="absolute left-1/2 top-1/2 z-0 h-[28px] w-[min(100%,210px)] -translate-x-1/2 -translate-y-1/2 bg-[#8D00FF] md:h-[53px] md:w-[324px]"
-                  aria-hidden
-                />
-                <span className="relative z-[1]">
-                  <ReadingWords
-                    words={highlightWords}
-                    offset={offsets.h}
-                    activeIndex={activeIndex}
-                    tone="highlight"
+                <span className="relative inline-block">
+                  <span
+                    className="absolute inset-0 z-0 bg-[#8D00FF]"
+                    style={{
+                      transform: `scaleX(${highlightFill})`,
+                      transformOrigin: 'right center',
+                    }}
+                    aria-hidden
                   />
+                  <span className="relative z-[1]">
+                    <ReadingWords
+                      words={highlightWords}
+                      offset={offsets.h}
+                      activeIndex={activeIndex}
+                    />
+                  </span>
                 </span>
               </p>
 

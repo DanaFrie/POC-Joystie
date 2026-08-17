@@ -203,7 +203,16 @@ service cloud.firestore {
 
     // (daily_uploads removed – week data is stored in challenge.weekUploads)
 
-    
+    match /bonding_invites/{inviteId} {
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.parentId == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
+    // Cardcom charge tokens — Cloud Functions only (never expose to clients).
+    match /billing_tokens/{userId} {
+      allow read, write: if false;
+    }
 
     // Notifications collection - users can read/write their own notifications
 

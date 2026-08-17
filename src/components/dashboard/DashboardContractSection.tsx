@@ -8,7 +8,7 @@ import {
   PARENT_DASHBOARD_COLORS,
 } from '@/constants/parent-dashboard-layout';
 import { getChildShareCardAccess } from '@/lib/api/shareCard';
-import { shareImageFile } from '@/lib/share/shareImage';
+import { loadImageBlob, shareImageFile } from '@/lib/share/shareImage';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('DashboardContractSection');
@@ -72,6 +72,8 @@ export function DashboardContractSection({
       ? 'bg-white text-[#092125]'
       : 'border-[0.84px] border-white bg-transparent text-white';
 
+  const shareBlobRef = useRef<Blob | null>(null);
+
   const loadStoredCard = useCallback(async (): Promise<string | null> => {
     if (!shareCardStored || !parentId) return shareImageUrl || null;
     try {
@@ -96,15 +98,33 @@ export function DashboardContractSection({
 
   useEffect(() => {
     let cancelled = false;
+    shareBlobRef.current = null;
     if (!shareCardStored) {
       setResolvedUrl(shareImageUrl || null);
       setLoadingCard(false);
+      if (shareImageUrl) {
+        void loadImageBlob({ imageUrl: shareImageUrl })
+          .then((blob) => {
+            if (!cancelled) shareBlobRef.current = blob;
+          })
+          .catch(() => {});
+      }
       return;
     }
     setLoadingCard(true);
-    void loadStoredCard().finally(() => {
-      if (!cancelled) setLoadingCard(false);
-    });
+    void loadStoredCard()
+      .then(async (url) => {
+        if (!url || cancelled) return;
+        try {
+          const blob = await loadImageBlob({ imageUrl: url });
+          if (!cancelled) shareBlobRef.current = blob;
+        } catch {
+          // share will retry on tap
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCard(false);
+      });
     return () => {
       cancelled = true;
       if (objectUrlRef.current?.startsWith('blob:')) {
@@ -119,16 +139,21 @@ export function DashboardContractSection({
     setSharing(true);
     setShareHint(null);
     try {
-      let url = resolvedUrl;
-      if (shareCardStored) {
-        url = (await loadStoredCard()) || url;
+      let blob = shareBlobRef.current;
+      if (!blob) {
+        let url = resolvedUrl;
+        if (shareCardStored) {
+          url = (await loadStoredCard()) || url;
+        }
+        if (!url) throw new Error('חסרה תמונה');
+        blob = await loadImageBlob({ imageUrl: url });
+        shareBlobRef.current = blob;
       }
-      if (!url) throw new Error('חסרה תמונה');
       const result = await shareImageFile({
-        imageUrl: url,
+        imageBlob: blob,
         fileName: 'joystie-handshake.jpg',
         title: 'Joystie',
-        text: 'התמונה שלנו ב־Joystie',
+        text: 'החוזה שלנו ב- joystie.com',
       });
       if (result === 'downloaded') {
         setShareHint('התמונה הורדה');

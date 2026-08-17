@@ -284,15 +284,6 @@ async function initializeFirebase(): Promise<void> {
       
       // Initialize Analytics (client-side only, lazy-loaded when needed)
       // Analytics is initialized separately in utils/analytics.ts to avoid SSR issues
-      
-      // Log config for debugging (without sensitive data)
-      firebaseLogger.log('Initialized with config:', {
-        projectId: config.projectId,
-        authDomain: config.authDomain,
-        hasApiKey: !!config.apiKey,
-        hasAppId: !!config.appId,
-      });
-
     } catch (error) {
       const firebaseLogger = createContextLogger('Firebase');
       firebaseLogger.error('Initialization error:', error);

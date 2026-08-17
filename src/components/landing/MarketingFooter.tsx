@@ -34,23 +34,21 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
               fill
               loading="lazy"
               decoding="async"
-              className="object-cover object-bottom [filter:saturate(1.75)_contrast(1.08)] md:hidden"
+              className="object-cover object-bottom md:hidden"
               sizes="100vw"
             />
             {/*
-              Desktop — Figma Screen crop + high saturation (image), then soft gradient.
-              lightgray 0px -428.426px / 100% 435.61% no-repeat
-              Lazy: 2.6MB mountain must not load with the hero.
+              Desktop — show the mountain from 300px down the source (skip sky/top).
+              Lazy: heavy mountain must not load with the hero.
             */}
             <LandingLazyBackground
               imageUrl={LANDING_ASSETS.footerMountainMobile}
               className="pointer-events-none absolute inset-0 hidden md:block"
               style={{
                 backgroundColor: 'lightgray',
-                backgroundPosition: '0px -428.426px',
-                backgroundSize: '100% 435.61%',
+                backgroundPosition: 'center -300px',
+                backgroundSize: '100% auto',
                 backgroundRepeat: 'no-repeat',
-                filter: 'saturate(1.75) contrast(1.08)',
               }}
             />
             <div

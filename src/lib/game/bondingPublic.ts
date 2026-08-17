@@ -2,7 +2,7 @@
  * RTDB public bonding snapshot — lets child device discover parent's game room
  * without a deployed Firestore callable (local dev + fallback).
  */
-import { ref, set, get, remove } from 'firebase/database';
+import { ref, set, get, remove, onValue, type Unsubscribe } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { createContextLogger } from '@/utils/logger';
 
@@ -90,4 +90,35 @@ export async function readOnboardingBondingPublic(
   const raw = snap.val() as OnboardingBondingPublicRecord;
   if (!raw?.roomId || !raw?.joinCode) return null;
   return raw;
+}
+
+/** Live public room pointer — child follows if the parent republishes a new room. */
+export function subscribeOnboardingBondingPublic(
+  parentId: string,
+  onChange: (record: OnboardingBondingPublicRecord | null) => void
+): Unsubscribe {
+  let unsub: Unsubscribe | null = null;
+  let cancelled = false;
+
+  void getDatabaseInstance().then((db) => {
+    if (cancelled) return;
+    const publicRef = ref(db, publicPathFor(parentId));
+    unsub = onValue(publicRef, (snap) => {
+      if (!snap.exists()) {
+        onChange(null);
+        return;
+      }
+      const raw = snap.val() as OnboardingBondingPublicRecord;
+      if (!raw?.roomId || !raw?.joinCode) {
+        onChange(null);
+        return;
+      }
+      onChange(raw);
+    });
+  });
+
+  return () => {
+    cancelled = true;
+    if (unsub) unsub();
+  };
 }

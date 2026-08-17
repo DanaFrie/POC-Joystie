@@ -12,7 +12,7 @@ import { SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX } from '@/constants/signu
  * true screen edge while scaling with the rest of the funnel.
  */
 export function SignupChildInviteWaitingMarqueeBleed() {
-  const { bleedX, width } = useFunnelHeroBleedInsets();
+  const { bleedX } = useFunnelHeroBleedInsets();
   const marqueeBottomPx = useFunnelProportionalTopPx(
     SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX
   );
@@ -22,7 +22,7 @@ export function SignupChildInviteWaitingMarqueeBleed() {
       className="pointer-events-none absolute z-[9] overflow-hidden"
       style={{
         left: -bleedX,
-        width,
+        right: -bleedX,
         bottom: marqueeBottomPx,
       }}
       aria-hidden

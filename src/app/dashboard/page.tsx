@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef, useCallback } from 'react';
+import { Suspense, useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   DashboardLoadingState,
@@ -9,8 +9,8 @@ import {
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { WeeklyUpload } from '@/types/firestore';
 import { useDashboardSubscribeMode } from '@/hooks/useDashboardSubscribeMode';
-import { isLoggedIn, updateLastActivity } from '@/utils/session';
-import { getDashboardData, mergeWeekWithWeeklyUpload } from '@/lib/api/dashboard';
+import { isLoggedIn, updateLastActivity, getSession } from '@/utils/session';
+import { getDashboardData, loadDashboardDataShared, mergeWeekWithWeeklyUpload, readPrefetchedDashboard, clearPrefetchedDashboard } from '@/lib/api/dashboard';
 import { getActiveChallenge } from '@/lib/api/challenges';
 import type { FirestoreChallenge } from '@/types/firestore';
 import {
@@ -20,6 +20,10 @@ import {
 import { createContextLogger } from '@/utils/logger';
 import { getFirestoreInstance } from '@/lib/firebase';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange } from '@/utils/auth';
+import {
+  getSessionWaiterMode,
+  hideSessionWaiter,
+} from '@/lib/auth/sessionRouteWaiter';
 
 const logger = createContextLogger('Dashboard');
 
@@ -71,7 +75,7 @@ function calculateWeeklyScreenTime(week: WeekDay[]): number {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<DashboardLoadingState />}>
+    <Suspense fallback={null}>
       <DashboardPageContent />
     </Suspense>
   );
@@ -86,6 +90,7 @@ function DashboardPageContent() {
   const [openSubscription] = useState(() => searchParams?.get('subscription') === '1');
   const [openChallengeSetup] = useState(() => searchParams?.get('openChallenge') === '1');
   const { challengeEnabled } = useDashboardSubscribeMode();
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (searchParams?.get('subscription') !== '1' && searchParams?.get('openChallenge') !== '1') {
@@ -135,7 +140,18 @@ function DashboardPageContent() {
     };
   }, [router]);
 
-  const hasLoadedRef = useRef(false);
+  useLayoutEffect(() => {
+    const uid = getSession()?.userId;
+    if (!uid || hasLoadedRef.current) return;
+    const snap = readPrefetchedDashboard(uid);
+    if (!snap) return;
+    hasLoadedRef.current = true;
+    setDashboardData(snap);
+    setNoChallengeExists(!snap.challenge.isActive);
+    setIsLoading(false);
+    hideSessionWaiter();
+  }, []);
+
   useEffect(() => {
     if (hasLoadedRef.current) return;
 
@@ -153,14 +169,14 @@ function DashboardPageContent() {
         }
 
         const { getUser } = await import('@/lib/api/users');
-        const profile = await getUser(userId, false);
+        const profile = await getUser(userId);
         if (!profile || profile.onboarding !== true) {
           logger.warn('Onboarding incomplete — redirecting to onboarding');
           router.replace('/onboarding');
           return;
         }
 
-        const data = await getDashboardData(userId);
+        const data = await loadDashboardDataShared(userId);
 
         if (data) {
           setDashboardData(data);
@@ -206,6 +222,7 @@ function DashboardPageContent() {
         logger.error('Error loading dashboard data:', err);
         const message = err instanceof Error ? err.message : String(err);
         if (message.includes('User ID not found') || message.includes('not authenticated')) {
+          hideSessionWaiter();
           router.push('/login');
           return;
         }
@@ -213,6 +230,7 @@ function DashboardPageContent() {
         hasLoadedRef.current = false;
       } finally {
         setIsLoading(false);
+        hideSessionWaiter();
       }
     };
 
@@ -348,6 +366,7 @@ function DashboardPageContent() {
       if (!userId) return;
       const { dataCache, cacheKeys } = await import('@/utils/data-cache');
       dataCache.invalidate(cacheKeys.dashboard(userId));
+      clearPrefetchedDashboard();
       const updatedData = await getDashboardData(userId, false);
       if (updatedData) {
         setDashboardData(updatedData);
@@ -364,6 +383,7 @@ function DashboardPageContent() {
   }, []);
 
   if (isLoading || !dashboardData) {
+    if (getSessionWaiterMode() === 'show') return null;
     return <DashboardLoadingState />;
   }
 

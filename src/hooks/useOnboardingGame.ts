@@ -7,6 +7,7 @@ import {
   publishOnboardingBondingPublic,
   readOnboardingBondingMeta,
   readOnboardingBondingPublic,
+  subscribeOnboardingBondingPublic,
 } from '@/lib/game/bondingPublic';
 import { isGameWon } from '@/lib/game/onboarding';
 import { useGameSession } from '@/hooks/useGameSession';
@@ -82,6 +83,9 @@ export function useOnboardingGame({
   const childWinHandled = useRef(false);
   const parentPublished = useRef(false);
   const gameWonSignaled = useRef(false);
+  const appliedPublicRoomIdRef = useRef('');
+  const childNameRef = useRef(childName);
+  childNameRef.current = childName;
 
   const createRoomContext = useMemo((): GameOnboardingContext => {
     const childIds = getOnboardingChildIds();
@@ -145,7 +149,7 @@ export function useOnboardingGame({
   }, [role, session.roomId, session.joinCode, childNameProp]);
 
   useEffect(() => {
-    if (role !== 'child' || missionPhase || roomIdParam) return;
+    if (role !== 'child' || missionPhase) return;
     if (!parentId) {
       // Invite resolve supplies parentId on `/game/child?invite=` — wait, don't fail.
       if (inviteId) return;
@@ -154,15 +158,16 @@ export function useOnboardingGame({
     }
 
     let cancelled = false;
-    let pollId: number | undefined;
 
     const applyRoom = (
-      roomId: string,
+      nextRoomId: string,
       joinCode: string,
       cn: string,
       pg?: 'female' | 'male'
     ) => {
       if (cancelled) return;
+      if (appliedPublicRoomIdRef.current === nextRoomId) return;
+      appliedPublicRoomIdRef.current = nextRoomId;
       const courtParentName = parentCourtLabel(pg);
       setChildName(cn);
       if (pg) setParentGender(pg);
@@ -175,7 +180,7 @@ export function useOnboardingGame({
           parentGender: pg,
         });
       }
-      setRoomIdParam(roomId);
+      setRoomIdParam(nextRoomId);
       setJoinCodeParam(joinCode);
       setResolveError(null);
       setResolveBusy(false);
@@ -183,9 +188,9 @@ export function useOnboardingGame({
 
     const tryResolve = async () => {
       setResolveBusy(true);
-      let roomId: string | null = null;
+      let nextRoomId: string | null = null;
       let joinCode: string | null = null;
-      let cn = childNameProp ?? childName;
+      let cn = childNameProp ?? childNameRef.current;
       let pg: 'female' | 'male' | undefined;
 
       const meta = await readOnboardingBondingMeta(parentId);
@@ -200,59 +205,49 @@ export function useOnboardingGame({
           inviteId: inviteId ?? undefined,
         });
         if (resolved.childName) cn = resolved.childName;
-        roomId = resolved.roomId;
+        nextRoomId = resolved.roomId;
         joinCode = resolved.joinCode;
       } catch (e) {
         logger.warn('resolveBondingGameRoom failed', e);
       }
 
-      if (!roomId || !joinCode) {
+      if (!nextRoomId || !joinCode) {
         const pub = await readOnboardingBondingPublic(parentId);
         if (pub) {
-          roomId = pub.roomId;
+          nextRoomId = pub.roomId;
           joinCode = pub.joinCode;
           cn = pub.childName || cn;
           pg = pub.parentGender ?? pg;
         }
       }
 
-      if (roomId && joinCode) {
-        applyRoom(roomId, joinCode, cn, pg);
+      if (cancelled) return;
+
+      if (nextRoomId && joinCode) {
+        applyRoom(nextRoomId, joinCode, cn, pg);
         return;
       }
 
       setResolveError('מחכים שההורה יפתח את המשחק');
       setResolveBusy(false);
-      pollId = window.setInterval(() => {
-        void readOnboardingBondingPublic(parentId).then((pub) => {
-          if (pub?.roomId && pub.joinCode) {
-            if (pollId) window.clearInterval(pollId);
-            applyRoom(
-              pub.roomId,
-              pub.joinCode,
-              pub.childName || cn,
-              pub.parentGender ?? pg
-            );
-          }
-        });
-      }, 2000);
     };
 
     void tryResolve();
+    const unsub = subscribeOnboardingBondingPublic(parentId, (pub) => {
+      if (!pub?.roomId || !pub.joinCode) return;
+      applyRoom(
+        pub.roomId,
+        pub.joinCode,
+        pub.childName || childNameProp || childNameRef.current,
+        pub.parentGender
+      );
+    });
 
     return () => {
       cancelled = true;
-      if (pollId) window.clearInterval(pollId);
+      unsub();
     };
-  }, [
-    role,
-    parentId,
-    inviteId,
-    missionPhase,
-    roomIdParam,
-    childNameProp,
-    childName,
-  ]);
+  }, [role, parentId, inviteId, missionPhase, childNameProp]);
 
   const navigateAfterWin = useCallback(() => {
     if (wonNavigated.current) return;

@@ -105,9 +105,9 @@ export function useGameSession({
 
   useEffect(() => {
     if (!roomId) return;
-    if (mode === 'child' && role !== 'child') return;
+    setRoom(null);
     return subscribeToGameRoom(roomId, setRoom);
-  }, [roomId, mode, role]);
+  }, [roomId]);
 
   useEffect(() => {
     if (!room) return;
@@ -251,11 +251,16 @@ export function useGameSession({
   }, [roomIdParam, joinCodeParam, ensureAnonymousChildAuth]);
 
   useEffect(() => {
-    if (mode !== 'child' || !roomIdParam || !joinCodeParam || role) return;
+    childJoinAttempted.current = false;
+  }, [roomIdParam, joinCodeParam]);
+
+  useEffect(() => {
+    if (mode !== 'child' || !roomIdParam || !joinCodeParam) return;
+    if (role === 'child' && roomId === roomIdParam) return;
     if (childJoinAttempted.current) return;
     childJoinAttempted.current = true;
     void attemptChildJoin();
-  }, [mode, roomIdParam, joinCodeParam, role, attemptChildJoin]);
+  }, [mode, roomIdParam, joinCodeParam, role, roomId, attemptChildJoin]);
 
   const lastPaddleWriteAt = useRef(0);
 
@@ -328,9 +333,9 @@ export function useGameSession({
     }
   }, [roomId, busy, markPlayReady]);
 
-  /** Parent only — first rally: synchronized countdown before play. */
+  /** First rally: start countdown once the child is in and parent is ready. */
   useEffect(() => {
-    if (!roomId || !room || role !== 'parent') return;
+    if (!roomId || !room) return;
     const ready = room.playReady ?? { parent: false, child: false };
     if (
       room.childUid &&
@@ -349,11 +354,11 @@ export function useGameSession({
     if (room.phase === 'waiting_ready' && !ready.parent) {
       countdownStartedRef.current = null;
     }
-  }, [roomId, role, room]);
+  }, [roomId, room]);
 
-  /** Parent only — end countdown → serve toward child. */
+  /** Either device can end countdown — parent tab is often backgrounded on two phones. */
   useEffect(() => {
-    if (!roomId || !room || role !== 'parent') return;
+    if (!roomId || !room) return;
     if (room.phase !== 'countdown' || !room.countdownAt) return;
 
     const key = `${roomId}:${room.countdownAt}`;
@@ -369,8 +374,17 @@ export function useGameSession({
     };
     fire();
     const id = window.setInterval(fire, 100);
-    return () => window.clearInterval(id);
-  }, [roomId, role, room]);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fire();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onVisible);
+    };
+  }, [roomId, room]);
 
   /** Parent only — both tapped retry after miss. */
   useEffect(() => {

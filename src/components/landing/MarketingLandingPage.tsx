@@ -1,59 +1,17 @@
-import nextDynamic from 'next/dynamic';
 import { TrackAnalyticsEvent } from '@/components/analytics/TrackAnalyticsEvent';
 import { MarketingNav } from '@/components/landing/MarketingNav';
 import { MarketingHero } from '@/components/landing/MarketingHero';
+import { MarketingStats } from '@/components/landing/MarketingStats';
+import { MarketingPresenting } from '@/components/landing/MarketingPresenting';
+import { MarketingHowItWorks } from '@/components/landing/MarketingHowItWorks';
+import { MarketingScience } from '@/components/landing/MarketingScience';
+import { MarketingBehindIdea } from '@/components/landing/MarketingBehindIdea';
+import { MarketingFaq } from '@/components/landing/MarketingFaq';
+import { MarketingKnowledge } from '@/components/landing/MarketingKnowledge';
+import { MarketingFooter } from '@/components/landing/MarketingFooter';
 import { LandingHashScroll } from '@/components/landing/LandingHashScroll';
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { AnalyticsEvents } from '@/utils/analytics';
-
-/** Below-fold: split JS; still SSR HTML for SEO / first paint of structure. */
-const MarketingStats = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingStats').then((m) => ({ default: m.MarketingStats })),
-  { ssr: true },
-);
-const MarketingPresenting = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingPresenting').then((m) => ({
-      default: m.MarketingPresenting,
-    })),
-  { ssr: true },
-);
-const MarketingHowItWorks = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingHowItWorks').then((m) => ({
-      default: m.MarketingHowItWorks,
-    })),
-  { ssr: true },
-);
-const MarketingScience = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingScience').then((m) => ({ default: m.MarketingScience })),
-  { ssr: true },
-);
-const MarketingBehindIdea = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingBehindIdea').then((m) => ({
-      default: m.MarketingBehindIdea,
-    })),
-  { ssr: true },
-);
-const MarketingFaq = nextDynamic(
-  () => import('@/components/landing/MarketingFaq').then((m) => ({ default: m.MarketingFaq })),
-  { ssr: true },
-);
-const MarketingKnowledge = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingKnowledge').then((m) => ({
-      default: m.MarketingKnowledge,
-    })),
-  { ssr: true },
-);
-const MarketingFooter = nextDynamic(
-  () =>
-    import('@/components/landing/MarketingFooter').then((m) => ({ default: m.MarketingFooter })),
-  { ssr: true },
-);
 
 export function MarketingLandingPage() {
   return (

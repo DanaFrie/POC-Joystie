@@ -1,7 +1,6 @@
 'use client';
 
 import { useLayoutEffect, type ReactNode } from 'react';
-import { OnboardingGridLayer } from '@/components/onboarding/OnboardingGridLayer';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
 import { SignupChildInviteWaitingMarqueeBleed } from '@/components/onboarding/signup/SignupChildInviteWaitingMarqueeBleed';
 import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
@@ -69,8 +68,10 @@ export function OnboardingWaitingScreenShell({
       aria-live="polite"
     >
       <div className="pointer-events-none absolute inset-0 z-0 bg-v03-green-900" aria-hidden />
-      {/* Always on top of the fill — parent MintGridBackdrop is covered by inset-0 */}
-      <OnboardingGridLayer />
+      <div
+        className="v03-onboarding-grid-layer pointer-events-none fixed inset-0 z-[1]"
+        aria-hidden
+      />
       <OnboardingMintGlow className="z-[8]" />
       {showBackButton}
       <div

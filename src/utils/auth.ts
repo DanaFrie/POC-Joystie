@@ -55,6 +55,8 @@ export async function signIn(email: string, password: string): Promise<User> {
  */
 export async function signOutUser(): Promise<void> {
   try {
+    const { clearLoggedInDestination } = await import('@/lib/auth/postLoginNavigation');
+    clearLoggedInDestination();
     const { signOut } = await import('firebase/auth');
     const auth = await getAuthInstance();
     await signOut(auth);
