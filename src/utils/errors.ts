@@ -11,8 +11,16 @@ export function getErrorMessage(error: unknown): string {
   }
   
   if (error instanceof Error) {
-    // If error already has a Hebrew message, return it
+    // If error already has a Hebrew message, return it (normalize legacy login copy)
     if (error.message && /[\u0590-\u05FF]/.test(error.message)) {
+      const legacy = [
+        'סיסמה לא נכונה',
+        'לא נמצא משתמש עם כתובת אימייל זו',
+        'פרטי התחברות לא נכונים',
+      ];
+      if (legacy.some((s) => error.message.includes(s))) {
+        return 'אחד מפרטי ההתחברות שגויים. נסו שוב';
+      }
       return error.message;
     }
     
@@ -34,11 +42,12 @@ function getFirebaseErrorMessage(code: string): string {
     'auth/operation-not-allowed': 'פעולה לא מורשית',
     'auth/weak-password': 'סיסמה חלשה מדי',
     'auth/user-disabled': 'החשבון הושבת',
-    'auth/user-not-found': 'לא נמצא משתמש עם כתובת אימייל זו',
-    'auth/wrong-password': 'סיסמה לא נכונה',
+    'auth/user-not-found': 'אחד מפרטי ההתחברות שגויים. נסו שוב',
+    'auth/wrong-password': 'אחד מפרטי ההתחברות שגויים. נסו שוב',
     'auth/too-many-requests': 'יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר',
     'auth/network-request-failed': 'שגיאת רשת. אנא בדוק את החיבור לאינטרנט',
-    'auth/invalid-credential': 'פרטי התחברות לא נכונים',
+    'auth/invalid-credential': 'אחד מפרטי ההתחברות שגויים. נסו שוב',
+    'auth/invalid-login-credentials': 'אחד מפרטי ההתחברות שגויים. נסו שוב',
     
     // Firestore errors
     'permission-denied': 'אין הרשאה לבצע פעולה זו',

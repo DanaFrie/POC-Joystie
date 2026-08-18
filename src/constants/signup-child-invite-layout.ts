@@ -1,0 +1,70 @@
+/** Child invite intro — Figma 12914:11767 */
+export const SIGNUP_CHILD_INVITE_INTRO_FRAME_W_PX = 327;
+export const SIGNUP_CHILD_INVITE_INTRO_TOP_PX = 110;
+export const SIGNUP_CHILD_INVITE_INTRO_COLUMN_GAP_PX = 55;
+/** Shared funnel CTA — Figma 18px/Bold Green-900 (התחלה et al.) */
+export const SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS =
+  'flex h-[55px] w-full items-center justify-center gap-2 rounded-v03-button px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-right shadow-v03-button transition';
+export const SIGNUP_CHILD_INVITE_HERO_PX = 200;
+/** Side fades — Figma 31×134 */
+export const SIGNUP_CHILD_INVITE_HERO_FADE_W_PX = 31;
+export const SIGNUP_CHILD_INVITE_HERO_FADE_H_PX = 134;
+export const SIGNUP_CHILD_INVITE_HERO_FADE_TOP_PX = 66;
+export const SIGNUP_CHILD_INVITE_HERO_FADE_RIGHT_LEFT_PX = 169;
+export const SIGNUP_CHILD_INVITE_HERO_FADE_LEFT_PX = 31;
+export const SIGNUP_CHILD_INVITE_HERO_FADE_GRADIENT =
+  'linear-gradient(90deg, rgba(9, 33, 37, 0) 0%, #092125 100%)';
+export const SIGNUP_CHILD_INVITE_ALERT_BOX_RADIUS_PX = 15;
+export const SIGNUP_CHILD_INVITE_ALERT_INNER_GAP_PX = 12;
+export const SIGNUP_CHILD_INVITE_ALERT_PAD_X_PX = 19;
+export const SIGNUP_CHILD_INVITE_ALERT_PAD_Y_PX = 16;
+export const SIGNUP_CHILD_INVITE_ALERT_TEXT_W_PX = 294;
+export const SIGNUP_CHILD_INVITE_INTRO_BUTTONS_GAP_PX = 12;
+export const SIGNUP_CHILD_INVITE_INTRO_ACTIONS_PT_PX = 20;
+export const SIGNUP_CHILD_INVITE_INTRO_ACTIONS_GAP_PX = 15;
+
+/** Child invite share — Figma 12703:42221 */
+export const SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX = 20;
+export const SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX = 29;
+export const SIGNUP_CHILD_INVITE_BUTTONS_GAP_PX = 15;
+export const SIGNUP_CHILD_INVITE_FOOTNOTE_MAX_W_PX = 297;
+
+/** Child invite waiting — Screen 29 */
+export type SignupChildInviteWaitingVariant = 'linkOpen' | 'companionPick';
+
+export const SIGNUP_CHILD_INVITE_WAITING_LINK_OPEN_MS = 20_000;
+
+export const SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX = 284;
+export const SIGNUP_CHILD_INVITE_WAITING_TEXT_W_PX = 332;
+/** Figma 13035:2502 → 13035:2506 spacing */
+export const SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX = 10;
+export const SIGNUP_CHILD_INVITE_WAITING_LOGO_PX = 86.506;
+/** Frame 1597882424 — bottom offset from screen edge */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_BOTTOM_PX = 110;
+/** Marquee — Figma frame 1597882424: 458×134 tiles, 375×134 SVG, 48px gap */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_WORDMARK_W_PX = 458;
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_WORDMARK_H_PX = 134;
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_SVG_W_PX = 458;
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_SVG_H_PX = 134;
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_GAP_PX = 48;
+/** Path bounds — includes left “j” tail and right “e” swirl */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_SVG_VIEWBOX = '-73 0 456 134';
+/** One carousel step: 458px frame + 48px gap */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_UNIT_PX =
+  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_WORDMARK_W_PX +
+  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_GAP_PX;
+/** One run — four wordmarks, then restart when the 4th fully exits left */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_LOOP_WORDMARKS = 4;
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_FRAME_COUNT =
+  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_LOOP_WORDMARKS;
+/** Right edge of the 4th tile from runner origin (paired with 100cqw in CSS) */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_RUN_END_OFFSET_PX =
+  (SIGNUP_CHILD_INVITE_WAITING_MARQUEE_LOOP_WORDMARKS - 1) *
+    SIGNUP_CHILD_INVITE_WAITING_MARQUEE_UNIT_PX +
+  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_WORDMARK_W_PX;
+/** ~506px every 6s, slowed 20% */
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_SPEED_FACTOR = 1.2;
+export const SIGNUP_CHILD_INVITE_WAITING_MARQUEE_CYCLE_S =
+  6 *
+  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_LOOP_WORDMARKS *
+  SIGNUP_CHILD_INVITE_WAITING_MARQUEE_SPEED_FACTOR;

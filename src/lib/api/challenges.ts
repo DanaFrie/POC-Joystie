@@ -66,7 +66,6 @@ export async function getChallenge(challengeId: string, useCache: boolean = true
     const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreChallenge>(cacheKeys.challengeById(challengeId));
     if (cached) {
-      logger.log(`Using cached challenge ${challengeId}`);
       return cached;
     }
   }
@@ -134,7 +133,6 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<FirestoreChallenge>(cacheKeys.challenge(parentId));
     if (cached) {
-      logger.log(`Using cached challenge for ${parentId}`);
       return cached;
     }
   }
@@ -150,20 +148,6 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     }
     
     const challengesRef = collection(db, CHALLENGES_COLLECTION);
-    
-    // First, check all challenges for this user (for debugging)
-    const allChallengesQuery = query(challengesRef, where('parentId', '==', parentId));
-    const allChallengesSnapshot = await getDocs(allChallengesQuery);
-    logger.log(`Found ${allChallengesSnapshot.size} total challenges for user ${parentId}`);
-    
-    if (allChallengesSnapshot.size > 0) {
-      allChallengesSnapshot.docs.forEach(doc => {
-        const challenge = doc.data() as FirestoreChallenge;
-        logger.log(`Challenge ${doc.id}: isActive=${challenge.isActive}, childId=${challenge.childId}`);
-      });
-    }
-    
-    // Now query for active challenges
     const q = query(
       challengesRef,
       where('parentId', '==', parentId),
@@ -172,13 +156,11 @@ export async function getActiveChallenge(parentId: string, useCache: boolean = t
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      logger.warn(`No active challenge found for user ${parentId}`);
       return null;
     }
     
     // Return the first active challenge (should only be one)
     const challenge = querySnapshot.docs[0].data() as FirestoreChallenge;
-    logger.log(`Found active challenge: ${querySnapshot.docs[0].id}`);
     
     // Cache the result
     if (useCache) {
@@ -229,39 +211,6 @@ export async function getLatestChallenge(parentId: string): Promise<FirestoreCha
   } catch (error) {
     logger.error('Error getting latest challenge:', error);
     return null;
-  }
-}
-
-/**
- * Get all pending challenges (for admin - consultation approval)
- * Returns challenges where consultationCompleted is not true and isActive is false
- */
-export async function getAllPendingChallenges(): Promise<FirestoreChallenge[]> {
-  try {
-    const { collection, query, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const challengesRef = collection(db, CHALLENGES_COLLECTION);
-    
-    // Query all challenges (no filter - admin has permission to read all)
-    const q = query(challengesRef);
-    const querySnapshot = await getDocs(q);
-    
-    // Filter in code: pending consultations (not completed and not active)
-    const allChallenges = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FirestoreChallenge));
-    
-    const pendingChallenges = allChallenges.filter(
-      (challenge) => challenge.consultationCompleted !== true && !challenge.isActive
-    );
-    
-    logger.log(`Found ${pendingChallenges.length} pending challenges out of ${allChallenges.length} total`);
-    
-    return pendingChallenges;
-  } catch (error) {
-    logger.error('Error getting all pending challenges:', error);
-    throw new Error('שגיאה בטעינת האתגרים הממתינים.');
   }
 }
 

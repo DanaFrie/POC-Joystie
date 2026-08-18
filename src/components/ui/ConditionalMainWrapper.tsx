@@ -8,16 +8,31 @@ export default function ConditionalMainWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  
-  // For home page, don't add the wrapper constraints
-  const isHomePage = pathname === '/';
-  
-  if (isHomePage) {
+
+  const isFullBleed =
+    pathname === '/' ||
+    pathname === '/about' ||
+    pathname?.startsWith('/knowledge') ||
+    pathname === '/onboarding' ||
+    pathname?.startsWith('/onboarding/') ||
+    pathname?.startsWith('/game') ||
+    pathname === '/login' ||
+    pathname?.startsWith('/login/') ||
+    pathname === '/terms' ||
+    pathname === '/privacy' ||
+    pathname === '/help' ||
+    pathname === '/dashboard' ||
+    pathname?.startsWith('/dashboard/');
+
+  if (isFullBleed) {
     return <>{children}</>;
   }
-  
+
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8 lg:px-8 lg:[&>*]:rounded-[20px] lg:rounded-[20px] rounded-none overflow-x-hidden" style={{ border: 'none', outline: 'none' }}>
+    <main
+      className="max-w-7xl mx-auto px-4 py-8 lg:px-8 lg:[&>*]:rounded-[20px] lg:rounded-[20px] rounded-none overflow-x-hidden"
+      style={{ border: 'none', outline: 'none' }}
+    >
       {children}
     </main>
   );

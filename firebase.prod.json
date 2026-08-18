@@ -1,7 +1,13 @@
 {
+  "database": {
+    "rules": "firebase/database.rules.json"
+  },
   "firestore": {
     "rules": "firebase/firestore.rules.prod",
     "indexes": "firebase/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "firebase/storage.rules"
   },
   "functions": {
     "source": "functions",

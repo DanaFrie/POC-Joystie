@@ -1,5 +1,72 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
+        source: '/onboarding/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/signup/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/brand/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/landing/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
+  async redirects() {
+    return [
+      {
+        source: '/signup',
+        destination: '/onboarding',
+        permanent: false,
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     // Fix for tesseract.js - it's a client-side only library
     if (!isServer) {
@@ -58,6 +125,10 @@ const nextConfig = {
   // Disable server-side rendering for pages that use tesseract.js
   experimental: {
     serverComponentsExternalPackages: ['tesseract.js'],
+    // Windows: parallel page-data workers can race and leave
+    // .next/server/pages/_document.js missing (nft.json only).
+    cpus: 1,
+    workerThreads: false,
   },
   // Exclude functions directory from TypeScript checking (it has its own tsconfig)
   typescript: {

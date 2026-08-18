@@ -1,18 +1,72 @@
 // Firestore data types - matching the database schema
 
+/** Age, name, gender + daily screen time from parent onboarding (no children collection yet). */
+export type UserKidAgeScreenTime = {
+  name?: string;
+  age: string;
+  gender?: 'boy' | 'girl';
+  dailyScreenTimeHours: number;
+};
+
+export type SubscriptionStatus =
+  | 'freemium'
+  | 'checkout_pending'
+  | 'trialing'
+  | 'payment_failed'
+  | 'active'
+  | 'canceled';
+
+export type FirestoreUserSubscription = {
+  provider: 'cardcom' | 'none';
+  status: SubscriptionStatus;
+  plan?: 'annual' | 'monthly';
+  trialEndsAt?: string;
+  lowProfileId?: string;
+  returnValue?: string;
+  cardcomVerifiedAt?: string;
+  /** True after webhook stored token in `billing_tokens/{uid}` (server-only). */
+  hasStoredToken?: boolean;
+  /** Last 4 digits for UI — not the charge token. */
+  cardLast4?: string;
+  lastError?: string;
+  updatedAt?: string;
+};
+
+/** Server-only — written by `cardcomWebhook`; use Admin SDK / Cloud Functions to charge. */
+export type FirestoreBillingToken = {
+  provider: 'cardcom';
+  token: string;
+  tokenExDate?: string;
+  cardMonth?: number;
+  cardYear?: number;
+  tokenApprovalNumber?: string;
+  last4?: string;
+  lowProfileId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export interface FirestoreUser {
   id: string; // Document ID (same as Firebase Auth UID)
-  username?: string; // Optional - was removed from signup (parent nickname)
   email: string;
   firstName: string;
   lastName: string;
   gender: 'male' | 'female';
-  kidsAges: string[];
-  notificationsEnabled: boolean;
+  kidsAges: UserKidAgeScreenTime[];
   termsAccepted: boolean;
+  /** When true, parent finished onboarding and can go to dashboard. */
+  onboarding?: boolean;
   signupDate: string; // ISO timestamp
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
+  /** Cardcom trial / subscription — set after payment gate. */
+  subscription?: FirestoreUserSubscription;
+  /** Unlocks challenge flows for parent + child after successful trial checkout. */
+  challengeUnlocked?: boolean;
+  /** Selected / created child after onboarding completion. */
+  primaryChildId?: string;
+  /** Latest bonding invite id (Firestore `bonding_invites`). */
+  bondingInviteId?: string;
 }
 
 export interface FirestoreChild {
@@ -21,10 +75,35 @@ export interface FirestoreChild {
   name: string;
   age: string;
   gender: 'boy' | 'girl';
-  deviceType: 'ios' | 'android';
+  /** Legacy v0.2 — omit on v0.3 create. */
+  deviceType?: 'ios' | 'android';
   profilePicture?: string;
   nickname?: string;
+  /**
+   * @deprecated v0.3 — not written; goals live on `challenge.moneyGoals`.
+   * May still exist on old child docs; ignore for reads.
+   */
   moneyGoals?: string[];
+  /** Behavior changes from onboarding (1–2). */
+  changes?: string[];
+  /**
+   * Per-change day checkmarks (7 days, Sun→Sat).
+   * Stored as `{ days: boolean[] }[]` — Firestore rejects nested arrays.
+   */
+  changeDayChecks?: Array<{ days: boolean[] }>;
+  /** Onboarding slider assumption — daily screen minutes for dashboard baseline. */
+  baselineDailyMinutes?: number;
+  /**
+   * Final share selfie (agreement + selfie card). Bytes live in Storage;
+   * this is the pointer for dashboard view/share.
+   */
+  shareCard?: {
+    source: 'ai' | 'default';
+    storagePath: string | null;
+    /** @deprecated Permanent token URLs — cleared; use getChildShareCardAccess. */
+    downloadUrl: string | null;
+    createdAt: string;
+  };
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
@@ -81,26 +160,31 @@ export interface FirestoreChallenge {
   id: string; // Document ID
   parentId: string; // Reference to users collection
   childId: string; // Reference to children collection
-  motivationReason?: 'balance' | 'education' | 'communication'; // למה אתם עושים את זה?
-  selectedBudget: number; // תקציב נבחר (100%)
-  dailyBudget: number; // תקציב יומי
-  dailyScreenTimeGoal: number; // שעות זמן מסך יומי
+  motivationReason?: 'balance' | 'education' | 'communication';
+  selectedBudget: number;
+  /** @deprecated v0.3 — not written on new challenges. */
+  dailyBudget?: number;
+  /** @deprecated v0.3 — not written on new challenges. */
+  dailyScreenTimeGoal?: number;
+  /** v0.3 — ₪ per screen hour (loss-aversion rate). */
+  hourlyRate?: number;
+  /** Child money goals for this weekly deal (can change week to week). */
+  moneyGoals?: string[];
   weekNumber: number;
-  totalWeeks: number;
-  startDate?: string; // ISO date - set by admin after consultation approval
-  challengeDays: number; // מספר ימי האתגר (6 ימים)
+  /** @deprecated v0.3 — not written on new challenges. */
+  totalWeeks?: number;
+  startDate?: string;
+  challengeDays: number; // 6
   isActive: boolean;
-  consultationCompleted?: boolean; // Whether consultation with advisor has been completed
-  /** כל נתוני ההעלאות היומיות של השבוע – בתוך המסמך (ללא אוסף daily_uploads) */
   weekUploads?: ChallengeDayUpload[];
-  // Weekly upload (single upload on redemption day)
+  /** Results — weekly OCR / settlement upload. */
   weeklyUpload?: WeeklyUpload;
-  // Redemption data (set when redemption is completed)
-  redemptionAmount?: number; // Final amount redeemed
-  redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save'; // Redemption option selected
-  redeemedAt?: string; // ISO timestamp when redemption was completed
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
+  /** Redemption — set when week is settled. */
+  redemptionAmount?: number;
+  redemptionChoice?: 'cash' | 'donation' | 'activity' | 'save';
+  redeemedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FirestoreDailyUpload {
@@ -129,29 +213,3 @@ export interface FirestoreDailyUpload {
   createdAt: string; // ISO timestamp
   updatedAt: string; // ISO timestamp
 }
-
-export interface FirestoreNotification {
-  id: string; // Document ID
-  parentId: string; // Reference to users collection
-  type: 'upload_success' | 'upload_exceeded' | 'reminder_approval' | 'missing_report';
-  title: string;
-  message: string;
-  timestamp: string; // ISO timestamp
-  read: boolean;
-  dayDate?: string; // Format: "DD/MM"
-  dayName?: string; // Hebrew day name
-  relatedUploadId?: string; // Optional reference (legacy)
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
-}
-
-export interface FirestoreSession {
-  id: string; // Document ID
-  userId: string; // Reference to users collection (Firebase Auth UID)
-  loginTime: string; // ISO timestamp
-  expiresAt: string; // ISO timestamp
-  lastActivity: string; // ISO timestamp
-  createdAt: string; // ISO timestamp
-  updatedAt: string; // ISO timestamp
-}
-

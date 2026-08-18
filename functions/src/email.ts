@@ -126,7 +126,7 @@ export function generateEmailHTML(
   buttonUrl?: string,
   baseUrl?: string
 ): string {
-  const logoUrl = baseUrl ? `${baseUrl}/logo-joystie.png` : 'https://joystie.com/logo-joystie.png';
+  const logoUrl = baseUrl ? `${baseUrl}/brand/logo-joystie.png` : 'https://joystie.com/brand/logo-joystie.png';
   const piggyUrl = baseUrl ? `${baseUrl}/piggy-bank.png` : 'https://joystie.com/piggy-bank.png';
   
   return `

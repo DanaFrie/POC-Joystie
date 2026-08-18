@@ -1,15 +1,20 @@
 // Firestore types for Firebase Functions
 // These match the types in src/types/firestore.ts
 
+export type UserKidAgeScreenTime = {
+  name?: string;
+  age: string;
+  gender?: 'boy' | 'girl';
+  dailyScreenTimeHours: number;
+};
+
 export interface FirestoreUser {
   id: string;
-  username?: string; // Optional - removed from signup (parent nickname)
   email: string;
   firstName: string;
   lastName: string;
   gender: 'male' | 'female';
-  kidsAges: string[];
-  notificationsEnabled: boolean;
+  kidsAges: UserKidAgeScreenTime[];
   termsAccepted: boolean;
   signupDate: string;
   createdAt: string;
@@ -22,10 +27,18 @@ export interface FirestoreChild {
   name: string;
   age: string;
   gender: 'boy' | 'girl';
-  deviceType: 'ios' | 'android';
+  deviceType?: 'ios' | 'android';
   profilePicture?: string;
   nickname?: string;
+  /** @deprecated v0.3 — not written; use challenge.moneyGoals */
   moneyGoals?: string[];
+  shareCard?: {
+    source: 'ai' | 'default';
+    storagePath: string | null;
+    /** @deprecated Permanent token URLs — cleared; use getChildShareCardAccess. */
+    downloadUrl: string | null;
+    createdAt: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

@@ -3,6 +3,7 @@ import type { FirebaseApp } from 'firebase/app';
 import type { Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type { Functions } from 'firebase/functions';
+import type { Database } from 'firebase/database';
 import { createContextLogger } from '@/utils/logger';
 
 // Firebase configuration
@@ -35,6 +36,12 @@ function getFirebaseConfig() {
         case 'NEXT_PUBLIC_FIREBASE_APP_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
           break;
+        case 'NEXT_PUBLIC_FIREBASE_DATABASE_URL':
+          value = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+          break;
         default:
           value = undefined;
       }
@@ -57,6 +64,12 @@ function getFirebaseConfig() {
           break;
         case 'NEXT_PUBLIC_FIREBASE_APP_ID':
           value = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_DATABASE_URL':
+          value = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL;
+          break;
+        case 'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID':
+          value = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
           break;
         default:
           value = undefined;
@@ -94,12 +107,18 @@ function getFirebaseConfig() {
   };
 
   const projectId = getEnv('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+  const databaseURL =
+    getEnv('NEXT_PUBLIC_FIREBASE_DATABASE_URL') ||
+    (projectId ? `https://${projectId}-default-rtdb.firebaseio.com` : '');
+  const measurementId = getEnv('NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID');
   const config = {
     apiKey: getEnv('NEXT_PUBLIC_FIREBASE_API_KEY'),
     authDomain: getEnv('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN'),
     projectId,
     messagingSenderId: getEnv('NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID'),
     appId: getEnv('NEXT_PUBLIC_FIREBASE_APP_ID'),
+    databaseURL,
+    ...(measurementId ? { measurementId } : {}),
   };
   
   // Debug logging (enabled in intgr, disabled in prod)
@@ -166,7 +185,10 @@ let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
 let dbInstance: Firestore | null = null;
 let functionsInstance: Functions | null = null;
+let rtdbInstance: Database | null = null;
 let initPromise: Promise<void> | null = null;
+let functionsEmulatorConnected = false;
+let firestoreEmulatorConnected = false;
 
 // Initialize Firebase (lazy, client-side only)
 async function initializeFirebase(): Promise<void> {
@@ -183,8 +205,9 @@ async function initializeFirebase(): Promise<void> {
       // Dynamic import to avoid SSR issues
       const { initializeApp, getApps } = await import('firebase/app');
       const { getAuth } = await import('firebase/auth');
-      const { getFirestore } = await import('firebase/firestore');
+      const { initializeFirestore, getFirestore } = await import('firebase/firestore');
       const { getFunctions } = await import('firebase/functions');
+      const { getDatabase } = await import('firebase/database');
 
       // Get config at runtime (Next.js embeds NEXT_PUBLIC_* vars at build time)
       const config = getFirebaseConfig();
@@ -217,21 +240,50 @@ async function initializeFirebase(): Promise<void> {
 
       // Initialize services
       authInstance = getAuth(app);
-      dbInstance = getFirestore(app);
+
+      // Capture OAuth redirect before Firestore/Functions — order matters on Safari/App Hosting.
+      if (typeof window !== 'undefined') {
+        const { primeOAuthRedirectCaptureWithAuth } = await import('@/utils/auth-oauth');
+        primeOAuthRedirectCaptureWithAuth(authInstance);
+      }
+
+      // Auto-detect long polling — Chrome QUIC idle timeouts on Listen/Write
+      // channels otherwise log ERR_QUIC_PROTOCOL_ERROR with HTTP 200.
+      try {
+        dbInstance = initializeFirestore(app, {
+          experimentalAutoDetectLongPolling: true,
+        });
+      } catch {
+        dbInstance = getFirestore(app);
+      }
       functionsInstance = getFunctions(app, 'us-central1'); // Use same region as deployed function
+
+      const firebaseLogger = createContextLogger('Firebase');
+      const useEmulators =
+        typeof window !== 'undefined' &&
+        process.env.NODE_ENV === 'development' &&
+        process.env.NEXT_PUBLIC_USE_FUNCTIONS_EMULATOR === 'true';
+
+      if (useEmulators && !firestoreEmulatorConnected) {
+        const { connectFirestoreEmulator } = await import('firebase/firestore');
+        connectFirestoreEmulator(dbInstance, '127.0.0.1', 8080);
+        firestoreEmulatorConnected = true;
+        firebaseLogger.log('Firestore emulator: 127.0.0.1:8080');
+      }
+
+      if (useEmulators && !functionsEmulatorConnected) {
+        const { connectFunctionsEmulator } = await import('firebase/functions');
+        connectFunctionsEmulator(functionsInstance, '127.0.0.1', 5001);
+        functionsEmulatorConnected = true;
+        firebaseLogger.log('Functions emulator: 127.0.0.1:5001');
+      }
+
+      if (config.databaseURL) {
+        rtdbInstance = getDatabase(app);
+      }
       
       // Initialize Analytics (client-side only, lazy-loaded when needed)
       // Analytics is initialized separately in utils/analytics.ts to avoid SSR issues
-      
-      // Log config for debugging (without sensitive data)
-      const firebaseLogger = createContextLogger('Firebase');
-      firebaseLogger.log('Initialized with config:', {
-        projectId: config.projectId,
-        authDomain: config.authDomain,
-        hasApiKey: !!config.apiKey,
-        hasAppId: !!config.appId,
-      });
-
     } catch (error) {
       const firebaseLogger = createContextLogger('Firebase');
       firebaseLogger.error('Initialization error:', error);
@@ -282,6 +334,18 @@ export async function getFunctionsInstance(): Promise<Functions> {
     throw new Error('Failed to initialize Firebase Functions');
   }
   return functionsInstance;
+}
+
+export async function getDatabaseInstance(): Promise<Database> {
+  if (!rtdbInstance) {
+    await initializeFirebase();
+  }
+  if (!rtdbInstance) {
+    throw new Error(
+      'Firebase Realtime Database not initialized. Set NEXT_PUBLIC_FIREBASE_DATABASE_URL or enable RTDB in the Firebase project.'
+    );
+  }
+  return rtdbInstance;
 }
 
 // Synchronous getters (for backward compatibility, but will throw if not initialized)

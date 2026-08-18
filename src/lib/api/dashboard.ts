@@ -1,13 +1,107 @@
 // Dashboard Data API
 import { getActiveChallenge, getLatestChallenge } from './challenges';
-import { getUploadsByChallenge, getPendingApprovals } from './uploads';
+import { getUploadsByChallenge } from './uploads';
 import { getUser } from './users';
-import { getChild } from './children';
+import { getChild, ensureChildForParent } from './children';
+import { changeDayChecksToMatrix } from '@/lib/onboarding/changeDayChecks';
+import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
+import { avgMinutesFromWeeklyScreenTime } from '@/lib/dashboard/parentDailyAverage';
 import type { DashboardState, WeekDay, Today, Challenge } from '@/types/dashboard';
-import type { FirestoreChallenge, FirestoreDailyUpload } from '@/types/firestore';
+import type { FirestoreChallenge, FirestoreChild, FirestoreDailyUpload } from '@/types/firestore';
+import { dataCache, cacheKeys, cacheTTL } from '@/utils/data-cache';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('Dashboard');
+
+const DASHBOARD_PREFETCH_KEY = 'joystieDashboardPrefetch';
+const DASHBOARD_PREFETCH_TTL_MS = 60 * 1000;
+
+function dropSessionPrefetch(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(DASHBOARD_PREFETCH_KEY);
+  } catch {
+    // quota / private mode
+  }
+}
+
+export function clearPrefetchedDashboard(): void {
+  dropSessionPrefetch();
+}
+
+function rememberDashboardState(parentId: string, data: DashboardState): void {
+  dataCache.set(cacheKeys.dashboard(parentId), data, cacheTTL.dashboard);
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(
+      DASHBOARD_PREFETCH_KEY,
+      JSON.stringify({ uid: parentId, data, at: Date.now() })
+    );
+  } catch {
+    // quota / private mode
+  }
+}
+
+/** Memory + session snapshot from login/onboarding prefetch. One-shot session copy. */
+export function readPrefetchedDashboard(parentId: string): DashboardState | null {
+  if (typeof window === 'undefined' || !parentId) return null;
+  const mem = dataCache.get<DashboardState>(cacheKeys.dashboard(parentId));
+  if (mem) {
+    dropSessionPrefetch();
+    return mem;
+  }
+  try {
+    const raw = sessionStorage.getItem(DASHBOARD_PREFETCH_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { uid?: string; data?: DashboardState; at?: number };
+    dropSessionPrefetch();
+    if (parsed.uid !== parentId || !parsed.data) return null;
+    if (!parsed.at || Date.now() - parsed.at > DASHBOARD_PREFETCH_TTL_MS) return null;
+    dataCache.set(cacheKeys.dashboard(parentId), parsed.data, cacheTTL.dashboard);
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function resolveChildShareCardFields(child: FirestoreChild): {
+  shareCardUrl: string | null;
+  shareCardSource: 'ai' | 'default' | null;
+  shareCardStored: boolean;
+} {
+  const card = child.shareCard;
+  if (!card) {
+    return { shareCardUrl: null, shareCardSource: null, shareCardStored: false };
+  }
+  // Never expose permanent Storage downloadUrl — access is via getChildShareCardAccess.
+  if (card.storagePath) {
+    return {
+      shareCardUrl: null,
+      shareCardSource: card.source ?? null,
+      shareCardStored: true,
+    };
+  }
+  if (card.source === 'default') {
+    return {
+      shareCardUrl: defaultSelfieAssetForChild(child.gender),
+      shareCardSource: 'default',
+      shareCardStored: false,
+    };
+  }
+  return { shareCardUrl: null, shareCardSource: card.source ?? null, shareCardStored: false };
+}
+
+function challengeDailyBudget(challenge: FirestoreChallenge): number {
+  if (challenge.dailyBudget != null) return challenge.dailyBudget;
+  if (challenge.selectedBudget && challenge.challengeDays) {
+    return challenge.selectedBudget / challenge.challengeDays;
+  }
+  return 0;
+}
+
+function challengeDailyGoalHours(challenge: FirestoreChallenge): number {
+  return challenge.dailyScreenTimeGoal ?? 0;
+}
 
 /**
  * Helper: Transform FirestoreChallenge to Challenge type (adds weeklyBudget)
@@ -15,13 +109,16 @@ const logger = createContextLogger('Dashboard');
 function transformChallenge(firestoreChallenge: FirestoreChallenge): Challenge {
   return {
     selectedBudget: firestoreChallenge.selectedBudget,
-    weeklyBudget: firestoreChallenge.selectedBudget, // weeklyBudget equals selectedBudget
+    weeklyBudget: firestoreChallenge.selectedBudget,
     dailyBudget: firestoreChallenge.dailyBudget,
     dailyScreenTimeGoal: firestoreChallenge.dailyScreenTimeGoal,
+    hourlyRate: firestoreChallenge.hourlyRate,
+    moneyGoals: firestoreChallenge.moneyGoals,
     weekNumber: firestoreChallenge.weekNumber,
     totalWeeks: firestoreChallenge.totalWeeks,
     startDate: firestoreChallenge.startDate,
-    isActive: firestoreChallenge.isActive
+    challengeDays: firestoreChallenge.challengeDays,
+    isActive: firestoreChallenge.isActive,
   };
 }
 
@@ -139,7 +236,6 @@ function generateWeek(
     const matchingUploads = uploads.filter(u => u.date === dateStr);
     const upload = matchingUploads.length > 0 ? matchingUploads[0] : null;
     
-    // Log if multiple uploads found for same date (data integrity issue)
     if (matchingUploads.length > 1) {
       logger.warn(`Multiple uploads found for date ${dateStr}:`, matchingUploads.map(u => ({
         id: u.id,
@@ -149,28 +245,16 @@ function generateWeek(
         uploadedAt: u.uploadedAt
       })));
     }
-    
-    // Log upload matching for debugging
-    if (upload) {
-      logger.log(`Matched upload for ${dateStr}:`, {
-        id: upload.id,
-        date: upload.date,
-        requiresApproval: upload.requiresApproval,
-        parentAction: upload.parentAction,
-        success: upload.success,
-        uploadedAt: upload.uploadedAt
-      });
-    } else {
-      logger.log(`No upload found for ${dateStr}`);
-    }
-    
+
     // Calculate coins
-    const hourlyRate = challenge.dailyScreenTimeGoal > 0 
-      ? challenge.dailyBudget / challenge.dailyScreenTimeGoal 
+    const dailyGoalHours = challengeDailyGoalHours(challenge);
+    const dailyBudget = challengeDailyBudget(challenge);
+    const hourlyRate = dailyGoalHours > 0 
+      ? dailyBudget / dailyGoalHours 
       : 0;
     
     let screenTimeUsed = upload?.screenTimeUsed || 0;
-    const screenTimeGoal = challenge.dailyScreenTimeGoal;
+    const screenTimeGoal = dailyGoalHours;
     let coinsEarned = upload?.coinsEarned || 0;
     let requiresApproval = upload?.requiresApproval || false;
 
@@ -183,9 +267,8 @@ function generateWeek(
       const mins = minutesPerDay[dayName];
       if (mins != null) {
         screenTimeUsed = mins / 60;
-        const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60;
+        const goalMinutes = dailyGoalHours * 60;
         const success = mins <= goalMinutes;
-        const dailyBudget = challenge.dailyBudget ?? 0;
         coinsEarned = success ? dailyBudget : Math.max(0, dailyBudget * (1 - (mins - goalMinutes) / goalMinutes));
         if (weeklyUpload.status === 'approved') {
           status = success ? 'success' : 'warning';
@@ -236,7 +319,8 @@ function calculateWeeklyTotals(
   week: WeekDay[],
   challenge: FirestoreChallenge
 ): { coinsEarned: number; coinsMaxPossible: number; redemptionDate: string; redemptionDay: string } {
-  const coinsMaxPossible = challenge.dailyBudget * challenge.challengeDays; // Max possible for challenge days
+  const dailyBudget = challengeDailyBudget(challenge);
+  const coinsMaxPossible = dailyBudget * challenge.challengeDays;
   
   // Get approved non-redemption days
   const nonRedemptionDays = week.filter(day => !day.isRedemptionDay);
@@ -250,7 +334,6 @@ function calculateWeeklyTotals(
   for (const day of approvedDays) {
     const screenTimeUsed = day.screenTimeUsed || 0;
     const screenTimeGoal = day.screenTimeGoal || 0;
-    const dailyBudget = challenge.dailyBudget;
     
     // Calculate coins earned using the same formula as in upload page
     // If goal met: full daily budget
@@ -306,22 +389,24 @@ function buildToday(
       status: 'future', // Today hasn't passed yet, so it's future
       coinsEarned: 0,
       screenTimeUsed: 0,
-      screenTimeGoal: challenge.dailyScreenTimeGoal,
+      screenTimeGoal: challengeDailyGoalHours(challenge),
       isRedemptionDay: false,
       requiresApproval: false
     };
   }
+
+  const day = todayDay;
   
   // Determine screenshot status
   let screenshotStatus: Today['screenshotStatus'] = 'pending';
-  if (todayDay.status === 'success' || todayDay.status === 'warning') {
+  if (day.status === 'success' || day.status === 'warning') {
     screenshotStatus = 'uploaded';
-  } else if (todayDay.status === 'awaiting_approval') {
+  } else if (day.status === 'awaiting_approval') {
     screenshotStatus = 'uploaded';
-  } else if (todayDay.status === 'future') {
+  } else if (day.status === 'future') {
     // Today or future day - still pending (day hasn't passed yet)
     screenshotStatus = 'pending';
-  } else if (todayDay.status === 'missing') {
+  } else if (day.status === 'missing') {
     // Day has passed but no upload - missing or overdue
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
@@ -332,21 +417,23 @@ function buildToday(
     }
   }
   
-  const hourlyRate = challenge.dailyScreenTimeGoal > 0 
-    ? challenge.dailyBudget / challenge.dailyScreenTimeGoal 
+  const dailyGoalHours = challengeDailyGoalHours(challenge);
+  const dailyBudget = challengeDailyBudget(challenge);
+  const hourlyRate = dailyGoalHours > 0 
+    ? dailyBudget / dailyGoalHours 
     : 0;
   
   return {
     date: todayDateStr,
     hebrewDate: '', // TODO: Calculate Hebrew date if needed
     screenshotStatus,
-    screenTimeUsed: todayDay.screenTimeUsed || 0,
-    screenTimeGoal: todayDay.screenTimeGoal || challenge.dailyScreenTimeGoal,
-    coinsEarned: todayDay.coinsEarned || 0,
-    coinsMaxPossible: challenge.dailyBudget,
-    requiresApproval: todayDay.requiresApproval || false,
-    uploadedAt: todayDay.uploadedAt || new Date().toISOString(),
-    apps: todayDay.apps || []
+    screenTimeUsed: day.screenTimeUsed || 0,
+    screenTimeGoal: day.screenTimeGoal || dailyGoalHours,
+    coinsEarned: day.coinsEarned || 0,
+    coinsMaxPossible: dailyBudget,
+    requiresApproval: day.requiresApproval || false,
+    uploadedAt: day.uploadedAt || new Date().toISOString(),
+    apps: day.apps || []
   };
 }
 
@@ -362,8 +449,8 @@ export function mergeWeekWithWeeklyUpload(
   const minutesPerDay = weeklyUpload?.processedData?.minutesPerDay;
   if (!minutesPerDay || week.length === 0) return week;
 
-  const dailyBudget = challenge.dailyBudget ?? 0;
-  const goalMinutes = (challenge.dailyScreenTimeGoal || 0) * 60;
+  const dailyBudget = challengeDailyBudget(challenge);
+  const goalMinutes = challengeDailyGoalHours(challenge) * 60;
 
   const hebrewToEn: Record<string, string> = {
     ראשון: 'Sunday', שני: 'Monday', שלישי: 'Tuesday', רביעי: 'Wednesday',
@@ -401,41 +488,87 @@ export function mergeWeekWithWeeklyUpload(
   });
 }
 
+function buildBootstrapDashboardState(
+  user: import('@/types/firestore').FirestoreUser,
+  child: import('@/types/firestore').FirestoreChild
+): DashboardState {
+  return {
+    parent: {
+      name: user.firstName || 'הורה',
+      id: user.id,
+      googleAuth: {},
+      profilePicture: '',
+      gender: user.gender,
+    },
+    child: {
+      name: child.name,
+      id: child.id,
+      profilePicture: child.profilePicture || '',
+      gender: child.gender,
+      nickname: child.nickname,
+      changes: child.changes,
+      changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
+      baselineDailyMinutes: child.baselineDailyMinutes,
+      ...resolveChildShareCardFields(child),
+    },
+    challenge: {
+      selectedBudget: 0,
+      weeklyBudget: 0,
+      weekNumber: 0,
+      startDate: '',
+      isActive: false,
+      challengeDays: 6,
+    },
+    today: {
+      date: '',
+      hebrewDate: '',
+      screenshotStatus: 'pending',
+      screenTimeUsed: 0,
+      screenTimeGoal: 0,
+      coinsEarned: 0,
+      coinsMaxPossible: 0,
+      requiresApproval: false,
+      uploadedAt: '',
+      apps: [],
+    },
+    week: [],
+    weeklyTotals: {
+      coinsEarned: 0,
+      coinsMaxPossible: 0,
+      redemptionDate: '',
+      redemptionDay: '',
+    },
+  };
+}
+
 /**
  * Get complete dashboard data for a user
  */
 export async function getDashboardData(parentId: string, useCache: boolean = true): Promise<DashboardState | null> {
   // Check cache first
   if (useCache) {
-    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
     const cached = dataCache.get<DashboardState>(cacheKeys.dashboard(parentId));
     if (cached) {
-      logger.log(`Using cached dashboard data for ${parentId}`);
       return cached;
     }
   }
   try {
-    logger.log('Loading data for user:', parentId);
-    
-    // Get user data
     const user = await getUser(parentId);
     if (!user) {
       logger.warn('User not found in Firestore:', parentId);
       return null;
     }
-    logger.log('User found:', user.username);
 
     // Get challenge from Firestore only (no cache) so we have latest weeklyUpload after child upload
     let challenge = await getActiveChallenge(parentId, false);
     if (!challenge) {
       challenge = await getLatestChallenge(parentId);
       if (!challenge) {
-        logger.warn('No challenge found for user:', parentId);
-        return null;
+        const child = await ensureChildForParent(parentId);
+        const bootstrap = buildBootstrapDashboardState(user, child);
+        if (useCache) rememberDashboardState(parentId, bootstrap);
+        return bootstrap;
       }
-      logger.log('Using latest (pending) challenge:', challenge.id);
-    } else {
-      logger.log('Active challenge found:', challenge.id);
     }
 
     // Get child data
@@ -446,15 +579,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     
     // Get uploads for current week (include parentId for security rules)
     const uploads = await getUploadsByChallenge(challenge.id, parentId);
-    logger.log(`Fetched ${uploads.length} uploads for challenge ${challenge.id}:`, uploads.map(u => ({
-      id: u.id,
-      date: u.date,
-      requiresApproval: u.requiresApproval,
-      parentAction: u.parentAction,
-      success: u.success,
-      uploadedAt: u.uploadedAt
-    })));
-    
+
     // Check if challenge hasn't started yet
     const challengeNotStarted = !challenge.startDate || (() => {
       const startDate = new Date(challenge.startDate!);
@@ -476,10 +601,16 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     // Map FirestoreChallenge to Challenge
     const challengeData = transformChallenge(challenge);
     
+    const lastWeeklyAvgMinutes =
+      avgMinutesFromWeeklyScreenTime(
+        challenge.weeklyUpload?.processedData?.screenTimeMinutes,
+        challenge.challengeDays
+      ) ?? undefined;
+
     // Build dashboard state
     const dashboardState: DashboardState = {
       parent: {
-        name: user.firstName || user.username || 'הורה',
+        name: user.firstName || 'הורה',
         id: user.id,
         googleAuth: {}, // TODO: Add if needed
         profilePicture: '', // TODO: Add if available
@@ -491,22 +622,23 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
         profilePicture: child.profilePicture || '',
         gender: child.gender,
         nickname: child.nickname,
-        moneyGoals: child.moneyGoals
+        changes: child.changes,
+        changeDayChecks: changeDayChecksToMatrix(child.changeDayChecks),
+        baselineDailyMinutes: child.baselineDailyMinutes,
+        ...resolveChildShareCardFields(child),
       },
       challenge: challengeData,
       today: todayObj,
       week,
       weeklyTotals,
+      lastWeeklyAvgMinutes,
       challengeNotStarted: challengeNotStarted,
       challengeStartDate: challenge.startDate,
-      consultationCompleted: challenge.consultationCompleted ?? false,
       activeChallengeId: challenge.id
     };
     
-    // Cache the result (skip cache for pending challenges so we get fresh data after admin approval)
-    if (useCache && challenge.isActive) {
-      const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
-      dataCache.set(cacheKeys.dashboard(parentId), dashboardState, cacheTTL.dashboard);
+    if (useCache) {
+      rememberDashboardState(parentId, dashboardState);
     }
     
     return dashboardState;
@@ -516,35 +648,16 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
   }
 }
 
-/**
- * Get weekly data for a challenge
- */
-export async function getWeekData(challengeId: string, parentId?: string): Promise<FirestoreDailyUpload[]> {
-  try {
-    return await getUploadsByChallenge(challengeId, parentId);
-  } catch (error) {
-    logger.error('Error getting week data:', error);
-    throw new Error('שגיאה בטעינת נתוני השבוע.');
-  }
-}
+const dashboardInflight = new Map<string, Promise<DashboardState | null>>();
 
-/**
- * Get today's upload data
- */
-export async function getTodayData(
-  challengeId: string,
-  date: string,
-  parentId?: string
-): Promise<FirestoreDailyUpload | null> {
-  try {
-    const { getUploadByDate } = await import('./uploads');
-    return await getUploadByDate(challengeId, date, parentId);
-  } catch (error) {
-    logger.error('Error getting today data:', error);
-    throw new Error('שגיאה בטעינת נתוני היום.');
-  }
+/** One in-flight fetch per parent — login/onboarding prefetch and dashboard mount share it. */
+export function loadDashboardDataShared(parentId: string): Promise<DashboardState | null> {
+  const existing = dashboardInflight.get(parentId);
+  if (existing) return existing;
+  const pending = getDashboardData(parentId).finally(() => {
+    dashboardInflight.delete(parentId);
+  });
+  dashboardInflight.set(parentId, pending);
+  return pending;
 }
-
-// Re-export for convenience
-export { getUploadByDate } from './uploads';
 

@@ -1,93 +1,83 @@
-// URL encoding/decoding utility for child pages with parent identifier
-// Uses compact delimiter-based encoding to minimize token size
+// URL encoding/decoding for child dashboard access (`/dashboard/child?token=`)
 import { clientConfig } from '@/config/client.config';
+import {
+  parseBondingInviteQueryParams,
+  preserveBondingInviteQueryParams,
+  withBondingInviteQueryParams,
+} from '@/lib/onboarding/bondingInviteUrl';
 import { createContextLogger } from './logger';
 
 const logger = createContextLogger('URL Encoding');
 
-/**
- * Encode parent ID, child ID, and optional challenge ID into compact URL-safe token
- * Format: base64url(parentId|childId|challengeId|expiresAt)
- * Uses pipe delimiter for compact encoding (no JSON overhead)
- */
-export function encodeParentToken(
-  parentId: string, 
-  childId?: string, 
-  challengeId?: string
-): string {
-  const expiresAt = Date.now() + (clientConfig.token.expirationDays * 24 * 60 * 60 * 1000);
-  
-  // Compact format: parentId|childId|challengeId|expiresAt
-  // Empty values use empty string (not null) to keep it compact
-  const parts = [
-    parentId,
-    childId || '',
-    challengeId || '',
-    expiresAt.toString()
-  ];
-  
-  const compact = parts.join('|');
-  // Use base64url encoding (URL-safe)
-  const encoded = btoa(compact)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-  
-  return encoded;
+export { parseBondingInviteQueryParams, withBondingInviteQueryParams };
+
+/** v0.3 onboarding funnel — child invite from parent bonding share */
+export const ONBOARDING_CHILD_PATH = '/onboarding/child';
+
+const CHILD_DASHBOARD_PATH = '/dashboard/child';
+
+/** Onboarding placeholder ids — never embed in dashboard tokens. */
+export function isDraftChildId(childId: string | null | undefined): boolean {
+  return Boolean(childId && /^draft-/i.test(childId));
 }
 
 /**
- * Decode parent token from URL and validate expiration
- * Uses compact pipe-delimited format: parentId|childId|challengeId|expiresAt
+ * Encode parent (+ optional child) into a compact URL-safe token.
+ * Format: base64url(parentId|childId|expiresAt)
+ * 1:1 parent↔child — challenge is resolved live via getActiveChallenge(parentId).
+ * Valid for clientConfig.token.expirationDays (30).
  */
-export function decodeParentToken(token: string): { 
-  parentId: string; 
-  childId: string | null; 
-  challengeId: string | null;
-  timestamp: number;
+export function encodeParentToken(parentId: string, childId?: string): string {
+  const expiresAt =
+    Date.now() + clientConfig.token.expirationDays * 24 * 60 * 60 * 1000;
+
+  const safeChildId = isDraftChildId(childId) ? '' : childId || '';
+  const parts = [parentId, safeChildId, expiresAt.toString()];
+  const compact = parts.join('|');
+  return btoa(compact).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+/** Decode `/dashboard/child?token=` and validate expiration. */
+export function decodeParentToken(token: string): {
+  parentId: string;
+  childId: string | null;
   expiresAt: number;
   isExpired: boolean;
 } | null {
   try {
-    // Restore base64url to base64
-    const base64 = token
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    
-    // Add padding if needed
+    const base64 = token.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    
     const decoded = atob(padded);
-    
-    // Parse compact pipe-delimited format: parentId|childId|challengeId|expiresAt
-    if (!decoded.includes('|')) {
-      return null; // Invalid format
-    }
-    
+
+    if (!decoded.includes('|')) return null;
+
     const parts = decoded.split('|');
-    if (parts.length !== 4) {
-      return null; // Invalid format - must have exactly 4 parts
+
+    // v0.3: parentId|childId|expiresAt
+    // legacy v0.2: parentId|childId|challengeId|expiresAt (challengeId ignored)
+    let parentId: string;
+    let childId: string | null;
+    let expiresAt: number;
+
+    if (parts.length === 3) {
+      parentId = parts[0];
+      childId = parts[1] || null;
+      expiresAt = parseInt(parts[2], 10);
+    } else if (parts.length === 4) {
+      parentId = parts[0];
+      childId = parts[1] || null;
+      expiresAt = parseInt(parts[3], 10);
+    } else {
+      return null;
     }
-    
-    const parentId = parts[0];
-    const childId = parts[1] || null;
-    const challengeId = parts[2] || null;
-    const expiresAt = parseInt(parts[3], 10);
-    
-    if (!parentId || !expiresAt || isNaN(expiresAt)) {
-      return null; // Invalid data
-    }
-    
-    const now = Date.now();
-    const isExpired = now > expiresAt;
-    
+
+    if (!parentId || !expiresAt || Number.isNaN(expiresAt)) return null;
+
     return {
       parentId,
       childId,
-      challengeId,
-      timestamp: Date.now(),
       expiresAt,
-      isExpired
+      isExpired: Date.now() > expiresAt,
     };
   } catch (error) {
     logger.error('Error decoding parent token:', error);
@@ -95,20 +85,44 @@ export function decodeParentToken(token: string): {
   }
 }
 
-/** Base path for unified child flow (setup + redemption same URL) */
-const CHILD_PATH = '/child';
-
 /**
- * Generate the single child URL (setup and redemption use the same link).
- * After setup the child keeps this link; on redemption day it shows the redemption funnel.
+ * Child dashboard share URL — token valid 30 days.
+ * Not bonding `?invite=` (that is onboarding-only).
  */
 export function generateChildUrl(
   parentId: string,
   childId?: string,
-  challengeId?: string,
   baseUrl?: string
 ): string {
-  const token = encodeParentToken(parentId, childId, challengeId);
+  const token = encodeParentToken(parentId, childId);
   const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}${CHILD_PATH}?token=${token}`;
+  return `${base}${CHILD_DASHBOARD_PATH}?token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * Rebuild bonding child invite URL on the current origin (keeps `invite=` + cn/cg/pn/pg).
+ * Onboarding / game only — not dashboard.
+ */
+export function rewriteOnboardingChildUrlToCurrentOrigin(urlOrToken: string): string {
+  if (typeof window === 'undefined' || !urlOrToken.trim()) return urlOrToken;
+
+  try {
+    const parsed = new URL(urlOrToken, window.location.origin);
+    const inviteId = parsed.searchParams.get('invite');
+    if (!inviteId) return urlOrToken;
+    const base = `${window.location.origin}${ONBOARDING_CHILD_PATH}?invite=${encodeURIComponent(inviteId)}`;
+    return preserveBondingInviteQueryParams(urlOrToken, base);
+  } catch {
+    return urlOrToken;
+  }
+}
+
+/** Ball-game route — carries bonding `invite` + display query params. */
+export function buildGameChildUrlWithInvite(inviteId: string): string {
+  const encoded = encodeURIComponent(inviteId);
+  if (typeof window === 'undefined') {
+    return `/game/child?invite=${encoded}`;
+  }
+  const base = `${window.location.origin}/game/child?invite=${encoded}`;
+  return preserveBondingInviteQueryParams(window.location.href, base);
 }

@@ -1,9 +1,14 @@
 rules_version = '2';
 
-// Firebase Storage – גישה להעלאות שבועיות (עמוד הפדיון)
-// העלאות מ־weekly-uploads/ מותרות גם ללא התחברות (הילד מעלה דרך קישור עם טוקן).
+// Firebase Storage — share cards are Admin-only (no public download tokens).
+// Clients view via getChildShareCardAccess (short-lived signed URL).
+// Legacy weekly-uploads kept for older clients — not for face photos.
 service firebase.storage {
   match /b/{bucket}/o {
+    match /families/{parentId}/children/{childId}/share-cards/{fileName} {
+      allow read, write: if false;
+    }
+
     match /weekly-uploads/{challengeId}/{fileName} {
       allow read: if true;
       allow write: if true;

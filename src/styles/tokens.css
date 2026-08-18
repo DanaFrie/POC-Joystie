@@ -1,0 +1,137 @@
+/**
+ * Joystie v0.3 design tokens (from Figma DSM + onboarding 12703:42224)
+ * App typeface: Rubik (`--font-rubik` from next/font).
+ */
+
+:root {
+  /* Legacy font aliases → Rubik (next/font sets --font-rubik on <html>) */
+  --font-simpler: var(--font-rubik);
+  --font-marketing-rubik: var(--font-rubik);
+  --font-heebo: var(--font-rubik);
+
+  /* Green scale */
+  --v03-green-900: #092125;
+  --v03-green-700: #243e35;
+  --v03-green-200: #b0c6bf;
+  --v03-green-100: #e3edea;
+  --v03-green-400: #7a8d87;
+  --v03-green-300: #90a79f;
+
+  /* Turquoise / accent */
+  --turquoise-200: #00ffb3;
+  --v03-turquoise-300: #1becae;
+  --v03-turquoise-950: #031d15;
+
+  /* Neutrals */
+  --v03-white: #ffffff;
+  --v03-bg-light: #f5f5f5;
+  --v03-text-on-light: #252b29;
+  --v03-accent-purple: #8c00ff;
+  --v03-funnel-light-gradient: linear-gradient(180deg, #fff 0%, #e1e1e1 100%);
+
+  /* Semantic aliases */
+  --v03-surface-dark: var(--v03-green-900);
+  --v03-text-on-dark: var(--v03-white);
+  --v03-text-muted-on-dark: var(--v03-green-200);
+  --v03-accent: var(--v03-turquoise-300);
+  --v03-accent-foreground: var(--v03-turquoise-950);
+
+  /* Ellipse 385 — bottom mint glow */
+  --v03-ellipse-385: #00d978;
+
+  /* Onboarding grid — Figma #FFFFFF0D, hori/verti gap from Dev Mode */
+  --v03-grid-line: #ffffff0d;
+  --v03-grid-gap-verti: 80.687px;
+  --v03-grid-gap-hori: 86.385px;
+  --v03-grid-offset-x: -64px;
+  --v03-grid-offset-y: -19px;
+
+  /* Figma preview chrome — not rendered; full 812px is design canvas */
+  --v03-figma-status-top: 44px;
+  --v03-figma-status-bottom: 32px;
+
+  /* Layout — mobile funnel */
+  --v03-screen-width: 375px;
+  --v03-screen-height: 812px;
+  --v03-content-width: 327px;
+  --v03-gutter: 24px;
+
+  /* Safe area — read by FunnelViewport for mobile inset scaling */
+  --v03-safe-top: env(safe-area-inset-top, 0px);
+  --v03-safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Radii */
+  --v03-radius-button: 22px;
+
+  /* Shadows */
+  --v03-shadow-button: 2px 2px 20px rgba(109, 109, 109, 0.15);
+  --v03-shadow-display: 0 0 15px rgba(255, 255, 255, 0.2);
+
+  /* Typography scale */
+  --v03-text-eyebrow-size: 18px;
+  --v03-text-eyebrow-leading: 30px;
+  --v03-text-eyebrow-tracking: 3.78px;
+
+  --v03-text-display-size: 40px;
+  --v03-text-display-leading: 1.1;
+  --v03-text-display-tracking: -0.8px;
+
+  --v03-text-lead-size: 24px;
+  --v03-text-lead-leading: 30px;
+  --v03-text-lead-tracking: -0.36px;
+
+  --v03-text-body-size: 16px;
+  --v03-text-body-leading: 1.35;
+
+  --v03-text-button-size: 18px;
+
+  /* Onboarding funnel motion — tune in one place */
+  --v03-funnel-screen-duration: 320ms;
+  --v03-funnel-screen-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --v03-funnel-screen-offset-y: 8px;
+
+  --v03-funnel-enter-duration: 420ms;
+  --v03-funnel-enter-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --v03-funnel-enter-offset-y: 14px;
+  --v03-funnel-enter-stagger: 90ms;
+  --v03-funnel-enter-fast-stagger: 52ms;
+
+  /* Reveal flow — slower staggered entrance (top → bottom) */
+  --v03-funnel-enter-reveal-duration: 1040ms;
+  --v03-funnel-enter-reveal-stagger: 440ms;
+  /* revealIntro — even slower */
+  --v03-funnel-enter-reveal-intro-duration: 1200ms;
+  --v03-funnel-enter-reveal-intro-stagger: 560ms;
+  --v03-funnel-enter-reveal-hero-intro-duration: 1600ms;
+
+  /* Joystie chart bars — after reveal footer (stagger × 4) finishes entering */
+  --v03-joystie-bar-duration: 520ms;
+  --v03-joystie-bar-stagger: 140ms;
+  --v03-joystie-bar-start-delay: calc(
+    var(--v03-funnel-enter-reveal-stagger) * 2 + var(--v03-funnel-enter-reveal-duration)
+  );
+}
+
+/* Simpler Pro webfonts — uncomment after adding files under public/fonts/simpler-pro/:
+@font-face {
+  font-family: 'Simpler Pro';
+  src: url('/fonts/simpler-pro/SimplerPro-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Simpler Pro';
+  src: url('/fonts/simpler-pro/SimplerPro-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Simpler Pro';
+  src: url('/fonts/simpler-pro/SimplerPro-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+*/

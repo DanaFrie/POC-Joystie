@@ -1,110 +1,221 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import { createSession, isLoggedIn, clearSession } from '@/utils/session';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
+import { LoginScreen } from '@/components/login/LoginScreen';
+import { isLoggedIn, clearSession } from '@/utils/session';
 import { signIn, getCurrentUserId as getCurrentUserIdAsync } from '@/utils/auth';
-import { getUser } from '@/lib/api/users';
-import { getLatestChallenge } from '@/lib/api/challenges';
-import { getErrorMessage } from '@/utils/errors';
+import { finishAuthenticatedUserNavigation } from '@/lib/auth/postLoginNavigation';
+import {
+  hideSessionWaiter,
+  showSessionWaiter,
+} from '@/lib/auth/sessionRouteWaiter';
+import {
+  isRegisteredJoystieAccount,
+} from '@/lib/auth/signupAccountStatus';
+import {
+  getUnknownOAuthAccountMessage,
+  rejectUnknownOAuthLogin,
+} from '@/lib/auth/rejectUnknownOAuthLogin';
+import { beginOnboardingSignupFromLogin } from '@/lib/onboarding/parentFlowSession';
+import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
 import { createContextLogger } from '@/utils/logger';
+import { clearOAuthSessionFlags, isOAuthRedirectRecoverable } from '@/lib/onboarding/oauthSession';
+import {
+  prefersOAuthRedirect,
+  primeOAuthRedirectCapture,
+  resolveOAuthSignInAfterRedirect,
+  signInWithOAuth,
+  isRestrictedOAuthEnvironment,
+  getRestrictedOAuthMessage,
+  isLikelyOAuthRedirectReturn,
+  getOAuthUserEmail,
+  IS_APPLE_OAUTH_ENABLED,
+} from '@/utils/auth-oauth';
+import type { User } from 'firebase/auth';
 
 const logger = createContextLogger('Login');
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: searchParams?.get('email') ?? '',
+    password: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loginError, setLoginError] = useState<string>('');
+  const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
+  const [passwordError, setPasswordError] = useState('');
+  const [oauthError, setOauthError] = useState('');
   const router = useRouter();
 
-  // Check if already logged in - optimized for faster page load
-  useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      // Check localStorage session first (quick check)
-      if (!isLoggedIn()) {
-        return; // Not logged in, stay on login page
-      }
-      
-      // Check Firebase Auth immediately without delay
-      try {
-        const { isAuthenticated } = await import('@/utils/auth');
-        const authenticated = await isAuthenticated();
-        if (authenticated) {
-          // User is authenticated with Firebase Auth, check redirect
-          await checkUserAndRedirect();
-        } else {
-          // Has localStorage session but not Firebase Auth (e.g. token 400 / stale refresh token) - clear and stay on login
-          logger.warn('localStorage session exists but Firebase Auth not authenticated');
-          clearSession();
-          try {
-            const { signOutUser } = await import('@/utils/auth');
-            await signOutUser();
-          } catch (_) {
-            // Ignore sign-out errors
+  const clearAuthErrors = () => {
+    setPasswordError('');
+    setOauthError('');
+  };
+
+  const showResumeSignupBanner = searchParams?.get('existing') === '1';
+  const showPasswordProviderBanner = searchParams?.get('method') === 'password';
+
+  const [sessionChecking, setSessionChecking] = useState(true);
+
+  const finishLogin = useCallback(
+    async (uid: string, replace = true) => {
+      showSessionWaiter();
+      await finishAuthenticatedUserNavigation(uid, router, {
+        source: showResumeSignupBanner ? 'signup_existing' : 'login',
+        replace,
+      });
+    },
+    [router, showResumeSignupBanner]
+  );
+
+  const completeOAuthLogin = useCallback(
+    async (uid: string) => {
+      await finishLogin(uid);
+    },
+    [finishLogin]
+  );
+
+  const handleOAuthLoginResult = useCallback(
+    async (result: { user: User; isNewUser: boolean }) => {
+      let user = result.user;
+      // Apple often omits email / providerData until reload on repeat sign-in.
+      if (
+        !getOAuthUserEmail(user) ||
+        user.providerData.length === 0
+      ) {
+        try {
+          await user.reload();
+          const auth = await import('@/lib/firebase').then((m) => m.getAuthInstance());
+          const firebaseAuth = await auth;
+          if (firebaseAuth.currentUser) {
+            user = firebaseAuth.currentUser;
           }
+        } catch (reloadError) {
+          logger.warn('OAuth login reload failed:', reloadError);
         }
+      }
+
+      const registered = await isRegisteredJoystieAccount(
+        user.uid,
+        getOAuthUserEmail(user)
+      );
+
+      if (!registered) {
+        const auth = await import('@/utils/auth');
+        const { getAuthInstance } = await import('@/lib/firebase');
+        const firebaseAuth = await getAuthInstance();
+        const firebaseUser = firebaseAuth.currentUser;
+        if (firebaseUser) {
+          await rejectUnknownOAuthLogin(firebaseUser);
+        } else {
+          await auth.signOutUser();
+          clearSession();
+        }
+        setOauthError(getUnknownOAuthAccountMessage());
+        return;
+      }
+
+      await completeOAuthLogin(user.uid);
+    },
+    [completeOAuthLogin]
+  );
+
+  useEffect(() => {
+    showSessionWaiter();
+    const checkAuthAndRedirect = async () => {
+      try {
+        // Prefer Auth restore over localStorage-only session (avoids false "logged out").
+        const userId = await getCurrentUserIdAsync();
+        if (!userId) {
+          if (isLoggedIn()) {
+            logger.warn('localStorage session exists but Firebase Auth not authenticated');
+            clearSession();
+            try {
+              const { signOutUser } = await import('@/utils/auth');
+              await signOutUser();
+            } catch (_) {
+              // Ignore sign-out errors
+            }
+          }
+          hideSessionWaiter();
+          setSessionChecking(false);
+          return;
+        }
+
+        await finishLogin(userId);
+        return;
       } catch (error) {
-        // Token refresh 400 or other auth errors - clear stale session and Firebase state so user can log in again
         logger.error('Error checking auth:', error);
         clearSession();
         try {
           const { signOutUser } = await import('@/utils/auth');
           await signOutUser();
         } catch (_) {
-          // Ignore sign-out errors (e.g. no user)
+          // Ignore sign-out errors
         }
       }
+      hideSessionWaiter();
+      setSessionChecking(false);
     };
-    
-    checkAuthAndRedirect();
-  }, [router]);
 
-  // Check user and redirect to appropriate page
-  const checkUserAndRedirect = async () => {
-    try {
-      const userId = await getCurrentUserIdAsync();
-      if (!userId) {
-        router.push('/login');
+    void checkAuthAndRedirect();
+  }, [finishLogin]);
+
+  useEffect(() => {
+    primeOAuthRedirectCapture();
+
+    if (!isOAuthRedirectRecoverable() && !isLikelyOAuthRedirectReturn()) {
+      return;
+    }
+
+    const resolveOAuthRedirect = async () => {
+      const result = await resolveOAuthSignInAfterRedirect({
+        maxWaitMs: 4000,
+        trustAnySignedInUser: true,
+      });
+      if (!result?.ok) {
         return;
       }
 
-      // Transition to dashboard if user has any challenge (active or not, with or without startDate)
-      const challenge = await getLatestChallenge(userId);
-      if (challenge) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
+      setOauthLoading(null);
+      setIsSubmitting(true);
+      clearAuthErrors();
+
+      try {
+        clearOAuthSessionFlags();
+        await handleOAuthLoginResult(result);
+      } catch (error) {
+        logger.error('OAuth redirect login error:', error);
+        setOauthError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (error) {
-      logger.error('Error checking user:', error);
-      router.push('/onboarding');
-    }
-  };
+    };
+
+    void resolveOAuthRedirect();
+  }, [handleOAuthLoginResult]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
 
-    // Clear errors when user starts typing
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
     }
-    
-    if (loginError) {
-      setLoginError('');
+
+    if (passwordError || oauthError) {
+      clearAuthErrors();
     }
   };
 
@@ -114,7 +225,6 @@ export default function LoginPage() {
     if (!formData.email.trim()) {
       newErrors.email = 'אנא הכנס אימייל';
     } else {
-      // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.email.trim())) {
         newErrors.email = 'כתובת אימייל לא תקינה';
@@ -130,165 +240,104 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Prevent multiple submissions
-    if (isSubmitting) {
+
+    if (isSubmitting || oauthLoading) {
       return;
     }
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
-    setLoginError('');
+    clearAuthErrors();
 
     try {
       const email = formData.email.trim().toLowerCase();
-
-      // Sign in with Firebase Auth using email and password
       const firebaseUser = await signIn(email, formData.password);
-
-      // Get user data from Firestore
-      const userData = await getUser(firebaseUser.uid);
-      if (!userData) {
-        setLoginError('נתוני המשתמש לא נמצאו. אנא הירשם מחדש.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Create session with Firebase Auth UID
-      createSession(firebaseUser.uid);
-
-      // Transition to dashboard if user has any challenge (active or not, with or without startDate)
-      const challenge = await getLatestChallenge(firebaseUser.uid);
-      if (challenge) {
-        router.push('/dashboard');
-      } else {
-        router.push('/onboarding');
-      }
+      await completeOAuthLogin(firebaseUser.uid);
     } catch (error) {
       logger.error('Login error:', error);
-      const errorMessage = getErrorMessage(error);
-      setLoginError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
+      const errorMessage = getAuthErrorFromUnknown(error);
+      setPasswordError(errorMessage || 'אירעה שגיאה בהתחברות. נסה שוב.');
       setIsSubmitting(false);
     }
   };
 
+  const handleOAuth = async (provider: 'google' | 'apple') => {
+    if (provider === 'apple' && !IS_APPLE_OAUTH_ENABLED) {
+      return;
+    }
+    if (isRestrictedOAuthEnvironment()) {
+      setOauthError(getRestrictedOAuthMessage());
+      return;
+    }
+    if (isSubmitting || oauthLoading) {
+      return;
+    }
+
+    clearAuthErrors();
+    setOauthLoading(provider);
+
+    const useRedirect = prefersOAuthRedirect();
+
+    try {
+      const result = await signInWithOAuth(provider, { useRedirect });
+
+      if (result.ok && 'redirecting' in result) {
+        return;
+      }
+
+      if (!result.ok) {
+        if (result.errorCode !== 'auth/popup-closed-by-user') {
+          setOauthError(result.errorMessage);
+        }
+        return;
+      }
+
+      await handleOAuthLoginResult(result);
+    } catch (error) {
+      logger.error('OAuth login error:', error);
+      setOauthError(getAuthErrorFromUnknown(error) || 'אירעה שגיאה בהתחברות. נסה שוב.');
+    } finally {
+      setOauthLoading(null);
+      clearOAuthSessionFlags();
+    }
+  };
+
+  const handleSignupClick = useCallback(() => {
+    beginOnboardingSignupFromLogin();
+    router.push('/onboarding');
+  }, [router]);
+
+  if (sessionChecking) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-transparent pb-24">
-      <div className="max-w-md mx-auto px-4 py-8 relative">
-        {/* Logo - מרכז עליון */}
-        <div className="flex justify-center items-center mb-8 pt-4">
-          <Image
-            src="/logo-joystie.png"
-            alt="Joystie Logo"
-            width={200}
-            height={67}
-            className="h-12 w-auto sm:h-16 md:h-20"
-            style={{ filter: 'brightness(0) saturate(100%) invert(13%) sepia(46%) saturate(1673%) hue-rotate(186deg) brightness(98%) contrast(91%)', height: 'auto' }}
-            priority
-          />
-        </div>
-
-        {/* Welcome message */}
-        <div className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
-          <h1 className="font-varela font-semibold text-2xl text-[#262135] text-center">
-            התחברות
-          </h1>
-        </div>
-
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="bg-[#FFFCF8] rounded-[18px] shadow-card p-6 mb-6">
-          {/* Email */}
-          <div className="mb-6">
-            <label htmlFor="email" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
-              אימייל <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="הכנס אימייל"
-              className={`w-full p-4 border-2 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
-                errors.email ? 'border-red-500' : 'border-gray-200'
-              }`}
-            />
-            {errors.email && (
-              <p className="mt-2 text-sm text-red-500 font-varela">{errors.email}</p>
-            )}
-          </div>
-
-          {/* Password */}
-          <div className="mb-6">
-            <label htmlFor="password" className="block font-varela font-semibold text-lg text-[#262135] mb-3">
-              סיסמה <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="הכנס סיסמה"
-              className={`w-full p-4 border-2 rounded-[18px] focus:outline-none focus:ring-2 focus:ring-[#273143] focus:border-[#273143] font-varela text-base text-[#282743] ${
-                errors.password ? 'border-red-500' : 'border-gray-200'
-              }`}
-            />
-            {errors.password && (
-              <p className="mt-2 text-sm text-red-500 font-varela">{errors.password}</p>
-            )}
-          </div>
-
-          {/* Login Error */}
-          {loginError && (
-            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-[18px]">
-              <p className="font-varela text-sm text-red-600 text-center">{loginError}</p>
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`w-full py-4 px-6 rounded-[18px] text-lg font-varela font-semibold transition-all ${
-              isSubmitting
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-[#273143] text-white hover:bg-opacity-90'
-            }`}
-          >
-            {isSubmitting ? 'מתחבר...' : 'התחבר'}
-          </button>
-
-          {/* Link to Forgot Password */}
-          <div className="mt-3 text-center">
-            <button
-              type="button"
-              onClick={() => router.push('/forgot-password')}
-              className="text-[#273143] underline font-varela text-sm"
-            >
-              שכחת סיסמא?
-            </button>
-          </div>
-
-          {/* Link to Signup */}
-          <div className="mt-4 text-center">
-            <p className="font-varela text-sm text-[#282743]">
-              אין לך חשבון?{' '}
-              <button
-                type="button"
-                onClick={() => router.push('/signup')}
-                className="text-[#273143] underline font-semibold"
-              >
-                הירשם
-              </button>
-            </p>
-          </div>
-        </form>
-      </div>
-    </div>
+    <LoginScreen
+      email={formData.email}
+      password={formData.password}
+      errors={errors}
+      passwordError={passwordError}
+      oauthError={oauthError}
+      showResumeSignupBanner={showResumeSignupBanner}
+      showPasswordProviderBanner={showPasswordProviderBanner}
+      isSubmitting={isSubmitting}
+      oauthLoading={oauthLoading}
+      onChange={handleChange}
+      onSubmit={handleSubmit}
+      onOAuthGoogle={() => handleOAuth('google')}
+      onOAuthApple={() => handleOAuth('apple')}
+      onSignupClick={handleSignupClick}
+    />
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<FunnelRouteLoading />}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}

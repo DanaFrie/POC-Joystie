@@ -35,6 +35,35 @@ export async function createUser(
 }
 
 /**
+ * Find a user profile by email (POC: public read on users collection).
+ */
+export async function getUserByEmail(email: string): Promise<FirestoreUser | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  try {
+    const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
+    const db = await getFirestoreInstance();
+    const q = query(
+      collection(db, USERS_COLLECTION),
+      where('email', '==', normalized),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      return null;
+    }
+
+    const docSnap = snap.docs[0];
+    return { id: docSnap.id, ...docSnap.data() } as FirestoreUser;
+  } catch (error) {
+    logger.error('Error getting user by email:', error);
+    return null;
+  }
+}
+
+/**
  * Get user data by ID
  */
 export async function getUser(userId: string, useCache: boolean = true): Promise<FirestoreUser | null> {
@@ -88,44 +117,12 @@ export async function updateUser(
       ...updates,
       updatedAt: new Date().toISOString(),
     });
+
+    const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+    dataCache.invalidate(cacheKeys.user(userId));
   } catch (error) {
     logger.error('Error updating user:', error);
     throw new Error('שגיאה בעדכון נתוני המשתמש.');
-  }
-}
-
-/**
- * Find user by username
- */
-export async function getUserByUsername(username: string): Promise<FirestoreUser | null> {
-  try {
-    const { collection, query, where, getDocs } = await import('firebase/firestore');
-    const db = await getFirestoreInstance();
-    const usersRef = collection(db, USERS_COLLECTION);
-    const q = query(usersRef, where('username', '==', username.toLowerCase()));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      return null;
-    }
-    
-    return querySnapshot.docs[0].data() as FirestoreUser;
-  } catch (error) {
-    logger.error('Error finding user by username:', error);
-    throw new Error('שגיאה בחיפוש משתמש.');
-  }
-}
-
-/**
- * Check if username is available
- */
-export async function isUsernameAvailable(username: string): Promise<boolean> {
-  try {
-    const user = await getUserByUsername(username);
-    return user === null;
-  } catch (error) {
-    logger.error('Error checking username availability:', error);
-    return false;
   }
 }
 

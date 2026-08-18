@@ -1,10 +1,354 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Montserrat+Alternates:wght@400;600;700;900&family=Rubik:wght@600;900&family=Varela+Round&display=swap');
+@import '../styles/tokens.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Scroll without visible scrollbar (onboarding child lists) */
+  .v03-scroll-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .v03-scroll-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* FunnelViewport — hide until metrics measured (prevents scale flash on mount) */
+  .v03-funnel-viewport-pending {
+    opacity: 0;
+  }
+
+  .v03-funnel-viewport-ready {
+    opacity: 1;
+    transition: opacity 160ms ease-out;
+  }
+
+  /* Step-to-step screen transition */
+  @keyframes v03-funnel-screen {
+    from {
+      opacity: 0;
+      transform: translateY(var(--v03-funnel-screen-offset-y));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .v03-funnel-screen {
+    animation: v03-funnel-screen var(--v03-funnel-screen-duration)
+      var(--v03-funnel-screen-ease) forwards;
+    isolation: isolate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .v03-funnel-screen,
+    .v03-funnel-enter-0,
+    .v03-funnel-enter-1,
+    .v03-funnel-enter-2,
+    .v03-funnel-enter-3,
+    .v03-funnel-enter-4,
+    .v03-funnel-enter-5,
+    .v03-funnel-enter-6,
+    .v03-funnel-enter-fast-0,
+    .v03-funnel-enter-fast-1,
+    .v03-funnel-enter-fast-2,
+    .v03-funnel-enter-fast-3,
+    .v03-funnel-enter-reveal-0,
+    .v03-funnel-enter-reveal-1,
+    .v03-funnel-enter-reveal-2,
+    .v03-funnel-enter-reveal-3,
+    .v03-funnel-enter-reveal-4,
+    .v03-funnel-enter-reveal-5,
+    .v03-funnel-enter-reveal-6,
+    .v03-funnel-enter-reveal-hero-intro,
+    .v03-oauth-terms-sheet,
+    .v03-fade-in-quick {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
+  @keyframes v03-oauth-terms-sheet {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .v03-oauth-terms-sheet {
+    animation: v03-oauth-terms-sheet 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* Unified asset entrance — opacity + subtle rise */
+  @keyframes v03-funnel-enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--v03-funnel-enter-offset-y));
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes egg-hint-pulse-keyframes {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    45% {
+      transform: translate(-50%, -50%) scale(1.14);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+
+  .egg-hint-pulse {
+    animation: egg-hint-pulse-keyframes 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes child-continue-glow-flicker {
+    0%,
+    100% {
+      opacity: 0.7;
+      transform: scale(0.94);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+  }
+
+  .child-continue-glow-flicker {
+    animation: child-continue-glow-flicker 1.1s ease-in-out infinite;
+    will-change: opacity, transform;
+    transform-origin: center center;
+  }
+
+  .v03-funnel-enter-0 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-funnel-enter-1 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) var(--v03-funnel-enter-stagger) forwards;
+  }
+  .v03-funnel-enter-2 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 2) forwards;
+  }
+  .v03-funnel-enter-3 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 3) forwards;
+  }
+  .v03-funnel-enter-4 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 4) forwards;
+  }
+  .v03-funnel-enter-5 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 5) forwards;
+  }
+  .v03-funnel-enter-6 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-stagger) * 6) forwards;
+  }
+
+  /* Good news — faster card stagger */
+  .v03-funnel-enter-fast-0 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-funnel-enter-fast-1 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) var(--v03-funnel-enter-fast-stagger) forwards;
+  }
+  .v03-funnel-enter-fast-2 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-fast-stagger) * 2) forwards;
+  }
+  .v03-funnel-enter-fast-3 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-fast-stagger) * 3) forwards;
+  }
+
+  /* Reveal funnel — slower show-up */
+  .v03-funnel-enter-reveal-0 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-funnel-enter-reveal-1 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) var(--v03-funnel-enter-reveal-stagger) forwards;
+  }
+  .v03-funnel-enter-reveal-2 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 2) forwards;
+  }
+  .v03-funnel-enter-reveal-3 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 3) forwards;
+  }
+  .v03-funnel-enter-reveal-4 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 4) forwards;
+  }
+  .v03-funnel-enter-reveal-5 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 5) forwards;
+  }
+  .v03-funnel-enter-reveal-6 {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-duration)
+      var(--v03-funnel-enter-ease) calc(var(--v03-funnel-enter-reveal-stagger) * 6) forwards;
+  }
+
+  /* revealIntro — slowest top → bottom reveal */
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-0 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: 0ms;
+  }
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-1 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: var(--v03-funnel-enter-reveal-intro-stagger);
+  }
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-2 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: calc(var(--v03-funnel-enter-reveal-intro-stagger) * 2);
+  }
+  .v03-reveal-intro-scope .v03-funnel-enter-reveal-3 {
+    animation-duration: var(--v03-funnel-enter-reveal-intro-duration);
+    animation-delay: calc(var(--v03-funnel-enter-reveal-intro-stagger) * 3);
+  }
+
+  .v03-funnel-enter-reveal-hero-intro {
+    opacity: 0;
+    animation: v03-funnel-enter var(--v03-funnel-enter-reveal-hero-intro-duration)
+      var(--v03-funnel-enter-ease) forwards;
+  }
+
+  /* realData — Joystie bars grow in after המשך footer (reveal-4) lands */
+  @keyframes v03-joystie-bar-enter {
+    from {
+      opacity: 0;
+      transform: scaleY(0);
+    }
+    to {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  .v03-real-data-step .v03-joystie-bar-enter {
+    transform-origin: bottom center;
+    opacity: 0;
+    animation: v03-joystie-bar-enter var(--v03-joystie-bar-duration)
+      var(--v03-funnel-enter-ease) forwards;
+    animation-delay: calc(
+      var(--v03-joystie-bar-start-delay) +
+        var(--v03-joystie-bar-index, 0) * var(--v03-joystie-bar-stagger)
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .v03-real-data-step .v03-joystie-bar-enter {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes v03-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .v03-fade-in-quick {
+    animation: v03-fade-in 0.352s ease-out forwards;
+  }
+
+  .v03-above-blur-footer {
+    bottom: calc(102px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@keyframes ball-game-countdown-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ball-game-countdown-flash {
+  animation: ball-game-countdown-flash 0.22s ease-out forwards;
+}
+
+/* Waiting wordmark — outside @layer so animation always applies */
+.signup-waiting-marquee-viewport {
+  position: relative;
+  container-type: inline-size;
+}
+
+/* First frame’s left edge starts at viewport right; slides left continuously */
+.signup-waiting-marquee-runner {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  animation: signup-waiting-marquee var(--signup-waiting-marquee-duration, 28.8s) linear
+    infinite;
+  will-change: transform;
+}
+
+@keyframes signup-waiting-marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    /* 4th wordmark’s right edge reaches viewport left — then loop restarts */
+    transform: translate3d(
+      calc(-100cqw - var(--signup-waiting-marquee-run-end-offset, 1976px)),
+      0,
+      0
+    );
+  }
+}
+
 :root {
+  /* v0.2 legacy */
   --primary-bg: #F6F6F6;
   --secondary-bg: #E6F19A;
   --card-bg: #FFFCF8;
@@ -20,16 +364,338 @@
   --shadow: rgba(0, 0, 0, 0.25);
 }
 
-/* Root layout body (background + scroll) */
+/* Root layout body */
 body.layout-root {
-  background-image: url(/background.png);
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background-color: var(--primary-bg);
   scroll-behavior: smooth;
 }
-html.layout-root {
+
+/* v0.3 onboarding funnel: full viewport from SSR (.v03-funnel-root in layout) */
+html.layout-root:has(.v03-funnel-root),
+body.layout-root:has(.v03-funnel-root) {
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background-color: var(--v03-green-900) !important;
+  background-image: none !important;
+}
+
+body.layout-root:has(.v03-funnel-root) > div.relative {
+  min-height: 0;
+  height: 0;
+  overflow: visible;
+}
+
+/* Dashboard routes — true 100vw bleed (no FunnelViewport 375 artboard) */
+html.layout-root:has(.v03-dashboard-root),
+body.layout-root:has(.v03-dashboard-root) {
+  height: 100%;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  overscroll-behavior: none;
+  background-color: #061c1e !important;
+  background-image: none !important;
+}
+
+/* Same breakout trick as funnel: fixed dashboard root spans the viewport */
+body.layout-root:has(.v03-dashboard-root) > div.relative {
+  min-height: 0;
+  height: 0;
+  overflow: visible;
+}
+
+.v03-dashboard-root {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 100%;
+  left: 0;
+  right: 0;
+  margin: 0;
+}
+
+.v03-funnel-root {
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+}
+
+.v03-funnel-root:not(.v03-funnel-light) {
+  background-color: var(--v03-green-900);
+}
+
+.v03-funnel-root.v03-funnel-light {
+  background: var(--v03-funnel-light-gradient) !important;
+}
+
+.v03-funnel-surface-light {
+  background: var(--v03-funnel-light-gradient) !important;
+}
+
+html.layout-root:has(.v03-funnel-light),
+body.layout-root:has(.v03-funnel-light) {
+  background-color: #fff !important;
+  background-image: none !important;
+}
+
+/* Marketing landing — single document scroll (html only; no nested body/root scrollport) */
+html.layout-root:has(.v03-landing-root) {
+  background-color: #05161a !important;
+  background-image: none !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+/* 5–6 hours story — beats overflow-y: auto !important while words auto-bold */
+html.layout-root.landing-stats-scroll-lock:has(.v03-landing-root) {
+  overflow-y: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+}
+
+body.layout-root:has(.v03-landing-root) {
+  background-color: #05161a !important;
+  background-image: none !important;
+  /* Override layout body overflow-y-auto — only html scrolls on landing */
+  overflow: clip !important;
+  overscroll-behavior-y: none;
+}
+
+/* About — white page chrome (margins) while reusing landing reveal / nav tokens */
+html.layout-root:has(.v03-about-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+body.layout-root:has(.v03-about-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow: clip !important;
+  overscroll-behavior-y: none;
+}
+
+/* Knowledge articles — same white page chrome as about */
+html.layout-root:has(.v03-knowledge-article-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow-x: clip !important;
+  overflow-y: auto !important;
+}
+
+body.layout-root:has(.v03-knowledge-article-root) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  overflow: clip !important;
+  overscroll-behavior-y: none;
+}
+
+.v03-about-root {
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
+  scroll-behavior: smooth;
+  --landing-gutter: 1.5rem;
+  overflow: clip;
+  background-color: #ffffff;
+}
+
+@media (min-width: 768px) {
+  .v03-about-root {
+    --landing-gutter: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .v03-about-root {
+    --landing-gutter: clamp(3rem, 5vw, 6rem);
+  }
+}
+
+.v03-about-root .landing-reveal {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--landing-reveal-delay, 0ms);
+}
+
+.v03-about-root .landing-reveal.is-pending {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition: none;
+}
+
+.v03-about-root .landing-reveal.is-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v03-about-root .landing-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+.v03-landing-root {
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
+  scroll-behavior: smooth;
+  /* Side margins — mobile gutters stay in components; desktop uses this token */
+  --landing-gutter: 1.5rem;
+  /*
+   * clip (not hidden/auto): contain horizontal glow bleed without creating a
+   * vertical scrollport (hidden/auto on one axis forces the other to auto).
+   */
+  overflow: clip;
+}
+
+@media (min-width: 768px) {
+  .v03-landing-root {
+    --landing-gutter: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .v03-landing-root {
+    --landing-gutter: clamp(3rem, 5vw, 6rem);
+  }
+}
+
+.v03-landing-root .landing-gutter {
+  padding-inline: var(--landing-gutter);
+}
+
+/*
+ * Section stacking — root owns #05161a. Sections stay transparent.
+ * How-it-works Story clips its turquoise ellipse at the frame bottom
+ * (Figma 15448:8826 overflow-clip); do not bleed that glow into science.
+ *
+ * Do not put overflow-x-clip on sections (clip forces Y clip).
+ */
+.v03-landing-root .landing-section {
+  position: relative;
+}
+
+.v03-landing-root .landing-section-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.v03-landing-root .landing-section-fg {
+  position: relative;
+  z-index: 10;
+}
+
+/* Full-bleed on small screens (carousels); gutters from md up */
+.v03-landing-root .landing-gutter-md {
+  padding-inline: 0;
+}
+
+@media (min-width: 768px) {
+  .v03-landing-root .landing-gutter-md {
+    padding-inline: var(--landing-gutter);
+  }
+}
+
+.v03-landing-root .landing-reveal {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 1.1s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--landing-reveal-delay, 0ms);
+}
+
+.v03-landing-root .landing-reveal.is-pending {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition: none;
+}
+
+.v03-landing-root .landing-reveal.is-in {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Hero — opacity only, soft ease */
+.v03-landing-root .landing-reveal.landing-reveal--fade {
+  transform: none;
+  transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
+}
+
+.v03-landing-root .landing-reveal.landing-reveal--fade.is-pending {
+  opacity: 0;
+  transition: none;
+}
+
+.v03-landing-root .landing-reveal.landing-reveal--fade.is-in {
+  transform: none;
+}
+
+.v03-landing-root .landing-step-swap {
+  animation: landing-step-swap 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes landing-step-swap {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* How-it-works story tabs — turquoise fill over 7s, RTL origin (right → left) */
+.v03-landing-root .how-it-works-story-fill {
+  transform: scaleX(0);
+  animation: how-it-works-story-fill 5s linear forwards;
+}
+
+@keyframes how-it-works-story-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v03-landing-root {
+    scroll-behavior: auto;
+  }
+
+  .v03-landing-root .landing-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .v03-landing-root .landing-step-swap {
+    animation: none;
+  }
+
+  .v03-landing-root .how-it-works-story-fill {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+/* Landing uses its own html overflow rules above; other routes clip X here */
+html.layout-root:not(:has(.v03-landing-root)) {
   overflow-x: hidden;
 }
 
@@ -39,48 +705,29 @@ html[dir="rtl"] {
   text-align: right;
 }
 
-/* Typography Classes */
-.heading-large {
-  @apply font-montserrat font-bold text-2xl leading-tight;
+/* Funnel grid — landing `.bg-grid` repeat, between green root and step content */
+.v03-funnel-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
-.heading-medium {
-  @apply font-montserrat font-semibold text-base leading-snug;
-}
-
-.body-text {
-  @apply font-varela text-sm leading-normal;
-}
-
-.small-text {
-  @apply font-varela text-xs leading-tight;
-}
-
-/* Landing Page Styles */
-/* Brand colors */
-.bg-joystie-blue { background-color: #BBE9FD; }
-.bg-joystie-lime { background-color: #E6F19A; }
-.bg-joystie-dark { background-color: #273143; }
-.text-joystie-dark { color: #273143; }
-.text-joystie-blue { color: #BBE9FD; }
-.text-joystie-lime { color: #E6F19A; }
-
-/* Gradient background */
-.gradient-bg {
-  background: linear-gradient(145deg, #BBE9FD 0%, #E6F19A 100%);
-  background-attachment: fixed;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-size: cover;
-  position: relative;
-}
-
-/* Fix gradient position on mobile devices */
-@media (max-width: 768px) {
-  .gradient-bg {
-    background-attachment: scroll;
-    background-position: center top;
-  }
+/* Funnel grid — in-canvas repeat; above green bleed, below kingdom / ellipses */
+.v03-onboarding-grid-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-repeat: repeat;
+  background-size: 80px 80px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
 }
 
 /* Grid background */
@@ -121,6 +768,116 @@ html[dir="rtl"] {
   50% { transform: translateY(25px) rotate(-5deg); }
 }
 
+@keyframes castle-card-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes castle-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.castle-card-enter {
+  opacity: 0;
+  animation: castle-card-enter 680ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.castle-card-float {
+  animation: castle-card-float 4.5s ease-in-out infinite;
+}
+
+/* Dashboard — main frame + staggered card entrances (gentle) */
+@keyframes dashboard-enter-card {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-enter-frame {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dashboard-enter-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dashboard-enter {
+  opacity: 0;
+  backface-visibility: hidden;
+}
+
+.dashboard-enter-card {
+  animation: dashboard-enter-card 900ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.dashboard-enter-frame {
+  animation: dashboard-enter-frame 820ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.dashboard-enter-fade {
+  animation: dashboard-enter-fade 720ms ease-out forwards;
+  will-change: opacity;
+}
+
+.dashboard-enter-d0 {
+  animation-delay: 60ms;
+}
+.dashboard-enter-d1 {
+  animation-delay: 140ms;
+}
+.dashboard-enter-d2 {
+  animation-delay: 220ms;
+}
+.dashboard-enter-d3 {
+  animation-delay: 300ms;
+}
+.dashboard-enter-d4 {
+  animation-delay: 380ms;
+}
+.dashboard-enter-d5 {
+  animation-delay: 460ms;
+}
+.dashboard-enter-d6 {
+  animation-delay: 540ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-enter,
+  .dashboard-enter-card,
+  .dashboard-enter-frame,
+  .dashboard-enter-fade {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* Hero wallet card float + shimmer */
 @keyframes heroWalletFloat {
   0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -149,7 +906,7 @@ html[dir="rtl"] {
 
 .btn-main {
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  font-family: 'Rubik', sans-serif;
+  font-family: var(--font-rubik), 'Rubik', sans-serif;
   font-weight: 900;
 }
 .btn-main:hover {

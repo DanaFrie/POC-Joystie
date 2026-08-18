@@ -1,0 +1,31 @@
+/**
+ * Parent onboarding — Figma Screen 38 (12703:42228) children details.
+ * Main frame 12703:41650 — 327px column @ top 69, gap 19.
+ */
+export const PARENT_ROLE_STEP = {
+  top: 97,
+  columnGap: 35,
+  cardGap: 15,
+} as const;
+
+export const PARENT_PHONE_COUNT_STEP = {
+  top: 130,
+  columnGap: 19,
+  contentGap: 35,
+} as const;
+
+/** Figma 12703:41650 — hero + title/forms column inside 100vh funnel scroll. */
+export const PARENT_CHILDREN_DETAILS_STEP = {
+  /** Main column — flex col, items-end, gap 19 */
+  frameWidthPx: 327,
+  top: 69,
+  columnGap: 19,
+  /** Inner content frame 12703:41653 — title + forms */
+  contentFrameGap: 30,
+  formsGap: 25,
+  childBlockGap: 20,
+  childRowGap: 12,
+  scrollPadBottomPx: 0,
+  /** Hero frame — full illustration via object-contain (no crop) */
+  heroFramePx: 180,
+} as const;

@@ -1,0 +1,54 @@
+---
+description: Short / small phone viewports — scroll instead of shrinking the 375×812 funnel
+alwaysApply: true
+---
+
+# v0.3 — small & short viewports
+
+## Problem
+
+`FunnelViewport` `scaleMode="width"` sets `scale = viewportHeight / 812`. On **short** devices (iPhone SE, iPhone 4/5, iPhone mini landscape, many Galaxy heights) the whole artboard shrinks — fields, buttons, and assets become tiny and hard to use.
+
+## Policy
+
+**Readable 1:1 Figma layout beats squeezing everything on screen.**
+
+1. **Canvas:** Keep layers at **375×812** Figma coordinates. Do not shrink tap targets, inputs, or icons below their designed size to fit a short viewport.
+2. **Scroll, don't squeeze:** When content exceeds the visible area, enable **vertical scroll** in the step main region (`FunnelStepMain` / `overflow-y-auto`). Prefer hidden scrollbars (`v03-scroll-hidden`).
+3. **Scale:** Use `scaleMode="scroll"` on funnel routes. **Short** viewports: width-fit at ≥1:1 on 375px-wide phones — scroll instead of height-shrink. **Tall** viewports (e.g. iPhone 12 Pro): slight height-fit when width-fit would overflow — **no page scroll** if the 812px canvas fits. Narrow phones (&lt;375px) may scale down horizontally only.
+4. **Placement:** Top-align the artboard. Do not vertically center and shrink to fit.
+5. **Margins (see below):** Keep Figma **24px side gutters** (`px-v03-gutter`, `left-v03-gutter` + `w-v03-content`). Safe-area insets are **viewport padding**, not canvas margin.
+6. **Bleed / heroes:** Full-bleed backgrounds may clip at the viewport edge; scrollable body content stays on the logical 812px canvas.
+7. **Do not** patch individual components with extra `transform: scale()` to “fix” small screens — fix at `FunnelViewport` or the step scroll container.
+
+## Margins
+
+| Margin | Value | Behavior in `scroll` mode |
+|--------|-------|---------------------------|
+| **Side gutter** | 24px each side (`--v03-gutter`) | Lives **inside** the 375px canvas — unchanged at scale 1 on 375px-wide phones. On **narrow** phones (&lt;375px), gutters scale with width only (same as fields). |
+| **Content column** | 327px (`w-v03-content`) | Always `screenWidth − 48px`; do not add extra horizontal margin in components. |
+| **Horizontal letterbox** | none | `offsetX = 0` — canvas is edge-to-edge; no side bars. |
+| **Top safe area** | `env(safe-area-inset-top)` | **Padding** on the scroll container — stays fixed while content scrolls (notch / Dynamic Island). |
+| **Bottom safe area** | `env(safe-area-inset-bottom)` | **Padding** on the scroll container + fixed footers / sheets that already use `safe-area-inset-bottom`. |
+| **Footer reserve** | CTA / blur footer height | Scroll main so CTAs are not covered (`FunnelStepFooter`, `ONBOARDING_BLUR_FOOTER_*`). |
+
+**Do not** shrink gutters or content width to “fit” short screens. **Do not** add page-level horizontal margin outside the 375px canvas.
+
+## Devices (non-exhaustive)
+
+iPhone SE (1st–3rd), iPhone 12/13 mini, iPhone 4/5, Galaxy A / older Android — any viewport **height &lt; 812** CSS px or unusually narrow width.
+
+## Implementation checklist
+
+| Layer | Action |
+|-------|--------|
+| `FunnelViewport` | `scaleMode="scroll"` — adaptive scale; `overflow-y-auto` only when `needsVerticalScroll` |
+| Step layout | Canonical stack in `v03-funnel-layout` — `FunnelStepRoot fitViewport` + foreground/footer |
+| Scrollable steps | Scroll inside `FunnelStepMain` (or equivalent); reserve space for footer CTAs |
+| Fixed / hero steps | Avoid `overflow-hidden` without a scroll sibling when content can overflow |
+| Portals / bleed math | `useFunnelViewportMetrics()` — `scale` reflects width-fit, not height-fit |
+| Mount flash | `FunnelViewport` defers canvas children until `layoutReady`; portaled layers gate on `useFunnelLayoutReady()` |
+
+## Scope
+
+Applies to **funnel routes** (`/onboarding/*`, `/login`, bonding, payment gate). Landing `/` is responsive (not 375×812). Dashboard uses `100dvh` — not this artboard scale model.

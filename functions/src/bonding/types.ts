@@ -1,0 +1,28 @@
+export type BondingInviteStatus =
+  | 'pending_share'
+  | 'shared'
+  | 'child_opened'
+  | 'completed';
+
+export interface FirestoreBondingInvite {
+  id: string;
+  parentId: string;
+  childId?: string;
+  challengeId?: string;
+  childName?: string;
+  parentName?: string;
+  /** ISO timestamp — invite link TTL (default 14 days from createdAt). */
+  expiresAt?: string;
+  childUrl: string;
+  whatsappShareUrl: string;
+  status: BondingInviteStatus;
+  createdAt: string;
+  updatedAt: string;
+  whatsappSharedAt?: string;
+  childLinkOpenedAt?: string;
+  eggCompletedAt?: string;
+  /** ISO timestamp — invite consumed after parent onboarding completed. */
+  completedAt?: string;
+  gameRoomId?: string;
+  gameJoinCode?: string;
+}

@@ -1,6 +1,29 @@
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import * as admin from 'firebase-admin';
+import { authOnUserCreated } from './auth/onUserCreate';
+import { checkAuthEmailExists } from './auth/checkEmailExists';
+import {
+  recordBondingInvite,
+  markBondingWhatsAppShared,
+  markBondingChildLinkOpened,
+  resolveBondingInvite,
+  resolveBondingGameRoom,
+  reportChildOnboardingMilestone,
+  getChildOnboardingProgress,
+  consumeBondingInvite,
+} from './bonding/invites';
+import {
+  createGameRoom,
+  joinGameRoom,
+  getGameOnboardingStatus,
+  completeGameOnboarding,
+  endOnboardingGameRoom,
+} from './game/rooms';
+import { generateSelfie } from './selfie/generateSelfie';
+import { saveChildShareCard } from './shareCard/saveChildShareCard';
+import { getChildShareCardAccess } from './shareCard/getChildShareCardAccess';
+import { createCardcomTrialCheckout, cardcomWebhook } from './billing/cardcom/handlers';
 // Notification functions are kept in code but not exported (not deployed)
 // import { 
 //   processFirstDayNotification,
@@ -15,6 +38,29 @@ import * as admin from 'firebase-admin';
 if (!admin.apps.length) {
   admin.initializeApp();
 }
+
+export {
+  authOnUserCreated,
+  checkAuthEmailExists,
+  recordBondingInvite,
+  markBondingWhatsAppShared,
+  markBondingChildLinkOpened,
+  resolveBondingInvite,
+  resolveBondingGameRoom,
+  reportChildOnboardingMilestone,
+  getChildOnboardingProgress,
+  consumeBondingInvite,
+  createGameRoom,
+  joinGameRoom,
+  getGameOnboardingStatus,
+  completeGameOnboarding,
+  endOnboardingGameRoom,
+  generateSelfie,
+  saveChildShareCard,
+  getChildShareCardAccess,
+  createCardcomTrialCheckout,
+  cardcomWebhook,
+};
 
 // Define secret for Cloud Run service URL
 // This secret must be set using: firebase functions:secrets:set CLOUD_RUN_SERVICE_URL
@@ -58,7 +104,7 @@ export const processScreenshot = functions.https.onCall(
     // Security is handled by URL token validation in the app code
     // If authentication is present, we can use it for additional validation, but it's not required
 
-    const { imageData, targetDay } = request.data as ProcessScreenshotRequest;
+    const { imageData } = request.data as ProcessScreenshotRequest;
 
     if (!imageData) {
       throw new functions.https.HttpsError(
@@ -135,22 +181,8 @@ export const processScreenshot = functions.https.onCall(
  */
 
 // Determine service account based on project ID
-// In Firebase Functions, GCLOUD_PROJECT or GCP_PROJECT contains the project ID
-const getServiceAccount = (): string => {
-  const projectId = process.env.GCLOUD_PROJECT;
-  const serviceAccount = projectId === 'joystie-poc-prod'
-    ? 'firebase-adminsdk-fbsvc@joystie-poc-prod.iam.gserviceaccount.com'
-    : 'firebase-adminsdk-fbsvc@joystie-poc.iam.gserviceaccount.com';
-  
-  // Log for debugging - this will appear in Cloud Functions logs
-  console.log('[getServiceAccount] Project ID:', projectId);
-  console.log('[getServiceAccount] Selected service account:', serviceAccount);
-  console.log('[getServiceAccount] Environment variable:', {
-    GCLOUD_PROJECT: process.env.GCLOUD_PROJECT
-  });
-  
-  return serviceAccount;
-};
+export { getServiceAccount } from './serviceAccount';
+
 
 // Scheduled function for first day notification - NOT DEPLOYED
 // Runs daily at 7:08 AM (Asia/Jerusalem)
@@ -236,52 +268,3 @@ const getServiceAccount = (): string => {
 //   }
 // );
 
-// Firestore trigger for upload notifications - NOT DEPLOYED
-// Triggers when a new upload is created
-// Handles first upload success/failure notifications
-// export const onUploadCreated = functions.firestore.onDocumentCreated(
-//   {
-//     document: 'daily_uploads/{uploadId}',
-//     region: 'us-central1',
-//     serviceAccount: getServiceAccount(),
-//     secrets: [
-//       'SERVICE_FUNCTION_EMAIL_USER',
-//       'SERVICE_FUNCTION_EMAIL_PASSWORD',
-//       'SERVICE_FUNCTION_EMAIL_FROM',
-//       'SERVICE_FUNCTION_BASE_URL',
-//     ],
-//   },
-//   async (event) => {
-//     try {
-//       const serviceAccount = getServiceAccount();
-//       console.log('[OnUploadCreated] Using service account:', serviceAccount);
-//       console.log('[OnUploadCreated] Project ID:', process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT);
-//       
-//       console.log('[OnUploadCreated] Trigger fired, event ID:', event.params.uploadId);
-//       if (!event.data) {
-//         console.warn('[OnUploadCreated] No data in event');
-//         return;
-//       }
-//       
-//       const upload = {
-//         id: event.data.id,
-//         ...event.data.data()
-//       } as any;
-//       
-//       console.log('[OnUploadCreated] Upload data extracted:', {
-//         id: upload.id,
-//         challengeId: upload.challengeId,
-//         success: upload.success,
-//         uploadedAt: upload.uploadedAt
-//       });
-//       
-//       const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
-//       console.log('[OnUploadCreated] Processing upload notification for:', upload.id, 'Base URL:', baseUrl);
-//       await processUploadNotification(upload, baseUrl);
-//       console.log('[OnUploadCreated] Completed successfully');
-//     } catch (error) {
-//       console.error('[OnUploadCreated] Error:', error);
-//       console.error('[OnUploadCreated] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-//     }
-//   }
-// );

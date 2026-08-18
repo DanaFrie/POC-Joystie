@@ -4,6 +4,14 @@ import type {
   AuthError
 } from 'firebase/auth';
 import { getAuthInstance } from '@/lib/firebase';
+import { getAuthErrorMessage } from '@/utils/auth-errors';
+
+async function waitAuthStateReady(auth: object): Promise<void> {
+  const ready = (auth as { authStateReady?: () => Promise<void> }).authStateReady;
+  if (typeof ready === 'function') {
+    await ready();
+  }
+}
 
 /**
  * Sign up a new user with email and password
@@ -47,6 +55,8 @@ export async function signIn(email: string, password: string): Promise<User> {
  */
 export async function signOutUser(): Promise<void> {
   try {
+    const { clearLoggedInDestination } = await import('@/lib/auth/postLoginNavigation');
+    clearLoggedInDestination();
     const { signOut } = await import('firebase/auth');
     const auth = await getAuthInstance();
     await signOut(auth);
@@ -74,38 +84,46 @@ export async function onAuthStateChange(callback: (user: User | null) => void): 
 }
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated (non-anonymous).
+ * Waits for Firebase Auth persistence to restore — do not use a raw
+ * `currentUser` snapshot on first paint (it is often null briefly).
  */
 export async function isAuthenticated(): Promise<boolean> {
   const auth = await getAuthInstance();
-  return auth.currentUser !== null;
+  await waitAuthStateReady(auth);
+  const user = auth.currentUser;
+  return Boolean(user && !user.isAnonymous);
 }
 
 /**
  * Get current user ID
  * Waits for auth state to be ready if needed
+ * @param allowAnonymous — child game/onboarding uses anonymous Auth; default false for parent gates
  */
-export async function getCurrentUserId(): Promise<string | null> {
+export async function getCurrentUserId(options?: {
+  allowAnonymous?: boolean;
+}): Promise<string | null> {
   const auth = await getAuthInstance();
-  
-  // If we have a current user, return it immediately
-  if (auth.currentUser) {
+  const allowAnonymous = options?.allowAnonymous === true;
+
+  await waitAuthStateReady(auth);
+
+  if (auth.currentUser && (allowAnonymous || !auth.currentUser.isAnonymous)) {
     return auth.currentUser.uid;
   }
-  
-  // Otherwise, wait a bit for auth state to initialize
-  // Firebase Auth persists sessions, but it might take a moment to restore
+
+  // Fallback if authStateReady is unavailable / raced
   return new Promise(async (resolve) => {
     const { onAuthStateChanged } = await import('firebase/auth');
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      unsubscribe(); // Only listen once
-      resolve(user?.uid || null);
+      unsubscribe();
+      resolve(user && (allowAnonymous || !user.isAnonymous) ? user.uid : null);
     });
-    
-    // Timeout after 2 seconds if auth state doesn't change
+
     setTimeout(() => {
       unsubscribe();
-      resolve(auth.currentUser?.uid || null);
+      const u = auth.currentUser;
+      resolve(u && (allowAnonymous || !u.isAnonymous) ? u.uid : null);
     }, 2000);
   });
 }
@@ -131,10 +149,12 @@ export async function sendPasswordReset(email: string): Promise<void> {
       throw new Error('authDomain not configured in Firebase');
     }
     
-    // Use authDomain (e.g., joystie-poc.firebaseapp.com) to build the reset URL
-    // This ensures it matches what's configured in Firebase Console template
-    // Firebase Auth will handle the redirect to our app's reset-password page
-    const resetUrl = `https://${authDomain}/reset-password`;
+    // Continue URL after the user taps the reset link in email.
+    const resetPath = '/login/reset-password';
+    const resetUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}${resetPath}`
+        : `https://${authDomain}${resetPath}`;
     
     const actionCodeSettings = {
       url: resetUrl,
@@ -219,25 +239,5 @@ export async function confirmPasswordReset(oobCode: string, newPassword: string)
   }
 }
 
-/**
- * Get user-friendly error messages in Hebrew
- */
-function getAuthErrorMessage(code: string): string {
-  const errorMessages: Record<string, string> = {
-    'auth/email-already-in-use': 'כתובת האימייל כבר בשימוש',
-    'auth/invalid-email': 'כתובת אימייל לא תקינה',
-    'auth/operation-not-allowed': 'פעולה לא מורשית',
-    'auth/weak-password': 'סיסמה חלשה מדי. אנא השתמש בסיסמה חזקה יותר',
-    'auth/user-disabled': 'החשבון הושבת',
-    'auth/user-not-found': 'לא נמצא משתמש עם כתובת אימייל זו',
-    'auth/wrong-password': 'סיסמה לא נכונה',
-    'auth/too-many-requests': 'יותר מדי ניסיונות. אנא נסה שוב מאוחר יותר',
-    'auth/network-request-failed': 'שגיאת רשת. אנא בדוק את החיבור לאינטרנט',
-    'auth/invalid-credential': 'פרטי התחברות לא נכונים',
-    'auth/expired-action-code': 'קישור פג תוקף. אנא בקש קישור חדש',
-    'auth/invalid-action-code': 'קישור לא תקין. אנא בקש קישור חדש',
-  };
-  
-  return errorMessages[code] || 'אירעה שגיאה בהתחברות. נסה שוב.';
-}
+export { getAuthErrorMessage } from '@/utils/auth-errors';
 
