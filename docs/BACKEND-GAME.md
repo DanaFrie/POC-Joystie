@@ -10,8 +10,6 @@ Realtime parent–child ping-pong via **Firebase Realtime Database** (not Firest
 4. Parent calls `completeGameOnboarding` → `onboardingAdvanced: true`.
 5. Onboarding UI polls `getGameOnboardingStatus` and navigates to the **next step** (not the game).
 
-Dev smoke test: `/game/test` — phase details log to console via `[GamePhase]` when `NEXT_PUBLIC_ENV=intgr`.
-
 ## Data model (`gameRooms/{roomId}`)
 
 | Field | Description |
@@ -59,10 +57,6 @@ firebase use intgr
 firebase deploy --only database
 firebase deploy --only functions:createGameRoom,functions:joinGameRoom,functions:getGameOnboardingStatus,functions:completeGameOnboarding
 ```
-
-## Dev test
-
-Browser: `/game/test` — see `src/app/game/test/DELETE_AFTER_TEST.md`. Open console for `[GamePhase]` logs.
 
 ## Branch
 

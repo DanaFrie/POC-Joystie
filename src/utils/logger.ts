@@ -1,7 +1,7 @@
 /**
  * Centralized logging service
- * Disables all client-side logs in production (main branch)
- * Logs are enabled only integration environment
+ * Disables all client-side logs in production, including errors.
+ * Logs are enabled only in the integration environment.
  */
 
 type LogLevel = 'log' | 'warn' | 'error' | 'info' | 'debug';
@@ -46,17 +46,15 @@ const createLogger = (context: string): Logger => {
   const shouldLog = !isProd;
   
   const log = (level: LogLevel, ...args: any[]) => {
-    // Always log errors, even in production
-    if (shouldLog || level === 'error') {
-      const prefix = context ? `[${context}]` : '';
-      console[level](prefix, ...args);
-    }
+    if (!shouldLog) return;
+    const prefix = context ? `[${context}]` : '';
+    console[level](prefix, ...args);
   };
 
   return {
     log: (...args) => log('log', ...args),
     warn: (...args) => log('warn', ...args),
-    error: (...args) => log('error', ...args), // Errors always logged
+    error: (...args) => log('error', ...args),
     info: (...args) => log('info', ...args),
     debug: (...args) => log('debug', ...args),
   };

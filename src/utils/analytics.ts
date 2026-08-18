@@ -4,6 +4,9 @@
  */
 
 import type { Analytics } from 'firebase/analytics';
+import { createContextLogger } from '@/utils/logger';
+
+const logger = createContextLogger('Analytics');
 
 let analyticsInstance: Analytics | null = null;
 let initPromise: Promise<Analytics | null> | null = null;
@@ -28,7 +31,7 @@ async function getAnalytics(): Promise<Analytics | null> {
 
       const supported = await isSupported();
       if (!supported) {
-        console.warn('[Analytics] Analytics not supported in this environment');
+        logger.warn('Analytics not supported in this environment');
         return null;
       }
 
@@ -36,7 +39,7 @@ async function getAnalytics(): Promise<Analytics | null> {
       analyticsInstance = getAnalytics(app);
       return analyticsInstance;
     } catch (error) {
-      console.error('[Analytics] Initialization error:', error);
+      logger.error('Initialization error:', error);
       return null;
     }
   })();
@@ -52,7 +55,7 @@ export async function logEvent(
   try {
     const analytics = await getAnalytics();
     if (!analytics) {
-      console.warn('[Analytics] Analytics not available, skipping event:', eventName);
+      logger.warn('Analytics not available, skipping event:', eventName);
       return false;
     }
 
@@ -60,7 +63,7 @@ export async function logEvent(
     firebaseLogEvent(analytics, eventName, eventParams);
     return true;
   } catch (error) {
-    console.error('[Analytics] Error logging event:', {
+    logger.error('Error logging event:', {
       eventName,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -105,7 +108,7 @@ export async function setUserId(userId: string | null): Promise<void> {
     const { setUserId: firebaseSetUserId } = await import('firebase/analytics');
     firebaseSetUserId(analytics, userId);
   } catch (error) {
-    console.error('[Analytics] Error setting user ID:', error);
+    logger.error('Error setting user ID:', error);
   }
 }
 
