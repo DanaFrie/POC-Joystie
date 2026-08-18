@@ -47,11 +47,14 @@ export function usePairingResume(options: ParentOptions | ChildOptions) {
   const inviteId = options.role === 'child' ? options.inviteId : undefined;
 
   useEffect(() => {
-    if (!enabled || appliedRef.current) return;
+    if (!enabled) return;
+    appliedRef.current = false;
 
     let cancelled = false;
+    let intervalId: number | undefined;
 
-    void (async () => {
+    const tick = async () => {
+      if (cancelled) return;
       const uid =
         parentId?.trim() ||
         (role === 'parent' ? await getCurrentUserId() : null);
@@ -68,6 +71,7 @@ export function usePairingResume(options: ParentOptions | ChildOptions) {
             currentStep
           );
           if (action.type === 'stay') return;
+          if (appliedRef.current) return;
           appliedRef.current = true;
           logger.log('parent resume', { stage: snapshot.stage, action, currentPath, currentStep });
 
@@ -95,6 +99,7 @@ export function usePairingResume(options: ParentOptions | ChildOptions) {
           currentPath as '/onboarding/child' | '/game/child'
         );
         if (action.type === 'stay') return;
+        if (appliedRef.current) return;
         appliedRef.current = true;
         logger.log('child resume', { stage: snapshot.stage, action, currentPath });
 
@@ -108,10 +113,14 @@ export function usePairingResume(options: ParentOptions | ChildOptions) {
       } catch (error) {
         logger.warn('pairing resume failed', error);
       }
-    })();
+    };
+
+    void tick();
+    intervalId = window.setInterval(() => void tick(), 2000);
 
     return () => {
       cancelled = true;
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, [
     enabled,

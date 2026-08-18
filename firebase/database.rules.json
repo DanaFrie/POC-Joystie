@@ -30,25 +30,25 @@
 
         "gameWon": { ".validate": "newData.isBoolean()" },
 
-        "linkOpenedAt": { ".validate": "newData.isString()" },
+        "linkOpenedAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "welcomeReachedAt": { ".validate": "newData.isString()" },
+        "welcomeReachedAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "doriRevealedAt": { ".validate": "newData.isString()" },
+        "doriRevealedAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "eggCompleteAt": { ".validate": "newData.isString()" },
+        "eggCompleteAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "missionReadyAt": { ".validate": "newData.isString()" },
+        "missionReadyAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "changeSelectedAt": { ".validate": "newData.isString()" },
+        "changeSelectedAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "changeSelectedText": { ".validate": "newData.isString()" },
+        "changeSelectedText": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "parentChangeRespondedAt": { ".validate": "newData.isString()" },
+        "parentChangeRespondedAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "selfieMissionDoneAt": { ".validate": "newData.isString()" },
+        "selfieMissionDoneAt": { ".validate": "newData.val() == null || newData.isString()" },
 
-        "gameWonAt": { ".validate": "newData.isString()" },
+        "gameWonAt": { ".validate": "newData.val() == null || newData.isString()" },
 
         "updatedAt": { ".validate": "newData.isString()" }
 

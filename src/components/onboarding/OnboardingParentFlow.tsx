@@ -848,18 +848,20 @@ export function OnboardingParentFlow({
     }
   }, [router]);
 
-  const parentWaitingStep = step === 'childInviteWaiting' ? step : null;
-
   const onInviteShared = useCallback(() => {
     if (stepRef.current === 'childInviteWaiting') return;
     setStep('childInviteWaiting');
   }, []);
 
+  const parentProgressStep =
+    step === 'childInviteWaiting' || step === 'childInviteShare' ? step : null;
+
   const { inviteWaitingVariant } = useParentChildProgress({
-    enabled: parentWaitingStep !== null,
-    parentStep: parentWaitingStep,
+    enabled: parentProgressStep !== null,
+    parentStep: parentProgressStep,
     waitingSessionStartedAt,
     onMissionReady,
+    onLinkOpened: onInviteShared,
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1406,6 +1408,7 @@ export function OnboardingParentFlow({
       <>
         <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
           <ParentOnboardingCompletionStep
+            childGender={selectedChildGender}
             onContinue={() => {
               void finishParentOnboardingAndGoToDashboard(router, { subscription: true }).catch(
                 () => {

@@ -29,10 +29,25 @@ export async function loadImageBlob(input: {
     }
     return await response.blob();
   } catch (error) {
-    // Cross-origin Storage URLs without CORS — draw via Image + canvas.
-    logger.warn('fetch image failed, trying canvas fallback', error);
-    return await blobFromImageElement(url);
+    // Prod Storage CORS often omits localhost — proxy same-origin, then canvas.
+    logger.warn('fetch image failed, trying same-origin proxy', error);
+    try {
+      return await loadImageBlobViaProxy(url);
+    } catch (proxyError) {
+      logger.warn('proxy image failed, trying canvas fallback', proxyError);
+      return await blobFromImageElement(url);
+    }
   }
+}
+
+async function loadImageBlobViaProxy(url: string): Promise<Blob> {
+  const response = await fetch(`/api/share-image?url=${encodeURIComponent(url)}`, {
+    credentials: 'same-origin',
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  return response.blob();
 }
 
 function blobFromImageElement(url: string): Promise<Blob> {

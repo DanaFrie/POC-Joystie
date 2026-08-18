@@ -8,6 +8,16 @@ export const LANDING_ACTIVE_KEY = 'onboardingLandingActive';
 
 /** Funnel steps that must survive an `/onboarding` remount (auth gate, HMR). */
 const IN_PROGRESS_FUNNEL_STEPS = new Set([
+  'role',
+  'phoneCount',
+  'details',
+  'screenTime',
+  'calculating',
+  'revealIntro',
+  'badNews',
+  'goodNews',
+  'realData',
+  'signupForm',
   'signupWelcome',
   'pickChild',
   'childInviteIntro',

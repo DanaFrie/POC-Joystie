@@ -17,7 +17,7 @@ import {
   resolveOAuthSignInAfterRedirect,
   type OAuthSignInResult,
 } from '@/utils/auth-oauth';
-import { isFirebaseAppHostingOrigin } from '@/utils/is-firebase-app-hosting';
+import { isOAuthRedirectUnreliableOrigin } from '@/utils/is-firebase-app-hosting';
 import { createContextLogger } from '@/utils/logger';
 
 const oauthLog = createContextLogger('OAuthRecovery');
@@ -89,7 +89,7 @@ export function recoverOAuthRedirectSignIn(): Promise<OAuthRedirectRecoveryOutco
           clearOAuthRedirectCapture();
           return {
             status: 'error',
-            message: isFirebaseAppHostingOrigin()
+            message: isOAuthRedirectUnreliableOrigin()
               ? 'לא הצלחנו להשלים את ההתחברות עם Google/Apple. סגרו חלונות כפולים, אפשרו חלונות קופצים, ונסו שוב — או הירשמו עם דוא״ל וסיסמה.'
               : 'לא הצלחנו להשלים את ההתחברות. נסו שוב.',
           };

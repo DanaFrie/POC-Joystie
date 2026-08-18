@@ -98,6 +98,18 @@ export function ChildSelfieMissionFlow({
           : null;
       const inviteId = ctx?.inviteId?.trim() || inviteFromUrl;
       try {
+        if (source === 'default') {
+          composedShareBlobRef.current = null;
+          await saveChildShareCard({
+            parentId: resolvedParentId,
+            childId: isDraftChildId(rawChildId) ? null : rawChildId,
+            inviteId,
+            source: 'default',
+          });
+          logger.log('Share card persisted', { source, hasInviteId: Boolean(inviteId) });
+          return true;
+        }
+
         const { composeShareCardWithHeadline } = await import(
           '@/lib/onboarding/composeShareCardWithHeadline'
         );
@@ -134,18 +146,6 @@ export function ChildSelfieMissionFlow({
     composedShareBlobRef.current = null;
     photoSrcRef.current = skipPhotoSrc;
     setPhotoSrc(skipPhotoSrc);
-    setPhase('share');
-  }, [skipPhotoSrc]);
-
-  const goToShare = useCallback(() => {
-    setUploadTask(null);
-    setServiceProgress(0);
-    if (!photoSrcRef.current) {
-      photoBlobRef.current = null;
-      composedShareBlobRef.current = null;
-      photoSrcRef.current = skipPhotoSrc;
-      setPhotoSrc(skipPhotoSrc);
-    }
     setPhase('share');
   }, [skipPhotoSrc]);
 
@@ -302,7 +302,7 @@ export function ChildSelfieMissionFlow({
         photoSrc={photoSrc}
         onLiked={() => setPhase('share')}
         onRetake={resetToPattern}
-        onSkip={goToShare}
+        onSkip={goToShareWithoutPhoto}
       />
     );
   }

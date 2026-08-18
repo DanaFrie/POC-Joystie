@@ -94,8 +94,11 @@ export function SignupChildInviteShareStep({
       setChildUrl(result.childUrl);
       return result.childUrl;
     } catch (error) {
+      const raw = error instanceof Error ? error.message : '';
       const message =
-        error instanceof Error ? error.message : 'לא הצלחנו להכין את הלינק';
+        /cors|failed to fetch|internal|unavailable/i.test(raw) || !raw
+          ? 'לא הצלחנו להכין את הלינק. נסו שוב.'
+          : raw;
       setShareError(message);
       throw error;
     } finally {
@@ -113,17 +116,18 @@ export function SignupChildInviteShareStep({
 
   const inviteReady = inviteMatchesChild(childUrl, childName, childGender);
 
-  const handleWhatsApp = () => {
-    if (!inviteReady) return;
-
-    // Advance immediately so session start precedes child opening the link.
-    onShared?.();
-
-    shareBondingViaWhatsApp({
-      childName,
-      childUrl,
-      parentGender: getParentGenderForMessage(),
-    });
+  const handleWhatsApp = async () => {
+    try {
+      const url = inviteReady ? childUrl : await ensureInvite();
+      onShared?.();
+      shareBondingViaWhatsApp({
+        childName,
+        childUrl: url,
+        parentGender: getParentGenderForMessage(),
+      });
+    } catch {
+      // shareError set inside ensureInvite
+    }
   };
 
   const handleCopy = async () => {
@@ -155,16 +159,18 @@ export function SignupChildInviteShareStep({
         >
           <button
             type="button"
-            onClick={handleWhatsApp}
-            disabled={preparing || !inviteReady}
+            onClick={() => void handleWhatsApp()}
+            disabled={preparing}
             className={`${SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS} bg-v03-turquoise-300 text-v03-green-900 hover:brightness-105 disabled:opacity-60`}
           >
             <span className="whitespace-nowrap text-right">
               {preparing
                 ? 'מכינים לינק...'
-                : !inviteReady
-                  ? 'מכינים לינק...'
-                  : 'שיתוף בוואטסאפ'}
+                : shareError && !inviteReady
+                  ? 'נסו שוב'
+                  : !inviteReady
+                    ? 'מכינים לינק...'
+                    : 'שיתוף בוואטסאפ'}
             </span>
             <SignupWhatsAppIcon />
           </button>

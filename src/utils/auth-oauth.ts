@@ -6,7 +6,7 @@ import {
   markOAuthRedirectPendingForProviderId,
 } from '@/lib/onboarding/oauthSession';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
-import { isFirebaseAppHostingOrigin } from '@/utils/is-firebase-app-hosting';
+import { isOAuthRedirectUnreliableOrigin } from '@/utils/is-firebase-app-hosting';
 import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
 
@@ -87,8 +87,8 @@ export function prefersOAuthRedirect(): boolean {
   if (typeof window === 'undefined') return false;
   // Redirect OAuth is unreliable on localhost (incl. mobile viewport / DevTools).
   if (isLocalDevHost()) return false;
-  // App Hosting: redirect loses getRedirectResult state on *.hosted.app — always popup.
-  if (isFirebaseAppHostingOrigin()) return false;
+  // Custom domain / App Hosting: redirect loses getRedirectResult (authDomain is firebaseapp.com).
+  if (isOAuthRedirectUnreliableOrigin()) return false;
   return isMobileOrSafariBrowser();
 }
 
@@ -152,7 +152,9 @@ function redirectWaitMs(auth: Auth, options?: OAuthRedirectResolveOptions): numb
   if (options?.maxWaitMs !== undefined) return options.maxWaitMs;
   if (!isOAuthRedirectRecoverable()) return 0;
   const base = auth.currentUser ? 3000 : 1500;
-  return isFirebaseAppHostingOrigin() ? Math.max(base, auth.currentUser ? 4500 : 2500) : base;
+  return isOAuthRedirectUnreliableOrigin()
+    ? Math.max(base, auth.currentUser ? 4500 : 2500)
+    : base;
 }
 
 /** Apple Hide My Email relay addresses are valid OAuth emails. */
@@ -295,7 +297,7 @@ async function signInWithProviderRedirect(providerId: OAuthProviderId): Promise<
 
 /**
  * Shared Google/Apple sign-in. Uses redirect on mobile/Safari; popup elsewhere.
- * App Hosting (*.hosted.app) always uses popup — redirect state is unreliable there.
+ * Deployed hosts (joystie.com / App Hosting) always use popup — redirect state is unreliable there.
  */
 export async function signInWithOAuth(
   provider: OAuthProviderUiId,
@@ -310,13 +312,13 @@ export async function signInWithOAuth(
   }
   const providerId = toOAuthProviderId(provider);
   const useRedirect = options?.useRedirect ?? prefersOAuthRedirect();
-  const onAppHosting = isFirebaseAppHostingOrigin();
+  const skipRedirectFallback = isOAuthRedirectUnreliableOrigin();
   oauthLog.log('oauth:mode', {
     provider,
     providerId,
     useRedirect,
     restricted: isRestrictedOAuthEnvironment(),
-    appHosting: onAppHosting,
+    appHosting: skipRedirectFallback,
   });
 
   if (useRedirect) {
@@ -326,11 +328,11 @@ export async function signInWithOAuth(
 
   const result = await signInWithProviderPopup(providerId);
   if (!result.ok && result.errorCode === 'auth/popup-blocked') {
-    // Redirect fallback is broken on App Hosting (getRedirectResult often null).
-    if (onAppHosting || isLocalDevHost()) {
+    // Redirect fallback is broken when authDomain is cross-site (getRedirectResult often null).
+    if (skipRedirectFallback || isLocalDevHost()) {
       oauthLog.warn('popup-blocked:no-redirect-fallback', {
         providerId,
-        appHosting: onAppHosting,
+        appHosting: skipRedirectFallback,
       });
       return {
         ok: false,
@@ -570,7 +572,7 @@ async function completeOAuthRedirectOnce(
         origin: window.location.origin,
         href: window.location.href,
         referrer: document.referrer,
-        appHosting: isFirebaseAppHostingOrigin(),
+        appHosting: isOAuthRedirectUnreliableOrigin(),
         hasCurrentUser: Boolean(auth.currentUser),
         isAnonymous: auth.currentUser?.isAnonymous ?? false,
         currentEmail: auth.currentUser?.email ?? null,

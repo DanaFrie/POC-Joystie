@@ -362,6 +362,7 @@ export function ParentGamePostWinFlow({
       <OnboardingFunnelStepSlot stepKey="parentOnboardingComplete" clipOverflow={false}>
         <ParentOnboardingCompletionStep
           agreementImageUrl={agreementImageUrl}
+          childGender={childGender}
           onContinue={handleCompletionContinue}
         />
       </OnboardingFunnelStepSlot>
