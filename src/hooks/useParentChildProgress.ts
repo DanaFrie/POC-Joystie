@@ -16,7 +16,7 @@ const logger = createContextLogger('ParentChildProgress');
 
 const POLL_MS = 2000;
 
-export type ParentWaitingStep = 'childInviteWaiting';
+export type ParentWaitingStep = 'childInviteWaiting' | 'childInviteShare';
 
 type UseParentChildProgressOptions = {
   enabled: boolean;
@@ -25,6 +25,7 @@ type UseParentChildProgressOptions = {
   waitingSessionStartedAt?: string | null;
   onWelcomeReached?: () => void;
   onMissionReady?: () => void;
+  onLinkOpened?: () => void;
 };
 
 function mergeProgress(
@@ -48,8 +49,9 @@ function milestoneIsFresh(
   sessionStartedAt: string | null | undefined
 ): boolean {
   if (!sessionStartedAt) return true;
-  if (!at) return false;
-  return at > sessionStartedAt;
+  // Flag without a timestamp (Firestore status-only) — do not treat as stale.
+  if (!at) return true;
+  return at >= sessionStartedAt;
 }
 
 function milestoneAt(
@@ -79,7 +81,10 @@ function isMissionReadyForSession(
   sessionStartedAt: string | null | undefined
 ): boolean {
   if (!progress.missionReady) return false;
-  return milestoneIsFresh(progress.missionReadyAt, sessionStartedAt);
+  return milestoneIsFresh(
+    milestoneAt(progress, 'missionReady', 'missionReadyAt'),
+    sessionStartedAt
+  );
 }
 
 function applyProgress(
@@ -90,6 +95,7 @@ function applyProgress(
   callbacks: {
     onWelcomeReached?: () => void;
     onMissionReady?: () => void;
+    onLinkOpened?: () => void;
   }
 ) {
   if (!progress || !parentStep) return;
@@ -97,9 +103,12 @@ function applyProgress(
   if (
     isLinkOpenedForSession(progress, sessionStartedAt) &&
     !fired.link &&
-    parentStep === 'childInviteWaiting'
+    (parentStep === 'childInviteWaiting' || parentStep === 'childInviteShare')
   ) {
     fired.link = true;
+    if (parentStep === 'childInviteShare') {
+      callbacks.onLinkOpened?.();
+    }
   }
 
   if (progress.welcomeReached && !fired.welcome) {
@@ -125,9 +134,10 @@ export function useParentChildProgress({
   waitingSessionStartedAt,
   onWelcomeReached,
   onMissionReady,
+  onLinkOpened,
 }: UseParentChildProgressOptions) {
-  const callbacksRef = useRef({ onWelcomeReached, onMissionReady });
-  callbacksRef.current = { onWelcomeReached, onMissionReady };
+  const callbacksRef = useRef({ onWelcomeReached, onMissionReady, onLinkOpened });
+  callbacksRef.current = { onWelcomeReached, onMissionReady, onLinkOpened };
   const parentStepRef = useRef(parentStep);
   parentStepRef.current = parentStep;
   const sessionStartedAtRef = useRef(waitingSessionStartedAt);

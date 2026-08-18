@@ -252,12 +252,29 @@ export const markBondingChildLinkOpened = functions.https.onCall(
 );
 
 async function findLatestInviteForParent(parentId: string) {
-  const snap = await getDb()
-    .collection(COLLECTION)
-    .where('parentId', '==', parentId)
-    .limit(1)
-    .get();
-  return snap.docs[0] ?? null;
+  const col = getDb().collection(COLLECTION);
+  try {
+    const snap = await col
+      .where('parentId', '==', parentId)
+      .orderBy('createdAt', 'desc')
+      .limit(8)
+      .get();
+    return (
+      snap.docs.find((doc) => !isInviteCompleted(doc.data() as FirestoreBondingInvite)) ??
+      null
+    );
+  } catch {
+    const snap = await col.where('parentId', '==', parentId).limit(10).get();
+    const open = snap.docs.filter(
+      (doc) => !isInviteCompleted(doc.data() as FirestoreBondingInvite)
+    );
+    open.sort((a, b) => {
+      const aAt = (a.data() as FirestoreBondingInvite).createdAt || '';
+      const bAt = (b.data() as FirestoreBondingInvite).createdAt || '';
+      return bAt.localeCompare(aAt);
+    });
+    return open[0] ?? null;
+  }
 }
 
 /** Child device — link opened / egg complete (Firestore bonding_invites). */

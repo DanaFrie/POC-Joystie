@@ -169,6 +169,14 @@ export async function handleGetChildShareCardAccess(
 
   const storagePath = child.shareCard?.storagePath?.trim() || '';
   if (!storagePath) {
+    if (child.shareCard?.source === 'default') {
+      return {
+        success: true,
+        url: '',
+        expiresAt: new Date().toISOString(),
+        source: 'default' as const,
+      };
+    }
     throw new functions.https.HttpsError('not-found', 'No stored share card');
   }
   if (!storagePath.startsWith(`families/${parentId}/children/${childId}/share-cards/`)) {

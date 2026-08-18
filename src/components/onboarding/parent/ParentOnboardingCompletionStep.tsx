@@ -14,6 +14,7 @@ import {
   ONBOARDING_COMPLETION_CHECK_IMAGE,
   ONBOARDING_COMPLETION_IMAGE,
 } from '@/constants/onboarding-completion-layout';
+import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
 import { loadImageBlob, shareImageFile } from '@/lib/share/shareImage';
 import { createContextLogger } from '@/utils/logger';
 
@@ -23,15 +24,17 @@ type ParentOnboardingCompletionStepProps = {
   onContinue?: () => void;
   /**
    * Preloaded Storage agreement URL — page is only shown after prefetch.
-   * Falls back to static asset when null/undefined.
+   * Falls back to gender default, then static completion art.
    */
   agreementImageUrl?: string | null;
+  childGender?: 'boy' | 'girl';
 };
 
 /** Figma 13057:16567 — parent onboarding completion (Screen 66). */
 export function ParentOnboardingCompletionStep({
   onContinue,
   agreementImageUrl = null,
+  childGender,
 }: ParentOnboardingCompletionStepProps) {
   const layout = ONBOARDING_COMPLETION;
   const bleedStyle = useFunnelFullBleed();
@@ -39,7 +42,9 @@ export function ParentOnboardingCompletionStep({
   const [shareHint, setShareHint] = useState<string | null>(null);
   const agreementBlobRef = useRef<Blob | null>(null);
 
-  const previewSrc = agreementImageUrl || ONBOARDING_COMPLETION_IMAGE;
+  const previewSrc =
+    agreementImageUrl ||
+    (childGender ? defaultSelfieAssetForChild(childGender) : ONBOARDING_COMPLETION_IMAGE);
 
   useEffect(() => {
     let cancelled = false;

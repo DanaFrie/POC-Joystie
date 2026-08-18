@@ -11,13 +11,12 @@ import {
 } from '@/lib/game/localRooms';
 import { httpsCallable } from 'firebase/functions';
 import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
-import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('GameAPI');
 
 function useLocalGameRooms(): boolean {
-  return isLocalDevHost() || useRtdbBondingInvites();
+  return useRtdbBondingInvites();
 }
 
 export interface CreateGameRoomInput extends GameOnboardingContext {}

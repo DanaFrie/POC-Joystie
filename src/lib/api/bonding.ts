@@ -12,7 +12,6 @@ import {
 } from '@/lib/onboarding/localBondingInvite';
 import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
 import { httpsCallable } from 'firebase/functions';
-import { isLocalDevHost } from '@/utils/is-local-dev-host';
 import { createContextLogger } from '@/utils/logger';
 import { INVITE_COMPLETED_ERROR_MESSAGE } from '@/lib/onboarding/inviteAccessErrors';
 
@@ -77,7 +76,7 @@ export async function recordBondingInvite(
 }
 
 export async function markBondingWhatsAppShared(inviteId: string): Promise<void> {
-  if (isLocalDevHost() || useRtdbBondingInvites()) return;
+  if (useRtdbBondingInvites()) return;
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<{ inviteId: string }, { ok: boolean }>(
     functions,
@@ -87,7 +86,7 @@ export async function markBondingWhatsAppShared(inviteId: string): Promise<void>
 }
 
 export async function markBondingChildLinkOpened(inviteId: string): Promise<void> {
-  if (isLocalDevHost() || useRtdbBondingInvites()) return;
+  if (useRtdbBondingInvites()) return;
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<{ inviteId: string }, { ok: boolean }>(
     functions,
@@ -145,7 +144,7 @@ async function resolveBondingGameRoomFromRtdb(
 export async function resolveBondingGameRoom(
   input: ResolveBondingGameRoomInput
 ): Promise<ResolveBondingGameRoomResult> {
-  if (isLocalDevHost() || useRtdbBondingInvites()) {
+  if (useRtdbBondingInvites()) {
     logger.log('resolveBondingGameRoom (RTDB)', { parentId: input.parentId });
     return resolveBondingGameRoomFromRtdb(input);
   }
@@ -175,7 +174,7 @@ export async function reportChildOnboardingMilestone(input: {
   milestone: ChildOnboardingMilestone;
   changeText?: string;
 }): Promise<{ ok: boolean; reason?: string }> {
-  if (isLocalDevHost() || useRtdbBondingInvites()) {
+  if (useRtdbBondingInvites()) {
     return { ok: true };
   }
   const functions = await getFunctionsInstance();

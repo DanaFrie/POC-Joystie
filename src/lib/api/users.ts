@@ -38,8 +38,14 @@ export async function createUser(
  * Find a user profile by email (POC: public read on users collection).
  */
 export async function getUserByEmail(email: string): Promise<FirestoreUser | null> {
+  const matches = await getUsersByEmail(email);
+  return matches[0] ?? null;
+}
+
+/** All `users` docs with this email (duplicate Auth/profile rows). */
+export async function getUsersByEmail(email: string): Promise<FirestoreUser[]> {
   const normalized = email.trim().toLowerCase();
-  if (!normalized) return null;
+  if (!normalized) return [];
 
   try {
     const { collection, query, where, getDocs, limit } = await import('firebase/firestore');
@@ -47,19 +53,13 @@ export async function getUserByEmail(email: string): Promise<FirestoreUser | nul
     const q = query(
       collection(db, USERS_COLLECTION),
       where('email', '==', normalized),
-      limit(1)
+      limit(8)
     );
     const snap = await getDocs(q);
-
-    if (snap.empty) {
-      return null;
-    }
-
-    const docSnap = snap.docs[0];
-    return { id: docSnap.id, ...docSnap.data() } as FirestoreUser;
+    return snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as FirestoreUser);
   } catch (error) {
-    logger.error('Error getting user by email:', error);
-    return null;
+    logger.error('Error getting users by email:', error);
+    return [];
   }
 }
 

@@ -8,6 +8,7 @@ import {
 import {
   FLOW_STEP_STORAGE_KEY,
   LANDING_ACTIVE_KEY,
+  isInProgressOnboardingFunnelStep,
 } from '@/lib/onboarding/parentFlowSession';
 import {
   clearOnboardingChildrenSession,
@@ -179,7 +180,26 @@ export async function resolveAuthenticatedUserDestination(
   }
 
   // Logged-in visit to /login or /onboarding: incomplete → «איך מתחילים?» (signupIntro).
+  // Do not reset an in-progress funnel (share / waiting / kids) — hard refresh
+  // used to wipe session kids and bounce back to the intro carousel.
   if (source === 'login' || source === 'onboarding_gate') {
+    const savedStep =
+      typeof window !== 'undefined'
+        ? sessionStorage.getItem(FLOW_STEP_STORAGE_KEY)
+        : null;
+    if (source === 'onboarding_gate' && isInProgressOnboardingFunnelStep(savedStep)) {
+      markOnboardingAccountCreated();
+      setResumeKind(
+        kind === 'v03_resume' || kind === 'v02_legacy' ? kind : 'fresh'
+      );
+      logger.log('Onboarding gate — keep in-progress funnel', {
+        uid: resolvedUser.id,
+        step: savedStep,
+        kind,
+      });
+      return { path: '/onboarding', kind, user: resolvedUser };
+    }
+
     clearOnboardingChildrenSession();
     const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
     if (!hydrated && children?.length) {
