@@ -23,13 +23,13 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  
+
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     secret: FIREBASE_AUTH_DOMAIN_PROD_SECRET
     availability:
       - BUILD
       - RUNTIME
-  
+
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
     secret: FIREBASE_PROJECT_ID_PROD_SECRET
     availability:
@@ -41,13 +41,13 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  
+
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
     secret: FIREBASE_MESSAGING_SENDER_ID_PROD_SECRET
     availability:
       - BUILD
       - RUNTIME
-  
+
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     secret: FIREBASE_APP_ID_PROD_SECRET
     availability:
@@ -65,4 +65,3 @@ env:
     secret: FIREBASE_FUNCTION_URL_PROD_SECRET
     availability:
       - RUNTIME
-
