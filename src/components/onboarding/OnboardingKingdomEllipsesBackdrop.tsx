@@ -16,8 +16,8 @@ type OnboardingKingdomEllipsesBackdropProps = {
 };
 
 /**
- * Green + grid + optional mint / kingdom / ellipses — top-anchored @ 812px Figma canvas.
- * `showKingdom={false}` → mint-only (child screen 2, parent mint steps).
+ * Green + grid + optional mint / kingdom / ellipses.
+ * Mint glow is full-bleed (scales with viewport); kingdom stays on 812 Figma canvas.
  */
 export function OnboardingKingdomEllipsesBackdrop({
   mintGlow = true,
@@ -33,8 +33,11 @@ export function OnboardingKingdomEllipsesBackdrop({
   );
 
   return (
-    <FunnelStepBackground preserveCanvasHeight showGrid={showGrid}>
-      {mintGlow ? <OnboardingMintGlow /> : null}
+    <FunnelStepBackground
+      preserveCanvasHeight
+      showGrid={showGrid}
+      fullBleedLayer={mintGlow ? <OnboardingMintGlow /> : null}
+    >
       {showKingdom ? (
         kingdomEnter ? (
           <div className="v03-funnel-enter-0">{kingdomLayers}</div>

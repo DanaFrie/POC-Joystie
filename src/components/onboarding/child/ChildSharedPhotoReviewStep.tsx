@@ -20,6 +20,8 @@ type ChildSharedPhotoReviewStepProps = {
   onLiked: () => void;
   onRetake: () => void;
   onSkip?: () => void;
+  /** True while creating Firestore child doc before share. */
+  accepting?: boolean;
 };
 
 /** Post-loader — review generated selfie placeholder. */
@@ -28,13 +30,14 @@ export function ChildSharedPhotoReviewStep({
   onLiked,
   onRetake,
   onSkip,
+  accepting = false,
 }: ChildSharedPhotoReviewStepProps) {
   return (
     <ChildSharedPhotoBackdrop photoSrc={photoSrc}>
       <ChildSharedPhotoFooter>
         <ChildSharedPhotoFooterButtonStack>
-          <ChildSharedPhotoPrimaryButton onClick={onLiked}>
-            {CHILD_SHARED_PHOTO_LIKED_LABEL}
+          <ChildSharedPhotoPrimaryButton onClick={onLiked} disabled={accepting}>
+            {accepting ? 'שומרים…' : CHILD_SHARED_PHOTO_LIKED_LABEL}
           </ChildSharedPhotoPrimaryButton>
           <ChildSharedPhotoSecondaryButton
             onClick={onRetake}
@@ -43,7 +46,7 @@ export function ChildSharedPhotoReviewStep({
             {CHILD_SHARED_PHOTO_RETAKE_LABEL}
           </ChildSharedPhotoSecondaryButton>
           {onSkip ? (
-            <ChildSharedPhotoFooterLink onClick={onSkip}>
+            <ChildSharedPhotoFooterLink onClick={accepting ? undefined : onSkip}>
               {CHILD_SHARED_PHOTO_SKIP_LABEL}
             </ChildSharedPhotoFooterLink>
           ) : null}

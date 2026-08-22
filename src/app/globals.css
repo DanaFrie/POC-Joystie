@@ -424,6 +424,8 @@ body.layout-root:has(.v03-dashboard-root) > div.relative {
   height: 100dvh;
   max-width: 100vw;
   max-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 .v03-funnel-root:not(.v03-funnel-light) {

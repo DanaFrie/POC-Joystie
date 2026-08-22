@@ -191,7 +191,8 @@ export function MarketingPresenting() {
                             src={feature.image}
                             alt={feature.imageAlt}
                             fill
-                            loading="lazy"
+                            loading={index === 0 ? 'eager' : 'lazy'}
+                            priority={index === 0}
                             decoding="async"
                             className="object-contain object-center"
                             sizes="150px"

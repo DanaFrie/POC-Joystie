@@ -10,14 +10,24 @@ type TrackAnalyticsEventProps = {
   params?: Record<string, string | number | boolean>;
 };
 
-/** Fire a Firebase Analytics event once per tab session on mount. */
+/** Fire a Firebase Analytics event once per tab session — deferred so landing paint is not blocked. */
 export function TrackAnalyticsEvent({
   event,
   onceKey,
   params,
 }: TrackAnalyticsEventProps) {
   useEffect(() => {
-    void logEventOnce(onceKey ?? event, event, params);
+    const run = () => {
+      void logEventOnce(onceKey ?? event, event, params);
+    };
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      const id = requestIdleCallback(run, { timeout: 5000 });
+      return () => cancelIdleCallback(id);
+    }
+
+    const t = window.setTimeout(run, 2500);
+    return () => window.clearTimeout(t);
     // Intentionally once on mount for this event key.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- page-view style
   }, [event, onceKey]);
