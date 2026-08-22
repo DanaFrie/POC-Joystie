@@ -21,7 +21,8 @@ export const childOnboardingFigmaLinks = {
 } as const;
 
 /** Placeholder child name until bonding invite meta is loaded. */
-export const CHILD_ONBOARDING_PLACEHOLDER_NAME = 'יואב' as const;
+export { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
+export const CHILD_ONBOARDING_PLACEHOLDER_NAME = 'אלון' as const;
 
 export const CHILD_ONBOARDING_HERO_VIDEO = '/phone_hover_power.mp4' as const;
 

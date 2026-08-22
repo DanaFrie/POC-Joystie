@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
+import { getServiceAccount } from '../serviceAccount';
 import {
   DEFAULT_PADDLE_WIDTH,
   GAME_WIN_SCORE,
@@ -7,6 +8,12 @@ import {
 import type { GameOnboardingContextRecord, GameRoomRecord } from './types';
 
 const ROOMS_PATH = 'gameRooms';
+
+const GAME_CALLABLE = {
+  region: 'us-central1' as const,
+  invoker: 'public' as const,
+  serviceAccount: getServiceAccount(),
+};
 
 function getRtdb() {
   return admin.database();
@@ -40,7 +47,7 @@ function buildOnboardingContext(data: Record<string, unknown>): GameOnboardingCo
 }
 
 export const createGameRoom = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...GAME_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -107,7 +114,7 @@ export const createGameRoom = functions.https.onCall(
 );
 
 export const joinGameRoom = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...GAME_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -177,7 +184,7 @@ export const joinGameRoom = functions.https.onCall(
 
 /** Poll onboarding funnel — is the cooperative game won and ready to advance? */
 export const getGameOnboardingStatus = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...GAME_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -221,7 +228,7 @@ export const getGameOnboardingStatus = functions.https.onCall(
  * Called by parent client when physics detects win (score >= win target).
  */
 export const completeGameOnboarding = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...GAME_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -288,7 +295,7 @@ export const completeGameOnboarding = functions.https.onCall(
  * Called by parent after win fade — stops live game sync.
  */
 export const endOnboardingGameRoom = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...GAME_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');

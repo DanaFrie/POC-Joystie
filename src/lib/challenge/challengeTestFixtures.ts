@@ -1,5 +1,6 @@
 import type { DashboardState } from '@/types/dashboard';
 import { V03_CHALLENGE_BUDGET, V03_CHALLENGE_HOURLY_RATE } from '@/constants/v03-challenge';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 
 /** Static dashboard shell for challenge / redemption UI test routes. */
 export function createChallengeTestDashboardState(
@@ -24,10 +25,10 @@ export function createChallengeTestDashboardState(
       gender: overrides?.parentGender ?? 'female',
     },
     child: {
-      name: overrides?.childName ?? 'יואב',
+      name: overrides?.childName ?? PLACEHOLDER_CHILD.name,
       id: 'test-child',
       profilePicture: '',
-      gender: overrides?.childGender ?? 'boy',
+      gender: overrides?.childGender ?? PLACEHOLDER_CHILD.gender,
       nickname: '',
     },
     challenge: {

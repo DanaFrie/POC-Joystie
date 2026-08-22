@@ -79,7 +79,7 @@ export function DashboardQuickActions({
   onViewContract,
   onAddToHome,
   variant = 'parent',
-  parentLabel = 'אבא',
+  parentLabel = 'אמא',
 }: DashboardQuickActionsProps) {
   const name = childName || 'הילד';
   const [linkCopied, setLinkCopied] = useState(false);

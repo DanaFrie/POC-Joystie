@@ -7,6 +7,7 @@ import {
   type ChildChallengeSetupResult,
 } from '@/components/dashboard/challenge/ChildChallengeSetupOverlay';
 import { CHALLENGE_TEST_DEFAULTS } from '@/lib/challenge/challengeTestFixtures';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 import { formatNumber } from '@/utils/formatting';
 
 /**
@@ -16,7 +17,7 @@ import { formatNumber } from '@/utils/formatting';
 export default function ChildChallengeSetupTestPage() {
   const [open, setOpen] = useState(true);
   const [lastResult, setLastResult] = useState<ChildChallengeSetupResult | null>(null);
-  const childName = 'יואב';
+  const childName = PLACEHOLDER_CHILD.name;
   const { weeklyBudget, hourlyRate, estimatedDailyHours } = CHALLENGE_TEST_DEFAULTS;
 
   return (

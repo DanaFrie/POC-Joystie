@@ -69,16 +69,24 @@ function MobileMockupFade() {
 export function MarketingPresenting() {
   return (
     <section
-      className="landing-section landing-gutter pt-0 pb-12 md:py-24 lg:pt-0"
+      className="landing-section landing-gutter relative pt-10 pb-12 md:py-24 lg:pt-0"
       dir="rtl"
     >
-      <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-14 md:gap-[100px] lg:gap-[160px]">
+      {/* Soft seam from stats — mobile only */}
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-20 bg-gradient-to-b from-[#05161a] via-[#05161a]/85 to-transparent md:hidden"
+        aria-hidden
+      />
+      <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-10 pt-2 md:gap-[100px] md:pt-0 lg:gap-[160px]">
         {/* Menu "מה זה ג׳ויסטי?" lands here — גאים להציג בפניכם */}
         <LandingReveal
           id="what-is-joystie"
-          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 md:max-w-none md:scroll-mt-32 md:gap-9 lg:scroll-mt-36"
+          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 lg:scroll-mt-36"
         >
-          <div className="h-px flex-1 bg-white/25" aria-hidden />
+          <div
+            className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-white/10"
+            aria-hidden
+          />
           <div className="flex flex-col items-center gap-1 text-center">
             <p className="font-rubik text-[15px] font-light tracking-[-0.4px] text-white md:text-[30px] md:tracking-[-0.75px]">
               גאים להציג בפניכם את
@@ -92,7 +100,10 @@ export function MarketingPresenting() {
               unoptimized
             />
           </div>
-          <div className="h-px flex-1 bg-white/25" aria-hidden />
+          <div
+            className="h-px flex-1 bg-gradient-to-l from-transparent via-white/25 to-white/10"
+            aria-hidden
+          />
         </LandingReveal>
 
         <div className="flex w-full flex-col items-center gap-[100px] md:gap-[100px] lg:gap-[160px]">
@@ -106,8 +117,8 @@ export function MarketingPresenting() {
           return (
             <article
               key={feature.badge}
-              className={`relative grid w-full max-w-[327px] items-start gap-5 overflow-visible md:max-w-none md:gap-12 ${
-                /* gap-5 = 20px — Figma space between mockup and first badge tag */
+              className={`relative grid w-full max-w-[327px] items-start gap-2.5 overflow-visible md:max-w-none md:gap-12 ${
+                /* gap-2.5 = 10px mobile — half of previous 20px mockup→badge gap */
                 useAbsoluteDesktop
                   ? `lg:block ${isSection2 ? 'lg:min-h-[657px]' : 'lg:min-h-[654px]'}`
                   : feature.reverse

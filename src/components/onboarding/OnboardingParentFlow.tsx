@@ -121,7 +121,7 @@ import {
   readOnboardingTermsAccepted,
 } from '@/lib/onboarding/oauthSession';
 import { recoverOAuthRedirectSignIn } from '@/lib/onboarding/oauthRedirectRecovery';
-import { hydrateOnboardingChildrenFromUser } from '@/lib/onboarding/hydrateChildrenFromUser';
+import { hydrateSessionChildrenFromAccount } from '@/lib/onboarding/hydrateChildrenFromUser';
 import { getUser } from '@/lib/api/users';
 import {
   finishAuthenticatedUserNavigation,
@@ -148,6 +148,7 @@ import {
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
 import { useScrollOverflow } from '@/hooks/useScrollOverflow';
 import { finishParentOnboardingAndGoToDashboard } from '@/lib/onboarding/finishParentOnboarding';
+import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHero';
 import {
   FLOW_STEP_STORAGE_KEY,
   LANDING_ACTIVE_KEY,
@@ -295,7 +296,8 @@ function readInitialFlowStep(): ParentFlowStep {
   if (consumeFreshParentFlowStart()) return 'role';
   if (isOnboardingAccountCreated()) {
     const saved = readStoredFlowStep();
-    if (saved && isPostSignupStep(saved)) return saved;
+    // v0.2 login starts kids collection — do not restore a leftover pick-child/share step.
+    if (saved && isPostSignupStep(saved) && !isV02LegacyKidsResume()) return saved;
     // Login as v02_legacy: collect kidsAges before post-signup carousel.
     if (isV02LegacyKidsResume() && saved && isValidFlowStep(saved) && isKidsCollectionStep(saved)) {
       return saved;
@@ -443,7 +445,7 @@ export function OnboardingParentFlow({
 
         const user = await getUser(uid, false);
         if (!user || cancelled) return;
-        if (!hydrateOnboardingChildrenFromUser(user)) return;
+        if (!(await hydrateSessionChildrenFromAccount(user))) return;
 
         const hydratedChildren = getOnboardingChildrenDetails();
         const hydratedTimes = getOnboardingChildrenScreenTime();
@@ -645,7 +647,7 @@ export function OnboardingParentFlow({
       clearOAuthSessionFlags();
       await persistOnboardingAccountAfterAuth(params);
       const savedUser = await getUser(params.uid, false);
-      if (savedUser && hydrateOnboardingChildrenFromUser(savedUser)) {
+      if (savedUser && (await hydrateSessionChildrenFromAccount(savedUser))) {
         const hydratedChildren = getOnboardingChildrenDetails();
         const hydratedTimes = getOnboardingChildrenScreenTime();
         if (hydratedChildren?.length) {
@@ -702,7 +704,7 @@ export function OnboardingParentFlow({
         return;
       }
       const targetStep =
-        saved && isPostSignupStep(saved)
+        saved && isPostSignupStep(saved) && !isV02LegacyKidsResume()
           ? saved
           : shouldShowOAuthSignupWelcome()
             ? ('signupWelcome' as const)
@@ -821,8 +823,30 @@ export function OnboardingParentFlow({
 
   useEffect(() => {
     if (step !== 'pickChild') return;
-    setPickOptions(getSignupPickChildOptions());
-    setSelectedChildIndex(0);
+    let cancelled = false;
+    void (async () => {
+      let options = getSignupPickChildOptions();
+      if (!options.length) {
+        try {
+          const uid = await getCurrentUserIdAsync();
+          const user = uid ? await getUser(uid, false) : null;
+          if (user) await hydrateSessionChildrenFromAccount(user);
+        } catch (error) {
+          logger.warn('Could not hydrate kids before pickChild', error);
+        }
+        if (cancelled) return;
+        options = getSignupPickChildOptions();
+      }
+      if (!options.length) {
+        setStep('phoneCount');
+        return;
+      }
+      setPickOptions(options);
+      setSelectedChildIndex(0);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [step]);
 
   useEffect(() => {
@@ -833,6 +857,17 @@ export function OnboardingParentFlow({
   useEffect(() => {
     if (step !== 'subscription') return;
     setSubscriptionPlan(null);
+  }, [step]);
+
+  useEffect(() => {
+    if (
+      step === 'parentPostGame' ||
+      step === 'onboardingComplete' ||
+      step === 'subscription'
+    ) {
+      preloadSubscriptionHero();
+      void import('@/components/onboarding/parent/ParentSubscriptionStep');
+    }
   }, [step]);
 
   // Start waiting-session clock when invite is shown — before WhatsApp — so child

@@ -161,7 +161,8 @@ export function ChildChallengeSetupOverlay({
 
           <div className="relative z-[1] flex w-full flex-col items-center gap-3">
             <ChallengeTitle id={titleId}>
-              {childName}, אמרתי לך שאתה אלוף
+              {childName}, כבר אמרתי לך ש
+              {childGender === 'girl' ? 'את אלופה' : 'אתה אלוף'}?
             </ChallengeTitle>
             <ChallengeBody>אני אגיד לך את זה שוב!</ChallengeBody>
 

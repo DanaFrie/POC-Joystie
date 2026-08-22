@@ -98,22 +98,11 @@ export function ChildSelfieMissionFlow({
           : null;
       const inviteId = ctx?.inviteId?.trim() || inviteFromUrl;
       try {
-        if (source === 'default') {
-          composedShareBlobRef.current = null;
-          await saveChildShareCard({
-            parentId: resolvedParentId,
-            childId: isDraftChildId(rawChildId) ? null : rawChildId,
-            inviteId,
-            source: 'default',
-          });
-          logger.log('Share card persisted', { source, hasInviteId: Boolean(inviteId) });
-          return true;
-        }
-
         const { composeShareCardWithHeadline } = await import(
           '@/lib/onboarding/composeShareCardWithHeadline'
         );
-        const base = blob ?? skipPhotoSrc;
+        // Always bake the agreed change into the footer — including default (skipped) selfie.
+        const base = source === 'default' ? skipPhotoSrc : (blob ?? skipPhotoSrc);
         const composed = await composeShareCardWithHeadline(base, {
           changeText: latchedChangeText,
         });
@@ -126,7 +115,11 @@ export function ChildSelfieMissionFlow({
           source,
           imageBlob: composed,
         });
-        logger.log('Share card persisted', { source, hasInviteId: Boolean(inviteId) });
+        logger.log('Share card persisted', {
+          source,
+          hasInviteId: Boolean(inviteId),
+          hasChangeText: Boolean(latchedChangeText?.trim()),
+        });
         return true;
       } catch (error) {
         logger.warn('Share card persist failed:', error);

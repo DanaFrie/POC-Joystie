@@ -3,6 +3,7 @@ import { createUser, getUser, getUserByEmail, getUsersByEmail, updateUser } from
 import { splitDisplayName } from '@/lib/onboarding/persistOnboardingAccount';
 import { getOAuthUserDisplayName, getOAuthUserEmail } from '@/utils/auth-oauth';
 import { hasV03KidsAgesReady } from '@/lib/auth/userOnboardingStatus';
+import { hasOnboardingChildrenDetails } from '@/lib/onboarding/childrenDetails';
 import { FLOW_STEP_STORAGE_KEY, isInProgressOnboardingFunnelStep } from '@/lib/onboarding/parentFlowSession';
 import type { FirestoreUser } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
@@ -79,7 +80,8 @@ export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreU
   if (existing) {
     if (
       typeof window !== 'undefined' &&
-      isInProgressOnboardingFunnelStep(sessionStorage.getItem(FLOW_STEP_STORAGE_KEY))
+      isInProgressOnboardingFunnelStep(sessionStorage.getItem(FLOW_STEP_STORAGE_KEY)) &&
+      (hasOnboardingChildrenDetails() || hasV03KidsAgesReady(existing))
     ) {
       return existing;
     }

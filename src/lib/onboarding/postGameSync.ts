@@ -44,13 +44,6 @@ function isSelfiePathUnlocked(
   return isContractUnlocked(child, parent);
 }
 
-function isAdditionalNegotiationLoop(
-  child: OnboardingChildProgress | null,
-  parent: OnboardingParentProgress | null
-): boolean {
-  return Boolean(parent?.additionalNegotiationStarted || child?.parentChangeDeclined);
-}
-
 /** Parent post-game screen derived from merged RTDB progress. */
 export function deriveParentPostGamePhase(
   merged: PostGameMergedProgress
@@ -73,9 +66,8 @@ export function deriveParentPostGamePhase(
   }
 
   if (child?.changeSelected) {
-    if (isAdditionalNegotiationLoop(child, parent)) {
-      return 'additionalChange';
-    }
+    // After decline/clear, or when parent backs out of extra-change picker —
+    // stay on review so they can approve the first change without an extra.
     return 'reviewChange';
   }
 

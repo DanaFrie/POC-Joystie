@@ -22,6 +22,7 @@ export async function signalParentPostGameMilestone(
           childChangeApprovedAt: now,
           additionalChangeText: null,
           additionalChangeProposedAt: null,
+          additionalNegotiationStarted: false,
         }
       : {
           childChangeApproved: false,
@@ -56,6 +57,7 @@ export async function clearParentAdditionalChangeProposal(parentId: string): Pro
     await publishOnboardingParentProgress(parentId, {
       additionalChangeText: null,
       additionalChangeProposedAt: null,
+      additionalNegotiationStarted: false,
     });
   } catch (error) {
     logger.warn('clearParentAdditionalChangeProposal failed', error);

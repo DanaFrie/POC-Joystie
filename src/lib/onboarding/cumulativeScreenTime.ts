@@ -1,6 +1,7 @@
 import { getOnboardingChildrenDetails } from '@/lib/onboarding/childrenDetails';
 import type { ChildGender } from '@/lib/onboarding/childrenDetails';
 import { getOnboardingChildrenScreenTime } from '@/lib/onboarding/childrenScreenTime';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 
 const ADULT_AGE = 18;
 
@@ -70,11 +71,20 @@ export function futureScreenTimeVerb(gender: ChildGender): string {
 
 const FALLBACK_PROJECTIONS: ChildCumulativeProjection[] = [
   {
-    name: 'יואב',
-    gender: 'boy',
-    hoursPerDay: 3,
-    totalDays: 365 + 5 * 30 + 3,
-    durationLabel: 'שנה, 5 חודשים ו3 ימים',
+    name: 'יעל',
+    gender: 'girl',
+    hoursPerDay: 3.5,
+    totalDays: cumulativeScreenDays(3.5, 7),
+    durationLabel: formatCumulativeDurationHebrew(cumulativeScreenDays(3.5, 7)),
+  },
+  {
+    name: PLACEHOLDER_CHILD.name,
+    gender: PLACEHOLDER_CHILD.gender,
+    hoursPerDay: PLACEHOLDER_CHILD.hours,
+    totalDays: cumulativeScreenDays(PLACEHOLDER_CHILD.hours, PLACEHOLDER_CHILD.age),
+    durationLabel: formatCumulativeDurationHebrew(
+      cumulativeScreenDays(PLACEHOLDER_CHILD.hours, PLACEHOLDER_CHILD.age)
+    ),
   },
 ];
 

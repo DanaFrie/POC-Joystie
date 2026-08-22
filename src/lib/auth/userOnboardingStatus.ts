@@ -8,9 +8,9 @@ export const ONBOARDING_RESUME_KIND_KEY = 'onboardingResumeKind';
  *
  * - complete: `onboarding === true` → dashboard
  * - v03_resume: has v0.3-shaped kidsAges, not finished → signupIntro + hydrate
- * - v02_legacy: pre-v0.3 profile (string ages / children docs / primaryChildId) without v0.3 kids shape
- *   - signup: keep going in onboarding; store funnel kidsAges
- *   - login: start kids funnel (phoneCount) so user can provide v0.3 kidsAges
+ * - v02_legacy: pre-v0.3 profile (string ages / unnamed children) without v0.3 kids
+ *   - signup: write funnel session kidsAges onto the existing user, then continue
+ *   - login: start kids funnel from the beginning (phoneCount)
  * - fresh: Auth session but nothing to resume from
  */
 export type UserOnboardingRouteKind =
@@ -28,7 +28,7 @@ function isKidObject(entry: unknown): entry is UserKidAgeScreenTime {
   return entry != null && typeof entry === 'object' && 'age' in entry;
 }
 
-/** True when kidsAges has at least one v0.3 object entry (age + name/gender/hours). */
+/** True when kidsAges has at least one v0.3 object with a real child name. */
 export function hasV03KidsAgesReady(user: Pick<FirestoreUser, 'kidsAges'>): boolean {
   const kids = user.kidsAges ?? [];
   if (!kids.length) return false;
@@ -37,11 +37,7 @@ export function hasV03KidsAgesReady(user: Pick<FirestoreUser, 'kidsAges'>): bool
     if (!isKidObject(entry)) return false;
     const age = String(entry.age ?? '').trim();
     if (!age) return false;
-    const hasName = Boolean(entry.name?.trim());
-    const hasGender = entry.gender === 'boy' || entry.gender === 'girl';
-    const hasHours = typeof entry.dailyScreenTimeHours === 'number';
-    // Enough to resume post-auth carousel: age plus any v0.3 field beyond bare age.
-    return hasName || hasGender || hasHours;
+    return Boolean(entry.name?.trim());
   });
 }
 
@@ -63,6 +59,11 @@ export function classifyUserOnboarding(
   }
 
   const children = options?.children ?? null;
+  const namedFromDocs = children?.some((child) => Boolean(child.name?.trim()));
+  if (namedFromDocs) {
+    return 'v03_resume';
+  }
+
   const hasChildrenDocs = Boolean(children?.length);
   if (
     hasChildrenDocs ||

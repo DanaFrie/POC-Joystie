@@ -33,8 +33,8 @@ export function ChildKingdomPhaseStep({
 
   return (
     <FunnelStepRoot
-      fitViewport
-      className="bg-transparent"
+      fillViewport
+      className="overflow-hidden bg-v03-green-900"
       style={CHILD_ONBOARDING_ENTER_VARS as CSSProperties}
     >
       {showKingdom ? (

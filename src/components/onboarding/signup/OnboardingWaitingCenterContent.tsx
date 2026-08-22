@@ -1,9 +1,7 @@
 'use client';
 
-import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { SIGNUP_CHILD_INVITE_WAITING_LOGO } from '@/constants/onboarding-figma';
 import {
-  SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX,
   SIGNUP_CHILD_INVITE_WAITING_LOGO_PX,
   SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX,
   SIGNUP_CHILD_INVITE_WAITING_TEXT_W_PX,
@@ -19,24 +17,21 @@ type OnboardingWaitingCenterContentProps = {
   showLogo?: boolean;
 };
 
-/** Center column — headline + optional waiting GIF (Figma 13196:2952). */
+/** Center column — headline + optional waiting GIF, true vertical center of 100svh shell. */
 export function OnboardingWaitingCenterContent({
   headline,
   ariaLabel,
   showLogo = true,
 }: OnboardingWaitingCenterContentProps) {
-  const contentTopPx = useFunnelProportionalTopPx(SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX);
-
   return (
     <div
       dir="rtl"
-      className="absolute inset-0 z-[10] overflow-hidden"
+      className="absolute inset-0 z-[10] flex flex-col items-center justify-center overflow-hidden"
       aria-label={ariaLabel}
     >
       <div
-        className="absolute left-1/2 z-10 flex -translate-x-1/2 flex-col items-center"
+        className="z-10 flex max-w-full flex-col items-center"
         style={{
-          top: contentTopPx,
           width: SIGNUP_CHILD_INVITE_WAITING_TEXT_W_PX,
           gap: SIGNUP_CHILD_INVITE_WAITING_TEXT_GIF_GAP_PX,
         }}
@@ -54,8 +49,8 @@ export function OnboardingWaitingCenterContent({
             alt=""
             className="shrink-0 object-cover"
             style={{
-              width: SIGNUP_CHILD_INVITE_WAITING_LOGO_PX,
-              height: SIGNUP_CHILD_INVITE_WAITING_LOGO_PX,
+              width: `min(${SIGNUP_CHILD_INVITE_WAITING_LOGO_PX}px, 12svh)`,
+              height: `min(${SIGNUP_CHILD_INVITE_WAITING_LOGO_PX}px, 12svh)`,
               background: 'transparent',
             }}
             decoding="async"

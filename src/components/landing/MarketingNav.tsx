@@ -235,36 +235,38 @@ export function MarketingNav({
           </div>
         </div>
 
+        {/* Figma 15329:17364 — CTA pair: gap 8px, h 46, rounded 16, px 22 py 11 */}
         <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className="inline-flex h-9 items-center justify-center rounded-2xl border border-white px-5 font-rubik text-base font-bold tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
+            className="inline-flex h-[46px] w-[135px] items-center justify-center rounded-[16px] border border-white px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
           >
             התחברות
           </Link>
           <Link
             href="/onboarding"
             dir="rtl"
-            className="inline-flex h-9 flex-row items-center justify-center gap-3 rounded-2xl bg-v03-turquoise-300 px-5 font-rubik text-base font-bold tracking-[-0.32px] text-[#282828] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:-translate-y-0.5"
+            className="inline-flex h-[46px] flex-row items-center justify-center gap-3 rounded-[16px] bg-v03-turquoise-300 px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-[#282828] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:-translate-y-0.5"
           >
             להצטרפות
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="15"
-              height="20"
-              viewBox="0 0 15 20"
-              fill="none"
-              className="h-5 w-[15px] shrink-0"
-              aria-hidden
-            >
-              <path
-                d="M9.5 14.5L5.5 10.5L9.5 6.5"
-                stroke="#282828"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <span className="relative flex h-5 w-[15px] shrink-0 items-center justify-center" aria-hidden>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="20"
+                viewBox="0 0 15 20"
+                fill="none"
+                className="h-5 w-[15px]"
+              >
+                <path
+                  d="M9.5 14.5L5.5 10.5L9.5 6.5"
+                  stroke="#282828"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
           </Link>
         </div>
       </nav>

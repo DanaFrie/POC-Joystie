@@ -87,7 +87,8 @@ export async function getUser(userId: string, useCache: boolean = true): Promise
       return null;
     }
     
-    const user = userSnap.data() as FirestoreUser;
+    const data = userSnap.data() ?? {};
+    const user = { id: userSnap.id, ...data } as FirestoreUser;
     
     // Cache the result
     if (useCache) {

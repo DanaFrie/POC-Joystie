@@ -10,6 +10,7 @@ import { FunnelViewport } from '@/components/ui/FunnelViewport';
 import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
 import { createCardcomTrialCheckout } from '@/lib/api/billing';
 import { billingCallableErrorMessage } from '@/lib/api/billingErrors';
+import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHero';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('DashboardSubscription');
@@ -34,6 +35,11 @@ export function DashboardSubscriptionOverlay({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    preloadSubscriptionHero();
+  }, [visible]);
 
   const handleStartTrial = useCallback(async () => {
     if (!selectedPlan || checkoutBusy) return;

@@ -65,7 +65,8 @@ service cloud.firestore {
         && request.auth.uid == userId
         && request.resource.data.keys().hasAll(['email', 'firstName', 'lastName', 'createdAt', 'updatedAt'])
         && isValidEmail(request.resource.data.email)
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email == request.resource.data.email.lower()
+        && request.resource.data.email == request.auth.token.email.lower();
 
       
 

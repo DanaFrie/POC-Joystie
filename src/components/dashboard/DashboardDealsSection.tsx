@@ -9,6 +9,7 @@ import { DashboardChallengeBanner } from '@/components/dashboard/DashboardChalle
 import { PARENT_DASHBOARD_ASSETS } from '@/constants/parent-dashboard-layout';
 import { formatDealDateRange } from '@/lib/dashboard/formatDealDateRange';
 import type { FirestoreChallenge } from '@/types/firestore';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 
 type DashboardDealsSectionProps = {
   childName: string;
@@ -39,7 +40,7 @@ export function DashboardDealsSection({
 }: DashboardDealsSectionProps) {
   const activeCount = activeChallenge ? 1 : 0;
   const completedCount = completedChallenges.length;
-  const name = childName || 'יואב';
+  const name = childName || PLACEHOLDER_CHILD.name;
 
   return (
     <section className="flex w-full flex-col gap-[15px]" dir="rtl">
@@ -99,7 +100,7 @@ export function DashboardCompletedDealsView({
   challenges,
   onBack,
 }: DashboardCompletedDealsViewProps) {
-  const name = childName || 'יואב';
+  const name = childName || PLACEHOLDER_CHILD.name;
 
   return (
     <div className="flex w-full flex-col gap-5" dir="rtl">

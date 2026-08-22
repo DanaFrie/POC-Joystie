@@ -29,7 +29,7 @@ import {
   roundMoney,
   V03_CHALLENGE_DAYS,
 } from '@/lib/challenge/v03ChallengeMath';
-import { formatNumber } from '@/utils/formatting';
+import { formatHebrewHoursLabel, formatNumber } from '@/utils/formatting';
 
 export type ParentChallengeSetupResult = {
   weeklyBudget: number;
@@ -96,9 +96,11 @@ export function ParentChallengeSetupOverlay({
     [weeklyBudget, hourlyRate, estimatedDailyHours]
   );
 
-  /** Hours that empty the wallet at the current rate (weekly total). */
-  const hoursUntilEmpty =
-    hourlyRate > 0 ? roundMoney(weeklyBudget / hourlyRate, 1) : 0;
+  /** Hours that empty the wallet at the current rate — daily (not weekly total). */
+  const hoursUntilEmptyDaily =
+    hourlyRate > 0
+      ? roundMoney(weeklyBudget / hourlyRate / V03_CHALLENGE_DAYS, 1)
+      : 0;
 
   /** Example daily usage for the savings line — onboarding (first) or 2h/day (return). */
   const exampleDailyHours = isFirstDeal
@@ -108,10 +110,13 @@ export function ParentChallengeSetupOverlay({
   const exampleSaveAmount = roundMoney(
     remainingOnCard(weeklyBudget, exampleWeeklyHours, hourlyRate)
   );
+  const exampleHoursLabel = formatHebrewHoursLabel(exampleDailyHours);
+  const emptyHoursLabel = formatHebrewHoursLabel(hoursUntilEmptyDaily);
 
   const beOnScreen = childGender === 'girl' ? 'תהיה' : 'יהיה';
   const pronoun = childGender === 'girl' ? 'היא' : 'הוא';
   const canBe = childGender === 'girl' ? 'יכולה' : 'יכול';
+  const canSave = childGender === 'girl' ? 'תוכל' : 'יוכל';
   const possessive = childGender === 'girl' ? 'שלה' : 'שלו';
 
   const startDate = challengeStartDateFromSetup();
@@ -199,7 +204,7 @@ export function ParentChallengeSetupOverlay({
 
           {isFirstDeal ? (
             <ChallengeBody>
-              {`הערכת את זמן המסך בכ־${formatNumber(exampleDailyHours)} שעות ביום.`}
+              {`הערכת את זמן המסך בכ־${exampleHoursLabel} ביום.`}
             </ChallengeBody>
           ) : null}
 
@@ -241,12 +246,10 @@ export function ParentChallengeSetupOverlay({
             dir="rtl"
           >
             <ChallengeBody>
-              {isFirstDeal
-                ? `כמה זמן ${childName} ${beOnScreen} במסך — ${formatNumber(exampleDailyHours)} שעות ביום ותחסוך ${formatNumber(exampleSaveAmount)} ש״ח או יותר.`
-                : `במידה ו${childName} ${beOnScreen} במסך — שעתיים ביום במסך ותחסוך ${formatNumber(exampleSaveAmount)} ש״ח או יותר.`}
+              {`כמה זמן ${childName} ${beOnScreen} במסך? ${exampleHoursLabel} ביום? ${pronoun} ${canSave} לחסוך ${formatNumber(exampleSaveAmount)} ש״ח.`}
             </ChallengeBody>
             <ChallengeBody>
-              {`${pronoun} גם ${canBe} להיות ${formatNumber(hoursUntilEmpty)} שעות ולהישאר בלי דמי כיס השבוע, הבחירה ${possessive}, שבוע הבא שבוע חדש.`}
+              {`${pronoun} גם ${canBe} להיות ${emptyHoursLabel} ביום ולהישאר בלי דמי כיס השבוע, הבחירה ${possessive}, שבוע הבא שבוע חדש.`}
             </ChallengeBody>
           </div>
         </>

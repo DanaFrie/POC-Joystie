@@ -27,7 +27,7 @@ export function CumulativeScreenTimeCard({
   const spendVerb = child.gender === 'girl' ? 'תבלה' : 'יבלה';
   const allowClause =
     child.gender === 'girl'
-      ? 'שתאפשר לה להתפתח ולרכוש מיומנויות'
+      ? 'שיאפשר לה להתפתח ולרכוש מיומנויות'
       : 'שיאפשר לו להתפתח ולרכוש מיומנויות';
 
   return (

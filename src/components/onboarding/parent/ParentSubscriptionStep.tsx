@@ -1,5 +1,6 @@
 'use client';
 
+import { useLayoutEffect } from 'react';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { SelectableOptionCard } from '@/components/onboarding/parent/SelectableOptionCard';
 import { SubscriptionJoyLogo } from '@/components/onboarding/parent/SubscriptionJoyLogo';
@@ -21,6 +22,7 @@ import {
 } from '@/constants/onboarding-subscription-layout';
 import { FUNNEL_CTA_HEIGHT_PX } from '@/constants/funnel-vertical-layout';
 import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
+import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHero';
 
 type ParentSubscriptionStepProps = {
   selectedPlan: OnboardingSubscriptionPlan | null;
@@ -49,6 +51,10 @@ export function ParentSubscriptionStep({
   const { hero, logo, topBar, copy, features, plans, planCard, cta } = layout;
   const { viewportHeight, scale } = useFunnelViewportMetrics();
   const bleedStyle = useFunnelFullBleed();
+
+  useLayoutEffect(() => {
+    preloadSubscriptionHero();
+  }, []);
 
   const fillH = Math.max(
     1,
@@ -102,9 +108,23 @@ export function ParentSubscriptionStep({
   const disclaimerPx = sx(cta.disclaimerSize, heightScale, 13);
   const ctaMinH = sx(FUNNEL_CTA_HEIGHT_PX, heightScale, 48);
 
-  const heroBackground = tallExtraPx > 0
-    ? `${hero.gradient}, url(${hero.image}) ${SUBSCRIPTION_SCREEN_BG} center top / cover no-repeat`
-    : `${hero.gradient}, url(${hero.image}) ${SUBSCRIPTION_SCREEN_BG} ${hero.imagePosition} / ${hero.imageSize} no-repeat`;
+  const heroImgStyle =
+    tallExtraPx > 0
+      ? {
+          left: 0,
+          top: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover' as const,
+          objectPosition: 'center top',
+        }
+      : {
+          left: hero.imagePositionX,
+          top: hero.imagePositionY,
+          width: hero.imageWidth,
+          height: hero.imageHeight,
+          objectFit: 'cover' as const,
+        };
 
   return (
     <FunnelStepRoot
@@ -128,13 +148,26 @@ export function ParentSubscriptionStep({
         aria-hidden
       >
         <div
-          className="absolute inset-0 z-[1]"
-          style={{
-            background: heroBackground,
-            backgroundColor: SUBSCRIPTION_SCREEN_BG,
-            filter: hero.imageFilter,
-          }}
-        />
+          className="absolute inset-0 z-[1] overflow-hidden"
+          style={{ backgroundColor: SUBSCRIPTION_SCREEN_BG }}
+        >
+          <OnboardingLazyImage
+            src={hero.image}
+            alt=""
+            priority
+            decoding="sync"
+            className="pointer-events-none absolute max-w-none"
+            style={{
+              ...heroImgStyle,
+              filter: hero.imageFilter,
+            }}
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{ background: hero.gradient }}
+            aria-hidden
+          />
+        </div>
 
         <div
           className="pointer-events-none absolute z-[2] rounded-full"

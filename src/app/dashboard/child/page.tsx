@@ -61,15 +61,29 @@ function DashboardChildPageContent() {
   const challengeEnabled =
     tokenChallengeEnabled != null ? tokenChallengeEnabled : parentSubscribe.challengeEnabled;
 
-  const loadForParentId = useCallback(async (parentId: string, force = false) => {
+  const loadForParentId = useCallback(
+    async (
+      parentId: string,
+      force = false,
+      parentGenderHint?: 'male' | 'female'
+    ) => {
     if (force) {
       const { dataCache, cacheKeys } = await import('@/utils/data-cache');
       dataCache.invalidate(cacheKeys.dashboard(parentId));
+      dataCache.invalidate(cacheKeys.user(parentId));
     }
 
     const data = await getDashboardData(parentId, !force);
     if (data) {
-      setDashboardData(data);
+      const gender =
+        data.parent.gender === 'female' || data.parent.gender === 'male'
+          ? data.parent.gender
+          : parentGenderHint;
+      setDashboardData(
+        gender && gender !== data.parent.gender
+          ? { ...data, parent: { ...data.parent, gender } }
+          : data
+      );
       setNoChallengeExists(!data.challenge.isActive || !data.activeChallengeId);
       return;
     }
@@ -80,14 +94,19 @@ function DashboardChildPageContent() {
       throw new Error('לא נמצאו נתוני הורה');
     }
 
+    const gender =
+      user.gender === 'female' || user.gender === 'male'
+        ? user.gender
+        : parentGenderHint;
+
     setDashboardData({
       ...emptyDashboardState,
       parent: {
         name: user.firstName || 'הורה',
-        id: user.id,
+        id: user.id || parentId,
         googleAuth: {},
         profilePicture: '',
-        gender: user.gender,
+        gender,
       },
       child: {
         name: '',
@@ -97,7 +116,9 @@ function DashboardChildPageContent() {
       },
     });
     setNoChallengeExists(true);
-  }, []);
+  },
+  []
+  );
 
   const loadDashboard = useCallback(
     async (force = false) => {
@@ -110,7 +131,7 @@ function DashboardChildPageContent() {
         }
         setAccessMode('token');
         setTokenChallengeEnabled(Boolean(access.challengeEnabled));
-        await loadForParentId(access.parentId, force);
+        await loadForParentId(access.parentId, force, access.parentGender);
         return;
       }
 

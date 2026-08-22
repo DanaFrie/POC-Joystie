@@ -454,7 +454,13 @@ export function ParentGamePostWinFlow({
           onConfirm={goToPostChangeWaiting}
           onBack={() => {
             setLocalAdditionalChange(false);
-            if (postGame.merged.parent?.additionalNegotiationStarted) return;
+            if (syncEnabled && parentId) {
+              void import('@/lib/onboarding/parentPostGameMilestones').then(
+                ({ clearParentAdditionalChangeProposal }) => {
+                  void clearParentAdditionalChangeProposal(parentId);
+                }
+              );
+            }
             onPhaseChange('reviewChange');
           }}
         />

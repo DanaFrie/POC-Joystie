@@ -60,7 +60,7 @@ function GoalsSliderContent() {
     <>
       <div className="flex w-full items-center justify-between" dir="rtl">
         <p className="font-rubik text-[23px] font-bold leading-[29px] tracking-[-0.35px] text-[#05161a]">
-          יואב
+          אלון
         </p>
         <p className="font-rubik text-[19px] font-normal leading-[1.2] tracking-[-0.29px] text-[#05161a]">
           40 דקות
@@ -128,7 +128,7 @@ function HabitsStatsContent({ muted = false }: { muted?: boolean }) {
   return (
     <div className="flex w-full flex-col items-center gap-[11px] px-4">
       <p className="whitespace-nowrap text-center font-rubik text-[14px] font-normal leading-[19px] tracking-[-0.29px] text-[#8d9495]">
-        ממוצע דק׳ יומי של יואב
+        ממוצע דק׳ יומי של אלון
       </p>
       <div className="relative flex flex-col items-center justify-center gap-3">
         <div className="relative">
@@ -408,8 +408,8 @@ export function MarketingHowItWorks() {
           </div>
         </div>
 
-        {/* Mobile header — keep content gutter; story frame below is full-bleed */}
-        <LandingReveal className="relative z-[1] mx-auto w-full max-w-[327px] px-6 text-right md:hidden">
+        {/* Mobile header — same px-6 as story copy below */}
+        <LandingReveal className="relative z-[1] w-full px-6 text-right md:hidden">
           <h2 className="font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
             איך עובד התהליך איתנו?
           </h2>

@@ -16,6 +16,13 @@ const logger = createContextLogger('Dashboard');
 const DASHBOARD_PREFETCH_KEY = 'joystieDashboardPrefetch';
 const DASHBOARD_PREFETCH_TTL_MS = 60 * 1000;
 
+function normalizeParentGender(gender: unknown): 'male' | 'female' | undefined {
+  if (gender === 'female' || gender === 'male') return gender;
+  if (gender === 'mother' || gender === 'אמא') return 'female';
+  if (gender === 'father' || gender === 'אבא') return 'male';
+  return undefined;
+}
+
 function dropSessionPrefetch(): void {
   if (typeof window === 'undefined') return;
   try {
@@ -498,7 +505,7 @@ function buildBootstrapDashboardState(
       id: user.id,
       googleAuth: {},
       profilePicture: '',
-      gender: user.gender,
+      gender: normalizeParentGender(user.gender),
     },
     child: {
       name: child.name,
@@ -614,7 +621,7 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
         id: user.id,
         googleAuth: {}, // TODO: Add if needed
         profilePicture: '', // TODO: Add if available
-        gender: user.gender
+        gender: normalizeParentGender(user.gender),
       },
       child: {
         name: child.name,

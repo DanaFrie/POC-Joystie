@@ -1,6 +1,6 @@
 /**
- * RTDB bonding invites — localhost + intgr App Hosting (callable-free).
- * Production uses Firestore via `recordBondingInvite` / `resolveBondingInvite`.
+ * RTDB bonding invites — used on localhost, intgr, and production.
+ * Callables are a fallback when RTDB write/read is unavailable.
  */
 import { get, ref, set, update } from 'firebase/database';
 import { FirebaseError } from 'firebase/app';

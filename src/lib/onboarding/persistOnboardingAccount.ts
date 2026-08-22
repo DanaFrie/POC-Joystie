@@ -18,7 +18,7 @@ import {
   getOnboardingParentRole,
   parentRoleToGender,
 } from '@/lib/onboarding/parentRole';
-import { ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
+import { hasV03KidsAgesReady, ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
 import type { UserKidAgeScreenTime } from '@/types/firestore';
 import { createSession } from '@/utils/session';
 import { trackMetaSignupSuccess } from '@/utils/meta-pixel';
@@ -192,8 +192,8 @@ export async function persistOnboardingAccountAfterAuth(params: {
     // Prefer Firestore kids on v03 resume / empty funnel drafts.
     // v02_legacy: allow funnel kidsAges to replace legacy string/partial kids.
     const preferExistingKids =
-      resumeKind === 'v03_resume' ||
-      (!kidsAges.length && Boolean(existing.kidsAges?.length));
+      (resumeKind === 'v03_resume' && hasV03KidsAgesReady(existing)) ||
+      (!kidsAges.length && hasV03KidsAgesReady(existing));
 
     await updateUser(uid, {
       email: normalizedEmail || existing.email,

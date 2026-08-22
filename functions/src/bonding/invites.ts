@@ -1,12 +1,20 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
+import { getServiceAccount } from '../serviceAccount';
 import { buildWhatsAppShareUrl } from './whatsapp';
 import type { FirestoreBondingInvite } from './types';
 
 const baseUrlSecret = defineSecret('SERVICE_FUNCTION_BASE_URL');
 const COLLECTION = 'bonding_invites';
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+
+/** Browser callables on joystie.com require public invoker + Firestore-capable SA. */
+const BONDING_CALLABLE = {
+  region: 'us-central1' as const,
+  invoker: 'public' as const,
+  serviceAccount: getServiceAccount(),
+};
 
 function getDb() {
   return admin.firestore();
@@ -72,7 +80,7 @@ async function tombstoneRtdbInvite(inviteId: string, now: string): Promise<void>
 
 export const recordBondingInvite = functions.https.onCall(
   {
-    region: 'us-central1',
+    ...BONDING_CALLABLE,
     secrets: [baseUrlSecret],
   },
   async (request) => {
@@ -124,7 +132,7 @@ export const recordBondingInvite = functions.https.onCall(
 
 /** Child device — resolve short `?invite=` link (no auth; invite id is the secret). */
 export const resolveBondingInvite = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     const { inviteId } = request.data as { inviteId?: string };
     if (!inviteId?.trim()) {
@@ -151,7 +159,7 @@ export const resolveBondingInvite = functions.https.onCall(
 );
 
 export const markBondingWhatsAppShared = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -178,7 +186,7 @@ export const markBondingWhatsAppShared = functions.https.onCall(
 
 /** Child device — names + active game room for onboarding bonding. */
 export const resolveBondingGameRoom = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -231,7 +239,7 @@ export const resolveBondingGameRoom = functions.https.onCall(
 );
 
 export const markBondingChildLinkOpened = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     const { inviteId } = request.data as { inviteId: string };
     const ref = getDb().collection(COLLECTION).doc(inviteId);
@@ -279,7 +287,7 @@ async function findLatestInviteForParent(parentId: string) {
 
 /** Child device — link opened / egg complete (Firestore bonding_invites). */
 export const reportChildOnboardingMilestone = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -335,7 +343,7 @@ export const reportChildOnboardingMilestone = functions.https.onCall(
 
 /** Parent — poll child funnel milestones while on waiting screens. */
 export const getChildOnboardingProgress = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');
@@ -355,7 +363,7 @@ export const getChildOnboardingProgress = functions.https.onCall(
 
 /** Parent — consume invite links + drop live RTDB funnel records after onboarding. */
 export const consumeBondingInvite = functions.https.onCall(
-  { region: 'us-central1' },
+  { ...BONDING_CALLABLE },
   async (request) => {
     if (!request.auth?.uid) {
       throw new functions.https.HttpsError('unauthenticated', 'Must be signed in');

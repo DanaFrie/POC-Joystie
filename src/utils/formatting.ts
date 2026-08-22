@@ -15,9 +15,24 @@ export function formatNumber(num: number, decimals: number = 1): string {
   return formatted;
 }
 
-/** Format daily screen time goal (in hours) for display: "שעה" | "חצי שעה" | "X שעות" */
-export function formatScreenTimeGoalHours(hours: number): string {
-  if (hours === 1) return 'שעה';
-  if (hours === 0.5) return 'חצי שעה';
+/** Snap to 1 decimal for Hebrew hour noun matching. */
+function snapHoursLabel(hours: number): number {
+  return Math.round(hours * 10) / 10;
+}
+
+/**
+ * Hebrew hours noun — 1=שעה, 2=שעתיים, 3+=N שעות (½ / 1½ kept for onboarding).
+ */
+export function formatHebrewHoursLabel(hours: number): string {
+  const n = snapHoursLabel(hours);
+  if (n === 1) return 'שעה';
+  if (n === 2) return 'שעתיים';
+  if (n === 0.5) return 'חצי שעה';
+  if (n === 1.5) return 'שעה וחצי';
   return `${formatNumber(hours)} שעות`;
+}
+
+/** Format daily screen time goal (in hours) for display: "שעה" | "שעתיים" | "X שעות" */
+export function formatScreenTimeGoalHours(hours: number): string {
+  return formatHebrewHoursLabel(hours);
 }

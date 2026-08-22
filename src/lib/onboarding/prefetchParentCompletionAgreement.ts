@@ -87,6 +87,10 @@ export async function prefetchParentCompletionAgreement(
         parentId,
         childId,
       });
+      if (access.url) {
+        await preloadImage(access.url);
+        return { parentId, childId, agreementImageUrl: access.url };
+      }
       if (access.source === 'default') {
         const { gender } = await readChildShareCard(parentId, childId);
         return {
@@ -94,10 +98,6 @@ export async function prefetchParentCompletionAgreement(
           childId,
           agreementImageUrl: await genderDefaultAgreementUrl(gender),
         };
-      }
-      if (access.url) {
-        await preloadImage(access.url);
-        return { parentId, childId, agreementImageUrl: access.url };
       }
     } catch (error) {
       logger.warn('getChildShareCardAccess attempt failed:', error);

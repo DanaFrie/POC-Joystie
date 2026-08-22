@@ -104,10 +104,16 @@ export function estimatedDailyHoursFromDashboard(data: DashboardState): number {
   return V03_CHALLENGE_DEFAULT_DAILY_HOURS;
 }
 
-export function parentLabelFromGender(gender?: 'male' | 'female'): string {
-  if (gender === 'female') return 'אמא';
-  if (gender === 'male') return 'אבא';
-  return 'אמא';
+export function parentLabelFromGender(gender?: 'male' | 'female' | null): 'אמא' | 'אבא' {
+  return gender === 'female' ? 'אמא' : 'אבא';
+}
+
+/** Child dashboard — disappointed-Dori / CTA wait copy before wallet unlock. */
+export function parentWalletGateHeadline(gender?: 'male' | 'female' | null): string {
+  if (gender === 'female') {
+    return 'מחכים שאמא תפתח גישה לארנק';
+  }
+  return 'מחכים שאבא יפתח גישה לארנק';
 }
 
 export function firestoreHourlyRate(challenge: FirestoreChallenge): number {

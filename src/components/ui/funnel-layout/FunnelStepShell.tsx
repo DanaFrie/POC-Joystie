@@ -66,37 +66,40 @@ export function FunnelStepRoot({
   const activeFit = fitViewport && !fillViewport;
 
   useLayoutEffect(() => {
-    const funnelRoot = document.querySelector('[data-v03-funnel]');
-    if (!(funnelRoot instanceof HTMLElement)) {
+    const roots = [
+      document.querySelector('[data-v03-funnel]'),
+      document.querySelector('[data-v03-funnel-canvas]'),
+    ].filter((n): n is HTMLElement => n instanceof HTMLElement);
+
+    if (roots.length === 0) {
       return undefined;
     }
 
-    if (fillViewport) {
-      funnelRoot.style.setProperty(
-        V03_ACTIVE_CANVAS_HEIGHT_VAR,
-        `${fillCanvasHeightPx}px`
-      );
+    const apply = (px: number) => {
+      for (const root of roots) {
+        root.style.setProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR, `${px}px`);
+      }
       window.dispatchEvent(new Event('resize'));
-      return () => {
-        funnelRoot.style.removeProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR);
-        window.dispatchEvent(new Event('resize'));
-      };
+    };
+
+    const clear = () => {
+      for (const root of roots) {
+        root.style.removeProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR);
+      }
+      window.dispatchEvent(new Event('resize'));
+    };
+
+    if (fillViewport) {
+      apply(fillCanvasHeightPx);
+      return clear;
     }
 
     if (!activeFit) {
       return undefined;
     }
 
-    funnelRoot.style.setProperty(
-      V03_ACTIVE_CANVAS_HEIGHT_VAR,
-      `${usableCanvasHeightPx}px`
-    );
-    window.dispatchEvent(new Event('resize'));
-
-    return () => {
-      funnelRoot.style.removeProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR);
-      window.dispatchEvent(new Event('resize'));
-    };
+    apply(usableCanvasHeightPx);
+    return clear;
   }, [activeFit, fillViewport, fillCanvasHeightPx, usableCanvasHeightPx]);
 
   const heightStyle = fillViewport
