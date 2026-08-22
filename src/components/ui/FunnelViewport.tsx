@@ -128,7 +128,8 @@ function measureViewport(
     usableCanvasHeightPx,
     canvasHeightPx: activeCanvasHeightPx,
     needsVerticalScroll:
-      scaleMode === 'scroll' && scaledH > usableHeight + 1,
+      // Slack for Android Chrome / Pixel dvh jitter — tiny overflow must not unlock scroll.
+      scaleMode === 'scroll' && scaledH > usableHeight + 8,
   };
 }
 
@@ -277,17 +278,18 @@ export function FunnelViewport({
   const isScrollMode = scaleMode === 'scroll';
   const scaledVisualWidth = metrics.designWidth * metrics.scale;
   const scaledVisualHeight = metrics.canvasHeightPx * metrics.scale;
-  /** Canvas shorter than the screen — allow cover media to paint the letterbox gap. */
-  const hasLetterboxGap = scaledVisualHeight + 1 < metrics.viewportHeight;
+  /**
+   * Never use overflow-y-visible here — negative-bottom bleeds (mint glow / grid)
+   * extend past the canvas and Pixel 7 / Android Chrome will rubber-band scroll,
+   * revealing a bottom strip. Letterbox stays funnel-root green instead.
+   */
   const viewportOverflowClass = lockScroll
     ? 'overflow-hidden overscroll-none'
     : isScrollMode
       ? metrics.needsVerticalScroll
-        ? 'overflow-x-hidden overflow-y-auto v03-scroll-hidden'
-        : hasLetterboxGap
-          ? 'overflow-x-hidden overflow-y-visible'
-          : 'overflow-x-hidden overflow-y-hidden'
-      : 'overflow-visible';
+        ? 'overflow-x-hidden overflow-y-auto v03-scroll-hidden overscroll-y-contain'
+        : 'overflow-x-hidden overflow-y-hidden overscroll-none'
+      : 'overflow-hidden overscroll-none';
   const scrollSafePadding =
     isScrollMode && !ignoreSafeArea && !lockScroll
       ? {

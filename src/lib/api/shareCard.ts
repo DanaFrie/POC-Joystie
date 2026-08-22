@@ -28,6 +28,12 @@ export type GetChildShareCardAccessResult = {
   source: ShareCardSource;
 };
 
+export type EnsureBondingChildResult = {
+  success: boolean;
+  childId: string;
+  gender: 'boy' | 'girl';
+};
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -40,12 +46,40 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
+/**
+ * Create/link Firestore `children/{id}` + `users.primaryChildId` before Storage.
+ * Must run when the child accepts the selfie (wallet needs a real child doc).
+ */
+export async function ensureBondingChild(input: {
+  parentId: string;
+  childId?: string | null;
+  inviteId?: string | null;
+  childName?: string | null;
+  childGender?: 'boy' | 'girl' | null;
+}): Promise<EnsureBondingChildResult> {
+  const functions = await getFunctionsInstance();
+  const callable = httpsCallable(functions, 'saveChildShareCard');
+  const result = await callable({
+    op: 'ensureChild',
+    parentId: input.parentId,
+    childId: input.childId ?? null,
+    inviteId: input.inviteId ?? null,
+    childName: input.childName ?? null,
+    childGender: input.childGender ?? null,
+  });
+  const data = result.data as EnsureBondingChildResult;
+  logger.log('ensureBondingChild', { parentId: input.parentId, childId: data.childId });
+  return data;
+}
+
 export async function saveChildShareCard(input: {
   parentId: string;
   childId?: string | null;
   inviteId?: string | null;
   source: ShareCardSource;
   imageBlob?: Blob | null;
+  childName?: string | null;
+  childGender?: 'boy' | 'girl' | null;
 }): Promise<SaveChildShareCardResult> {
   const functions = await getFunctionsInstance();
   const callable = httpsCallable(functions, 'saveChildShareCard');
@@ -55,6 +89,8 @@ export async function saveChildShareCard(input: {
     childId: input.childId ?? null,
     inviteId: input.inviteId ?? null,
     source: input.source,
+    childName: input.childName ?? null,
+    childGender: input.childGender ?? null,
   };
 
   if (!input.imageBlob) {

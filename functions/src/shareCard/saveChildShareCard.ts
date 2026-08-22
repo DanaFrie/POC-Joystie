@@ -15,12 +15,16 @@ export type SaveChildShareCardRequest = {
   /**
    * `getAccess` — short-lived view URL (routed here because this Cloud Run
    * service already has public invoker; dedicated getChildShareCardAccess may not).
+   * `ensureChild` — create/link Firestore child before Storage upload.
    */
-  op?: 'save' | 'getAccess';
+  op?: 'save' | 'getAccess' | 'ensureChild';
   parentId?: string;
   childId?: string | null;
   inviteId?: string | null;
   dashboardToken?: string | null;
+  /** Optional display hints when creating a new child doc. */
+  childName?: string | null;
+  childGender?: 'boy' | 'girl' | null;
   /** Raw base64 (no data: prefix) — required when source is `ai`. */
   imageData?: string;
   contentType?: string;
@@ -36,6 +40,12 @@ export type SaveChildShareCardResponse = {
     downloadUrl: string | null;
     createdAt: string;
   };
+};
+
+export type EnsureBondingChildResponse = {
+  success: boolean;
+  childId: string;
+  gender: 'boy' | 'girl';
 };
 
 function stripDataUrl(base64OrDataUrl: string): string {
@@ -78,7 +88,8 @@ async function assertInviteBelongsToParent(
 
 async function resolveChildId(
   parentId: string,
-  childId?: string | null
+  childId?: string | null,
+  hints?: { name?: string | null; gender?: 'boy' | 'girl' | null }
 ): Promise<{ childId: string; gender: 'boy' | 'girl' }> {
   const db = admin.firestore();
   const userSnap = await db.collection('users').doc(parentId).get();
@@ -124,11 +135,18 @@ async function resolveChildId(
   const kid = user.kidsAges?.[0];
   const newRef = db.collection('children').doc();
   const now = new Date().toISOString();
-  const gender: 'boy' | 'girl' = kid?.gender === 'girl' ? 'girl' : 'boy';
+  const gender: 'boy' | 'girl' =
+    hints?.gender === 'girl' || hints?.gender === 'boy'
+      ? hints.gender
+      : kid?.gender === 'girl'
+        ? 'girl'
+        : 'boy';
+  const name =
+    hints?.name?.trim() || kid?.name?.trim() || 'ילד/ה';
   await newRef.set({
     id: newRef.id,
     parentId,
-    name: kid?.name?.trim() || 'ילד/ה',
+    name,
     age: kid?.age || '',
     gender,
     createdAt: now,
@@ -154,7 +172,9 @@ export const saveChildShareCard = functions.https.onCall(
     // Default Compute SA cannot read/write Firestore — same as Cardcom.
     serviceAccount: getServiceAccount(),
   },
-  async (request): Promise<SaveChildShareCardResponse | GetChildShareCardAccessResponse> => {
+  async (request): Promise<
+    SaveChildShareCardResponse | GetChildShareCardAccessResponse | EnsureBondingChildResponse
+  > => {
     const data = request.data as SaveChildShareCardRequest;
 
     // View/share access — same auth as getChildShareCardAccess (parent Auth or dashboard token).
@@ -185,7 +205,25 @@ export const saveChildShareCard = functions.https.onCall(
       );
     }
 
-    const { childId } = await resolveChildId(parentId, data.childId);
+    const hints = {
+      name: data.childName?.trim() || null,
+      gender:
+        data.childGender === 'girl' || data.childGender === 'boy'
+          ? data.childGender
+          : null,
+    };
+
+    // Create/link child doc only — before Storage upload on accept.
+    if (data.op === 'ensureChild') {
+      const resolved = await resolveChildId(parentId, data.childId, hints);
+      return {
+        success: true,
+        childId: resolved.childId,
+        gender: resolved.gender,
+      };
+    }
+
+    const { childId } = await resolveChildId(parentId, data.childId, hints);
     const now = new Date().toISOString();
     const childRef = admin.firestore().collection('children').doc(childId);
 

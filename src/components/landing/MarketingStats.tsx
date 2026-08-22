@@ -37,7 +37,7 @@ function ReadingWords({
         const lit = index <= activeIndex;
         const colorClass = lit
           ? 'text-white'
-          : 'text-[#254851] md:text-[#527079]';
+          : 'text-[#527079]';
         return (
           <span key={`${offset}-${i}-${word}`}>
             {i > 0 ? ' ' : null}
@@ -75,11 +75,18 @@ export function MarketingStats() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [progress, setProgress] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
+  /** Until scroll sync runs, keep copy readable (dark unread colors are invisible on #05161a). */
+  const [scrollReady, setScrollReady] = useState(false);
+
+  const totalWordsMinusOne = totalWords - 1;
+  const displayIndex =
+    scrollReady && !reduceMotion ? activeIndex : totalWordsMinusOne;
+  const displayProgress = scrollReady && !reduceMotion ? progress : 1;
 
   const highlightCount = highlightWords.length;
   const highlightFill = reduceMotion
     ? 1
-    : clamp(progress * (totalWords / Math.max(highlightCount, 1)), 0, 1);
+    : clamp(displayProgress * (totalWords / Math.max(highlightCount, 1)), 0, 1);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -130,6 +137,7 @@ export function MarketingStats() {
     };
 
     update();
+    setScrollReady(true);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     return () => {
@@ -181,7 +189,7 @@ export function MarketingStats() {
                     <ReadingWords
                       words={highlightWords}
                       offset={offsets.h}
-                      activeIndex={activeIndex}
+                      activeIndex={displayIndex}
                     />
                   </span>
                 </span>
@@ -191,7 +199,7 @@ export function MarketingStats() {
                 <ReadingWords
                   words={line1Words}
                   offset={offsets.l1}
-                  activeIndex={activeIndex}
+                  activeIndex={displayIndex}
                 />
               </p>
 
@@ -199,7 +207,7 @@ export function MarketingStats() {
                 <ReadingWords
                   words={line2Words}
                   offset={offsets.l2}
-                  activeIndex={activeIndex}
+                  activeIndex={displayIndex}
                 />
               </p>
             </div>

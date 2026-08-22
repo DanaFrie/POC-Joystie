@@ -43,19 +43,22 @@ type ChildSharedPhotoPrimaryButtonProps = {
   onClick?: () => void;
   children: ReactNode;
   icon?: ReactNode;
+  disabled?: boolean;
 };
 
 export function ChildSharedPhotoPrimaryButton({
   onClick,
   children,
   icon,
+  disabled = false,
 }: ChildSharedPhotoPrimaryButtonProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       dir="rtl"
-      className="inline-flex w-full cursor-pointer touch-manipulation items-center justify-center rounded-[18.41px] bg-v03-turquoise-300 font-simpler font-bold text-v03-green-900 transition hover:brightness-95"
+      className="inline-flex w-full touch-manipulation items-center justify-center rounded-[18.41px] bg-v03-turquoise-300 font-simpler font-bold text-v03-green-900 transition hover:brightness-95 disabled:cursor-wait disabled:opacity-60"
       style={{
         maxWidth: footer.buttonWidth,
         height: footer.buttonHeight,

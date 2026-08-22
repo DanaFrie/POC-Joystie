@@ -76,17 +76,24 @@ export async function validateChildDashboardToken(
       }
     }
 
-    if (!resolvedChildId) {
-      return {
-        isValid: false,
-        error: 'CHILD_NOT_READY',
-      };
-    }
-
     const parentGender =
       parent.gender === 'female' || parent.gender === 'male'
         ? parent.gender
         : undefined;
+
+    // Parent exists — allow wallet during onboarding even before a child doc is ready.
+    if (!resolvedChildId) {
+      logger.warn('Token parent ok but child not ready — allowing dashboard shell', {
+        parentId,
+      });
+      return {
+        isValid: true,
+        parentId,
+        childId: null,
+        challengeEnabled,
+        parentGender,
+      };
+    }
 
     return {
       isValid: true,

@@ -8,15 +8,15 @@ import { ChildSharedPhotoPreparingStep } from '@/components/onboarding/child/Chi
 import { ChildSharedPhotoReviewStep } from '@/components/onboarding/child/ChildSharedPhotoReviewStep';
 import { ChildSharedPhotoShareStep } from '@/components/onboarding/child/ChildSharedPhotoShareStep';
 import { defaultSelfieAssetForChild } from '@/lib/onboarding/defaultSelfieAsset';
-import { getChildBondingContext } from '@/lib/onboarding/childBondingContext';
+import { getChildBondingContext, setChildBondingContext } from '@/lib/onboarding/childBondingContext';
 import {
   readPersistedChildAgreedChange,
   writePersistedChildAgreedChange,
 } from '@/lib/onboarding/childFlowSession';
 import { generateSelfieImage, getSelfieTransport } from '@/lib/api/selfie';
-import { saveChildShareCard } from '@/lib/api/shareCard';
+import { ensureBondingChild, saveChildShareCard } from '@/lib/api/shareCard';
 import { shareImageFile } from '@/lib/share/shareImage';
-import { isDraftChildId } from '@/utils/url-encoding';
+import { generateChildUrl, isDraftChildId } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('SelfieMission');
@@ -82,6 +82,60 @@ export function ChildSelfieMissionFlow({
   const composedShareBlobRef = useRef<Blob | null>(null);
   const shareSignaledRef = useRef(false);
   const persistStartedRef = useRef(false);
+  const [accepting, setAccepting] = useState(false);
+
+  const resolveInviteId = useCallback(() => {
+    const ctx = getChildBondingContext();
+    const inviteFromUrl =
+      typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('invite')?.trim() || null
+        : null;
+    return ctx?.inviteId?.trim() || inviteFromUrl;
+  }, []);
+
+  /** Firestore child doc first — wallet / Storage need a real id before share. */
+  const ensureChildDoc = useCallback(async (): Promise<string | null> => {
+    const ctx = getChildBondingContext();
+    const resolvedParentId = parentId || ctx?.parentId;
+    if (!resolvedParentId) {
+      logger.warn('ensureChildDoc — no parentId');
+      return null;
+    }
+    const rawChildId = ctx?.childId;
+    const gender =
+      childGender === 'boy' || childGender === 'girl'
+        ? childGender
+        : ctx?.childGender === 'boy' || ctx?.childGender === 'girl'
+          ? ctx.childGender
+          : null;
+    const ensured = await ensureBondingChild({
+      parentId: resolvedParentId,
+      childId: isDraftChildId(rawChildId) ? null : rawChildId,
+      inviteId: resolveInviteId(),
+      childName: childName || ctx?.childName || null,
+      childGender: gender,
+    });
+    const latest = getChildBondingContext();
+    if (latest) {
+      setChildBondingContext({
+        ...latest,
+        childId: ensured.childId,
+        childGender: ensured.gender,
+      });
+    } else {
+      setChildBondingContext({
+        parentId: resolvedParentId,
+        childId: ensured.childId,
+        inviteId: resolveInviteId() || undefined,
+        childName: childName || 'ילד/ה',
+        childGender: ensured.gender,
+        parentName: parentName || ctx?.parentName || 'הורה',
+        parentGender: parentGender ?? ctx?.parentGender,
+      });
+    }
+    logger.log('Child doc ready', { childId: ensured.childId });
+    return ensured.childId;
+  }, [childGender, childName, parentGender, parentId, parentName, resolveInviteId]);
 
   const persistShareCard = useCallback(
     async (source: 'ai' | 'default', blob: Blob | null): Promise<boolean> => {
@@ -92,11 +146,7 @@ export function ChildSelfieMissionFlow({
         return false;
       }
       const rawChildId = ctx?.childId;
-      const inviteFromUrl =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search).get('invite')?.trim() || null
-          : null;
-      const inviteId = ctx?.inviteId?.trim() || inviteFromUrl;
+      const inviteId = resolveInviteId();
       try {
         const { composeShareCardWithHeadline } = await import(
           '@/lib/onboarding/composeShareCardWithHeadline'
@@ -108,15 +158,27 @@ export function ChildSelfieMissionFlow({
         });
         composedShareBlobRef.current = composed;
 
-        await saveChildShareCard({
+        const saved = await saveChildShareCard({
           parentId: resolvedParentId,
           childId: isDraftChildId(rawChildId) ? null : rawChildId,
           inviteId,
           source,
           imageBlob: composed,
+          childName: childName || ctx?.childName || null,
+          childGender:
+            childGender === 'boy' || childGender === 'girl'
+              ? childGender
+              : ctx?.childGender ?? null,
         });
+        if (saved.childId && !isDraftChildId(saved.childId)) {
+          const latest = getChildBondingContext();
+          if (latest) {
+            setChildBondingContext({ ...latest, childId: saved.childId });
+          }
+        }
         logger.log('Share card persisted', {
           source,
+          childId: saved.childId,
           hasInviteId: Boolean(inviteId),
           hasChangeText: Boolean(latchedChangeText?.trim()),
         });
@@ -126,21 +188,45 @@ export function ChildSelfieMissionFlow({
         return false;
       }
     },
-    [latchedChangeText, parentId, skipPhotoSrc],
+    [childGender, childName, latchedChangeText, parentId, resolveInviteId, skipPhotoSrc],
   );
 
-  const goToShareWithoutPhoto = useCallback(() => {
-    setUploadTask(null);
-    setServiceProgress(0);
-    if (photoSrcRef.current?.startsWith('blob:')) {
-      URL.revokeObjectURL(photoSrcRef.current);
+  const goToShareAfterChildReady = useCallback(async () => {
+    setAccepting(true);
+    try {
+      await ensureChildDoc();
+      setUploadTask(null);
+      setServiceProgress(0);
+      setPhase('share');
+    } catch (error) {
+      logger.error('ensureChildDoc failed on accept', error);
+    } finally {
+      setAccepting(false);
     }
-    photoBlobRef.current = null;
-    composedShareBlobRef.current = null;
-    photoSrcRef.current = skipPhotoSrc;
-    setPhotoSrc(skipPhotoSrc);
-    setPhase('share');
-  }, [skipPhotoSrc]);
+  }, [ensureChildDoc]);
+
+  const goToShareWithoutPhoto = useCallback(() => {
+    void (async () => {
+      setAccepting(true);
+      try {
+        await ensureChildDoc();
+        setUploadTask(null);
+        setServiceProgress(0);
+        if (photoSrcRef.current?.startsWith('blob:')) {
+          URL.revokeObjectURL(photoSrcRef.current);
+        }
+        photoBlobRef.current = null;
+        composedShareBlobRef.current = null;
+        photoSrcRef.current = skipPhotoSrc;
+        setPhotoSrc(skipPhotoSrc);
+        setPhase('share');
+      } catch (error) {
+        logger.error('ensureChildDoc failed on skip', error);
+      } finally {
+        setAccepting(false);
+      }
+    })();
+  }, [ensureChildDoc, skipPhotoSrc]);
 
   const resetToPattern = useCallback(() => {
     setUploadTask(null);
@@ -157,7 +243,7 @@ export function ChildSelfieMissionFlow({
     setPhase('pattern');
   }, []);
 
-  /** Persist to Storage first — only then signal parent (completion waits on cloud card). */
+  /** Persist to Storage after child doc exists — then signal parent. */
   useEffect(() => {
     if (phase !== 'share' || persistStartedRef.current) return;
     persistStartedRef.current = true;
@@ -293,7 +379,10 @@ export function ChildSelfieMissionFlow({
     return (
       <ChildSharedPhotoReviewStep
         photoSrc={photoSrc}
-        onLiked={() => setPhase('share')}
+        accepting={accepting}
+        onLiked={() => {
+          void goToShareAfterChildReady();
+        }}
         onRetake={resetToPattern}
         onSkip={goToShareWithoutPhoto}
       />
@@ -306,29 +395,19 @@ export function ChildSelfieMissionFlow({
       changeText={latchedChangeText}
       onShare={() => void handleShare()}
       onWallet={() => {
-        void (async () => {
-          const ctx = getChildBondingContext();
-          const resolvedParentId = parentId || ctx?.parentId;
-          if (!resolvedParentId) {
-            router.push('/dashboard/child');
-            return;
-          }
-          try {
-            const { resolveDashboardChildShareUrl } = await import(
-              '@/lib/api/bondingInvites'
-            );
-            const rawChildId = ctx?.childId;
-            const absolute = await resolveDashboardChildShareUrl({
-              parentId: resolvedParentId,
-              childId: isDraftChildId(rawChildId) ? null : rawChildId,
-            });
-            const path = new URL(absolute).pathname + new URL(absolute).search;
-            router.push(path);
-          } catch (error) {
-            logger.warn('Wallet URL resolve failed:', error);
-            router.push('/dashboard/child');
-          }
-        })();
+        const ctx = getChildBondingContext();
+        const resolvedParentId = parentId || ctx?.parentId;
+        if (!resolvedParentId) {
+          logger.warn('Wallet — no parentId; cannot open child dashboard');
+          return;
+        }
+        // Sync token URL — do not await Firestore enrichment (hangs / lands without token).
+        const rawChildId = ctx?.childId;
+        const childId =
+          rawChildId && !isDraftChildId(rawChildId) ? rawChildId : undefined;
+        const absolute = generateChildUrl(resolvedParentId, childId);
+        const path = new URL(absolute).pathname + new URL(absolute).search;
+        router.push(path);
       }}
     />
   );
