@@ -9,6 +9,7 @@ import {
   hasOnboardingChildrenDetails,
 } from '@/lib/onboarding/childrenDetails';
 import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 
 const FIRST_CHILD_INDEX_KEY = 'onboardingFirstChildIndex';
 
@@ -16,17 +17,22 @@ export type PickFirstChildOption = {
   name: string;
   hours: number;
   gender: 'boy' | 'girl';
+  age?: number;
 };
 
-/** Figma 12703:42220 placeholders when parent flow data is not in storage yet. */
+/** Placeholders when parent flow data is not in storage yet. */
 export const SIGNUP_PICK_CHILD_DEMO: PickFirstChildOption[] = [
-  { name: 'יואב', hours: 4, gender: 'boy' },
-  { name: 'שולמית', hours: 2, gender: 'girl' },
-  { name: 'דינה', hours: 1, gender: 'girl' },
+  { name: 'יעל', age: 7, hours: 3.5, gender: 'girl' },
+  {
+    name: PLACEHOLDER_CHILD.name,
+    age: PLACEHOLDER_CHILD.age,
+    hours: PLACEHOLDER_CHILD.hours,
+    gender: PLACEHOLDER_CHILD.gender,
+  },
 ];
 
 export function getSignupPickChildOptions(): PickFirstChildOption[] {
-  return buildPickFirstChildOptions() ?? SIGNUP_PICK_CHILD_DEMO;
+  return buildPickFirstChildOptions() ?? [];
 }
 
 export function hasPickFirstChildOptions(): boolean {

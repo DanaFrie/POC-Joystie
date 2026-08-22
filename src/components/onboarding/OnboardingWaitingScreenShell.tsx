@@ -1,10 +1,10 @@
 'use client';
 
-import { useLayoutEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { OnboardingMintGlow } from '@/components/onboarding/OnboardingMintGlow';
 import { SignupChildInviteWaitingMarqueeBleed } from '@/components/onboarding/signup/SignupChildInviteWaitingMarqueeBleed';
-import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
-import { V03_ACTIVE_CANVAS_HEIGHT_VAR } from '@/constants/funnel-vertical-layout';
+import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
+import { useFunnelLayoutReady } from '@/components/ui/FunnelViewportContext';
 
 type OnboardingWaitingScreenShellProps = {
   children: ReactNode;
@@ -18,15 +18,87 @@ type OnboardingWaitingScreenShellProps = {
    * backdrops are covered by the full-bleed fill). Kept for call-site compat.
    */
   skipMintGlow?: boolean;
+  /** Override fill color (e.g. dark loading). */
+  fillClassName?: string;
+  /**
+   * `funnel` — portal onto funnel root (escapes 375×812 scale / letterbox).
+   * `viewport` — fixed 100dvh (dashboard loaders).
+   * `auto` — viewport outside FunnelViewport; funnel when measured.
+   */
+  cover?: 'funnel' | 'viewport' | 'auto';
 };
 
-function viewportFillCanvasHeightPx(viewportHeight: number, scale: number): number {
-  return Math.max(1, Math.round(viewportHeight / Math.max(scale, 0.0001)));
+function WaitingLayers({
+  children,
+  showBackButton,
+  staticLayout,
+  fillClassName,
+  ariaBusy,
+}: {
+  children: ReactNode;
+  showBackButton?: ReactNode;
+  staticLayout: boolean;
+  fillClassName: string;
+  ariaBusy?: boolean;
+}) {
+  return (
+    <>
+      <div
+        className={`pointer-events-none absolute inset-0 z-0 ${fillClassName}`}
+        aria-hidden
+      />
+      {/* inset-0 grid — do not use funnel bleed math (wrong units outside scaled canvas). */}
+      <div
+        className="v03-onboarding-grid-layer pointer-events-none absolute inset-0 z-[1]"
+        aria-hidden
+      />
+      <OnboardingMintGlow className="z-[8]" fit="viewport" />
+      {showBackButton}
+      <div
+        className={`relative z-[10] h-full min-h-0 w-full overflow-hidden${staticLayout ? '' : ' v03-funnel-screen'}`}
+        aria-busy={ariaBusy || undefined}
+        aria-live="polite"
+      >
+        {children}
+      </div>
+      <SignupChildInviteWaitingMarqueeBleed />
+    </>
+  );
+}
+
+function WaitingFrame({
+  children,
+  fillClassName,
+  zIndex,
+  ariaBusy,
+  mode,
+}: {
+  children: ReactNode;
+  fillClassName: string;
+  zIndex: number;
+  ariaBusy?: boolean;
+  mode: 'fixed' | 'absolute';
+}) {
+  return (
+    <div
+      dir="rtl"
+      className={`${mode === 'fixed' ? 'fixed' : 'absolute'} inset-0 overflow-hidden ${fillClassName}`}
+      style={
+        mode === 'fixed'
+          ? { zIndex, width: '100%', height: '100svh' }
+          : { zIndex }
+      }
+      aria-label={ariaBusy ? 'טוען' : undefined}
+      role={ariaBusy ? 'status' : undefined}
+    >
+      {children}
+    </div>
+  );
 }
 
 /**
  * Shared waiting shell (empty / logo GIF, wordmark marquee, payment verify copy).
- * Full-bleed green + grid + mint ellipse; canvas locked to 100vh.
+ * Always paints true 100dvh — never the scaled 812 canvas (that letterboxes on S9+ / tall phones).
  */
 export function OnboardingWaitingScreenShell({
   children,
@@ -34,52 +106,48 @@ export function OnboardingWaitingScreenShell({
   zIndex = 10,
   ariaBusy,
   staticLayout = false,
+  fillClassName = 'bg-v03-green-900',
+  cover = 'auto',
 }: OnboardingWaitingScreenShellProps) {
-  const { viewportHeight, scale } = useFunnelViewportMetrics();
-  const fillCanvasHeightPx = viewportFillCanvasHeightPx(viewportHeight, scale);
+  const layoutReady = useFunnelLayoutReady();
+  const useFixedViewport =
+    cover === 'viewport' || (cover === 'auto' && !layoutReady);
 
-  useLayoutEffect(() => {
-    const roots = [
-      document.querySelector('[data-v03-funnel]'),
-      document.querySelector('[data-v03-funnel-canvas]'),
-    ].filter((n): n is HTMLElement => n instanceof HTMLElement);
-
-    if (roots.length === 0) return undefined;
-
-    for (const root of roots) {
-      root.style.setProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR, `${fillCanvasHeightPx}px`);
-    }
-    window.dispatchEvent(new Event('resize'));
-
-    return () => {
-      for (const root of roots) {
-        root.style.removeProperty(V03_ACTIVE_CANVAS_HEIGHT_VAR);
-      }
-      window.dispatchEvent(new Event('resize'));
-    };
-  }, [fillCanvasHeightPx]);
-
-  return (
-    <div
-      dir="rtl"
-      className="absolute inset-0 overflow-visible bg-v03-green-900"
-      style={{ zIndex }}
-      aria-busy={ariaBusy}
-      aria-live="polite"
+  const layers = (
+    <WaitingLayers
+      showBackButton={showBackButton}
+      staticLayout={staticLayout}
+      fillClassName={fillClassName}
+      ariaBusy={ariaBusy}
     >
-      <div className="pointer-events-none absolute inset-0 z-0 bg-v03-green-900" aria-hidden />
-      <div
-        className="v03-onboarding-grid-layer pointer-events-none fixed inset-0 z-[1]"
-        aria-hidden
-      />
-      <OnboardingMintGlow className="z-[8]" />
-      {showBackButton}
-      <div
-        className={`relative z-[10] h-full min-h-0 w-full overflow-hidden${staticLayout ? '' : ' v03-funnel-screen'}`}
+      {children}
+    </WaitingLayers>
+  );
+
+  if (useFixedViewport) {
+    return (
+      <WaitingFrame
+        mode="fixed"
+        fillClassName={fillClassName}
+        zIndex={Math.max(zIndex, 50)}
+        ariaBusy={ariaBusy}
       >
-        {children}
-      </div>
-      <SignupChildInviteWaitingMarqueeBleed />
-    </div>
+        {layers}
+      </WaitingFrame>
+    );
+  }
+
+  // Inside FunnelViewport: portal onto funnel root so transform:scale cannot letterbox us.
+  return (
+    <FunnelRootPortal>
+      <WaitingFrame
+        mode="absolute"
+        fillClassName={fillClassName}
+        zIndex={zIndex}
+        ariaBusy={ariaBusy}
+      >
+        {layers}
+      </WaitingFrame>
+    </FunnelRootPortal>
   );
 }

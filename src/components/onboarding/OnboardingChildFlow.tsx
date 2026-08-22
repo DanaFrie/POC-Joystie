@@ -179,6 +179,7 @@ function usesOwnFunnelBackground(step: ChildFlowStep): boolean {
     step === 'mintGlow' ||
     step === 'kingdomLanding' ||
     step === 'companionPick' ||
+    step === 'runToCastle' ||
     step === 'selfiePattern'
   );
 }

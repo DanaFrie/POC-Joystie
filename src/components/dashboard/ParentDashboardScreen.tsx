@@ -24,6 +24,7 @@ import type { ParentChallengeSetupResult } from '@/components/dashboard/challeng
 import type { ParentRedemptionConfirmResult } from '@/components/dashboard/challenge/ParentRedemptionConfirmOverlay';
 import { ChildCastleConfetti } from '@/components/onboarding/child/ChildCastleConfetti';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
+import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHero';
 
 import {
   PARENT_DASHBOARD_COLORS,
@@ -59,6 +60,7 @@ import { generateChildUrl } from '@/utils/url-encoding';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import type { FirestoreChallenge, WeeklyUpload } from '@/types/firestore';
 import { createContextLogger } from '@/utils/logger';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 
 const ParentChallengeSetupOverlay = nextDynamic(
   () =>
@@ -129,9 +131,9 @@ type ParentDashboardScreenProps = {
   onRefresh: () => Promise<void>;
 };
 
-/** Direct /dashboard loader — session restore uses the root SessionRouteWaiter instead. */
+/** Direct /dashboard loader — fixed 100dvh (never funnel 812 canvas). */
 export function DashboardLoadingState() {
-  return <FunnelRouteLoading />;
+  return <FunnelRouteLoading cover="viewport" />;
 }
 
 export function ParentDashboardScreen({
@@ -518,6 +520,10 @@ export function ParentDashboardScreen({
   }, [weeklyUpload?.status]);
 
   useEffect(() => {
+    preloadSubscriptionHero();
+  }, []);
+
+  useEffect(() => {
     if (initialSubscriptionOpen) setSubscriptionOpen(true);
   }, [initialSubscriptionOpen]);
 
@@ -535,7 +541,7 @@ export function ParentDashboardScreen({
   const closeSubscription = () => setSubscriptionOpen(false);
 
   const topBarBalance = dealSet ? weeklyBudget : dashboardData.weeklyTotals?.coinsEarned ?? 0;
-  const displayChildName = childName || 'יואב';
+  const displayChildName = childName || PLACEHOLDER_CHILD.name;
 
   return (
     <div
@@ -704,7 +710,7 @@ export function ParentDashboardScreen({
         <ParentChallengeSetupOverlay
           visible
           childName={displayChildName}
-          childGender={dashboardData.child.gender || 'boy'}
+          childGender={dashboardData.child.gender || PLACEHOLDER_CHILD.gender}
           estimatedDailyHours={estimatedDailyHours}
           isFirstDeal={completedChallenges.length === 0}
           onClose={() => setParentSetupOpen(false)}

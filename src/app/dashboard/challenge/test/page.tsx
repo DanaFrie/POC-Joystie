@@ -9,6 +9,7 @@ import {
 import {
   CHALLENGE_TEST_DEFAULTS,
 } from '@/lib/challenge/challengeTestFixtures';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 import { formatNumber } from '@/utils/formatting';
 
 /**
@@ -18,7 +19,7 @@ import { formatNumber } from '@/utils/formatting';
 export default function ParentChallengeSetupTestPage() {
   const [open, setOpen] = useState(true);
   const [lastResult, setLastResult] = useState<ParentChallengeSetupResult | null>(null);
-  const childName = 'יואב';
+  const childName = PLACEHOLDER_CHILD.name;
   const estimatedDailyHours = CHALLENGE_TEST_DEFAULTS.estimatedDailyHours;
 
   return (

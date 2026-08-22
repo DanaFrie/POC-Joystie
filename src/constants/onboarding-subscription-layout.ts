@@ -36,8 +36,10 @@ export const ONBOARDING_SUBSCRIPTION = {
     gradient:
       'linear-gradient(180deg, rgba(47, 47, 47, 0) 25.37%, rgba(47, 47, 47, 0.5) 39.86%)',
     /** Figma fill: `-20.25px -24.304px / 110.8% 100.362%` (not cover). */
-    imagePosition: '-20.25px -24.304px',
-    imageSize: '110.8% 100.362%',
+    imagePositionX: -20.25,
+    imagePositionY: -24.304,
+    imageWidth: '110.8%',
+    imageHeight: '100.362%',
     /** Boost mountain color to match vibrant art (Figma export is flatter). */
     imageFilter: 'saturate(1.75) contrast(1.08)',
     ellipse: {

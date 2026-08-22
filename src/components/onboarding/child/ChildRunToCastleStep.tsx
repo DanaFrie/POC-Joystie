@@ -7,22 +7,26 @@ import { ChildCastleTiltCard } from '@/components/onboarding/child/ChildCastleTi
 import { ChildContinueGlowTapButton } from '@/components/onboarding/child/ChildContinueGlowButton';
 import { ChildSpeechBubble } from '@/components/onboarding/child/ChildSpeechBubble';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
+import { FunnelRootPortal } from '@/components/ui/FunnelRootPortal';
 import { FunnelStepRoot } from '@/components/ui/funnel-layout';
-import {
-  funnelProportionalTopPx,
-  useFunnelFullBleed,
-  useFunnelViewportMetrics,
-} from '@/components/ui/FunnelViewportContext';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import {
   CHILD_CASTLE_INTERIOR_CARDS,
   CHILD_RUN_TO_CASTLE,
   childCastleInteriorCardLayout,
 } from '@/constants/child-post-game-layout';
+import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
 type RunPhase = 'idle' | 'playing' | 'dissolve' | 'interior' | 'confirm' | 'celebration';
 
-/** Run-to-castle video → castle interior card picker. */
+/**
+ * Run-to-castle video → castle interior card picker.
+ *
+ * One fixed full-screen layer (portaled above the scaled funnel canvas):
+ * - Artboard height ≥ viewport/scale so media fills 100vh after width-fit scale
+ * - Video + bubble share that artboard so backdrop-filter blurs the media again
+ */
 export function ChildRunToCastleStep({
   childName,
   childGender = 'boy',
@@ -32,7 +36,6 @@ export function ChildRunToCastleStep({
   childName: string;
   childGender?: 'boy' | 'girl';
   onContinue?: () => void;
-  /** Fired when child ticks confirm on the chosen change — unlocks parent reviewChange. */
   onChangeConfirmed?: (changeText: string) => void;
 }) {
   const layout = CHILD_RUN_TO_CASTLE;
@@ -40,24 +43,13 @@ export function ChildRunToCastleStep({
   const glow = layout.glowButton;
   const header = layout.header;
   const cards = layout.cards;
-  const { usableCanvasHeightPx } = useFunnelViewportMetrics();
-  const mediaBleedStyle = useFunnelFullBleed();
-  const scaleY = (figmaY: number) => funnelProportionalTopPx(figmaY, usableCanvasHeightPx);
+  const { viewportWidth, viewportHeight } = useFunnelViewportMetrics();
 
-  const headerTopPx = scaleY(header.top);
-  const headerHeightPx = scaleY(header.height);
-  const bubbleTopPx = scaleY(bubble.top);
-  const glowTopPx = scaleY(glow.top);
-
-  const scaledInteriorCards = useMemo(
-    () =>
-      CHILD_CASTLE_INTERIOR_CARDS.map((card) => ({
-        card,
-        placeTopPx: scaleY(card.placeTop),
-        widthPx: card.width,
-        minHeightPx: card.height,
-      })),
-    [usableCanvasHeightPx]
+  const uiScale = Math.max(viewportWidth / V03_SCREEN_WIDTH, 0.0001);
+  /** Canvas-space height that maps to at least one full viewport after scale. */
+  const artboardHeightPx = Math.max(
+    V03_SCREEN_HEIGHT,
+    Math.ceil(viewportHeight / uiScale)
   );
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -155,182 +147,216 @@ export function ChildRunToCastleStep({
   const uiTransition = `opacity ${layout.uiFadeMs}ms ease-out`;
   const headerTransition = `opacity ${layout.headerFadeMs}ms ease-out`;
 
+  const scaledInteriorCards = useMemo(
+    () =>
+      CHILD_CASTLE_INTERIOR_CARDS.map((card) => ({
+        card,
+        placeTopPx: card.placeTop,
+        widthPx: card.width,
+        minHeightPx: card.height,
+      })),
+    []
+  );
+
   return (
-    <FunnelStepRoot
-      fitViewport
-      aria-label="ריצה לארמון"
-      className="overflow-hidden bg-transparent"
-    >
-      <video
-        ref={videoRef}
-        src={CHILD_ONBOARDING_ASSETS.doriRunToCastle}
-        muted
-        playsInline
-        preload="auto"
-        onEnded={handleVideoEnded}
-        className="pointer-events-none absolute z-[1] object-cover object-top"
-        style={{
-          ...mediaBleedStyle,
-          opacity: videoOpacity,
-          transition: phase === 'dissolve' ? dissolveTransition : undefined,
-        }}
-        aria-hidden
-      />
+    <>
+      <FunnelStepRoot fillViewport aria-hidden className="pointer-events-none opacity-0">
+        {null}
+      </FunnelStepRoot>
 
-      <OnboardingLazyImage
-        src={CHILD_ONBOARDING_ASSETS.doriCastle}
-        alt=""
-        className="pointer-events-none absolute z-[2] object-cover object-top"
-        style={{
-          ...mediaBleedStyle,
-          opacity: castleOpacity,
-          transition: dissolveTransition,
-        }}
-        priority
-      />
-
-      {phase === 'interior' || phase === 'confirm' ? (
-        <>
-          <header
-            className="absolute left-0 z-[15] flex w-full items-center justify-center"
+      <FunnelRootPortal>
+        <div
+          className="fixed inset-0 z-[15] overflow-hidden bg-[#092125]"
+          aria-label="ריצה לארמון"
+        >
+          <div
+            className="absolute left-0 top-0 origin-top-left"
             style={{
-              top: headerTopPx,
-              width: header.width,
-              height: headerHeightPx,
-              padding: header.padding,
-              gap: header.gap,
-              background: header.background,
-              opacity: headerOpacity,
-              transition: headerTransition,
+              width: V03_SCREEN_WIDTH,
+              height: artboardHeightPx,
+              transform: `scale(${uiScale})`,
             }}
           >
-            <p
-              className="shrink-0 text-center font-simpler font-black text-white"
+            {/* Media inside the same scaled tree as the bubble → backdrop-filter works. */}
+            <video
+              ref={videoRef}
+              src={CHILD_ONBOARDING_ASSETS.doriRunToCastle}
+              muted
+              playsInline
+              preload="auto"
+              onEnded={handleVideoEnded}
+              className="pointer-events-none absolute left-0 top-0 z-0 object-cover object-top"
               style={{
-                width: header.textWidth,
-                fontSize: header.fontSize,
-                lineHeight: header.lineHeight,
-                letterSpacing: `${header.letterSpacing}px`,
+                width: V03_SCREEN_WIDTH,
+                height: artboardHeightPx,
+                opacity: videoOpacity,
+                transition: phase === 'dissolve' ? dissolveTransition : undefined,
               }}
-            >
-              {`${childName}, זה הזמן לבחור `}
-              <span className="text-[#00FFB3]">שינוי אחד</span>{' '}
-              <span className="text-white">שנתחיל ליישם יחד!</span>
-            </p>
-          </header>
+            />
+            <OnboardingLazyImage
+              src={CHILD_ONBOARDING_ASSETS.doriCastle}
+              alt=""
+              className="pointer-events-none absolute left-0 top-0 z-0 object-cover object-top"
+              style={{
+                width: V03_SCREEN_WIDTH,
+                height: artboardHeightPx,
+                opacity: castleOpacity,
+                transition: dissolveTransition,
+              }}
+              priority
+            />
 
-          <div className="absolute inset-0" style={{ zIndex: cards.zIndex }}>
-            {scaledInteriorCards.map(({ card, placeTopPx, widthPx, minHeightPx }, index) =>
-              index < revealedCardCount ? (
-                <div
-                  key={card.id}
-                  className="absolute"
+            {phase === 'interior' || phase === 'confirm' ? (
+              <>
+                <header
+                  className="absolute left-0 z-[15] flex w-full items-center justify-center"
                   style={{
-                    top: placeTopPx,
-                    left: card.placeLeft,
-                    width: widthPx,
-                    minHeight: minHeightPx,
-                    transform: `rotate(${card.placeRotateDeg}deg)`,
-                    transformOrigin: 'top left',
+                    top: header.top,
+                    width: header.width,
+                    height: header.height,
+                    padding: header.padding,
+                    gap: header.gap,
+                    background: header.background,
+                    opacity: headerOpacity,
+                    transition: headerTransition,
                   }}
                 >
-                  <div
-                    className="castle-card-enter"
-                    style={{ animationDelay: `${index * layout.cardRevealStaggerMs}ms` }}
+                  <p
+                    className="shrink-0 text-center font-simpler font-black text-white"
+                    style={{
+                      width: header.textWidth,
+                      fontSize: header.fontSize,
+                      lineHeight: header.lineHeight,
+                      letterSpacing: `${header.letterSpacing}px`,
+                    }}
                   >
-                    <div
-                      className="castle-card-float relative"
-                      style={{ animationDelay: `${index * 0.4}s` }}
-                    >
-                      <ChildCastleTiltCard
-                        variant="slider"
-                        layout={{
-                          ...childCastleInteriorCardLayout(card),
+                    {`${childName}, זה הזמן לבחור `}
+                    <span className="text-[#00FFB3]">שינוי אחד</span>{' '}
+                    <span className="text-white">שנתחיל ליישם יחד!</span>
+                  </p>
+                </header>
+
+                <div className="absolute inset-0" style={{ zIndex: cards.zIndex }}>
+                  {scaledInteriorCards.map(({ card, placeTopPx, widthPx, minHeightPx }, index) =>
+                    index < revealedCardCount ? (
+                      <div
+                        key={card.id}
+                        className="absolute"
+                        style={{
+                          top: placeTopPx,
+                          left: card.placeLeft,
                           width: widthPx,
-                          height: minHeightPx,
+                          minHeight: minHeightPx,
+                          transform: `rotate(${card.placeRotateDeg}deg)`,
+                          transformOrigin: 'top left',
                         }}
-                        title={card.title}
-                        onSelect={() => handleSelectCard(card.id, card.title)}
-                      />
-                    </div>
-                  </div>
+                      >
+                        <div
+                          className="castle-card-enter"
+                          style={{
+                            animationDelay: `${index * layout.cardRevealStaggerMs}ms`,
+                          }}
+                        >
+                          <div
+                            className="castle-card-float relative"
+                            style={{ animationDelay: `${index * 0.4}s` }}
+                          >
+                            <ChildCastleTiltCard
+                              variant="slider"
+                              layout={{
+                                ...childCastleInteriorCardLayout(card),
+                                width: widthPx,
+                                height: minHeightPx,
+                              }}
+                              title={card.title}
+                              onSelect={() => handleSelectCard(card.id, card.title)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : null
+                  )}
                 </div>
-              ) : null
-            )}
-          </div>
-        </>
-      ) : null}
+              </>
+            ) : null}
 
-      <ChildCastleChangeConfirmOverlay
-        changeTitle={selectedTitle}
-        childGender={childGender}
-        visible={phase === 'confirm' && selectedId != null}
-        onConfirm={handleConfirmChange}
-        onDecline={handleDeclineChange}
-      />
+            <ChildCastleChangeConfirmOverlay
+              changeTitle={selectedTitle}
+              childGender={childGender}
+              visible={phase === 'confirm' && selectedId != null}
+              onConfirm={handleConfirmChange}
+              onDecline={handleDeclineChange}
+            />
 
-      <ChildCastleChangeCelebrationOverlay
-        childGender={childGender}
-        visible={phase === 'celebration'}
-        onComplete={handleCelebrationComplete}
-      />
+            <ChildCastleChangeCelebrationOverlay
+              childGender={childGender}
+              visible={phase === 'celebration'}
+              onComplete={handleCelebrationComplete}
+            />
 
-      <div
-        className="pointer-events-none absolute inset-0 z-[20]"
-        style={{
-          opacity: uiVisible ? 1 : 0,
-          transition: uiTransition,
-        }}
-        aria-hidden={!uiVisible}
-      >
-        <div className={phase === 'idle' ? 'pointer-events-auto' : 'pointer-events-none'}>
-          <ChildContinueGlowTapButton left={glow.left} top={glowTopPx} onClick={handleTap} />
-
-          <ChildSpeechBubble
-            top={bubbleTopPx}
-            left={bubble.left}
-            width={bubble.width}
-            tailLeft={bubble.tailLeft}
-            tailBorderOverlap={bubble.tailBorderOverlap}
-            paddingTop={bubble.paddingTop}
-            paddingBottom={bubble.paddingBottom}
-            appearance={{
-              paddingLeft: bubble.paddingLeft,
-              paddingRight: bubble.paddingRight,
-              gap: 0,
-              borderRadius: bubble.borderRadius,
-              border: bubble.border,
-              background: bubble.background,
-              backdropBlur: bubble.backdropBlur,
-              boxShadow: bubble.boxShadow,
-              useBorder: true,
-            }}
-          >
-            <p
-              className="w-full flex-[1_0_0] text-center font-simpler font-normal text-white"
+            <div
+              className="pointer-events-none absolute inset-0 z-[20]"
               style={{
-                fontSize: 16,
-                lineHeight: '128%',
-                letterSpacing: '-0.32px',
+                opacity: uiVisible ? 1 : 0,
+                transition: uiTransition,
               }}
+              aria-hidden={!uiVisible}
             >
-              {`${childName}, זה הזמן להיכנס לארמון ההחלטות:`}
-              <br />
-              <span
-                className="font-simpler text-white"
-                style={{
-                  fontSize: 16,
-                  fontWeight: 600,
-                  lineHeight: '128%',
-                  letterSpacing: '-0.32px',
-                }}
-              >
-                שם נבחר שינוי לחיים!
-              </span>
-            </p>
-          </ChildSpeechBubble>
+              <div className={phase === 'idle' ? 'pointer-events-auto' : 'pointer-events-none'}>
+                <ChildContinueGlowTapButton
+                  left={glow.left}
+                  top={glow.top}
+                  onClick={handleTap}
+                />
+
+                <ChildSpeechBubble
+                  top={bubble.top}
+                  left={bubble.left}
+                  width={bubble.width}
+                  tailLeft={bubble.tailLeft}
+                  tailBorderOverlap={bubble.tailBorderOverlap}
+                  paddingTop={bubble.paddingTop}
+                  paddingBottom={bubble.paddingBottom}
+                  appearance={{
+                    paddingLeft: bubble.paddingLeft,
+                    paddingRight: bubble.paddingRight,
+                    gap: 0,
+                    borderRadius: bubble.borderRadius,
+                    border: bubble.border,
+                    background: bubble.background,
+                    backdropBlur: bubble.backdropBlur,
+                    boxShadow: bubble.boxShadow,
+                    useBorder: true,
+                  }}
+                >
+                  <p
+                    className="w-full flex-[1_0_0] text-center font-simpler font-normal text-white"
+                    style={{
+                      fontSize: 16,
+                      lineHeight: '128%',
+                      letterSpacing: '-0.32px',
+                    }}
+                  >
+                    {`${childName}, זה הזמן להיכנס לארמון ההחלטות:`}
+                    <br />
+                    <span
+                      className="font-simpler text-white"
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        lineHeight: '128%',
+                        letterSpacing: '-0.32px',
+                      }}
+                    >
+                      שם נבחר שינוי לחיים!
+                    </span>
+                  </p>
+                </ChildSpeechBubble>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </FunnelStepRoot>
+      </FunnelRootPortal>
+    </>
   );
 }

@@ -12,10 +12,9 @@ import {
 } from '@/lib/onboarding/parentFlowSession';
 import {
   clearOnboardingChildrenSession,
-  hydrateOnboardingChildrenFromChildrenDocs,
-  hydrateOnboardingChildrenFromUser,
+  hydrateSessionChildrenFromAccount,
 } from '@/lib/onboarding/hydrateChildrenFromUser';
-import { getOnboardingChildrenDetails } from '@/lib/onboarding/childrenDetails';
+import { getOnboardingChildrenDetails, hasOnboardingChildrenDetails } from '@/lib/onboarding/childrenDetails';
 import {
   markOnboardingAccountCreated,
   syncFunnelKidsAgesToUser,
@@ -168,30 +167,49 @@ export async function resolveAuthenticatedUserDestination(
   }
 
   if (kind === 'complete') {
-    const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
-    if (!hydrated) {
-      clearOnboardingChildrenSession();
-      if (children?.length) {
-        hydrateOnboardingChildrenFromChildrenDocs(children);
-      }
-    }
+    await hydrateSessionChildrenFromAccount(resolvedUser, children);
     setResumeKind('complete');
     return { path: '/dashboard', kind, user: resolvedUser };
   }
 
-  // Logged-in visit to /login or /onboarding: incomplete → «איך מתחילים?» (signupIntro).
-  // Do not reset an in-progress funnel (share / waiting / kids) — hard refresh
-  // used to wipe session kids and bounce back to the intro carousel.
+  // Logged-in visit to /login or /onboarding.
+  // v0.2 login: start kids collection from the beginning (not pick-child placeholders).
+  // v0.3 incomplete: «איך מתחילים?» (signupIntro) unless an in-progress funnel step is saved.
   if (source === 'login' || source === 'onboarding_gate') {
     const savedStep =
       typeof window !== 'undefined'
         ? sessionStorage.getItem(FLOW_STEP_STORAGE_KEY)
         : null;
+
+    if (kind === 'v02_legacy') {
+      const keepKidsCollection =
+        source === 'onboarding_gate' &&
+        hasOnboardingChildrenDetails() &&
+        isInProgressOnboardingFunnelStep(savedStep);
+      if (keepKidsCollection) {
+        markOnboardingAccountCreated();
+        setResumeKind('v02_legacy');
+        logger.log('Onboarding gate — keep v02 kids collection', {
+          uid: resolvedUser.id,
+          step: savedStep,
+        });
+        return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
+      }
+      clearOnboardingChildrenSession();
+      prepareV02LegacyKidsCollectionStart();
+      logger.log('v02 login → onboarding from start (phoneCount)', {
+        uid: resolvedUser.id,
+        source,
+      });
+      return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
+    }
+
     if (source === 'onboarding_gate' && isInProgressOnboardingFunnelStep(savedStep)) {
       markOnboardingAccountCreated();
-      setResumeKind(
-        kind === 'v03_resume' || kind === 'v02_legacy' ? kind : 'fresh'
-      );
+      if (!hasOnboardingChildrenDetails()) {
+        await hydrateSessionChildrenFromAccount(resolvedUser, children);
+      }
+      setResumeKind(kind === 'v03_resume' ? kind : 'fresh');
       logger.log('Onboarding gate — keep in-progress funnel', {
         uid: resolvedUser.id,
         step: savedStep,
@@ -201,12 +219,9 @@ export async function resolveAuthenticatedUserDestination(
     }
 
     clearOnboardingChildrenSession();
-    const hydrated = hydrateOnboardingChildrenFromUser(resolvedUser);
-    if (!hydrated && children?.length) {
-      hydrateOnboardingChildrenFromChildrenDocs(children);
-    }
+    await hydrateSessionChildrenFromAccount(resolvedUser, children);
     const resumeKind: UserOnboardingRouteKind =
-      kind === 'v03_resume' || kind === 'v02_legacy' ? kind : 'fresh';
+      kind === 'v03_resume' ? kind : 'fresh';
     prepareOnboardingIntroReturn(resumeKind);
     logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
       uid: resolvedUser.id,
@@ -219,10 +234,8 @@ export async function resolveAuthenticatedUserDestination(
   if (kind === 'v03_resume' || (isSignupExisting && appliedFunnelKids)) {
     if (!appliedFunnelKids) {
       clearOnboardingChildrenSession();
-      hydrateOnboardingChildrenFromUser(resolvedUser);
-    } else {
-      hydrateOnboardingChildrenFromUser(resolvedUser);
     }
+    await hydrateSessionChildrenFromAccount(resolvedUser, children);
     // Mid signup-existing with new kids → איך זה עובד (pick child later).
     prepareOnboardingIntroReturn(
       appliedFunnelKids || kind === 'v03_resume' ? 'v03_resume' : kind
@@ -241,16 +254,26 @@ export async function resolveAuthenticatedUserDestination(
           const kidsAges = await syncFunnelKidsAgesToUser(user.id);
           if (kidsAges?.length) {
             resolvedUser = { ...user, kidsAges };
+            prepareOnboardingIntroReturn('v03_resume');
+            logger.log('v02 signup → wrote session kids to profile', {
+              uid: user.id,
+              kidsCount: kidsAges.length,
+            });
+            return { path: '/onboarding', kind: 'v03_resume', user: resolvedUser };
           }
         } catch (error) {
           logger.warn('Could not sync funnel kidsAges for v02 signup resume', error);
         }
+      } else {
+        prepareOnboardingIntroReturn('v03_resume');
+        return { path: '/onboarding', kind: 'v03_resume', user: resolvedUser };
       }
-      prepareOnboardingIntroReturn('v02_legacy');
+      prepareV02LegacyKidsCollectionStart();
       return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
     }
 
-    setResumeKind('v02_legacy');
+    clearOnboardingChildrenSession();
+    prepareV02LegacyKidsCollectionStart();
     return { path: '/onboarding', kind: 'v02_legacy', user: resolvedUser };
   }
 

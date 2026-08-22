@@ -27,7 +27,11 @@ function getCreds() {
 }
 
 function getBaseUrl(): string {
-  return baseUrlSecret.value() || 'https://joystie.com';
+  let raw = (baseUrlSecret.value() || 'https://joystie.com').trim().replace(/\/$/, '');
+  if (!/^https?:\/\//i.test(raw)) {
+    raw = `https://${raw}`;
+  }
+  return raw;
 }
 
 /** Cardcom must POST to a stable HTTPS endpoint (Cloud Function URL). */

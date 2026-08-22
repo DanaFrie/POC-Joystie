@@ -41,6 +41,7 @@ import {
   isParentChallengeSet,
   isV03DealLive,
   parentLabelFromGender,
+  parentWalletGateHeadline,
 } from '@/lib/challenge/v03DashboardChallenge';
 import { remainingOnCard } from '@/lib/challenge/v03ChallengeMath';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
@@ -48,6 +49,7 @@ import { formatNumber } from '@/utils/formatting';
 import { getChildShareCardAccess } from '@/lib/api/shareCard';
 import { areAllDaysChecked } from '@/lib/onboarding/changeDayChecks';
 import { createContextLogger } from '@/utils/logger';
+import { PLACEHOLDER_CHILD } from '@/constants/placeholder-child';
 
 const ChildChallengeSetupOverlay = nextDynamic(
   () =>
@@ -98,14 +100,10 @@ type ChildDashboardScreenProps = {
   dashboardToken?: string | null;
 };
 
-function parentDisplayName(parent: DashboardState['parent']): string {
-  return parentLabelFromGender(parent.gender);
-}
-
-function parentWalletHeadline(parent: DashboardState['parent']): string {
-  const label = parentDisplayName(parent);
-  const verb = parent.gender === 'female' ? 'תפתח' : 'יפתח';
-  return `מחכים ש${label} ${verb} גישה לארנק`;
+function resolveParentGender(
+  gender: DashboardState['parent']['gender']
+): 'male' | 'female' {
+  return gender === 'female' ? 'female' : 'male';
 }
 
 function sundayIndexFromDayName(name: string): number | null {
@@ -133,10 +131,11 @@ export function ChildDashboardScreen({
   accessMode: _accessMode,
   dashboardToken = null,
 }: ChildDashboardScreenProps) {
-  const childName = dashboardData.child.name || 'יואב';
+  const childName = dashboardData.child.name || PLACEHOLDER_CHILD.name;
   const comeBackVerb = dashboardData.child.gender === 'girl' ? 'חזרי' : 'חזור';
-  const parentLabel = parentDisplayName(dashboardData.parent);
-  const gateHeadline = parentWalletHeadline(dashboardData.parent);
+  const parentGender = resolveParentGender(dashboardData.parent.gender);
+  const parentLabel = parentLabelFromGender(parentGender);
+  const gateHeadline = parentWalletGateHeadline(parentGender);
   const weeklyEarned = dashboardData.weeklyTotals?.coinsEarned ?? 0;
 
   const { challenge, challengeNotStarted } = dashboardData;
@@ -515,7 +514,7 @@ export function ChildDashboardScreen({
           visible
           childName={childName}
           parentLabel={parentLabel}
-          childGender={dashboardData.child.gender || 'boy'}
+          childGender={dashboardData.child.gender || PLACEHOLDER_CHILD.gender}
           weeklyBudget={weeklyBudget}
           hourlyRate={hourlyRate}
           onClose={() => setSetupOpen(false)}

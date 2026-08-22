@@ -13,9 +13,18 @@ import {
 import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
 import { httpsCallable } from 'firebase/functions';
 import { createContextLogger } from '@/utils/logger';
-import { INVITE_COMPLETED_ERROR_MESSAGE } from '@/lib/onboarding/inviteAccessErrors';
+import { INVITE_COMPLETED_ERROR_MESSAGE, INVITE_EXPIRED_ERROR_MESSAGE } from '@/lib/onboarding/inviteAccessErrors';
 
 const logger = createContextLogger('BondingAPI');
+
+function shouldFallbackFromRtdb(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message === INVITE_COMPLETED_ERROR_MESSAGE || message === INVITE_EXPIRED_ERROR_MESSAGE) {
+    return false;
+  }
+  if (/completed|expired/i.test(message)) return false;
+  return true;
+}
 
 export interface RecordBondingInviteInput {
   childId?: string;
@@ -44,9 +53,12 @@ export interface ResolveBondingInviteResult {
 export async function resolveBondingInvite(
   inviteId: string
 ): Promise<ResolveBondingInviteResult> {
-  if (useRtdbBondingInvites()) {
-    logger.log('resolveBondingInvite (RTDB)', { inviteId });
-    return resolveLocalBondingInvite(inviteId);
+  logger.log('resolveBondingInvite (RTDB)', { inviteId });
+  try {
+    return await resolveLocalBondingInvite(inviteId);
+  } catch (error) {
+    if (!shouldFallbackFromRtdb(error)) throw error;
+    logger.warn('resolveBondingInvite RTDB failed, trying callable', error);
   }
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<{ inviteId: string }, ResolveBondingInviteResult>(
@@ -61,9 +73,11 @@ export async function resolveBondingInvite(
 export async function recordBondingInvite(
   input: RecordBondingInviteInput
 ): Promise<RecordBondingInviteResult> {
-  if (useRtdbBondingInvites()) {
-    logger.log('recordBondingInvite (RTDB)', { childId: input.childId });
-    return recordLocalBondingInvite(input);
+  logger.log('recordBondingInvite (RTDB)', { childId: input.childId });
+  try {
+    return await recordLocalBondingInvite(input);
+  } catch (error) {
+    logger.warn('recordBondingInvite RTDB failed, trying callable', error);
   }
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<RecordBondingInviteInput, RecordBondingInviteResult>(

@@ -1,10 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import {
-  useFunnelFullBleed,
-  useFunnelViewportMetrics,
-} from '@/components/ui/FunnelViewportContext';
+import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import { CHILD_SELFIE_ARTBOARD } from '@/components/onboarding/child/childSelfieArtboard';
 import { V03_SCREEN_HEIGHT, V03_SCREEN_WIDTH } from '@/constants/v03-screen';
 
@@ -17,18 +14,13 @@ export function useSelfieCoverLayout(): {
   coverStyle: CSSProperties;
   artboardStyle: CSSProperties;
 } {
-  const coverStyle = useFunnelFullBleed();
   const { designWidth, scale, viewportHeight, canvasHeightPx } =
     useFunnelViewportMetrics();
 
-  const coverWidth =
-    typeof coverStyle.width === 'number' ? coverStyle.width : designWidth;
+  const coverWidth = designWidth;
   // Always at least one viewport tall in canvas space (100vh).
   const viewportCanvasHeight = viewportHeight / Math.max(scale, 0.0001);
-  const coverHeight = Math.max(
-    typeof coverStyle.height === 'number' ? coverStyle.height : canvasHeightPx,
-    viewportCanvasHeight
-  );
+  const coverHeight = Math.max(canvasHeightPx, viewportCanvasHeight);
 
   const coverScale = Math.max(
     coverWidth / V03_SCREEN_WIDTH,
@@ -49,7 +41,7 @@ export function useSelfieCoverLayout(): {
 
   return {
     coverStyle: {
-      ...coverStyle,
+      position: 'absolute',
       top: 0,
       left: 0,
       width: coverWidth,

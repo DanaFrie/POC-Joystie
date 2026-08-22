@@ -13,7 +13,7 @@ export function ChildDoriTransitionStep({ onComplete }: { onComplete: () => void
   }, [onComplete]);
 
   return (
-    <FunnelStepRoot fitViewport aria-hidden className="overflow-hidden bg-transparent">
+    <FunnelStepRoot fillViewport aria-hidden className="overflow-hidden bg-v03-green-900">
       <OnboardingMintGlow />
     </FunnelStepRoot>
   );

@@ -113,20 +113,17 @@ export function hydrateOnboardingChildrenFromUser(user: FirestoreUser): boolean 
   }
 
   const children: OnboardingChildDraft[] = [];
+  const screenTimes: OnboardingChildScreenTime[] = [];
   for (const entry of kids) {
     const draft = kidEntryToDraft(entry as UserKidAgeScreenTime | string);
-    if (draft) {
-      children.push(draft);
-    }
+    if (!draft?.name.trim()) continue;
+    children.push(draft);
+    screenTimes.push(kidEntryToScreenTime(entry as UserKidAgeScreenTime | string, draft));
   }
 
   if (!children.length) {
     return false;
   }
-
-  const screenTimes = children.map((child, index) =>
-    kidEntryToScreenTime(kids[index] as UserKidAgeScreenTime | string, child)
-  );
 
   return applyHydratedChildren(children, screenTimes);
 }
@@ -146,7 +143,7 @@ export function hydrateOnboardingChildrenFromChildrenDocs(
 
   for (let i = 0; i < kidsAges.length; i++) {
     const draft = kidEntryToDraft(kidsAges[i]);
-    if (!draft) continue;
+    if (!draft?.name.trim()) continue;
     children.push(draft);
     screenTimes.push(kidEntryToScreenTime(kidsAges[i], draft));
   }
@@ -156,6 +153,30 @@ export function hydrateOnboardingChildrenFromChildrenDocs(
     screenTimes,
     childrenDocs.map((c) => c.id)
   );
+}
+
+/**
+ * Named kidsAges first; otherwise `children` docs. Never seeds Figma placeholders.
+ */
+export async function hydrateSessionChildrenFromAccount(
+  user: FirestoreUser,
+  childrenDocs?: FirestoreChild[] | null
+): Promise<boolean> {
+  if (hydrateOnboardingChildrenFromUser(user)) return true;
+
+  let docs = childrenDocs;
+  if (docs == null) {
+    try {
+      const { getChildrenByParent } = await import('@/lib/api/children');
+      docs = await getChildrenByParent(user.id);
+    } catch {
+      docs = [];
+    }
+  }
+  if (docs.length) {
+    return hydrateOnboardingChildrenFromChildrenDocs(docs);
+  }
+  return false;
 }
 
 /** Drop local funnel child drafts so a signup-existing / v0.2 path cannot overwrite Firestore. */

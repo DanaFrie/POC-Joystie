@@ -21,7 +21,7 @@ export function LandingFeatureDonexCelebrate() {
             dir="rtl"
           >
             <p className="font-simpler text-[25.774px] font-black leading-normal tracking-[-0.387px]">
-              יואב, אתה אלוףףף!
+              אלון, אתה אלוףףף!
             </p>
             <p className="w-full font-simpler text-[20.619px] font-normal leading-[1.2] tracking-[-0.309px]">
               אתה ברצף מטורף של שלושה ימים של עמידה ביעדים!

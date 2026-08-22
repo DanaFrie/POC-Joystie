@@ -12,6 +12,8 @@ export type ChildDashboardTokenAccess = {
   childId?: string | null;
   /** Parent paid / unlocked — drives challenge UI on child dashboard. */
   challengeEnabled?: boolean;
+  /** Parent אמא/אבא gender for child-facing copy. */
+  parentGender?: 'male' | 'female';
 };
 
 /**
@@ -81,11 +83,17 @@ export async function validateChildDashboardToken(
       };
     }
 
+    const parentGender =
+      parent.gender === 'female' || parent.gender === 'male'
+        ? parent.gender
+        : undefined;
+
     return {
       isValid: true,
       parentId,
       childId: resolvedChildId,
       challengeEnabled,
+      parentGender,
     };
   } catch (error) {
     logger.error('validateChildDashboardToken failed:', error);

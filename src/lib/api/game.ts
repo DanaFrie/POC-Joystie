@@ -79,9 +79,11 @@ export interface EndOnboardingGameRoomResult {
 export async function createGameRoom(
   input: CreateGameRoomInput = {}
 ): Promise<CreateGameRoomResult> {
-  if (useLocalGameRooms()) {
+  try {
     logger.log('createGameRoom (local RTDB)', input);
-    return createGameRoomLocal(input);
+    return await createGameRoomLocal(input);
+  } catch (error) {
+    logger.warn('createGameRoom RTDB failed, trying callable', error);
   }
   const functions = await getFunctionsInstance();
   const fn = httpsCallable<CreateGameRoomInput, CreateGameRoomResult>(

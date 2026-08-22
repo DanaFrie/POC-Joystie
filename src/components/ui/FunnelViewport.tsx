@@ -275,15 +275,19 @@ export function FunnelViewport({
 
   const { metrics, isDesktop } = layout;
   const isScrollMode = scaleMode === 'scroll';
+  const scaledVisualWidth = metrics.designWidth * metrics.scale;
+  const scaledVisualHeight = metrics.canvasHeightPx * metrics.scale;
+  /** Canvas shorter than the screen — allow cover media to paint the letterbox gap. */
+  const hasLetterboxGap = scaledVisualHeight + 1 < metrics.viewportHeight;
   const viewportOverflowClass = lockScroll
     ? 'overflow-hidden overscroll-none'
     : isScrollMode
       ? metrics.needsVerticalScroll
         ? 'overflow-x-hidden overflow-y-auto v03-scroll-hidden'
-        : 'overflow-x-hidden overflow-y-hidden'
+        : hasLetterboxGap
+          ? 'overflow-x-hidden overflow-y-visible'
+          : 'overflow-x-hidden overflow-y-hidden'
       : 'overflow-visible';
-  const scaledVisualWidth = metrics.designWidth * metrics.scale;
-  const scaledVisualHeight = metrics.canvasHeightPx * metrics.scale;
   const scrollSafePadding =
     isScrollMode && !ignoreSafeArea && !lockScroll
       ? {

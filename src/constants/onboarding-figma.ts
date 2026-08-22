@@ -72,7 +72,7 @@ export const ONBOARDING_PARENT_IMAGES = {
 } as const;
 
 export const ONBOARDING_PARENT_SUBSCRIPTION_HERO_IMAGE =
-  '/onboarding/parent/bright-mountain-day.webp' as const;
+  '/onboarding/parent/subscription-hero.webp' as const;
 
 export const ONBOARDING_CHILDREN_PHONE_IMAGE =
   '/onboarding/parent/children-phones.webp' as const;

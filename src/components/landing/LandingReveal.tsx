@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 
 type LandingRevealProps = {
   children: ReactNode;
@@ -18,8 +18,8 @@ type LandingRevealProps = {
 };
 
 /**
- * Visible in SSR / before JS. After hydration, off-screen blocks hide then
- * float in when they enter the viewport — no empty wait for chunk load.
+ * SSR and hydration keep content visible — no post-hydration hide for off-screen blocks.
+ * Entrance animation runs once when the block enters the viewport (or immediately).
  */
 export function LandingReveal({
   children,
@@ -32,32 +32,32 @@ export function LandingReveal({
   dir,
 }: LandingRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<'in' | 'pending'>('in');
   const onVisibleRef = useRef(onVisible);
   onVisibleRef.current = onVisible;
 
   useEffect(() => {
-    if (immediate) {
-      onVisibleRef.current?.();
-      return;
-    }
-
     const el = ref.current;
     if (!el) return;
 
     let done = false;
-    const reveal = () => {
+    const fireVisible = () => {
       if (done) return;
       done = true;
-      setPhase('in');
       onVisibleRef.current?.();
-      observer.disconnect();
     };
+
+    if (immediate) {
+      el.classList.add('is-in');
+      fireVisible();
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          reveal();
+          el.classList.add('is-in');
+          fireVisible();
+          observer.disconnect();
         }
       },
       { threshold: 0, rootMargin: '0px 0px -8% 0px' }
@@ -68,14 +68,12 @@ export function LandingReveal({
     const alreadyOnScreen = rect.bottom > 0 && rect.top < vh;
 
     if (alreadyOnScreen) {
-      observer.disconnect();
-      onVisibleRef.current?.();
+      el.classList.add('is-in');
+      fireVisible();
       return;
     }
 
-    setPhase('pending');
     observer.observe(el);
-
     return () => observer.disconnect();
   }, [immediate]);
 
@@ -84,14 +82,14 @@ export function LandingReveal({
   } as CSSProperties;
 
   const variantClass = variant === 'fade' ? ' landing-reveal--fade' : '';
-  const phaseClass = phase === 'pending' ? ' is-pending' : ' is-in';
+  const initialClass = immediate ? ' is-in' : '';
 
   return (
     <div
       ref={ref}
       id={id}
       dir={dir}
-      className={`landing-reveal${variantClass}${phaseClass}${className ? ` ${className}` : ''}`}
+      className={`landing-reveal${variantClass}${initialClass}${className ? ` ${className}` : ''}`}
       style={style}
     >
       {children}
