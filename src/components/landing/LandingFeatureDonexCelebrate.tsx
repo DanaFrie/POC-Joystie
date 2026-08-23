@@ -14,7 +14,7 @@ export function LandingFeatureDonexCelebrate() {
       <div className="relative h-full w-full">
         {/* Glass card — Figma 15329:16675 */}
         <div
-          className="absolute left-[-39.37px] top-0 h-[173.975px] w-[327.331px] overflow-visible rounded-[41.239px] border-[1.289px] border-[rgba(247,248,247,0.2)] bg-[rgba(255,255,255,0.25)] backdrop-blur-[25.774px]"
+          className="absolute left-[-39.37px] top-0 h-[173.975px] w-[327.331px] overflow-visible rounded-[41.239px] border-[1.289px] border-[rgba(247,248,247,0.2)] bg-[rgba(255,255,255,0.35)] md:bg-[rgba(255,255,255,0.25)] md:backdrop-blur-[25.774px]"
         >
           <div
             className="absolute left-[69.01px] top-[30.28px] flex w-[220.369px] flex-col items-end gap-[11.598px] text-right text-[#f6f7f6]"

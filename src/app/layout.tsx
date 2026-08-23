@@ -11,6 +11,10 @@ import { SessionRouteWaiter } from '@/components/auth/SessionRouteWaiter'
 export const metadata: Metadata = {
   title: 'Joy Wallet of Digital Balance',
   description: 'Creating financial incentives for balanced digital usage',
+  // Query busts stale /favicon.ico caches; bump ?v= when the file changes.
+  icons: {
+    icon: [{ url: '/favicon.ico?v=3', type: 'image/x-icon' }],
+  },
 }
 
 export default function RootLayout({

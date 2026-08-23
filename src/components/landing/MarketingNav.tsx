@@ -62,9 +62,10 @@ export function MarketingNav({
   const router = useRouter();
   const onLight = chrome === 'onLight';
 
+  /* Mobile: solid/translucent only — backdrop-blur freezes Safari while scrolling sticky sections */
   const barGlass = onLight
-    ? 'bg-[rgba(5,22,26,0.72)] backdrop-blur-[16px]'
-    : 'bg-white/[0.02] backdrop-blur-[10px]';
+    ? 'bg-[rgba(5,22,26,0.88)]'
+    : 'bg-[rgba(5,22,26,0.55)]';
   const desktopGlass = onLight
     ? 'bg-[rgba(5,22,26,0.72)] backdrop-blur-[16px]'
     : 'bg-white/[0.01] backdrop-blur-[10px]';
@@ -178,7 +179,7 @@ export function MarketingNav({
             />
             <Link
               href="/login"
-              className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.667px]"
+              className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)]"
               style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
               aria-label="התחברות"
             >
