@@ -59,13 +59,16 @@ export function MarketingNav({
   chrome = 'onDark',
 }: MarketingNavProps = {}) {
   const [open, setOpen] = useState(false);
+  const [showMobileSolidBar, setShowMobileSolidBar] = useState(false);
   const router = useRouter();
   const onLight = chrome === 'onLight';
 
-  /* Mobile: solid/translucent only — backdrop-blur freezes Safari while scrolling sticky sections */
-  const barGlass = onLight
-    ? 'bg-[rgba(5,22,26,0.88)]'
-    : 'bg-[rgba(5,22,26,0.55)]';
+  /* Mobile: transparent on the hero, then dark/translucent from stats onward. */
+  const barGlass = showMobileSolidBar
+    ? onLight
+      ? 'bg-[rgba(5,22,26,0.88)]'
+      : 'bg-[rgba(5,22,26,0.55)]'
+    : 'bg-transparent';
   const desktopGlass = onLight
     ? 'bg-[rgba(5,22,26,0.72)] backdrop-blur-[16px]'
     : 'bg-white/[0.01] backdrop-blur-[10px]';
@@ -117,6 +120,36 @@ export function MarketingNav({
       document.body.style.overflow = prevBody;
     };
   }, [open]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const statsSection = document.getElementById('landing-stats');
+    if (!statsSection) {
+      setShowMobileSolidBar(onLight);
+      return;
+    }
+
+    const sync = () => {
+      const mobile = window.innerWidth < 1024;
+      if (!mobile) {
+        setShowMobileSolidBar(false);
+        return;
+      }
+
+      const rect = statsSection.getBoundingClientRect();
+      const headerBottom = MOBILE_STATUS_BAR + 20;
+      setShowMobileSolidBar(rect.top <= headerBottom);
+    };
+
+    sync();
+    window.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    return () => {
+      window.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+    };
+  }, [onLight]);
 
   return (
     <header

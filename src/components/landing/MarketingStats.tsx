@@ -161,6 +161,7 @@ export function MarketingStats() {
   return (
     <section
       ref={sectionRef}
+      id="landing-stats"
       className="landing-section relative"
       style={scrubEnabled ? { height: `${scrubVh}vh` } : undefined}
     >

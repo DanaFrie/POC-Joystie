@@ -34,37 +34,15 @@ function FeatureEllipse({
   );
 }
 
-const MOCKUP_FADE_BG =
-  'linear-gradient(180deg, rgba(5, 22, 26, 0.00) 0%, #05161A 89.22%)';
-
 /** Figma mobile mockup frame — 327 content × 435 phone footprint. */
 const MOBILE_MOCKUP_FRAME_W = 327;
 const MOBILE_MOCKUP_FRAME_H = 435;
 /** Phone x inside the 327 frame — (327 − 210) / 2 ≈ 58. */
 const MOBILE_PHONE_LEFT = 58;
 const MOBILE_PHONE_W = 210;
-/** Fade — Figma Rectangle 6555, relative to mockup frame. */
-const MOBILE_FADE_TOP = 268;
 
-/** Visible phone image — 5% above previous 142.8px. */
-const MOBILE_IMAGE_MAX_PX = Math.round(142.8 * 1.05 * 10) / 10; // 149.9
-
-/**
- * Mobile-only fade (Figma Rectangle 6555).
- * 327×167 @ top 268 — full mockup-frame width (phone sits at left 58 in the 327 design).
- */
-function MobileMockupFade() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-x-0 z-[2] h-[167px] w-full lg:hidden"
-      style={{
-        top: MOBILE_FADE_TOP,
-        background: MOCKUP_FADE_BG,
-      }}
-      aria-hidden
-    />
-  );
-}
+/** Visible phone image — enlarge mobile mockups by 15%. */
+const MOBILE_IMAGE_MAX_PX = Math.round(149.9 * 1.15 * 10) / 10; // 172.4
 
 export function MarketingPresenting() {
   return (
@@ -77,11 +55,11 @@ export function MarketingPresenting() {
         className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-20 bg-gradient-to-b from-[#05161a] via-[#05161a]/85 to-transparent md:hidden"
         aria-hidden
       />
-      <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-10 pt-2 md:gap-[100px] md:pt-0 lg:gap-[160px]">
+      <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-10 pt-2 md:gap-[60px] md:pt-0 lg:gap-[104px]">
         {/* Menu "מה זה ג׳ויסטי?" lands here — גאים להציג בפניכם */}
         <LandingReveal
           id="what-is-joystie"
-          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 lg:scroll-mt-36"
+          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 md:pt-10 lg:scroll-mt-36 lg:pt-14"
         >
           <div
             className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-white/10"
@@ -195,11 +173,10 @@ export function MarketingPresenting() {
                             priority={index === 0}
                             decoding="async"
                             className="object-contain object-center"
-                            sizes="150px"
+                            sizes="175px"
                           />
                         </div>
                       </div>
-                      <MobileMockupFade />
                     </div>
 
                     {/* Desktop phone */}
