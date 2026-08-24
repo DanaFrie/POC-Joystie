@@ -49,6 +49,8 @@ function WaveDotsMobile({ src }: { src: string }) {
         gap: -0.396,
         transform: 'rotate(90deg)',
         transformOrigin: '0 0',
+        contain: 'strict',
+        contentVisibility: 'auto',
       }}
       aria-hidden
     >
@@ -199,13 +201,29 @@ export function LandingFeatureEllipse({
   );
 }
 
-/** Ellipse 400 — CSS glow behind stats copy (not SVG). */
+/**
+ * Ellipse 400 — Figma 366² / rgba(206,227,232,0.60) / blur(400) baked in SVG.
+ * Centered behind copy (fixed left:431 only matched a full 1200 artboard).
+ * No CSS filter:blur — keeps iOS Safari from freezing on sticky scrub.
+ */
 export function LandingStatsGlow({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`pointer-events-none absolute z-0 h-[180px] w-[180px] rounded-[180px] bg-[rgba(206,227,232,0.6)] blur-[200px] left-1/2 top-[40px] -translate-x-1/2 md:left-[431px] md:top-[63px] md:h-[366px] md:w-[366px] md:translate-x-0 md:rounded-[366px] md:blur-[400px] ${className}`}
+      className={`pointer-events-none absolute left-1/2 top-1/2 z-0 h-[200px] w-[200px] -translate-x-1/2 -translate-y-1/2 md:h-[366px] md:w-[366px] ${className}`}
       aria-hidden
-    />
+    >
+      <div className="absolute inset-[-218%]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/figma/ellipse-stats.svg"
+          alt=""
+          loading="eager"
+          decoding="async"
+          className="h-full w-full max-w-none object-contain"
+          draggable={false}
+        />
+      </div>
+    </div>
   );
 }
 

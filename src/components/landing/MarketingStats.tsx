@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { LandingStatsGlow } from '@/components/landing/LandingDecor';
 
 const HIGHLIGHT = '5 שעות ביום.';
 const LINE1 = 'זה הזמן הממוצע שילדים במסך בשנת 2026, וזה רק הולך וגדל.';
 const LINE2 = 'הגיע הזמן שנחזיר את הבחירה לידיים שלנו ושל הילדים שלנו.';
 
-/** Tall scrub range — sticky copy stays put while words light up with scroll. */
-const SCRUB_VH = 220;
+/** Scroll distance while copy stays pinned at 100svh (mobile / desktop). */
+const SCRUB_VH_MOBILE = 200;
+const SCRUB_VH_DESKTOP = 220;
 
 function wordsOf(text: string) {
   return text.trim().split(/\s+/).filter(Boolean);
@@ -18,8 +20,8 @@ function clamp(n: number, min: number, max: number) {
 }
 
 /**
- * Unread: Blue-600 mobile / Blue-400 desktop, weight 700.
- * Read: white, weight 700. Progress driven by parent scroll index.
+ * Unread: muted teal. Read: white.
+ * Progress driven by sticky-scrub scroll index.
  */
 function ReadingWords({
   words,
@@ -35,9 +37,7 @@ function ReadingWords({
       {words.map((word, i) => {
         const index = offset + i;
         const lit = index <= activeIndex;
-        const colorClass = lit
-          ? 'text-white'
-          : 'text-[#527079]';
+        const colorClass = lit ? 'text-white' : 'text-[#527079]';
         return (
           <span key={`${offset}-${i}-${word}`}>
             {i > 0 ? ' ' : null}
@@ -52,8 +52,8 @@ function ReadingWords({
 }
 
 /**
- * Section 2 — sticky pane; words turn white as the user scrolls (no scroll lock).
- * Figma Frame 1597882750 typography preserved.
+ * Section 2 — sticky 100svh pane; words turn white as the user scrolls (mobile + desktop).
+ * Ellipse uses pre-blurred SVG (no CSS filter:blur) so iOS Safari stays responsive.
  */
 export function MarketingStats() {
   const highlightWords = useMemo(() => wordsOf(HIGHLIGHT), []);
@@ -75,32 +75,43 @@ export function MarketingStats() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [progress, setProgress] = useState(0);
   const [reduceMotion, setReduceMotion] = useState(false);
-  /** Until scroll sync runs, keep copy readable (dark unread colors are invisible on #05161a). */
+  /** Until scroll sync runs, keep copy readable. */
   const [scrollReady, setScrollReady] = useState(false);
+  const [scrubVh, setScrubVh] = useState(SCRUB_VH_MOBILE);
 
   const totalWordsMinusOne = totalWords - 1;
+  const scrubEnabled = !reduceMotion;
   const displayIndex =
-    scrollReady && !reduceMotion ? activeIndex : totalWordsMinusOne;
-  const displayProgress = scrollReady && !reduceMotion ? progress : 1;
+    scrollReady && scrubEnabled ? activeIndex : totalWordsMinusOne;
+  const displayProgress = scrollReady && scrubEnabled ? progress : 1;
 
   const highlightCount = highlightWords.length;
-  const highlightFill = reduceMotion
-    ? 1
-    : clamp(displayProgress * (totalWords / Math.max(highlightCount, 1)), 0, 1);
+  const highlightFill = scrubEnabled
+    ? clamp(displayProgress * (totalWords / Math.max(highlightCount, 1)), 0, 1)
+    : 1;
 
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const apply = () => {
-      const reduce = mq.matches;
+    const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mqDesktop = window.matchMedia('(min-width: 768px)');
+
+    const sync = () => {
+      const reduce = mqReduce.matches;
       setReduceMotion(reduce);
+      setScrubVh(mqDesktop.matches ? SCRUB_VH_DESKTOP : SCRUB_VH_MOBILE);
       if (reduce) {
         setActiveIndex(totalWords - 1);
         setProgress(1);
+        setScrollReady(true);
       }
     };
-    apply();
-    mq.addEventListener('change', apply);
-    return () => mq.removeEventListener('change', apply);
+
+    sync();
+    mqReduce.addEventListener('change', sync);
+    mqDesktop.addEventListener('change', sync);
+    return () => {
+      mqReduce.removeEventListener('change', sync);
+      mqDesktop.removeEventListener('change', sync);
+    };
   }, [totalWords]);
 
   useEffect(() => {
@@ -145,36 +156,29 @@ export function MarketingStats() {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
-  }, [reduceMotion, totalWords]);
+  }, [reduceMotion, totalWords, scrubVh]);
 
   return (
     <section
       ref={sectionRef}
+      id="landing-stats"
       className="landing-section relative"
-      style={reduceMotion ? undefined : { height: `${SCRUB_VH}vh` }}
+      style={scrubEnabled ? { height: `${scrubVh}vh` } : undefined}
     >
       <div
-        className={`landing-gutter flex w-full flex-col justify-center ${
-          reduceMotion
-            ? 'min-h-[100svh] py-16 md:min-h-0 md:pt-[90px] md:pb-16 lg:pb-[298px]'
-            : 'sticky top-0 h-[100svh] overflow-hidden py-10 sm:py-16'
-        }`}
+        className={
+          scrubEnabled
+            ? 'landing-gutter sticky top-0 flex h-[100svh] w-full flex-col justify-center overflow-hidden py-10 sm:py-16'
+            : 'landing-gutter flex min-h-[100svh] w-full flex-col justify-center py-16 md:min-h-0 md:pt-[90px] md:pb-16 lg:pb-[298px]'
+        }
       >
         <div className="relative mx-auto w-full max-w-[341px] overflow-visible text-center md:max-w-[1200px] md:min-h-[308px]">
-          {/*
-            Ellipse 400 — Figma relative to 1200 parent:
-            left 431 / top 63 / 366² / rgba(206,227,232,0.60) / blur(400px)
-          */}
-          <div
-            className="pointer-events-none absolute z-0 h-[180px] w-[180px] rounded-[180px] bg-[rgba(206,227,232,0.6)] blur-[200px] left-1/2 top-[40px] -translate-x-1/2 md:left-[431px] md:top-[63px] md:h-[366px] md:w-[366px] md:translate-x-0 md:rounded-[366px] md:blur-[400px]"
-            aria-hidden
-          />
+          <LandingStatsGlow />
           <div className="landing-section-fg relative z-10">
             <div
               className="relative mx-auto max-w-[850px] text-center font-rubik text-[24px] font-bold leading-[1.2] tracking-[-0.72px] md:pt-[26px] md:text-[50px] md:leading-[1.05] md:tracking-[-1.5px]"
               aria-label={`${HIGHLIGHT} ${LINE1} ${LINE2}`}
             >
-              {/* 5 שעות ביום. — purple highlighter hugs the text, fills RTL as you scrub */}
               <p className="relative z-10 mx-auto inline-block isolate">
                 <span className="relative inline-block">
                   <span
