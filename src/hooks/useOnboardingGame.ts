@@ -262,14 +262,15 @@ export function useOnboardingGame({
     }
   }, [role, router]);
 
-  /** First transition to `playing` after countdown (not post-miss restarts). */
+  /** First transition to `playing` — parent device only (funnel → trial). */
   useEffect(() => {
+    if (role !== 'parent') return;
     if (!session.roomId || session.room?.phase !== 'playing') return;
     if (gameStartTracked.current) return;
     gameStartTracked.current = true;
     void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
-      void logEventOnce(`game_start:${role}:${session.roomId}`, AnalyticsEvents.GAME_START, {
-        role,
+      void logEventOnce(`game_start:parent:${session.roomId}`, AnalyticsEvents.GAME_START, {
+        role: 'parent',
       });
     });
   }, [session.room?.phase, session.roomId, role]);

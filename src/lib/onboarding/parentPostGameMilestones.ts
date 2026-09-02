@@ -36,19 +36,7 @@ export async function signalParentPostGameMilestone(
   } catch (error) {
     logger.warn('RTDB parent post-game milestone failed', { milestone, error });
   }
-
-  if (milestone === 'child_change_approved') {
-    try {
-      const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
-      await logEventOnce(
-        `agreement_done:${parentId}`,
-        AnalyticsEvents.AGREEMENT_DONE,
-        { via: 'parent_approve' }
-      );
-    } catch (error) {
-      logger.warn('Agreement analytics failed', error);
-    }
-  }
+  // agreement_done: parent UI fires on approve + parent_state RTDB observe (parent-device only).
 }
 
 /** Parent clears additional change after child declines — returns to review pair. */

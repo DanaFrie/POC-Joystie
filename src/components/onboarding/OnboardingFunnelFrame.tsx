@@ -23,7 +23,7 @@ const LIGHT_FUNNEL_ROUTES: string[] = [];
 
 /**
  * /onboarding/* — mobile: width-fit 375×812; short viewports scroll instead of shrinking.
- * Desktop (≥768px): FunnelViewport shows grid + logo + «אנחנו זמינים במובייל» only.
+ * Desktop (≥768px): FunnelViewport shows marketing desktop gate (QR + mobile copy).
  */
 export function OnboardingFunnelFrame({
   children,

@@ -6,7 +6,7 @@ import { V03_DESKTOP_MIN_WIDTH } from '@/constants/v03-screen';
 
 /**
  * Dashboard (and other non-funnel) routes — same branded desktop gate as
- * FunnelViewport: grid + logo + «אנחנו זמינים במובייל» + waiting gif.
+ * FunnelViewport: marketing desktop gate (QR + «זמינים במובייל» + home CTA).
  */
 export function DashboardMobileOnlyGate({ children }: { children: React.ReactNode }) {
   const [isDesktop, setIsDesktop] = useState(false);

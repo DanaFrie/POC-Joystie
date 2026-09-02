@@ -128,5 +128,10 @@ export const AnalyticsEvents = {
   CHALLENGE_CREATED: 'challenge_created',
 } as const;
 
+/**
+ * Parent-device funnel only (path to trial payment).
+ * Child device must not fire AnalyticsEvents — observe RTDB on parent instead.
+ */
+
 export type AnalyticsEventName =
   (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
