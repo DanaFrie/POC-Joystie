@@ -5,11 +5,14 @@
       "http://localhost:3001",
       "https://joystie.com",
       "https://www.joystie.com",
+      "https://intgr.joystie.com",
       "https://joystie-poc.web.app",
       "https://joystie-poc.firebaseapp.com",
       "https://joystie-poc-prod.firebaseapp.com",
       "https://joystie-poc-intgr.web.app",
-      "https://joystie-poc-intgr.firebaseapp.com"
+      "https://joystie-poc-intgr.firebaseapp.com",
+      "https://joystie-poc--joystie-poc.us-central1.hosted.app",
+      "https://joystie-poc-prod--joystie-poc-prod.us-central1.hosted.app"
     ],
     "method": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"],
     "responseHeader": [

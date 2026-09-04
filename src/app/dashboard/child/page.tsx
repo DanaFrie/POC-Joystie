@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLoadingState } from '@/components/dashboard/ParentDashboardScreen';
 import { ChildDashboardScreen } from '@/components/dashboard/ChildDashboardScreen';
@@ -178,18 +178,23 @@ function DashboardChildPageContent() {
     };
   }, [token, router]);
 
-  const hasLoadedRef = useRef(false);
   useEffect(() => {
-    if (hasLoadedRef.current) return;
-    hasLoadedRef.current = true;
+    let cancelled = false;
+    setError(null);
     setIsLoading(true);
     loadDashboard()
       .catch((err: unknown) => {
+        if (cancelled) return;
         logger.error('Error loading child dashboard:', err);
         setError(err instanceof Error ? err.message : 'שגיאה בטעינת הנתונים');
-        hasLoadedRef.current = false;
+        setDashboardData(null);
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [loadDashboard]);
 
   const refresh = useCallback(async () => {

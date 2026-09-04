@@ -16,7 +16,7 @@ import {
 import { generateSelfieImage, getSelfieTransport } from '@/lib/api/selfie';
 import { ensureBondingChild, saveChildShareCard } from '@/lib/api/shareCard';
 import { shareImageFile } from '@/lib/share/shareImage';
-import { generateChildUrl, isDraftChildId } from '@/utils/url-encoding';
+import { childDashboardNavPath, isDraftChildId } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('SelfieMission');
@@ -405,9 +405,7 @@ export function ChildSelfieMissionFlow({
         const rawChildId = ctx?.childId;
         const childId =
           rawChildId && !isDraftChildId(rawChildId) ? rawChildId : undefined;
-        const absolute = generateChildUrl(resolvedParentId, childId);
-        const path = new URL(absolute).pathname + new URL(absolute).search;
-        router.push(path);
+        router.push(childDashboardNavPath(resolvedParentId, childId));
       }}
     />
   );

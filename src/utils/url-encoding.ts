@@ -99,6 +99,17 @@ export function generateChildUrl(
   return `${base}${CHILD_DASHBOARD_PATH}?token=${encodeURIComponent(token)}`;
 }
 
+/** Same-origin `/dashboard/child?token=` path for `router.push` / `replace`. */
+export function childDashboardNavPath(parentId: string, childId?: string): string {
+  const absolute = generateChildUrl(parentId, childId);
+  try {
+    const parsed = new URL(absolute);
+    return `${parsed.pathname}${parsed.search}`;
+  } catch {
+    return `${CHILD_DASHBOARD_PATH}?token=${encodeURIComponent(encodeParentToken(parentId, childId))}`;
+  }
+}
+
 /**
  * Rebuild bonding child invite URL on the current origin (keeps `invite=` + cn/cg/pn/pg).
  * Onboarding / game only — not dashboard.
