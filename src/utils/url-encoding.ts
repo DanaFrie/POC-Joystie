@@ -99,7 +99,7 @@ export function generateChildUrl(
   return `${base}${CHILD_DASHBOARD_PATH}?token=${encodeURIComponent(token)}`;
 }
 
-/** Same-origin `/dashboard/child?token=` path for `router.push` / `replace`. */
+/** Same-origin `/dashboard/child?token=` path for in-app links. */
 export function childDashboardNavPath(parentId: string, childId?: string): string {
   const absolute = generateChildUrl(parentId, childId);
   try {
@@ -108,6 +108,25 @@ export function childDashboardNavPath(parentId: string, childId?: string): strin
   } catch {
     return `${CHILD_DASHBOARD_PATH}?token=${encodeURIComponent(encodeParentToken(parentId, childId))}`;
   }
+}
+
+/**
+ * Full document load to the child wallet.
+ * Next `router.push` from the onboarding funnel often lands without `?token=` until refresh.
+ */
+export function assignChildDashboard(parentId: string, childId?: string): void {
+  if (typeof window === 'undefined') return;
+  window.location.assign(generateChildUrl(parentId, childId));
+}
+
+/** Token from the address bar — `useSearchParams` can be empty on the first client frame. */
+export function readChildDashboardTokenFromLocation(
+  searchParams?: { get(name: string): string | null } | null
+): string {
+  const fromParams = searchParams?.get('token')?.trim() || '';
+  if (fromParams) return fromParams;
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('token')?.trim() || '';
 }
 
 /**

@@ -82,8 +82,8 @@ import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones
 
 import { getChildBondingContext } from '@/lib/onboarding/childBondingContext';
 import {
+  assignChildDashboard,
   buildGameChildUrlWithInvite,
-  childDashboardNavPath,
   isDraftChildId,
   parseBondingInviteQueryParams,
 } from '@/utils/url-encoding';
@@ -271,8 +271,8 @@ export function OnboardingChildFlow() {
     const rawChildId = ctx?.childId;
     const childId =
       rawChildId && !isDraftChildId(rawChildId) ? rawChildId : undefined;
-    router.replace(childDashboardNavPath(parentId, childId));
-  }, [parentId, router]);
+    assignChildDashboard(parentId, childId);
+  }, [parentId]);
 
   const dashboardNavStarted = useRef(false);
   useEffect(() => {

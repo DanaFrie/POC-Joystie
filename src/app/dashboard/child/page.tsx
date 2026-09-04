@@ -10,6 +10,7 @@ import { useDashboardSubscribeMode } from '@/hooks/useDashboardSubscribeMode';
 import { isLoggedIn, updateLastActivity } from '@/utils/session';
 import { getDashboardData } from '@/lib/api/dashboard';
 import { validateChildDashboardToken } from '@/lib/auth/childDashboardToken';
+import { readChildDashboardTokenFromLocation } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange } from '@/utils/auth';
 
@@ -53,7 +54,7 @@ function DashboardChildPageContent() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams?.get('token')?.trim() || '';
+  const token = readChildDashboardTokenFromLocation(searchParams);
   const [noChallengeExists, setNoChallengeExists] = useState(true);
   const [tokenChallengeEnabled, setTokenChallengeEnabled] = useState<boolean | null>(null);
   const [accessMode, setAccessMode] = useState<'token' | 'parent' | null>(null);
