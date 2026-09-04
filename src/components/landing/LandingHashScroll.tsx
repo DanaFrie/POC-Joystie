@@ -9,13 +9,31 @@ export function LandingHashScroll() {
     const scrollToHash = () => {
       const id = window.location.hash.replace('#', '');
       if (!id) return;
-      // Wait a tick so the landing DOM is ready after client nav.
-      window.requestAnimationFrame(() => scrollLandingToSection(id));
+
+      // Mobile/layout: element may exist before sticky stats finish measuring.
+      const attempt = (n: number) => {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().height > 0) {
+          scrollLandingToSection(id);
+          // Second pass after sticky/scrub layout settles (esp. mobile).
+          if (n < 3) {
+            window.setTimeout(() => scrollLandingToSection(id), 120);
+          }
+          return;
+        }
+        if (n < 20) window.setTimeout(() => attempt(n + 1), 50);
+      };
+
+      window.requestAnimationFrame(() => attempt(0));
     };
 
     scrollToHash();
     window.addEventListener('hashchange', scrollToHash);
-    return () => window.removeEventListener('hashchange', scrollToHash);
+    window.addEventListener('popstate', scrollToHash);
+    return () => {
+      window.removeEventListener('hashchange', scrollToHash);
+      window.removeEventListener('popstate', scrollToHash);
+    };
   }, []);
 
   return null;

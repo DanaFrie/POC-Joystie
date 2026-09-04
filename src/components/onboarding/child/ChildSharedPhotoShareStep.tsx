@@ -22,6 +22,8 @@ type ChildSharedPhotoShareStepProps = {
   /** Child's first agreed change text. */
   changeText?: string | null;
   onShare?: () => void;
+  /** Full `/dashboard/child?token=` URL — native navigation so the token is on first load. */
+  walletHref?: string | null;
   onWallet?: () => void;
 };
 
@@ -34,6 +36,7 @@ export function ChildSharedPhotoShareStep({
   photoSrc = null,
   changeText = null,
   onShare,
+  walletHref = null,
   onWallet,
 }: ChildSharedPhotoShareStepProps) {
   const frame = CHILD_SHARED_PHOTO_SHARE.headline;
@@ -149,23 +152,42 @@ export function ChildSharedPhotoShareStep({
           dir="ltr"
           style={{ gap: buttonRow.gap }}
         >
-          <button
-            type="button"
-            onClick={onWallet}
-            dir="rtl"
-            className="inline-flex min-w-0 flex-1 cursor-pointer touch-manipulation items-center justify-center overflow-hidden border border-white bg-transparent font-simpler font-bold text-white transition hover:bg-white/5"
-            style={{
-              height: buttonRow.height,
-              borderRadius: buttonRow.radius,
-              padding: `${buttonRow.paddingY}px ${buttonRow.paddingX}px`,
-              boxShadow: buttonRow.shadow,
-              fontSize: buttonRow.fontSize,
-              lineHeight: 1.2,
-              letterSpacing: '-0.3012px',
-            }}
-          >
-            {CHILD_SHARED_PHOTO_WALLET_LABEL}
-          </button>
+          {walletHref ? (
+            <a
+              href={walletHref}
+              dir="rtl"
+              className="inline-flex min-w-0 flex-1 cursor-pointer touch-manipulation items-center justify-center overflow-hidden border border-white bg-transparent font-simpler font-bold text-white no-underline transition hover:bg-white/5"
+              style={{
+                height: buttonRow.height,
+                borderRadius: buttonRow.radius,
+                padding: `${buttonRow.paddingY}px ${buttonRow.paddingX}px`,
+                boxShadow: buttonRow.shadow,
+                fontSize: buttonRow.fontSize,
+                lineHeight: 1.2,
+                letterSpacing: '-0.3012px',
+              }}
+            >
+              {CHILD_SHARED_PHOTO_WALLET_LABEL}
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={onWallet}
+              dir="rtl"
+              className="inline-flex min-w-0 flex-1 cursor-pointer touch-manipulation items-center justify-center overflow-hidden border border-white bg-transparent font-simpler font-bold text-white transition hover:bg-white/5"
+              style={{
+                height: buttonRow.height,
+                borderRadius: buttonRow.radius,
+                padding: `${buttonRow.paddingY}px ${buttonRow.paddingX}px`,
+                boxShadow: buttonRow.shadow,
+                fontSize: buttonRow.fontSize,
+                lineHeight: 1.2,
+                letterSpacing: '-0.3012px',
+              }}
+            >
+              {CHILD_SHARED_PHOTO_WALLET_LABEL}
+            </button>
+          )}
           <button
             type="button"
             onClick={onShare}

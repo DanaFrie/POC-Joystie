@@ -1,6 +1,7 @@
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { LandingReveal } from '@/components/landing/LandingReveal';
+import { LandingAuthorAvatar } from '@/components/landing/LandingAuthorAvatar';
 
 /**
  * Behind the idea photo — Figma 15329:16728
@@ -61,21 +62,14 @@ export function MarketingBehindIdea() {
               </div>
             </div>
 
-            {/* Figma 15348:2471 — avatar on the visual right of the name */}
+            {/* Same About / מרכז הידע avatar treatment */}
             <div className="flex w-full flex-row items-center gap-3 md:gap-4">
-              <div className="h-[55px] w-[55px] shrink-0 overflow-hidden rounded-full md:h-[76px] md:w-[76px]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={LANDING_ASSETS.founderAvatar}
-                  alt="מאיר ניצן"
-                  width={76}
-                  height={76}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover object-center"
-                  draggable={false}
-                />
-              </div>
+              <span className="lg:hidden">
+                <LandingAuthorAvatar src={LANDING_ASSETS.founderAvatar} alt="מאיר ניצן" size="lg" />
+              </span>
+              <span className="hidden lg:inline-flex">
+                <LandingAuthorAvatar src={LANDING_ASSETS.founderAvatar} alt="מאיר ניצן" size="xl" />
+              </span>
               <div className="text-right">
                 <p className="font-rubik text-xl font-bold leading-[1.1] tracking-[-0.72px] text-white md:text-2xl">
                   מאיר ניצן

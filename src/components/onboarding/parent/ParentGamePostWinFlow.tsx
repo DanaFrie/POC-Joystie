@@ -250,13 +250,6 @@ export function ParentGamePostWinFlow({
     // Stay on Dori selfie wait until Storage card URL is prefetched — no load on Screen 66.
     if (targetPhase === 'onboardingComplete') {
       if (phase === 'onboardingComplete') return;
-      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
-        if (!parentId) return;
-        void logEventOnce(`selfie_done:${parentId}`, AnalyticsEvents.SELFIE_DONE, {
-          content_name: 'onboarding_accomplished',
-          source: 'parent_observe',
-        });
-      });
       openCompletionAfterPrefetch();
       return;
     }
@@ -270,15 +263,6 @@ export function ParentGamePostWinFlow({
       return;
     }
 
-    if (targetPhase === 'waitingDoriSelfie') {
-      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
-        if (!parentId) return;
-        void logEventOnce(`agreement_done:${parentId}`, AnalyticsEvents.AGREEMENT_DONE, {
-          via: 'parent_observe',
-        });
-      });
-    }
-
     if (targetPhase !== phase) {
       onPhaseChange(targetPhase);
     }
@@ -290,7 +274,38 @@ export function ParentGamePostWinFlow({
     phase,
     onPhaseChange,
     openCompletionAfterPrefetch,
+  ]);
+
+  /** Parent-device funnel Analytics — durable RTDB state (not child device). */
+  useEffect(() => {
+    if (!syncEnabled || !parentId) return;
+    const child = postGame.merged.child;
+    const parent = postGame.merged.parent;
+    const agreementUnlocked = Boolean(
+      parent?.childChangeApproved || child?.parentChangeAccepted
+    );
+
+    if (agreementUnlocked) {
+      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+        void logEventOnce(`agreement_done:${parentId}`, AnalyticsEvents.AGREEMENT_DONE, {
+          via: 'parent_state',
+        });
+      });
+    }
+
+    if (child?.selfieMissionDone) {
+      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+        void logEventOnce(`selfie_done:${parentId}`, AnalyticsEvents.SELFIE_DONE, {
+          content_name: 'onboarding_accomplished',
+          source: 'parent_state',
+        });
+      });
+    }
+  }, [
+    syncEnabled,
     parentId,
+    postGame.merged.child,
+    postGame.merged.parent,
   ]);
 
   useEffect(() => {
@@ -336,11 +351,18 @@ export function ParentGamePostWinFlow({
   );
 
   const handleApproveChildChange = useCallback(() => {
+    if (parentId) {
+      void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
+        void logEventOnce(`agreement_done:${parentId}`, AnalyticsEvents.AGREEMENT_DONE, {
+          via: 'parent_approve',
+        });
+      });
+    }
     onPhaseChange('waitingDoriSelfie');
     if (syncEnabled) {
       void postGame.approveChildChange();
     }
-  }, [syncEnabled, postGame, onPhaseChange]);
+  }, [syncEnabled, postGame, onPhaseChange, parentId]);
 
   const handleSuggestMore = useCallback(() => {
     setLocalAdditionalChange(true);

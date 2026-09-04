@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CumulativeScreenTimeCard } from '@/components/onboarding/bad-news/CumulativeScreenTimeCard';
 import { ChildStoryProgress } from '@/components/onboarding/bad-news/ChildStoryProgress';
 import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
@@ -23,7 +23,7 @@ import {
 const CARD_HOLD_MS = 3200;
 const CARD_FADE_MS = 420;
 /** After staggered reveal enters, start the story timer. */
-const STORY_START_MS = 600 + 720 + 200;
+const STORY_START_MS = 1000;
 
 /** Figma @ 812 — gap between copy block and kids report. */
 const COPY_REPORT_GAP_MAX_PX = 65;
@@ -36,9 +36,8 @@ const HERO_MIN_PX = 112;
 
 /**
  * Figma Screen 7 (12703:42214) — bad-news facts with story loader between
- * children. Fills the 100vh main band above the pinned footer; kids report
- * stacks under the copy. On short viewports, vertical gaps (and hero) shrink
- * so the stack still fits without clipping.
+ * children. After the last card finishes, returns to the first card static
+ * (no loader); chevrons allow optional manual browsing.
  */
 export function OnboardingBadNewsStep() {
   const { usableCanvasHeightPx } = useFunnelViewportMetrics();
@@ -62,16 +61,52 @@ export function OnboardingBadNewsStep() {
   const [cardOpaque, setCardOpaque] = useState(true);
   const [storyProgress, setStoryProgress] = useState(0);
   const [storyKey, setStoryKey] = useState(0);
+  /** Auto story finished (or user took over) — no purple loader. */
+  const [staticMode, setStaticMode] = useState(false);
+  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setChildren(getChildCumulativeProjections());
   }, []);
 
   const child = children[activeIndex];
+  const multiChild = children.length > 1;
 
-  // Story fill 0→1; when done, active loader becomes ellipse and next becomes loader.
+  const goToIndex = useCallback(
+    (nextIndex: number, opts?: { enterStatic?: boolean }) => {
+      if (children.length < 1) return;
+      const wrapped =
+        ((nextIndex % children.length) + children.length) % children.length;
+      if (wrapped === activeIndex && !opts?.enterStatic) return;
+
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+      setCardOpaque(false);
+      fadeTimerRef.current = setTimeout(() => {
+        setActiveIndex(wrapped);
+        setCardOpaque(true);
+        setStoryProgress(0);
+        if (opts?.enterStatic) {
+          setStaticMode(true);
+        }
+        fadeTimerRef.current = null;
+      }, CARD_FADE_MS);
+    },
+    [activeIndex, children.length]
+  );
+
+  const handlePrev = useCallback(() => {
+    setStaticMode(true);
+    goToIndex(activeIndex - 1);
+  }, [activeIndex, goToIndex]);
+
+  const handleNext = useCallback(() => {
+    setStaticMode(true);
+    goToIndex(activeIndex + 1);
+  }, [activeIndex, goToIndex]);
+
+  // Story fill 0→1; when done, advance — last card loops to first in static mode.
   useEffect(() => {
-    if (children.length < 1) return;
+    if (children.length < 1 || staticMode) return;
 
     let cancelled = false;
     let raf = 0;
@@ -93,7 +128,15 @@ export function OnboardingBadNewsStep() {
         }
 
         if (index >= children.length - 1) {
-          setStoryProgress(1);
+          // Last card done → first card, static (no loader).
+          setCardOpaque(false);
+          fadeTimer = setTimeout(() => {
+            if (cancelled) return;
+            setActiveIndex(0);
+            setCardOpaque(true);
+            setStoryProgress(0);
+            setStaticMode(true);
+          }, CARD_FADE_MS);
           return;
         }
 
@@ -117,19 +160,26 @@ export function OnboardingBadNewsStep() {
       clearTimeout(fadeTimer);
       cancelAnimationFrame(raf);
     };
-  }, [children.length, storyKey]); // eslint-disable-line react-hooks/exhaustive-deps -- storyKey driver
+  }, [children.length, storyKey, staticMode]); // eslint-disable-line react-hooks/exhaustive-deps -- storyKey driver
+
+  useEffect(
+    () => () => {
+      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+    },
+    []
+  );
 
   return (
     <section
-      className="flex h-full min-h-0 w-full flex-1 flex-col items-center px-v03-gutter"
+      className="flex h-full min-h-0 w-full flex-1 flex-col items-center"
       aria-label="החדשות הפחות טובות"
     >
       <div
-        className="flex h-full min-h-0 w-full max-w-[337px] flex-1 flex-col items-center pb-1"
+        className="flex h-full min-h-0 w-full flex-1 flex-col items-center pb-1"
         style={{ paddingTop: topPadPx }}
       >
         <div
-          className="flex w-full max-w-v03-content shrink-0 flex-col items-center"
+          className="flex w-full shrink-0 flex-col items-center"
           style={{ gap: heroCopyGapPx }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -163,7 +213,6 @@ export function OnboardingBadNewsStep() {
           </div>
         </div>
 
-        {/* Prefer Figma 65px; shrink on short main bands so report stays in 100vh. */}
         <div
           className="w-full"
           style={{
@@ -187,11 +236,19 @@ export function OnboardingBadNewsStep() {
             <div className="v03-funnel-enter-reveal-4 w-full">
               {child ? (
                 <div
-                  className={`transition-opacity duration-[420ms] ease-out ${
+                  className={`w-full transition-opacity duration-[420ms] ease-out ${
                     cardOpaque ? 'opacity-100' : 'opacity-0'
                   }`}
                 >
-                  <CumulativeScreenTimeCard child={child} />
+                  <CumulativeScreenTimeCard
+                    child={child}
+                    className="w-full"
+                    showNav={multiChild}
+                    canPrev={multiChild}
+                    canNext={multiChild}
+                    onPrev={handlePrev}
+                    onNext={handleNext}
+                  />
                 </div>
               ) : null}
             </div>
@@ -202,11 +259,11 @@ export function OnboardingBadNewsStep() {
               count={children.length}
               activeIndex={activeIndex}
               progress={storyProgress}
+              staticMode={staticMode}
             />
           </div>
         </div>
 
-        {/* Leftover main-band height on tall phones — keeps CTA pinned via footer. */}
         <div className="min-h-0 w-full flex-1" aria-hidden />
       </div>
     </section>

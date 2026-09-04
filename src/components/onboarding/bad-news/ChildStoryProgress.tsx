@@ -8,10 +8,18 @@ type ChildStoryProgressProps = {
   /** 0–1 purple fill on the active loader. */
   progress: number;
   className?: string;
+  /** After auto story ends — ellipses only, no purple loader. */
+  staticMode?: boolean;
 };
 
-/** Figma white ellipse — 10px fill + drop-shadow (viewBox includes blur bleed). */
-function StoryEllipse({ filterId }: { filterId: string }) {
+/** Figma ellipse — 10px fill + drop-shadow (viewBox includes blur bleed). */
+function StoryEllipse({
+  filterId,
+  fill = 'white',
+}: {
+  filterId: string;
+  fill?: string;
+}) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -23,7 +31,7 @@ function StoryEllipse({ filterId }: { filterId: string }) {
       aria-hidden
     >
       <g filter={`url(#${filterId})`}>
-        <circle cx="11.6665" cy="11.6667" r="5" fill="white" />
+        <circle cx="11.6665" cy="11.6667" r="5" fill={fill} />
       </g>
       <defs>
         <filter
@@ -145,13 +153,15 @@ function StoryLoader({
 
 /**
  * Story progress — RTL: first child on the right, advances left.
- * Active slot is the loader; finished slots become ellipses.
+ * Auto: active = purple loader bar. Static/manual: dots only (active = purple).
  */
 export function ChildStoryProgress({
   count,
   activeIndex,
   progress,
   className = '',
+  /** After auto story ends — ellipses only; active dot is purple. */
+  staticMode = false,
 }: ChildStoryProgressProps) {
   const uid = useId().replace(/:/g, '');
   if (count < 1) return null;
@@ -175,13 +185,16 @@ export function ChildStoryProgress({
             aria-selected={isActive}
             className="inline-flex items-center justify-center"
           >
-            {isActive ? (
+            {isActive && !staticMode ? (
               <StoryLoader
                 progress={fill}
                 filterId={`story-loader-${uid}-${i}`}
               />
             ) : (
-              <StoryEllipse filterId={`story-dot-${uid}-${i}`} />
+              <StoryEllipse
+                filterId={`story-dot-${uid}-${i}`}
+                fill={isActive && staticMode ? '#8C00FF' : 'white'}
+              />
             )}
           </span>
         );

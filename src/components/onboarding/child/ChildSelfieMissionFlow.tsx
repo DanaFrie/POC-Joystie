@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { ChildSelfiePatternStep } from '@/components/onboarding/child/ChildSelfiePatternStep';
 import type { SelfieCapturedFaces } from '@/components/onboarding/child/ChildSelfiePatternStep';
 import { ChildSharedPhotoPreparingStep } from '@/components/onboarding/child/ChildSharedPhotoPreparingStep';
@@ -16,7 +15,7 @@ import {
 import { generateSelfieImage, getSelfieTransport } from '@/lib/api/selfie';
 import { ensureBondingChild, saveChildShareCard } from '@/lib/api/shareCard';
 import { shareImageFile } from '@/lib/share/shareImage';
-import { generateChildUrl, isDraftChildId } from '@/utils/url-encoding';
+import { assignChildDashboard, generateChildUrl, isDraftChildId } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('SelfieMission');
@@ -39,6 +38,24 @@ function resolveInitialChangeText(changeText?: string | null): string | null {
   return changeText?.trim() || readPersistedChildAgreedChange() || null;
 }
 
+function resolveChildWalletTarget(parentId?: string | null): {
+  parentId: string;
+  childId?: string;
+  href: string;
+} | null {
+  const ctx = getChildBondingContext();
+  const resolvedParentId = parentId || ctx?.parentId;
+  if (!resolvedParentId) return null;
+  const rawChildId = ctx?.childId;
+  const childId =
+    rawChildId && !isDraftChildId(rawChildId) ? rawChildId : undefined;
+  return {
+    parentId: resolvedParentId,
+    childId,
+    href: generateChildUrl(resolvedParentId, childId),
+  };
+}
+
 /**
  * Mission 3 selfie loop — pattern → preview → loader → review → share.
  * On like / skip: persist share card; share button uses Web Share / download.
@@ -52,8 +69,6 @@ export function ChildSelfieMissionFlow({
   changeText = null,
   onShareReached,
 }: ChildSelfieMissionFlowProps) {
-  const router = useRouter();
-
   const skipPhotoSrc = useMemo(
     () => defaultSelfieAssetForChild(childGender),
     [childGender],
@@ -394,20 +409,14 @@ export function ChildSelfieMissionFlow({
       photoSrc={photoSrc}
       changeText={latchedChangeText}
       onShare={() => void handleShare()}
+      walletHref={resolveChildWalletTarget(parentId)?.href ?? null}
       onWallet={() => {
-        const ctx = getChildBondingContext();
-        const resolvedParentId = parentId || ctx?.parentId;
-        if (!resolvedParentId) {
+        const target = resolveChildWalletTarget(parentId);
+        if (!target) {
           logger.warn('Wallet — no parentId; cannot open child dashboard');
           return;
         }
-        // Sync token URL — do not await Firestore enrichment (hangs / lands without token).
-        const rawChildId = ctx?.childId;
-        const childId =
-          rawChildId && !isDraftChildId(rawChildId) ? rawChildId : undefined;
-        const absolute = generateChildUrl(resolvedParentId, childId);
-        const path = new URL(absolute).pathname + new URL(absolute).search;
-        router.push(path);
+        assignChildDashboard(target.parentId, target.childId);
       }}
     />
   );

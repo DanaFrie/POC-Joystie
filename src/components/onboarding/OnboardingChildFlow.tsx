@@ -2,7 +2,7 @@
 
 
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import nextDynamic from 'next/dynamic';
 
@@ -80,7 +80,13 @@ import { usePostGameSync } from '@/hooks/usePostGameSync';
 
 import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
 
-import { buildGameChildUrlWithInvite, parseBondingInviteQueryParams } from '@/utils/url-encoding';
+import { getChildBondingContext } from '@/lib/onboarding/childBondingContext';
+import {
+  assignChildDashboard,
+  buildGameChildUrlWithInvite,
+  isDraftChildId,
+  parseBondingInviteQueryParams,
+} from '@/utils/url-encoding';
 
 
 
@@ -258,6 +264,24 @@ export function OnboardingChildFlow() {
     role: 'child',
     enabled: postGameSyncEnabled,
   });
+
+  const goToChildDashboard = useCallback(() => {
+    if (!parentId) return;
+    const ctx = getChildBondingContext();
+    const rawChildId = ctx?.childId;
+    const childId =
+      rawChildId && !isDraftChildId(rawChildId) ? rawChildId : undefined;
+    assignChildDashboard(parentId, childId);
+  }, [parentId]);
+
+  const dashboardNavStarted = useRef(false);
+  useEffect(() => {
+    if (!parentId || dashboardNavStarted.current) return;
+    if (step !== 'waitingParentApproval' && step !== 'parentSuggestedChange') return;
+    if (!postGame.merged.child?.selfieMissionDone) return;
+    dashboardNavStarted.current = true;
+    goToChildDashboard();
+  }, [parentId, step, postGame.merged.child?.selfieMissionDone, goToChildDashboard]);
 
   useEffect(() => {
     if (!postGame.childStep) return;

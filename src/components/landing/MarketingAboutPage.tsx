@@ -8,6 +8,7 @@ import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { MarketingNav } from '@/components/landing/MarketingNav';
 import { MarketingFooter } from '@/components/landing/MarketingFooter';
 import { LandingReveal } from '@/components/landing/LandingReveal';
+import { LandingAuthorAvatar } from '@/components/landing/LandingAuthorAvatar';
 
 function StoryBody({ className = '' }: { className?: string }) {
   return (
@@ -133,46 +134,11 @@ function TeamCard({
             {member.role}
           </p>
         </div>
-        <div
-          className={
-            mobile
-              ? 'relative h-[64px] w-[64px] shrink-0 rounded-full bg-white shadow-[2px_2px_5px_rgba(0,0,0,0.1)]'
-              : 'relative h-[88px] w-[88px] shrink-0 rounded-full bg-white shadow-[2px_2px_5px_rgba(0,0,0,0.1)]'
-          }
-        >
-          <div
-            className={
-              mobile
-                ? 'absolute left-1/2 top-1/2 h-[56px] w-[56px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#05161a]'
-                : 'absolute left-1/2 top-1/2 h-[77px] w-[77px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#05161a]'
-            }
-          >
-            <div
-              className="pointer-events-none absolute z-0 rounded-full"
-              style={{
-                left: mobile ? -3 : -4.44,
-                bottom: mobile ? -24 : -32.65,
-                width: mobile ? 60 : 81.884,
-                height: mobile ? 60 : 81.884,
-                background:
-                  'radial-gradient(circle, rgba(0,255,179,0.95) 0%, rgba(0,255,179,0.45) 45%, rgba(0,255,179,0) 72%)',
-                filter: 'blur(8px)',
-              }}
-              aria-hidden
-            />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={member.avatar}
-              alt={member.name}
-              width={77}
-              height={77}
-              loading="lazy"
-              decoding="async"
-              className="relative z-[1] h-full w-full object-cover object-center"
-              draggable={false}
-            />
-          </div>
-        </div>
+        <LandingAuthorAvatar
+          src={member.avatar}
+          alt={member.name}
+          size={mobile ? 'lg' : 'xl'}
+        />
       </div>
       <p
         className={

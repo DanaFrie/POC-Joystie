@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -62,6 +62,9 @@ export function MarketingNav({
   const [showMobileSolidBar, setShowMobileSolidBar] = useState(false);
   const router = useRouter();
   const onLight = chrome === 'onLight';
+  /** Section id to scroll after mobile menu unlock (iOS jumps to hero if we scroll while locked). */
+  const pendingSectionIdRef = useRef<string | null>(null);
+  const menuScrollYRef = useRef(0);
 
   /* Mobile: transparent on the hero, then dark/translucent from stats onward. */
   const barGlass = showMobileSolidBar
@@ -86,38 +89,99 @@ export function MarketingNav({
 
   const goTo = useCallback(
     (href: string) => {
-      setOpen(false);
       const resolved = resolveHref(href);
 
-      if (resolved.startsWith('/#')) {
-        const id = resolved.slice(2);
-        if (homeHashPrefix) {
-          router.push(`/#${id}`);
-          return;
-        }
-      }
-
-      if (resolved.startsWith('/') && !resolved.startsWith('/#')) {
+      // Absolute page (e.g. /about)
+      if (resolved.startsWith('/') && !resolved.includes('#')) {
+        pendingSectionIdRef.current = null;
+        setOpen(false);
         router.push(resolved);
         return;
       }
 
-      const id = href.replace('#', '');
-      scrollLandingToSection(id);
+      const id = resolved.includes('#')
+        ? resolved.slice(resolved.indexOf('#') + 1)
+        : href.replace(/^#/, '');
+
+      if (!id) {
+        setOpen(false);
+        return;
+      }
+
+      const onLanding =
+        typeof window !== 'undefined' &&
+        (window.location.pathname === '/' || window.location.pathname === '');
+
+      if (onLanding) {
+        window.history.pushState(null, '', `/#${id}`);
+        if (open) {
+          // Scroll only after menu unlock restores scrollY (mobile / iOS).
+          pendingSectionIdRef.current = id;
+          setOpen(false);
+          return;
+        }
+        scrollLandingToSection(id);
+        return;
+      }
+
+      // From /about, /knowledge/*, etc.
+      pendingSectionIdRef.current = null;
+      setOpen(false);
+      router.push(`/#${id}`);
     },
-    [homeHashPrefix, resolveHref, router],
+    [open, resolveHref, router],
   );
 
+  /*
+   * Mobile menu scroll lock — position:fixed + restore scrollY.
+   * Plain overflow:hidden on iOS jumps to top (hero) when unlocking.
+   */
   useEffect(() => {
     if (!open) return;
+
     const html = document.documentElement;
-    const prevHtml = html.style.overflow;
-    const prevBody = document.body.style.overflow;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    menuScrollYRef.current = scrollY;
+
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+    };
+
     html.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.left = '0';
+    body.style.right = '0';
+    body.style.width = '100%';
+
     return () => {
-      html.style.overflow = prevHtml;
-      document.body.style.overflow = prevBody;
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.top = prev.bodyTop;
+      body.style.width = prev.bodyWidth;
+      body.style.left = prev.bodyLeft;
+      body.style.right = prev.bodyRight;
+
+      window.scrollTo(0, menuScrollYRef.current);
+
+      const pending = pendingSectionIdRef.current;
+      if (!pending) return;
+      pendingSectionIdRef.current = null;
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.setTimeout(() => scrollLandingToSection(pending), 16);
+        });
+      });
     };
   }, [open]);
 

@@ -29,7 +29,7 @@ export const CHILD_ONBOARDING_ASSETS = {
   doriNotebookClose: '/onboarding/child/dori-notebook-close.webp',
   doriNotebookOpen: '/onboarding/child/dori-notebook-open.webp',
   doriMoneySit: '/onboarding/child/dori-money-sit.webp',
-  doriRunToCastle: '/onboarding/child/dori-run-to-castle.mp4',
+  doriRunToCastle: '/onboarding/child/dori-run-to-castle.mp4?v=2',
   doriCastle: '/onboarding/child/dori-castle.webp',
   /** Mission 3 — castle selfie camera frame background. */
   castleDoriSelfie: '/onboarding/child/castle-dori-selfie.webp',

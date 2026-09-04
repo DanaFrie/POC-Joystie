@@ -47,9 +47,7 @@ function ChildGameInner() {
   const [postGamePhase, setPostGamePhase] = useState<ChildPostGamePhase>('game');
 
   const onChildGameWon = useCallback(() => {
-    void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
-      void logEventOnce('game_win:child', AnalyticsEvents.GAME_WIN, { role: 'child' });
-    });
+    // Funnel Analytics is parent-device only — no child game_win.
     setPostGamePhase('winFadeOut');
   }, []);
 

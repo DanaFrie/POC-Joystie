@@ -162,6 +162,8 @@ export function childResumeAction(
       mergePostGameProgress(snapshot.child, snapshot.parent)
     );
     if (derived) return { type: 'funnelStep', step: derived };
+    // Selfie done — stay on share / waiting (flow sends waiting → dashboard).
+    if (snapshot.child?.selfieMissionDone) return { type: 'stay' };
     if (snapshot.child?.gameWon) return { type: 'funnelStep', step: 'missionOneWin' };
     return { type: 'stay' };
   }

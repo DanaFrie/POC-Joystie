@@ -1,8 +1,8 @@
 /** Server copy of client WhatsApp template (keep in sync with src/constants/whatsapp.ts). */
-const TEMPLATE_HE = `{inviteVerb} אותך לג׳ויסטי - האפליקציה שתעזור לנו להשקיע את הזמן שלנו בדברים כיפים (ופחות בפלאפון) וגם לחסוך כסף על הדרך
-
-מתחילים עכשיו:
-
+const TEMPLATE_HE = `{inviteVerb} אותך לג׳ויסטי!
+האפליקציה שתעזור לנו להשקיע את הזמן שלנו בדברים כיפים (ופחות בפלאפון)
+וגם לחסוך כסף על הדרך
+מתחילים עכשיו 🎮 >>
 {childUrl}`;
 
 const INVITE_VERB_FEMALE = 'אני מזמינה';
