@@ -55,6 +55,8 @@ export const LANDING_ASSETS = {
   founderAvatar: '/landing/about/meir.webp',
   dvirAvatar: '/landing/about/dvir.webp',
   menuGlow: '/landing/figma/menu-glow.svg',
+  globeIcon: '/landing/figma/globe-02.svg',
+  globeIconDesktop: '/landing/figma/globe-02-desktop.svg',
   menuChevron: '/landing/figma/menu-chevron.svg',
   donexGlow: '/landing/figma/donex-glow.png',
   donexJoyUnderline: '/landing/figma/donex-joy-underline.svg',
@@ -63,6 +65,7 @@ export const LANDING_ASSETS = {
   donex2Clock: '/landing/figma/donex2-clock.png',
   donex2Chevron: '/landing/figma/donex2-chevron.svg',
   donex2Full: '/landing/figma/donex2-full.png',
+  donex2FullEn: '/landing/figma/donex2-full-en.webp',
   doriFlyHappy: '/landing/dori-fly-happy.webp',
 } as const;
 

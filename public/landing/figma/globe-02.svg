@@ -1,0 +1,29 @@
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g id="globe-02">
+    <path
+      d="M7.99891 14.6664C11.6808 14.6664 14.6656 11.6816 14.6656 7.99973C14.6656 4.31783 11.6808 1.33306 7.99891 1.33306C4.31702 1.33306 1.33225 4.31783 1.33225 7.99973C1.33225 11.6816 4.31702 14.6664 7.99891 14.6664Z"
+      stroke="white"
+      stroke-width="1"
+    />
+    <path
+      d="M5.3329 7.99973C5.3329 11.9997 7.99957 14.6664 7.99957 14.6664C7.99957 14.6664 10.6662 11.9997 10.6662 7.99973C10.6662 3.99973 7.99957 1.33306 7.99957 1.33306C7.99957 1.33306 5.3329 3.99973 5.3329 7.99973Z"
+      stroke="white"
+      stroke-linejoin="round"
+      stroke-width="1"
+    />
+    <path
+      d="M14.0007 10.0001H2.00065"
+      stroke="white"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1"
+    />
+    <path
+      d="M14.0007 5.99995H2.00065"
+      stroke="white"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="1"
+    />
+  </g>
+</svg>

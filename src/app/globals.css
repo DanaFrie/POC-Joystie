@@ -640,6 +640,54 @@ body.layout-root:has(.v03-knowledge-article-root) {
   transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
 }
 
+/* Hero — image fades first, then copy/CTAs cascade top → bottom */
+@keyframes landing-hero-bg-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes landing-hero-item-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -28px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.v03-landing-root .landing-hero-bg {
+  opacity: 0;
+  animation: landing-hero-bg-in 2.2s cubic-bezier(0.33, 0.1, 0.25, 1) forwards;
+}
+
+.v03-landing-root .landing-hero-item {
+  opacity: 0;
+  animation: landing-hero-item-in 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--hero-stagger, 2s);
+}
+
+.v03-landing-root .landing-hero-item--1 {
+  --hero-stagger: 2s;
+}
+.v03-landing-root .landing-hero-item--2 {
+  --hero-stagger: 2.45s;
+}
+.v03-landing-root .landing-hero-item--3 {
+  --hero-stagger: 2.9s;
+}
+.v03-landing-root .landing-hero-item--4 {
+  --hero-stagger: 3.35s;
+}
+.v03-landing-root .landing-hero-item--5 {
+  --hero-stagger: 3.8s;
+}
+
 .v03-landing-root .landing-step-swap {
   animation: landing-step-swap 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -679,6 +727,13 @@ body.layout-root:has(.v03-knowledge-article-root) {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  .v03-landing-root .landing-hero-bg,
+  .v03-landing-root .landing-hero-item {
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 
   .v03-landing-root .landing-step-swap {
@@ -888,6 +943,25 @@ html[dir="rtl"] {
 }
 .hero-wallet-shimmer {
   animation: heroWalletShimmer 3s infinite;
+}
+
+/* Hero scroll cue — finger-point bob down */
+@keyframes landingScrollCueBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+.landing-scroll-cue-bob {
+  animation: landingScrollCueBob 1.35s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-scroll-cue-bob {
+    animation: none;
+  }
 }
 
 /* Reveal on scroll */

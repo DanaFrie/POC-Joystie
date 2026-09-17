@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LANDING_ASSETS, LANDING_HOW_STEPS } from '@/constants/landing-marketing';
+import { LANDING_ASSETS } from '@/constants/landing-marketing';
+import { getLandingHowSteps, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingHowGlow } from '@/components/landing/LandingDecor';
 
@@ -34,7 +36,17 @@ function StepCircle({ className = '' }: { className?: string }) {
 }
 
 /** Capsule 2 — Figma 15143:1261 stacked screen-time slider cards */
-function GoalsFrame({ className = '' }: { className?: string }) {
+function GoalsFrame({
+  className = '',
+  childName,
+  minutes,
+  dir,
+}: {
+  className?: string;
+  childName: string;
+  minutes: string;
+  dir: 'ltr' | 'rtl';
+}) {
   return (
     <div className={`relative shrink-0 ${className}`} aria-hidden>
       {/* Back card — offset stack */}
@@ -42,28 +54,36 @@ function GoalsFrame({ className = '' }: { className?: string }) {
         className="absolute left-[11px] top-[11px] flex w-[261px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[18px] border border-white/25 px-[17px] pb-[13px] pt-[15px] shadow-[2px_2px_14px_rgba(0,0,0,0.08)]"
         style={{ backgroundImage: CARD_GRAD }}
       >
-        <GoalsSliderContent />
+        <GoalsSliderContent childName={childName} minutes={minutes} dir={dir} />
       </div>
       {/* Front card */}
       <div
         className="relative z-10 flex w-[261px] flex-col items-center justify-center gap-[14px] overflow-hidden rounded-[17px] border border-white/25 px-[17px] pb-[13px] pt-[15px] shadow-[2px_2px_14px_rgba(0,0,0,0.08)]"
         style={{ backgroundImage: CARD_GRAD }}
       >
-        <GoalsSliderContent />
+        <GoalsSliderContent childName={childName} minutes={minutes} dir={dir} />
       </div>
     </div>
   );
 }
 
-function GoalsSliderContent() {
+function GoalsSliderContent({
+  childName,
+  minutes,
+  dir,
+}: {
+  childName: string;
+  minutes: string;
+  dir: 'ltr' | 'rtl';
+}) {
   return (
     <>
-      <div className="flex w-full items-center justify-between" dir="rtl">
+      <div className="flex w-full items-center justify-between" dir={dir}>
         <p className="font-rubik text-[23px] font-bold leading-[29px] tracking-[-0.35px] text-[#05161a]">
-          אלון
+          {childName}
         </p>
         <p className="font-rubik text-[19px] font-normal leading-[1.2] tracking-[-0.29px] text-[#05161a]">
-          40 דקות
+          {minutes}
         </p>
       </div>
       <div className="relative w-full">
@@ -103,7 +123,17 @@ function GoalsSliderContent() {
 }
 
 /** Capsule 3 — Figma 15099:1172 stacked daily-average stats cards */
-function HabitsFrame({ className = '' }: { className?: string }) {
+function HabitsFrame({
+  className = '',
+  dailyAvg,
+  value,
+  vsLastWeek,
+}: {
+  className?: string;
+  dailyAvg: string;
+  value: string;
+  vsLastWeek: string;
+}) {
   return (
     <div className={`relative shrink-0 ${className}`} aria-hidden>
       {/* Back card */}
@@ -111,29 +141,39 @@ function HabitsFrame({ className = '' }: { className?: string }) {
         className="absolute left-[11px] top-[11px] flex w-[247px] flex-col items-center justify-center rounded-[33px] border border-white py-5"
         style={{ backgroundImage: STATS_GRAD }}
       >
-        <HabitsStatsContent muted />
+        <HabitsStatsContent dailyAvg={dailyAvg} value={value} vsLastWeek={vsLastWeek} muted />
       </div>
       {/* Front card */}
       <div
         className="relative z-10 flex w-[247px] flex-col items-center justify-center rounded-[33px] border border-[#f2f2f2] py-5 shadow-[2px_2px_6px_rgba(0,0,0,0.25)]"
         style={{ backgroundImage: STATS_GRAD }}
       >
-        <HabitsStatsContent />
+        <HabitsStatsContent dailyAvg={dailyAvg} value={value} vsLastWeek={vsLastWeek} />
       </div>
     </div>
   );
 }
 
-function HabitsStatsContent({ muted = false }: { muted?: boolean }) {
+function HabitsStatsContent({
+  muted = false,
+  dailyAvg,
+  value,
+  vsLastWeek,
+}: {
+  muted?: boolean;
+  dailyAvg: string;
+  value: string;
+  vsLastWeek: string;
+}) {
   return (
     <div className="flex w-full flex-col items-center gap-[11px] px-4">
       <p className="whitespace-nowrap text-center font-rubik text-[14px] font-normal leading-[19px] tracking-[-0.29px] text-[#8d9495]">
-        ממוצע דק׳ יומי של אלון
+        {dailyAvg}
       </p>
       <div className="relative flex flex-col items-center justify-center gap-3">
         <div className="relative">
           <p className="whitespace-nowrap font-rubik text-[35px] font-bold leading-[41px] text-[#05161a]">
-            52 דק׳
+            {value}
           </p>
           {!muted ? (
             <div className="absolute -left-6 top-3 size-[18px]">
@@ -171,7 +211,7 @@ function HabitsStatsContent({ muted = false }: { muted?: boolean }) {
               muted ? 'text-white' : 'text-[#05161a]'
             }`}
           >
-            15%- ביחס לשבוע שעבר
+            {vsLastWeek}
           </p>
         </div>
       </div>
@@ -182,13 +222,20 @@ function HabitsStatsContent({ muted = false }: { muted?: boolean }) {
 function StepVisual({
   step,
   layout,
+  ui,
+  dir,
 }: {
   step: number;
   layout: 'mobile' | 'desktop';
+  ui: ReturnType<typeof getLandingUi>;
+  dir: 'ltr' | 'rtl';
 }) {
   if (step === 1) {
     return (
       <GoalsFrame
+        childName={ui.howMockChildName}
+        minutes={ui.howMockMinutes}
+        dir={dir}
         className={
           layout === 'mobile'
             ? 'origin-center scale-[0.55] sm:scale-[0.65]'
@@ -200,6 +247,9 @@ function StepVisual({
   if (step === 2) {
     return (
       <HabitsFrame
+        dailyAvg={ui.howMockDailyAvg}
+        value={ui.howMockValue}
+        vsLastWeek={ui.howMockVsLastWeek}
         className={
           layout === 'mobile'
             ? 'origin-center scale-[0.55] sm:scale-[0.65]'
@@ -223,12 +273,16 @@ function StepBadges({
   layout,
   progress,
   onSelect,
+  steps,
+  isEn,
 }: {
   active: number;
   layout: 'mobile' | 'desktop';
   /** 0–1 fill on the active badge */
   progress: number;
   onSelect: (index: number) => void;
+  steps: ReturnType<typeof getLandingHowSteps>;
+  isEn: boolean;
 }) {
   const isMobile = layout === 'mobile';
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -261,10 +315,10 @@ function StepBadges({
           : 'flex w-auto min-w-[220px] flex-col gap-4'
       }
       role="tablist"
-      aria-label="שלבי התהליך"
+      aria-label={isEn ? 'Process steps' : 'שלבי התהליך'}
     >
       {isMobile ? <div className="w-6 shrink-0" aria-hidden /> : null}
-      {LANDING_HOW_STEPS.map((item, index) => {
+      {steps.map((item, index) => {
         const isActive = index === active;
         return (
           <button
@@ -302,6 +356,13 @@ function StepBadges({
 }
 
 export function MarketingHowItWorks() {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const howSteps = getLandingHowSteps(locale);
+  const isEn = locale === 'en';
+  const textAlign = isEn ? 'text-left' : 'text-right';
+  const dir = isEn ? 'ltr' : 'rtl';
+
   const sectionRef = useRef<HTMLElement>(null);
   const startedRef = useRef(false);
   const [active, setActive] = useState(0);
@@ -309,7 +370,8 @@ export function MarketingHowItWorks() {
   const [storyPlaying, setStoryPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const step = LANDING_HOW_STEPS[active] ?? LANDING_HOW_STEPS[0];
+  const step = howSteps[active] ?? howSteps[0];
+  const stepsLen = howSteps.length;
 
   const selectStep = (index: number) => {
     if (index === active) {
@@ -366,7 +428,7 @@ export function MarketingHowItWorks() {
         raf = window.requestAnimationFrame(tick);
         return;
       }
-      setActive((i) => (i + 1) % LANDING_HOW_STEPS.length);
+      setActive((i) => (i + 1) % stepsLen);
       setStoryKey((k) => k + 1);
     };
 
@@ -375,13 +437,14 @@ export function MarketingHowItWorks() {
       cancelled = true;
       window.cancelAnimationFrame(raf);
     };
-  }, [storyPlaying, storyKey]);
+  }, [storyPlaying, storyKey, stepsLen]);
 
   return (
     <section
       ref={sectionRef}
       id="how-it-works"
       className="landing-section landing-gutter-md relative py-12 md:py-24"
+      dir={dir}
     >
       {/*
         Frame 1597882715 / 15445:6167 — column, center, gap 30, stretch.
@@ -409,22 +472,22 @@ export function MarketingHowItWorks() {
         </div>
 
         {/* Mobile header — same px-6 as story copy below */}
-        <LandingReveal className="relative z-[1] w-full px-6 text-right md:hidden">
+        <LandingReveal className={`relative z-[1] w-full px-6 md:hidden ${textAlign}`}>
           <h2 className="font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
-            איך עובד התהליך איתנו?
+            {ui.howTitle}
           </h2>
           <p className="mt-2 font-rubik text-base leading-[1.28] tracking-[-0.32px] text-[#abbec3]">
-            נלווה אתכם בכל שלב עד שתצליחו לשלב את ההרגלים החדשים בחיי הילדים
+            {ui.howLead}
           </p>
         </LandingReveal>
 
         {/* Desktop header */}
         <LandingReveal className="relative z-[1] hidden w-full text-center md:block">
-          <h2 className="whitespace-nowrap bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[40px] font-bold leading-[1.1] tracking-[-0.9px] text-transparent lg:text-[45px]">
-            איך עובד התהליך עם ג׳ויסטי?
+          <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[40px] font-bold leading-[1.1] tracking-[-0.9px] text-transparent lg:text-[45px]">
+            {ui.howTitle}
           </h2>
           <p className="mx-auto mt-2 max-w-[431px] font-rubik text-[20px] leading-[1.33] tracking-[-0.3px] text-white">
-            נלווה אתכם בכל שלב עד שתצליחו לשלב את ההרגלים החדשים בחיי הילדים
+            {ui.howLead}
           </p>
         </LandingReveal>
 
@@ -453,16 +516,23 @@ export function MarketingHowItWorks() {
                   layout="mobile"
                   progress={progress}
                   onSelect={selectStep}
+                  steps={howSteps}
+                  isEn={isEn}
                 />
                 <div
                   key={active}
-                  className="relative flex w-full items-center justify-between gap-4 px-6 pb-2 landing-step-swap sm:gap-[21px]"
+                  className={`relative flex w-full items-center justify-between gap-4 px-6 pb-2 landing-step-swap sm:gap-[21px] ${
+                    isEn ? 'flex-row-reverse' : ''
+                  }`}
                   dir="ltr"
                 >
                   <div className="relative flex h-[119px] w-[140px] shrink-0 items-center justify-center sm:w-[160px]">
-                    <StepVisual step={active} layout="mobile" />
+                    <StepVisual step={active} layout="mobile" ui={ui} dir={dir} />
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col gap-3 text-right sm:gap-4" dir="rtl">
+                  <div
+                    className={`flex min-w-0 flex-1 flex-col gap-3 sm:gap-4 ${textAlign}`}
+                    dir={dir}
+                  >
                     <h3 className="font-rubik text-[22px] font-bold leading-[1.15] tracking-[-0.66px] text-white sm:text-2xl sm:tracking-[-0.72px]">
                       {step.title}
                     </h3>
@@ -476,12 +546,12 @@ export function MarketingHowItWorks() {
           </div>
         </div>
 
-        {/* Desktop Story — circle @ top 25 / left −22, outside card so it bleeds past the dashed border */}
+        {/* Desktop Story — HE: circle bleeds left; EN: circle bleeds right */}
         <LandingReveal delayMs={80} className="relative z-[1] hidden w-full overflow-visible md:block">
           <div className="relative w-full overflow-visible">
             <div
               className="relative flex h-[304px] w-full flex-row items-center gap-5 overflow-visible rounded-[50px] border border-dashed border-[#505050] bg-[rgba(1,21,24,0.5)] py-6 pe-[230px] ps-[46px]"
-              dir="rtl"
+              dir={dir}
             >
               <div className="relative z-10 shrink-0">
                 <StepBadges
@@ -489,12 +559,14 @@ export function MarketingHowItWorks() {
                   layout="desktop"
                   progress={progress}
                   onSelect={selectStep}
+                  steps={howSteps}
+                  isEn={isEn}
                 />
               </div>
 
               <div
                 key={active}
-                className="relative z-10 flex min-w-0 flex-1 flex-col gap-6 text-right landing-step-swap"
+                className={`relative z-10 flex min-w-0 flex-1 flex-col gap-6 landing-step-swap ${textAlign}`}
               >
                 <h3 className="font-rubik text-[36px] font-bold leading-[1.1] tracking-[-1.08px] text-white">
                   {step.title}
@@ -508,13 +580,17 @@ export function MarketingHowItWorks() {
             {/* Sibling of dashed card — not clipped by story overflow/border */}
             <div
               className={`pointer-events-none absolute z-20 flex items-center justify-center ${
-                active === 0
-                  ? 'left-[-22px] top-[25px] h-[254px] w-[254px]'
-                  : 'left-[-40px] top-1/2 h-auto w-[280px] -translate-y-1/2'
+                isEn
+                  ? active === 0
+                    ? 'right-[-22px] top-[25px] h-[254px] w-[254px]'
+                    : 'right-[-40px] top-1/2 h-auto w-[280px] -translate-y-1/2'
+                  : active === 0
+                    ? 'left-[-22px] top-[25px] h-[254px] w-[254px]'
+                    : 'left-[-40px] top-1/2 h-auto w-[280px] -translate-y-1/2'
               }`}
               aria-hidden
             >
-              <StepVisual step={active} layout="desktop" />
+              <StepVisual step={active} layout="desktop" ui={ui} dir={dir} />
             </div>
           </div>
         </LandingReveal>

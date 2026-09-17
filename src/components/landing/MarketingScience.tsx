@@ -1,4 +1,8 @@
-import { LANDING_ASSETS, LANDING_SCIENCE } from '@/constants/landing-marketing';
+'use client';
+
+import { LANDING_ASSETS } from '@/constants/landing-marketing';
+import { getLandingScience, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingLazyVideo } from '@/components/landing/LandingLazyVideo';
 
@@ -86,7 +90,8 @@ function ScienceBadge({
     </div>
   );
 }
-function DoriVideoDesktop() {
+
+function DoriVideoDesktop({ ariaLabel }: { ariaLabel: string }) {
   return (
     <div className="relative h-[405px] w-[334px] shrink-0 overflow-hidden">
       <LandingLazyVideo
@@ -98,7 +103,7 @@ function DoriVideoDesktop() {
           height: 449.68,
         }}
         src={LANDING_ASSETS.doriResearchVideo}
-        aria-label="דורי מציג את המדע מאחורי ג׳ויסטי"
+        aria-label={ariaLabel}
       />
     </div>
   );
@@ -108,7 +113,7 @@ function DoriVideoDesktop() {
  * Mobile — Figma 15445:6189 clip 178.543×217.568;
  * video 15445:6190 @ left −26.41 / top −16.95 / 240.383²
  */
-function DoriVideoMobile() {
+function DoriVideoMobile({ ariaLabel }: { ariaLabel: string }) {
   return (
     <div className="relative h-[217.568px] w-[178.543px] shrink-0 overflow-hidden">
       <LandingLazyVideo
@@ -120,13 +125,13 @@ function DoriVideoMobile() {
           height: 240.383,
         }}
         src={LANDING_ASSETS.doriResearchVideo}
-        aria-label="דורי מציג את המדע מאחורי ג׳ויסטי"
+        aria-label={ariaLabel}
       />
     </div>
   );
 }
 
-type ScienceCardData = (typeof LANDING_SCIENCE)[number];
+type ScienceCardData = ReturnType<typeof getLandingScience>[number];
 
 /** Mint underline bar behind highlighted title words — Figma Rectangle 6552 */
 const MOBILE_HIGHLIGHT_BAR: Record<number, { left: number; top: number; width: number }> = {
@@ -138,9 +143,11 @@ const MOBILE_HIGHLIGHT_BAR: Record<number, { left: number; top: number; width: n
 function ScienceTitle({
   card,
   size,
+  isEn,
 }: {
   card: ScienceCardData;
   size: 'mobile' | 'desktop';
+  isEn: boolean;
 }) {
   const textClass =
     size === 'mobile'
@@ -148,9 +155,10 @@ function ScienceTitle({
       : 'font-rubik text-2xl font-bold leading-[1.1] tracking-[-0.72px]';
   const highlightClass =
     size === 'mobile' ? 'text-[#092125]' : 'bg-[#00ffb3] text-[#05161a]';
+  const align = isEn ? 'text-left' : 'text-right';
 
   return (
-    <h3 className={`relative z-[1] w-full text-right text-white ${textClass}`}>
+    <h3 className={`relative z-[1] w-full text-white ${align} ${textClass}`}>
       {card.titleParts.map((part) => {
         const highlighted = 'highlight' in part && part.highlight;
         if (part.text.includes('\n')) {
@@ -193,19 +201,23 @@ function ScienceTitle({
 function ScienceCard({
   card,
   className = '',
+  isEn,
 }: {
   card: ScienceCardData;
   className?: string;
+  isEn: boolean;
 }) {
+  const align = isEn ? 'text-left' : 'text-right';
+  const items = isEn ? 'items-start' : 'items-end';
   return (
     <article
-      dir="rtl"
-      className={`relative flex h-[305.297px] w-full flex-col overflow-visible rounded-[26px] bg-white/10 px-[30px] pb-[35px] pt-[45px] text-right ${className}`}
+      dir={isEn ? 'ltr' : 'rtl'}
+      className={`relative flex h-[305.297px] w-full flex-col overflow-visible rounded-[26px] bg-white/10 px-[30px] pb-[35px] pt-[45px] ${align} ${className}`}
     >
       <ScienceBadge n={card.n} size="desktop" />
-      <div className="relative z-[1] flex w-full flex-col items-end gap-[9px] text-right text-white">
-        <ScienceTitle card={card} size="desktop" />
-        <p className="w-full text-right font-rubik text-base leading-[1.28] tracking-[-0.32px]">
+      <div className={`relative z-[1] flex w-full flex-col gap-[9px] text-white ${items} ${align}`}>
+        <ScienceTitle card={card} size="desktop" isEn={isEn} />
+        <p className={`w-full font-rubik text-base leading-[1.28] tracking-[-0.32px] ${align}`}>
           {card.body}
         </p>
       </div>
@@ -217,19 +229,23 @@ function ScienceCard({
 function ScienceCardMobile({
   card,
   index,
+  isEn,
 }: {
   card: ScienceCardData;
   index: number;
+  isEn: boolean;
 }) {
   const bar = MOBILE_HIGHLIGHT_BAR[index];
+  const align = isEn ? 'text-left' : 'text-right';
+  const items = isEn ? 'items-start' : 'items-end';
 
   return (
     <article
-      dir="rtl"
-      className="relative flex h-[262px] w-[267px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-[30px] pb-5 pt-[30px] text-right"
+      dir={isEn ? 'ltr' : 'rtl'}
+      className={`relative flex h-[262px] w-[267px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-[30px] pb-5 pt-[30px] ${align}`}
     >
       <ScienceBadge n={card.n} size="mobile" />
-      <div className="relative z-[1] flex w-full flex-col items-end gap-[9px] text-right">
+      <div className={`relative z-[1] flex w-full flex-col gap-[9px] ${items} ${align}`}>
         {bar ? (
           <div
             className="pointer-events-none absolute bg-[#00ffb3]"
@@ -237,8 +253,10 @@ function ScienceCardMobile({
             aria-hidden
           />
         ) : null}
-        <ScienceTitle card={card} size="mobile" />
-        <p className="relative z-[1] w-full text-right font-rubik text-sm leading-[1.25] tracking-[-0.28px] text-white">
+        <ScienceTitle card={card} size="mobile" isEn={isEn} />
+        <p
+          className={`relative z-[1] w-full font-rubik text-sm leading-[1.25] tracking-[-0.28px] text-white ${align}`}
+        >
           {card.body}
         </p>
       </div>
@@ -252,20 +270,27 @@ function ScienceCardMobile({
  * Desktop — Figma 1597882682 (cards) + 1597882688 (copy+Dori).
  */
 export function MarketingScience() {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const science = getLandingScience(locale);
+  const isEn = locale === 'en';
+  const dir = isEn ? 'ltr' : 'rtl';
+  const textAlign = isEn ? 'text-left' : 'text-right';
+  const itemsAlign = isEn ? 'items-start' : 'items-end';
+
   return (
-    <section className="landing-section landing-gutter-md relative py-12 md:py-24">
-      {/* Mobile — Figma 15445:6187. Page is RTL: items-start = visual right (Dori). */}
+    <section id="science" className="landing-section landing-gutter-md relative py-12 md:py-24">
+      {/* Mobile — Figma 15445:6187 */}
       <div className="relative z-[2] flex flex-col gap-[45px] lg:hidden">
-        <LandingReveal className="flex w-full flex-col items-start gap-[18px] px-6 text-right">
+        <LandingReveal className={`flex w-full flex-col items-start gap-[18px] px-6 ${textAlign}`}>
           <div className="flex w-full max-w-[329px] flex-col items-start gap-[18px] self-start">
-            <DoriVideoMobile />
-            <div className="flex w-full flex-col items-end gap-2 text-right">
+            <DoriVideoMobile ariaLabel={ui.scienceVideoAria} />
+            <div className={`flex w-full flex-col gap-2 ${itemsAlign} ${textAlign}`}>
               <h2 className="w-full font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
-                המדע מאחורי ג׳ויסטי
+                {ui.scienceTitle}
               </h2>
               <p className="w-full font-rubik text-base leading-[1.33] tracking-[-0.24px] text-[#abbec3]">
-                מאחורי כל פיצ׳ר בג׳ויסטי עומדים עקרונות מוכחים ממדעי ההתנהגות, שנועדו לעזור לילדים
-                לפתח הרגלים בריאים בעולם הדיגיטלי
+                {ui.scienceLead}
               </p>
             </div>
           </div>
@@ -278,11 +303,16 @@ export function MarketingScience() {
         <LandingReveal className="w-full overflow-visible">
           <div
             className="flex w-full flex-row items-start gap-[21px] overflow-x-auto overscroll-x-contain pt-[19px] v03-scroll-hidden"
-            dir="rtl"
+            dir={dir}
           >
             <div className="w-6 shrink-0" aria-hidden />
-            {LANDING_SCIENCE.map((card, index) => (
-              <ScienceCardMobile key={card.body.slice(0, 24)} card={card} index={index} />
+            {science.map((card, index) => (
+              <ScienceCardMobile
+                key={card.body.slice(0, 24)}
+                card={card}
+                index={index}
+                isEn={isEn}
+              />
             ))}
             <div className="w-6 shrink-0" aria-hidden />
           </div>
@@ -291,7 +321,7 @@ export function MarketingScience() {
 
       {/*
         Desktop — Figma: cards left (1597882682), copy+Dori right (1597882688).
-        Cards use dir=rtl + text-right for in-box copy.
+        Cards use locale dir + text alignment for in-box copy.
       */}
       <div
         className="landing-section-fg relative mx-auto hidden min-h-[1299px] w-full max-w-[806px] lg:block"
@@ -299,33 +329,31 @@ export function MarketingScience() {
       >
         {/* pt-6 so card badges (-top-6) are not clipped by stacking/overflow */}
         <div className="absolute left-0 top-[213px] flex w-[320px] flex-col gap-[72px] overflow-visible pt-6">
-          {LANDING_SCIENCE.map((card, index) => (
+          {science.map((card, index) => (
             <LandingReveal
               key={card.body.slice(0, 24)}
               delayMs={120 + index * 120}
               className="overflow-visible"
             >
-              <ScienceCard card={card} />
+              <ScienceCard card={card} isEn={isEn} />
             </LandingReveal>
           ))}
         </div>
 
         <LandingReveal
-          className="absolute left-[374px] top-[237px] flex w-[432px] flex-col items-start gap-[61px] text-right"
-          dir="rtl"
+          className={`absolute left-[374px] top-[237px] flex w-[432px] flex-col items-start gap-[61px] ${textAlign}`}
+          dir={dir}
         >
-          <div className="flex w-full flex-col gap-[7px] text-right">
+          <div className={`flex w-full flex-col gap-[7px] ${textAlign}`}>
             <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[45px] font-bold leading-[1.15] tracking-[-1.35px] text-transparent">
-              המדע והנתונים שתומכים בג׳ויסטי
+              {ui.scienceTitle}
             </h2>
             <p className="font-rubik text-[20px] leading-[1.33] tracking-[-0.3px] text-white">
-              מאחורי כל פיצ׳ר בג׳ויסטי עומדים עקרונות מוכחים ממדעי ההתנהגות, שנועדו לעזור לילדים
-              לפתח הרגלים בריאים בעולם הדיגיטלי
+              {ui.scienceLead}
             </p>
           </div>
-          {/* items-start in RTL = visual right */}
           <div className="w-[334px] shrink-0 self-start">
-            <DoriVideoDesktop />
+            <DoriVideoDesktop ariaLabel={ui.scienceVideoAria} />
           </div>
         </LandingReveal>
       </div>

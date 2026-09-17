@@ -1,5 +1,9 @@
+'use client';
+
 import Image from 'next/image';
-import { LANDING_ASSETS, LANDING_FEATURES } from '@/constants/landing-marketing';
+import { LANDING_ASSETS } from '@/constants/landing-marketing';
+import { getLandingFeatures, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import {
   LandingFeatureEllipse,
@@ -45,10 +49,15 @@ const MOBILE_PHONE_W = 210;
 const MOBILE_IMAGE_MAX_PX = Math.round(149.9 * 1.15 * 10) / 10; // 172.4
 
 export function MarketingPresenting() {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const features = getLandingFeatures(locale);
+  const isEn = locale === 'en';
+
   return (
     <section
       className="landing-section landing-gutter relative pt-10 pb-12 md:py-24 lg:pt-0"
-      dir="rtl"
+      dir={isEn ? 'ltr' : 'rtl'}
     >
       {/* Soft seam from stats — mobile only */}
       <div
@@ -56,7 +65,7 @@ export function MarketingPresenting() {
         aria-hidden
       />
       <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-10 pt-2 md:gap-[60px] md:pt-0 lg:gap-[104px]">
-        {/* Menu "מה זה ג׳ויסטי?" lands here — גאים להציג בפניכם */}
+        {/* Menu "מה זה ג׳ויסטי?" lands here — presenting prefix */}
         <LandingReveal
           id="what-is-joystie"
           className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 md:pt-10 lg:scroll-mt-36 lg:pt-14"
@@ -67,7 +76,7 @@ export function MarketingPresenting() {
           />
           <div className="flex flex-col items-center gap-1 text-center">
             <p className="font-rubik text-[15px] font-light tracking-[-0.4px] text-white md:text-[30px] md:tracking-[-0.75px]">
-              גאים להציג בפניכם את
+              {ui.presentingPrefix}
             </p>
             <Image
               src={LANDING_ASSETS.presentingLogo}
@@ -85,7 +94,7 @@ export function MarketingPresenting() {
         </LandingReveal>
 
         <div className="flex w-full flex-col items-center gap-[100px] md:gap-[100px] lg:gap-[160px]">
-        {LANDING_FEATURES.map((feature, index) => {
+        {features.map((feature, index) => {
           const isSection1 = index === 0;
           const isSection2 = index === 1;
           const isSection3 = index === 2;
@@ -104,9 +113,11 @@ export function MarketingPresenting() {
                     : 'lg:grid-cols-[minmax(0,320px)_1fr]'
               } ${isSection1 ? 'lg:min-h-[665px]' : ''}`}
             >
-              {isSection1 ? <FeatureEllipse left={423} top={249} borderRadius={453.257} /> : null}
-              {isSection2 ? <FeatureEllipse left={60} top={150} /> : null}
-              {isSection3 ? <FeatureEllipse left={431} top={256} /> : null}
+              {isSection1 ? (
+                <FeatureEllipse left={isEn ? 112 : 423} top={249} borderRadius={453.257} />
+              ) : null}
+              {isSection2 ? <FeatureEllipse left={isEn ? 463 : 60} top={150} /> : null}
+              {isSection3 ? <FeatureEllipse left={isEn ? 112 : 431} top={256} /> : null}
 
               {/* Desktop dots — 1917×~652 (asset aspect; keeps dots round) */}
               <LandingFeatureWave
@@ -126,9 +137,13 @@ export function MarketingPresenting() {
               <div
                 className={`relative z-10 order-1 mx-auto w-full max-w-[327px] overflow-visible md:max-w-[320px] ${
                   isSection2
-                    ? 'lg:absolute lg:left-0 lg:top-0 lg:mx-0'
+                    ? isEn
+                      ? 'lg:absolute lg:right-0 lg:top-[19px] lg:mx-0'
+                      : 'lg:absolute lg:left-0 lg:top-0 lg:mx-0'
                     : isSection3
-                      ? 'lg:absolute lg:right-0 lg:top-[-34px] lg:mx-0'
+                      ? isEn
+                        ? 'lg:absolute lg:left-0 lg:top-[-34px] lg:mx-0'
+                        : 'lg:absolute lg:right-0 lg:top-[-34px] lg:mx-0'
                       : feature.reverse
                         ? 'lg:order-2'
                         : 'lg:order-1'
@@ -194,33 +209,61 @@ export function MarketingPresenting() {
                   </div>
                   {isSection1 ? <LandingFeatureDonex /> : null}
                   {isSection2 ? <LandingFeatureDonexConvert /> : null}
-                  {isSection3 ? <LandingFeatureDonexCelebrate /> : null}
+                  {isSection3 && !isEn ? <LandingFeatureDonexCelebrate /> : null}
                 </LandingReveal>
               </div>
 
+              {isSection3 && isEn ? <LandingFeatureDonexCelebrate /> : null}
+
               <LandingReveal
                 delayMs={80}
-                className={`relative z-10 order-2 flex w-full flex-col gap-4 text-center lg:gap-[30px] lg:text-right ${
-                  isSection2
-                    ? 'lg:absolute lg:left-[439px] lg:top-[279px] lg:order-none lg:w-[431px]'
-                    : isSection3
-                      ? 'lg:absolute lg:left-0 lg:top-[89px] lg:order-none lg:w-[431px] lg:gap-6'
-                      : feature.reverse
-                        ? 'lg:order-1'
-                        : 'lg:order-2'
-                } ${isSection1 ? 'lg:pt-[120px]' : ''}`}
+                className={`relative z-10 order-2 flex w-full flex-col gap-4 text-center ${
+                  isEn ? 'lg:text-left' : 'lg:text-right'
+                } ${
+                  isSection1
+                    ? isEn
+                      ? 'lg:w-[431px] lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
+                      : 'lg:mr-0 lg:ml-auto lg:w-[431px] lg:items-end lg:justify-center lg:gap-6 lg:pt-[120px]'
+                    : isSection2
+                      ? isEn
+                        ? 'lg:absolute lg:left-0 lg:top-[236px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
+                        : 'lg:absolute lg:left-[439px] lg:top-[279px] lg:order-none lg:w-[431px] lg:items-end lg:justify-center lg:gap-6'
+                      : isSection3
+                        ? isEn
+                          ? 'lg:absolute lg:left-[439px] lg:top-[25px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
+                          : 'lg:absolute lg:left-0 lg:top-[89px] lg:order-none lg:w-[431px] lg:items-end lg:justify-center lg:gap-6'
+                        : feature.reverse
+                          ? 'lg:order-1 lg:gap-[30px]'
+                          : 'lg:order-2 lg:gap-[30px]'
+                }`}
               >
                 <div className="flex w-full justify-center lg:justify-start">
-                  <div className="inline-flex rounded-full bg-white/20 px-3 py-1.5 lg:px-4 lg:py-2">
+                  <div className="inline-flex items-center justify-center gap-2.5 rounded-full bg-white/20 px-3 py-1.5">
                     <span className="font-rubik text-[13px] tracking-[-0.24px] text-white md:text-base">
                       {feature.badge}
                     </span>
                   </div>
                 </div>
-                <h2 className="font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-white md:text-[36px] lg:text-[45px] lg:tracking-[-1.35px]">
-                  {feature.titleBefore}
-                  {'breakBeforeAccent' in feature && feature.breakBeforeAccent ? <br /> : null}
-                  <span className="text-v03-turquoise-300">{feature.titleAccent}</span>
+                <h2
+                  className={`font-rubik text-[28px] font-bold tracking-[-0.9px] text-white md:text-[36px] lg:text-[45px] lg:tracking-[-1.35px] ${
+                    'breakBeforeAccent' in feature && feature.breakBeforeAccent
+                      ? 'leading-[1.02]'
+                      : 'leading-[1.15]'
+                  }`}
+                >
+                  {'breakBeforeAccent' in feature && feature.breakBeforeAccent ? (
+                    <>
+                      <span className="block whitespace-nowrap">{feature.titleBefore}</span>
+                      <span className="block whitespace-nowrap text-v03-turquoise-300">
+                        {feature.titleAccent}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {feature.titleBefore}
+                      <span className="text-v03-turquoise-300">{feature.titleAccent}</span>
+                    </>
+                  )}
                 </h2>
                 {feature.lead ? (
                   <p className="font-rubik text-base font-semibold text-white md:text-[20px] lg:text-lg">

@@ -11,6 +11,7 @@ export default function ConditionalMainWrapper({
 
   const isFullBleed =
     pathname === '/' ||
+    pathname === '/en' ||
     pathname === '/about' ||
     pathname?.startsWith('/knowledge') ||
     pathname === '/onboarding' ||

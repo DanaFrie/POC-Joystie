@@ -1,17 +1,24 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
-import { LANDING_BLOG, type LandingBlogPost } from '@/constants/landing-marketing';
+import type { LandingBlogPost } from '@/constants/landing-marketing';
+import { getLandingBlog, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingAuthorAvatar } from '@/components/landing/LandingAuthorAvatar';
 
 function KnowledgeCard({
   post,
   variant,
+  isEn,
 }: {
   post: LandingBlogPost;
   variant: 'mobile' | 'desktop';
+  isEn: boolean;
 }) {
   const mobile = variant === 'mobile';
+  const textAlign = isEn ? 'text-left' : 'text-right';
   const card = (
     <article
       className={
@@ -38,13 +45,12 @@ function KnowledgeCard({
         />
       </div>
       <div className="mb-2 flex shrink-0 items-center justify-start gap-2.5">
-        {/* RTL: first = right — About-style circular author photo */}
         <LandingAuthorAvatar src={post.avatar} alt={post.author} size="sm" />
         <p
           className={
             mobile
-              ? 'min-w-0 truncate text-right font-rubik text-sm leading-none tracking-[-0.4px] text-white'
-              : 'min-w-0 truncate text-right font-rubik text-sm leading-none tracking-[-0.4px] text-white lg:text-base'
+              ? `min-w-0 truncate font-rubik text-sm leading-none tracking-[-0.4px] text-white ${textAlign}`
+              : `min-w-0 truncate font-rubik text-sm leading-none tracking-[-0.4px] text-white lg:text-base ${textAlign}`
           }
         >
           {post.author}
@@ -53,8 +59,8 @@ function KnowledgeCard({
       <h3
         className={
           mobile
-            ? 'mb-2 text-right font-rubik text-base font-bold leading-[1.1] tracking-[-0.5px] text-white'
-            : 'mb-3 text-right font-rubik text-lg font-bold leading-[1.1] tracking-[-0.5px] text-white lg:text-xl lg:tracking-[-0.6px] xl:text-2xl xl:tracking-[-0.72px]'
+            ? `mb-2 font-rubik text-base font-bold leading-[1.1] tracking-[-0.5px] text-white ${textAlign}`
+            : `mb-3 font-rubik text-lg font-bold leading-[1.1] tracking-[-0.5px] text-white lg:text-xl lg:tracking-[-0.6px] xl:text-2xl xl:tracking-[-0.72px] ${textAlign}`
         }
       >
         {post.title}
@@ -62,8 +68,8 @@ function KnowledgeCard({
       <p
         className={
           mobile
-            ? 'text-right font-rubik text-xs leading-[1.28] text-white/80'
-            : 'text-right font-rubik text-sm leading-[1.28] tracking-[-0.28px] text-white/80 lg:text-base lg:tracking-[-0.32px]'
+            ? `font-rubik text-xs leading-[1.28] text-white/80 ${textAlign}`
+            : `font-rubik text-sm leading-[1.28] tracking-[-0.28px] text-white/80 lg:text-base lg:tracking-[-0.32px] ${textAlign}`
         }
       >
         {post.excerpt}
@@ -85,12 +91,24 @@ function KnowledgeCard({
 }
 
 export function MarketingKnowledge() {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const blog = getLandingBlog(locale);
+  const isEn = locale === 'en';
+  const textAlign = isEn ? 'text-left' : 'text-right';
+
   return (
-    <section id="knowledge" className="landing-section landing-gutter-md py-12 md:py-24">
+    <section
+      id="knowledge"
+      className="landing-section landing-gutter-md py-12 md:py-24"
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6 md:gap-8">
         <LandingReveal className="flex flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between md:gap-10 md:px-0">
-          <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text text-right font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[40px] lg:text-[45px]">
-            מרכז הידע של ג׳ויסטי
+          <h2
+            className={`bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[40px] lg:text-[45px] ${textAlign}`}
+          >
+            {ui.knowledgeTitle}
           </h2>
         </LandingReveal>
 
@@ -99,22 +117,22 @@ export function MarketingKnowledge() {
           touch-pan-x + overscroll-x-contain: swipe X through cards; Y gestures don’t scroll this strip.
         */}
         <div className="flex items-stretch gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x px-6 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
-          {LANDING_BLOG.map((post, index) => (
+          {blog.map((post, index) => (
             <LandingReveal
               key={post.slug ?? post.title}
               delayMs={index * 90}
               className="flex shrink-0 self-stretch"
             >
-              <KnowledgeCard post={post} variant="mobile" />
+              <KnowledgeCard post={post} variant="mobile" isEn={isEn} />
             </LandingReveal>
           ))}
         </div>
 
         {/* One row — all articles aligned; captions share a baseline via title min-height */}
         <div className="hidden items-stretch gap-4 lg:grid lg:grid-cols-4 xl:gap-[24px]">
-          {LANDING_BLOG.map((post, index) => (
+          {blog.map((post, index) => (
             <LandingReveal key={post.slug ?? post.title} delayMs={100 + index * 110} className="h-full">
-              <KnowledgeCard post={post} variant="desktop" />
+              <KnowledgeCard post={post} variant="desktop" isEn={isEn} />
             </LandingReveal>
           ))}
         </div>
