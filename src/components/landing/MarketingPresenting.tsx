@@ -5,6 +5,7 @@ import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingFeatures, getLandingUi } from '@/constants/landing-i18n';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
+import { LandingMockupFade } from '@/components/landing/LandingMockupFade';
 import {
   LandingFeatureEllipse,
   LandingFeatureWave,
@@ -68,7 +69,7 @@ export function MarketingPresenting() {
         {/* Menu "מה זה ג׳ויסטי?" lands here — presenting prefix */}
         <LandingReveal
           id="what-is-joystie"
-          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 md:pt-10 lg:scroll-mt-36 lg:pt-14"
+          className="flex w-full scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 md:pt-10 lg:scroll-mt-36 lg:pt-14"
         >
           <div
             className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-white/10"
@@ -104,7 +105,7 @@ export function MarketingPresenting() {
           return (
             <article
               key={feature.badge}
-              className={`relative grid w-full max-w-[327px] items-start gap-2.5 overflow-visible md:max-w-none md:gap-12 ${
+              className={`relative grid w-full items-start gap-2.5 overflow-visible md:max-w-none md:gap-12 ${
                 /* gap-2.5 = 10px mobile — half of previous 20px mockup→badge gap */
                 useAbsoluteDesktop
                   ? `lg:block ${isSection2 ? 'lg:min-h-[657px]' : 'lg:min-h-[654px]'}`
@@ -156,7 +157,7 @@ export function MarketingPresenting() {
 
                 <LandingReveal delayMs={180 + index * 40} className="relative z-[1] overflow-visible">
                   <LandingFeatureEllipse showDesktop={!useArticleEllipse} />
-                  <div className="relative mx-auto w-full overflow-visible md:aspect-[320/663] md:max-w-[320px] md:overflow-hidden">
+                  <LandingMockupFade className="relative mx-auto w-full overflow-visible md:aspect-[320/663] md:max-w-[320px] md:overflow-hidden">
                     {/*
                       Mobile mockup frame — Figma 327×435, gap-5 (20px) to badge below.
                       Phone @ left 58 / width 210; fade @ top 268 × full 327 width.
@@ -206,7 +207,7 @@ export function MarketingPresenting() {
                         sizes="320px"
                       />
                     </div>
-                  </div>
+                  </LandingMockupFade>
                   {isSection1 ? <LandingFeatureDonex /> : null}
                   {isSection2 ? <LandingFeatureDonexConvert /> : null}
                   {isSection3 && !isEn ? <LandingFeatureDonexCelebrate /> : null}
@@ -222,7 +223,7 @@ export function MarketingPresenting() {
                 } ${
                   isSection1
                     ? isEn
-                      ? 'lg:w-[431px] lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
+                      ? 'lg:w-[560px] lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
                       : 'lg:mr-0 lg:ml-auto lg:w-[431px] lg:items-end lg:justify-center lg:gap-6 lg:pt-[120px]'
                     : isSection2
                       ? isEn
@@ -253,8 +254,8 @@ export function MarketingPresenting() {
                 >
                   {'breakBeforeAccent' in feature && feature.breakBeforeAccent ? (
                     <>
-                      <span className="block whitespace-nowrap">{feature.titleBefore}</span>
-                      <span className="block whitespace-nowrap text-v03-turquoise-300">
+                      <span className="block lg:whitespace-nowrap">{feature.titleBefore.trimEnd()}</span>
+                      <span className="block text-v03-turquoise-300 lg:whitespace-nowrap">
                         {feature.titleAccent}
                       </span>
                     </>

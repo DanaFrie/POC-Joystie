@@ -14,6 +14,7 @@ import {
   LANDING_SOCIAL,
   type LandingBlogPost,
 } from '@/constants/landing-marketing';
+import { LANDING_BLOG_EN } from '@/constants/landing-blog-en';
 import type { LandingLocale } from '@/components/landing/LandingLocaleContext';
 
 export type LandingNavLink = { href: string; label: string };
@@ -22,7 +23,7 @@ const NAV_EN: readonly LandingNavLink[] = [
   { href: '#what-is-joystie', label: 'What is Joystie?' },
   { href: '#how-it-works', label: 'How does it work?' },
   { href: '#questions', label: 'FAQ' },
-  { href: '/about', label: 'About us' },
+  { href: '/en/about', label: 'About us' },
   { href: '#knowledge', label: 'Knowledge center' },
 ];
 
@@ -31,6 +32,7 @@ const FEATURES_EN = [
     badge: 'Connecting between allowance to screen time',
     titleBefore: 'The first digital wallet ',
     titleAccent: 'to change screen habits',
+    breakBeforeAccent: true,
     lead: 'Every minute of screen time saved is real money.',
     body: 'At the end of the week, kids cash in their savings and realize every choice matters, and time is money.',
     image: '/landing/first-diff-en.webp',
@@ -73,7 +75,7 @@ const HOW_STEPS_EN = [
   {
     tab: 'Setting up challenges',
     title: 'Set the rules of the game together',
-    body: 'Together you define screen limits, allowance and attention coins — so kids understand the rules upfront and feel like partners in the decisions, not just followers.',
+    body: 'Together you define screen limits, allowance and attention coins - so kids understand the rules upfront and feel like partners in the decisions, not just followers.',
     image: LANDING_ASSETS.howItWorksHero,
   },
   {
@@ -87,24 +89,27 @@ const HOW_STEPS_EN = [
 const SCIENCE_EN = [
   {
     n: 1 as const,
-    titleParts: [{ text: 'Decisions are shaped by feedback ' }, { text: 'and immediate reward', highlight: true }],
+    titleParts: [
+      { text: 'Decisions are effected by\n' },
+      { text: 'feedback and quick reward', highlight: true },
+    ],
     body: 'Behavioral economics research, including the work of Richard Thaler, clearly shows that feedback and rewards significantly influence decision-making and deep behavior change: an approach directly applied in Joystie.',
   },
   {
     n: 2 as const,
     titleParts: [
-      { text: 'Incentives create habits,', highlight: true },
-      { text: '\neven in the long run' },
+      { text: 'Incentives create habits,\n' },
+      { text: 'in the long term as well', highlight: true },
     ],
-    body: 'A large-scale study by the University of Pennsylvania and Carnegie Mellon University found that small incentives can help form new habits that persist even after the incentives themselves end.',
+    body: 'A large-scale study by the University of Pennsylvania and Carnegie Mellon University among thousands of students found that small incentives can help form new habits that persist even after the incentives end.',
   },
   {
     n: 3 as const,
     titleParts: [
-      { text: 'Gamification increases ' },
-      { text: '\nengagement and motivation', highlight: true },
+      { text: 'Gamification increases\n' },
+      { text: 'engagement and motivation', highlight: true },
     ],
-    body: 'A systematic review of dozens of studies on Gamification in Education found that playfulness, immediate feedback, and rewards boost children’s engagement and motivation in learning and habit development.',
+    body: "A systematic review of dozens of studies on Gamification in Education found that playfulness, immediate feedback, and rewards boost children's engagement and motivation in learning and habit development.",
   },
 ] as const;
 
@@ -115,7 +120,7 @@ const FAQ_EN = [
   },
   {
     q: 'What happens if a child exceeds their screen-time limit?',
-    a: 'Going over the limit costs from their allowance — just like in the real world. The child learns that choices have a price, instead of the parent becoming a police officer who cuts the screen by force.',
+    a: 'Going over the limit costs from their allowance - just like in the real world. The child learns that choices have a price, instead of the parent becoming a police officer who cuts the screen by force.',
   },
   {
     q: 'Can the rules be customized per child?',
@@ -239,7 +244,7 @@ const UI_EN = {
   howLead: 'Three simple steps to start reshaping screen habits together with your kids.',
   scienceTitle: 'The science behind Joystie',
   scienceLead:
-    'Behind every Joystie feature are proven behavioral-science principles designed to help kids',
+    'Behind every feature in Joystie are proven behavioral science principles that help children develop healthy digital habits',
   scienceVideoAria: 'Dori presents the science behind Joystie',
   scienceReadMore: 'Read more >>',
   behindTitle: 'Behind the idea',
@@ -300,9 +305,7 @@ export function getLandingFaq(locale: LandingLocale) {
 }
 
 export function getLandingBlog(locale: LandingLocale): readonly LandingBlogPost[] {
-  // Articles remain Hebrew for now; cards still list on EN landing.
-  void locale;
-  return LANDING_BLOG;
+  return locale === 'en' ? LANDING_BLOG_EN : LANDING_BLOG;
 }
 
 export function getLandingFooterLinks(locale: LandingLocale) {

@@ -10,6 +10,8 @@ import { MarketingFaq } from '@/components/landing/MarketingFaq';
 import { MarketingKnowledge } from '@/components/landing/MarketingKnowledge';
 import { MarketingFooter } from '@/components/landing/MarketingFooter';
 import { LandingHashScroll } from '@/components/landing/LandingHashScroll';
+import { EnglishAppGateProvider } from '@/components/landing/EnglishAppGateContext';
+import { EnglishAppUnavailableGate } from '@/components/landing/EnglishAppUnavailableGate';
 import {
   LandingLocaleProvider,
   type LandingLocale,
@@ -24,9 +26,10 @@ export function MarketingLandingPage({ locale = 'he' }: { locale?: LandingLocale
 
   return (
     <LandingLocaleProvider locale={locale}>
+      <EnglishAppGateProvider>
       <div
-        className={`v03-landing-root min-h-screen bg-[#05161a] font-rubik text-white ${
-          isEn ? 'text-left [direction:ltr]' : 'text-right [direction:rtl]'
+        className={`v03-landing-root marketing-page-fade min-h-screen w-full max-w-[100vw] bg-[#05161a] text-white ${
+          isEn ? 'font-sf text-left [direction:ltr]' : 'font-rubik text-right [direction:rtl]'
         }`}
         dir={dir}
         lang={locale}
@@ -64,7 +67,9 @@ export function MarketingLandingPage({ locale = 'he' }: { locale?: LandingLocale
         <MarketingFaq />
         <MarketingKnowledge />
         <MarketingFooter />
+        {isEn ? <EnglishAppUnavailableGate /> : null}
       </div>
+      </EnglishAppGateProvider>
     </LandingLocaleProvider>
   );
 }

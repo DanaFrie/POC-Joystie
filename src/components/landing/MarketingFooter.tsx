@@ -106,7 +106,7 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
             <div
               className={`absolute inset-x-0 top-[min(185px,38%)] z-10 flex flex-col items-start gap-8 px-6 sm:gap-10 md:inset-0 md:top-0 md:h-full md:w-full md:max-w-none md:items-start md:justify-center md:gap-8 md:px-12 lg:px-16 xl:px-20 ${textAlign}`}
             >
-              <p className="w-full max-w-[327px] font-rubik text-[40px] font-bold leading-[1.05] tracking-[-1.2px] text-white sm:text-[45px] sm:tracking-[-1.35px] md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
+              <p className="w-full font-rubik text-[40px] font-bold leading-[1.05] tracking-[-1.2px] text-white sm:text-[45px] sm:tracking-[-1.35px] md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
                 {ui.footerTagline}
               </p>
               <MarketingCtaButton

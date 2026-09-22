@@ -2,7 +2,7 @@
 
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingUi } from '@/constants/landing-i18n';
-import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
+import { useLandingLocale, landingAboutPath } from '@/components/landing/LandingLocaleContext';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingAuthorAvatar } from '@/components/landing/LandingAuthorAvatar';
@@ -36,6 +36,7 @@ export function MarketingBehindIdea() {
   const locale = useLandingLocale();
   const ui = getLandingUi(locale);
   const isEn = locale === 'en';
+  const aboutHref = landingAboutPath(locale);
   const dir = isEn ? 'ltr' : 'rtl';
   const textAlign = isEn ? 'text-left' : 'text-right';
 
@@ -52,7 +53,7 @@ export function MarketingBehindIdea() {
         </LandingReveal>
 
         <LandingReveal
-          className={`flex w-full max-w-[328px] flex-col items-start gap-6 md:max-w-[492px] lg:gap-[30px] ${textAlign}`}
+          className={`flex w-full flex-col items-start gap-6 md:max-w-[492px] lg:gap-[30px] ${textAlign}`}
         >
           <div className="flex w-full flex-col gap-[35px]">
             <div className="flex w-full flex-col gap-4 md:gap-5">
@@ -100,13 +101,13 @@ export function MarketingBehindIdea() {
           </div>
 
           <MarketingCtaButton
-            href="/about"
+            href={aboutHref}
             label={ui.behindCta}
             size="mobile"
             className="lg:hidden"
           />
           <MarketingCtaButton
-            href="/about"
+            href={aboutHref}
             label={ui.behindCta}
             className="hidden lg:inline-flex"
           />

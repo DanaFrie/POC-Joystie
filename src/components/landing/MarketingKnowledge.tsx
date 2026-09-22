@@ -4,7 +4,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { LandingBlogPost } from '@/constants/landing-marketing';
 import { getLandingBlog, getLandingUi } from '@/constants/landing-i18n';
-import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
+import {
+  landingKnowledgePath,
+  useLandingLocale,
+} from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingAuthorAvatar } from '@/components/landing/LandingAuthorAvatar';
 
@@ -17,6 +20,7 @@ function KnowledgeCard({
   variant: 'mobile' | 'desktop';
   isEn: boolean;
 }) {
+  const locale = useLandingLocale();
   const mobile = variant === 'mobile';
   const textAlign = isEn ? 'text-left' : 'text-right';
   const card = (
@@ -81,7 +85,7 @@ function KnowledgeCard({
 
   return (
     <Link
-      href={`/knowledge/${post.slug}`}
+      href={landingKnowledgePath(locale, post.slug)}
       className="block h-full outline-none focus-visible:ring-2 focus-visible:ring-[#00ffb3]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#05161a]"
       aria-label={post.title}
     >

@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingNavLinks, getLandingUi } from '@/constants/landing-i18n';
@@ -12,8 +13,11 @@ import { LandingMenuGlow } from '@/components/landing/LandingDecor';
 import { scrollLandingToSection } from '@/components/landing/landingStatsStory';
 import {
   landingHomePath,
+  landingPathForLocale,
   useLandingLocale,
 } from '@/components/landing/LandingLocaleContext';
+import { useMarketingLocaleSwitch } from '@/components/landing/useMarketingLocaleSwitch';
+import { useEnglishAppGateIntercept } from '@/components/landing/EnglishAppGateContext';
 
 /** Figma chrome heights removed permanently; remaining Y keeps same relative spacing. */
 const MOBILE_STATUS_BAR = 44;
@@ -66,16 +70,26 @@ export function MarketingNav({
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [showMobileSolidBar, setShowMobileSolidBar] = useState(false);
+  const [langMenuPos, setLangMenuPos] = useState<{ top: number; left?: number; right?: number } | null>(
+    null,
+  );
   const router = useRouter();
   const locale = useLandingLocale();
+  const pathname = usePathname();
   const ui = getLandingUi(locale);
   const navLinks = getLandingNavLinks(locale);
   const homePath = landingHomePath(locale);
   const isEn = locale === 'en';
+  const heLocaleHref = landingPathForLocale('he', pathname);
+  const enLocaleHref = landingPathForLocale('en', pathname);
+  const switchLocale = useMarketingLocaleSwitch(locale);
+  const joinGate = useEnglishAppGateIntercept('join');
+  const loginGate = useEnglishAppGateIntercept('login');
   const onLight = chrome === 'onLight';
   /** Section id to scroll after mobile menu unlock (iOS jumps to hero if we scroll while locked). */
   const pendingSectionIdRef = useRef<string | null>(null);
   const menuScrollYRef = useRef(0);
+  const langTriggerRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
   /* Mobile: transparent on the hero, then dark/translucent from stats onward. */
@@ -143,6 +157,16 @@ export function MarketingNav({
     [locale, open, resolveHref, router],
   );
 
+  useEffect(() => {
+    if (!langOpen) return;
+    try {
+      router.prefetch(heLocaleHref);
+      router.prefetch(enLocaleHref);
+    } catch {
+      /* ignore */
+    }
+  }, [langOpen, heLocaleHref, enLocaleHref, router]);
+
   /*
    * Mobile menu scroll lock — position:fixed + restore scrollY.
    * Plain overflow:hidden on iOS jumps to top (hero) when unlocking.
@@ -196,14 +220,39 @@ export function MarketingNav({
     };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!langOpen) {
+      setLangMenuPos(null);
+      return;
+    }
+    const sync = () => {
+      const el = langTriggerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      /* Match prior absolute top-[43px] from trigger top */
+      setLangMenuPos(
+        isEn
+          ? { top: rect.top + 43, right: window.innerWidth - rect.right }
+          : { top: rect.top + 43, left: rect.left },
+      );
+    };
+    sync();
+    window.addEventListener('resize', sync);
+    window.addEventListener('scroll', sync, true);
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('scroll', sync, true);
+    };
+  }, [langOpen, isEn]);
+
   useEffect(() => {
     if (!langOpen) return;
     const onPointer = (e: MouseEvent | TouchEvent) => {
-      const el = langMenuRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) {
-        setLangOpen(false);
-      }
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (langTriggerRef.current?.contains(target)) return;
+      if (langMenuRef.current?.contains(target)) return;
+      setLangOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setLangOpen(false);
@@ -265,8 +314,9 @@ export function MarketingNav({
             {isEn ? (
               <>
                 <Link
-                  href="/login"
-                  className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)]"
+                  href={loginGate.href}
+                  onClick={loginGate.onClick}
+                  className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
                   style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
                   aria-label={ui.login}
                 >
@@ -280,6 +330,7 @@ export function MarketingNav({
                     draggable={false}
                   />
                 </Link>
+                <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
                 <button
                   type="button"
                   className="flex size-6 shrink-0 items-center justify-center text-white"
@@ -361,8 +412,9 @@ export function MarketingNav({
                 </button>
                 <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
                 <Link
-                  href="/login"
-                  className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)]"
+                  href={loginGate.href}
+                  onClick={loginGate.onClick}
+                  className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
                   style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
                   aria-label={ui.login}
                 >
@@ -422,7 +474,7 @@ export function MarketingNav({
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative" ref={langMenuRef}>
+          <div className="relative" ref={langTriggerRef}>
             <button
               type="button"
               className="inline-flex h-5 w-5 shrink-0 items-center justify-center text-white/90 transition-opacity hover:opacity-70"
@@ -441,46 +493,107 @@ export function MarketingNav({
                 draggable={false}
               />
             </button>
-            {langOpen ? (
-              <div
-                role="menu"
-                aria-label={ui.language}
-                dir="rtl"
-                className="absolute end-0 top-[calc(100%+10px)] z-[70] min-w-[132px] overflow-hidden rounded-[18px] border border-white/45 bg-[rgba(120,175,215,0.38)] shadow-[0_8px_28px_rgba(0,0,0,0.18)] backdrop-blur-[14px]"
-              >
-                <Link
-                  href="/"
-                  role="menuitem"
-                  aria-current={locale === 'he' ? 'true' : undefined}
-                  onClick={() => setLangOpen(false)}
-                  className={`flex w-full items-center justify-end border-b border-white/35 px-4 py-3 font-rubik text-[15px] font-bold leading-none tracking-[-0.3px] text-white transition-colors duration-300 ease-out hover:bg-[rgba(35,85,130,0.55)] ${
-                    locale === 'he' ? 'bg-[rgba(35,85,130,0.45)]' : ''
-                  }`}
-                >
-                  עברית
-                </Link>
-                <Link
-                  href="/en"
-                  role="menuitem"
-                  aria-current={locale === 'en' ? 'true' : undefined}
-                  onClick={() => setLangOpen(false)}
-                  className={`flex w-full items-center justify-end px-4 py-3 font-rubik text-[15px] font-bold leading-none tracking-[-0.3px] text-white transition-colors duration-300 ease-out hover:bg-[rgba(35,85,130,0.55)] ${
-                    locale === 'en' ? 'bg-[rgba(35,85,130,0.45)]' : ''
-                  }`}
-                >
-                  English
-                </Link>
-              </div>
-            ) : null}
           </div>
+          {langOpen && langMenuPos && typeof document !== 'undefined'
+            ? createPortal(
+                <div
+                  ref={langMenuRef}
+                  role="menu"
+                  aria-label={ui.language}
+                  dir={isEn ? 'ltr' : 'rtl'}
+                  style={{
+                    position: 'fixed',
+                    top: langMenuPos.top,
+                    left: langMenuPos.left,
+                    right: langMenuPos.right,
+                    width: 153,
+                    minWidth: 153,
+                    maxWidth: 153,
+                    borderRadius: 24,
+                    border: '1px solid #FFF',
+                    background: 'rgba(120, 175, 215, 0.28)',
+                    backdropFilter: 'blur(15px)',
+                    WebkitBackdropFilter: 'blur(15px)',
+                    boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+                    zIndex: 80,
+                    overflow: 'hidden',
+                    pointerEvents: 'auto',
+                  }}
+                  className={`flex flex-col ${isEn ? 'marketing-en-sf' : ''}`}
+                >
+                  {(isEn
+                    ? ([
+                        {
+                          href: enLocaleHref,
+                          locale: 'en' as const,
+                          label: ui.langEnglish,
+                          font: 'font-sf',
+                        },
+                        {
+                          href: heLocaleHref,
+                          locale: 'he' as const,
+                          label: ui.langHebrew,
+                          font: 'font-rubik',
+                        },
+                      ] as const)
+                    : ([
+                        {
+                          href: heLocaleHref,
+                          locale: 'he' as const,
+                          label: ui.langHebrew,
+                          font: 'font-rubik',
+                        },
+                        {
+                          href: enLocaleHref,
+                          locale: 'en' as const,
+                          label: ui.langEnglish,
+                          font: 'font-sf',
+                        },
+                      ] as const)
+                  ).map((opt, i, arr) => (
+                    <Link
+                      key={opt.locale}
+                      href={opt.href}
+                      role="menuitem"
+                      prefetch
+                      aria-current={locale === opt.locale ? 'true' : undefined}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setLangOpen(false);
+                        switchLocale(opt.href, opt.locale);
+                      }}
+                      onMouseEnter={() => {
+                        try {
+                          router.prefetch(opt.href);
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
+                      className={`flex w-full items-center px-4 py-3 text-[15px] font-bold leading-none tracking-[-0.3px] text-white transition-colors duration-200 ease-out hover:bg-white/15 ${
+                        opt.font
+                      } ${isEn ? 'justify-start text-left' : 'justify-start text-right'} ${
+                        i < arr.length - 1 ? 'border-b border-white/35' : ''
+                      } ${i === 0 ? 'rounded-t-[24px]' : ''} ${
+                        i === arr.length - 1 ? 'rounded-b-[24px]' : ''
+                      }`}
+                    >
+                      {opt.label}
+                    </Link>
+                  ))}
+                </div>,
+                document.body,
+              )
+            : null}
           <Link
-            href="/login"
+            href={loginGate.href}
+            onClick={loginGate.onClick}
             className="inline-flex h-[46px] items-center justify-center gap-3 rounded-[16px] border border-white px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
           >
             {ui.login}
           </Link>
           <Link
-            href="/onboarding"
+            href={joinGate.href}
+            onClick={joinGate.onClick}
             dir={isEn ? 'ltr' : 'rtl'}
             className="inline-flex h-[46px] flex-row items-center justify-center gap-3 rounded-[16px] bg-v03-turquoise-300 px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-[#282828] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:-translate-y-0.5"
           >
@@ -522,9 +635,12 @@ export function MarketingNav({
               {isEn ? (
                 <>
                   <Link
-                    href="/login"
-                    onClick={() => setOpen(false)}
-                    className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)]"
+                    href={loginGate.href}
+                    onClick={(event) => {
+                      loginGate.onClick?.(event);
+                      setOpen(false);
+                    }}
+                    className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
                     style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
                     aria-label={ui.login}
                   >
@@ -538,6 +654,7 @@ export function MarketingNav({
                       draggable={false}
                     />
                   </Link>
+                  <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
                   <button
                     type="button"
                     className="rounded-lg p-1 text-white"
@@ -559,13 +676,16 @@ export function MarketingNav({
                   </button>
                   <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
                   <Link
-                    href="/login"
-                    onClick={() => setOpen(false)}
+                    href={loginGate.href}
+                    onClick={(event) => {
+                      loginGate.onClick?.(event);
+                      setOpen(false);
+                    }}
                     className="relative z-10 flex shrink-0 items-center gap-2"
                     aria-label={ui.login}
                   >
                     <span
-                      className="flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)]"
+                      className="flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
                       style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -587,12 +707,15 @@ export function MarketingNav({
             </div>
           </div>
 
-          <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-6 pb-6 pt-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="mx-auto flex min-h-0 w-full max-w-[327px] flex-1 flex-col gap-5">
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
+          <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden px-6 pb-6 pt-2.5">
+            <div className="mx-auto flex h-full min-h-0 w-full flex-1 flex-col gap-5">
+              {/* Select / nav links — fills leftover viewport; footer compresses on short screens */}
+              <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
                 {navLinks.map((link) => {
                   const showChevron =
-                    link.href === '#knowledge' || link.href === '/about';
+                    link.href === '#knowledge' ||
+                    link.href === '/about' ||
+                    link.href === '/en/about';
                   return (
                     <a
                       key={link.href}
@@ -601,7 +724,7 @@ export function MarketingNav({
                         e.preventDefault();
                         goTo(link.href);
                       }}
-                      className={`relative flex min-h-0 flex-1 items-center justify-between border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-6 backdrop-blur-[10px] last:border-b-0 ${
+                      className={`relative flex min-h-0 flex-1 items-center justify-between border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-3 backdrop-blur-[10px] last:border-b-0 sm:py-6 ${
                         isEn ? 'text-left' : 'text-right'
                       }`}
                     >
@@ -639,8 +762,8 @@ export function MarketingNav({
                 })}
               </div>
 
-              <div className="flex w-full shrink-0 flex-col items-center gap-5">
-                <div className="relative h-[194px] w-full overflow-hidden rounded-[36px]">
+              <div className="flex min-h-0 w-full shrink flex-col items-center gap-3 sm:gap-5">
+                <div className="relative h-[194px] max-h-[min(194px,28dvh)] min-h-[96px] w-full shrink overflow-hidden rounded-[36px]">
                   <Image
                     src={LANDING_ASSETS.footerMountainMobile}
                     alt=""
@@ -657,7 +780,7 @@ export function MarketingNav({
                     aria-hidden
                   />
                   <div
-                    className={`absolute inset-x-0 top-1/2 z-10 flex w-full -translate-y-1/2 flex-col justify-center gap-5 px-[22.5px] ${
+                    className={`absolute inset-x-0 top-1/2 z-10 flex w-full -translate-y-1/2 flex-col justify-center gap-3 px-[22.5px] sm:gap-5 ${
                       isEn ? 'items-start text-left' : 'items-start text-right'
                     }`}
                   >
@@ -680,7 +803,7 @@ export function MarketingNav({
                 </div>
 
                 {/* Language toggle — Figma globe-02 in purple circle */}
-                <div className="flex w-full items-center justify-between px-5">
+                <div className="flex w-full shrink-0 items-center justify-between px-5">
                   <div className="flex items-center gap-1.5">
                     <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#8c00ff]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -698,31 +821,41 @@ export function MarketingNav({
                     </span>
                   </div>
                   <div
-                    className="flex items-center rounded-full bg-white/5 p-0.5"
+                    className="flex items-center"
                     role="group"
                     aria-label={ui.language}
                     dir="ltr"
                   >
                     <Link
-                      href="/en"
-                      onClick={() => setOpen(false)}
+                      href={enLocaleHref}
+                      prefetch
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setOpen(false);
+                        switchLocale(enLocaleHref, 'en');
+                      }}
                       aria-current={locale === 'en' ? 'true' : undefined}
-                      className={`rounded-full px-2.5 py-1.5 font-rubik text-sm tracking-[-0.56px] transition-colors ${
+                      className={`inline-flex items-center justify-center gap-2.5 rounded-[300px] px-2.5 py-1.5 font-rubik text-sm tracking-[-0.56px] transition-colors ${
                         locale === 'en'
-                          ? 'bg-white/15 font-bold text-white'
-                          : 'font-normal text-[#abbec3]'
+                          ? 'bg-[rgba(255,255,255,0.10)] font-bold text-white'
+                          : 'bg-[rgba(255,255,255,0)] font-normal text-[#abbec3]'
                       }`}
                     >
                       {ui.langEnglish}
                     </Link>
                     <Link
-                      href="/"
-                      onClick={() => setOpen(false)}
+                      href={heLocaleHref}
+                      prefetch
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setOpen(false);
+                        switchLocale(heLocaleHref, 'he');
+                      }}
                       aria-current={locale === 'he' ? 'true' : undefined}
-                      className={`rounded-full px-2.5 py-1.5 font-rubik text-sm tracking-[-0.56px] transition-colors ${
+                      className={`inline-flex items-center justify-center gap-2.5 rounded-[300px] px-2.5 py-1.5 font-rubik text-sm tracking-[-0.56px] transition-colors ${
                         locale === 'he'
-                          ? 'bg-white/15 font-bold text-white'
-                          : 'font-normal text-[#abbec3]'
+                          ? 'bg-[rgba(255,255,255,0.10)] font-bold text-white'
+                          : 'bg-[rgba(255,255,255,0)] font-normal text-[#abbec3]'
                       }`}
                     >
                       {ui.langHebrew}

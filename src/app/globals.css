@@ -450,6 +450,8 @@ body.layout-root:has(.v03-funnel-light) {
 html.layout-root:has(.v03-landing-root) {
   background-color: #05161a !important;
   background-image: none !important;
+  width: 100%;
+  max-width: 100vw;
   overflow-x: clip !important;
   overflow-y: auto !important;
 }
@@ -464,9 +466,16 @@ html.layout-root.landing-stats-scroll-lock:has(.v03-landing-root) {
 body.layout-root:has(.v03-landing-root) {
   background-color: #05161a !important;
   background-image: none !important;
+  width: 100%;
+  max-width: 100vw;
   /* Override layout body overflow-y-auto — only html scrolls on landing */
   overflow: clip !important;
   overscroll-behavior-y: none;
+}
+
+body.layout-root:has(.v03-landing-root) > div.relative {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* About — white page chrome (margins) while reusing landing reveal / nav tokens */
@@ -500,9 +509,13 @@ body.layout-root:has(.v03-knowledge-article-root) {
 }
 
 .v03-about-root {
-  font-family: var(--font-rubik), 'Rubik', sans-serif;
+  font-family: var(--font-body, var(--font-rubik)), 'Rubik', sans-serif;
   scroll-behavior: smooth;
   --landing-gutter: 1.5rem;
+  width: 100vw;
+  max-width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
   overflow: clip;
   background-color: #ffffff;
 }
@@ -547,15 +560,80 @@ body.layout-root:has(.v03-knowledge-article-root) {
 }
 
 .v03-landing-root {
-  font-family: var(--font-rubik), 'Rubik', sans-serif;
+  font-family: var(--font-body, var(--font-rubik)), 'Rubik', sans-serif;
   scroll-behavior: smooth;
   /* Side margins — mobile gutters stay in components; desktop uses this token */
   --landing-gutter: 1.5rem;
+  width: 100vw;
+  max-width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
   /*
    * clip (not hidden/auto): contain horizontal glow bleed without creating a
    * vertical scrollport (hidden/auto on one axis forces the other to auto).
    */
   overflow: clip;
+}
+
+/* EN marketing — SF Pro everywhere (quoted names; unquoted "SF Pro" is invalid → Rubik). */
+.v03-landing-root[lang='en'],
+.v03-landing-root.font-sf,
+.v03-about-root[lang='en'],
+.v03-about-root.font-sf,
+.v03-knowledge-article-root[lang='en'],
+.v03-knowledge-article-root.font-sf {
+  --font-body: 'SF Pro', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif;
+  font-family: 'SF Pro', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif !important;
+}
+
+/*
+ * Force SF Pro on all EN marketing descendants — Tailwind font-* utilities otherwise
+ * resolve to Rubik when SF Pro is missing from the cascade. Keep .font-he-rubik for HE labels.
+ */
+.v03-landing-root[lang='en'] *:not(.font-he-rubik):not(.font-he-rubik *),
+.v03-landing-root.font-sf *:not(.font-he-rubik):not(.font-he-rubik *),
+.v03-about-root[lang='en'] *:not(.font-he-rubik):not(.font-he-rubik *),
+.v03-about-root.font-sf *:not(.font-he-rubik):not(.font-he-rubik *),
+.v03-knowledge-article-root[lang='en'] *:not(.font-he-rubik):not(.font-he-rubik *),
+.v03-knowledge-article-root.font-sf *:not(.font-he-rubik):not(.font-he-rubik *),
+.v03-landing-root[lang='en'] .font-rubik,
+.v03-landing-root[lang='en'] .font-sf,
+.v03-landing-root[lang='en'] .font-simpler,
+.v03-landing-root[lang='en'] .font-marketing,
+.v03-landing-root[lang='en'] .font-assistant,
+.v03-landing-root[lang='en'] .font-heebo,
+.v03-landing-root.font-sf .font-rubik,
+.v03-landing-root.font-sf .font-sf,
+.v03-landing-root.font-sf .font-simpler,
+.v03-landing-root.font-sf .font-marketing,
+.v03-landing-root.font-sf .font-assistant,
+.v03-landing-root.font-sf .font-heebo,
+.v03-about-root[lang='en'] .font-rubik,
+.v03-about-root[lang='en'] .font-sf,
+.v03-about-root[lang='en'] .font-simpler,
+.v03-about-root[lang='en'] .font-marketing,
+.v03-knowledge-article-root[lang='en'] .font-rubik,
+.v03-knowledge-article-root[lang='en'] .font-sf,
+.v03-knowledge-article-root[lang='en'] .font-simpler,
+.v03-knowledge-article-root[lang='en'] .font-marketing,
+.marketing-en-sf,
+.marketing-en-sf .font-rubik,
+.marketing-en-sf .font-sf,
+.marketing-en-sf .font-simpler {
+  font-family: 'SF Pro', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', system-ui, sans-serif !important;
+}
+
+.v03-landing-root[lang='en'] .font-he-rubik,
+.v03-landing-root.font-sf .font-he-rubik,
+.v03-about-root[lang='en'] .font-he-rubik,
+.v03-about-root.font-sf .font-he-rubik,
+.v03-knowledge-article-root[lang='en'] .font-he-rubik,
+.v03-knowledge-article-root.font-sf .font-he-rubik,
+.marketing-en-sf .font-he-rubik {
+  font-family: var(--font-rubik), 'Rubik', sans-serif !important;
 }
 
 @media (min-width: 768px) {
@@ -640,7 +718,7 @@ body.layout-root:has(.v03-knowledge-article-root) {
   transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
 }
 
-/* Hero — image fades first, then copy/CTAs cascade top → bottom */
+/* Hero — image fades in; copy cascade starts early (overlaps image fade) */
 @keyframes landing-hero-bg-in {
   from {
     opacity: 0;
@@ -653,7 +731,7 @@ body.layout-root:has(.v03-knowledge-article-root) {
 @keyframes landing-hero-item-in {
   from {
     opacity: 0;
-    transform: translate3d(0, -28px, 0);
+    transform: translate3d(0, -20px, 0);
   }
   to {
     opacity: 1;
@@ -663,29 +741,75 @@ body.layout-root:has(.v03-knowledge-article-root) {
 
 .v03-landing-root .landing-hero-bg {
   opacity: 0;
-  animation: landing-hero-bg-in 2.2s cubic-bezier(0.33, 0.1, 0.25, 1) forwards;
+  animation: landing-hero-bg-in 1.6s cubic-bezier(0.33, 0.1, 0.25, 1) forwards;
 }
 
 .v03-landing-root .landing-hero-item {
   opacity: 0;
-  animation: landing-hero-item-in 1.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--hero-stagger, 2s);
+  animation: landing-hero-item-in 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--hero-stagger, 0.35s);
 }
 
 .v03-landing-root .landing-hero-item--1 {
-  --hero-stagger: 2s;
+  --hero-stagger: 0.35s;
 }
 .v03-landing-root .landing-hero-item--2 {
-  --hero-stagger: 2.45s;
+  --hero-stagger: 0.55s;
 }
 .v03-landing-root .landing-hero-item--3 {
-  --hero-stagger: 2.9s;
+  --hero-stagger: 0.75s;
 }
 .v03-landing-root .landing-hero-item--4 {
-  --hero-stagger: 3.35s;
+  --hero-stagger: 0.95s;
 }
 .v03-landing-root .landing-hero-item--5 {
-  --hero-stagger: 3.8s;
+  --hero-stagger: 1.15s;
+}
+
+/* Introducing mockups — fade when ~25% from top of viewport */
+.v03-landing-root .landing-mockup-fade {
+  opacity: 0;
+  transition: opacity 1.1s cubic-bezier(0.33, 0.1, 0.25, 1);
+  will-change: opacity;
+}
+
+.v03-landing-root .landing-mockup-fade.is-in {
+  opacity: 1;
+}
+
+/* Soft page enter — waitlist / QR / about / articles */
+@keyframes marketing-page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.marketing-page-fade {
+  animation: marketing-page-fade-in 0.55s cubic-bezier(0.33, 0.1, 0.25, 1) both;
+}
+
+/* Fade current marketing screen out before navigation / gate */
+html.marketing-locale-exit .v03-landing-root > *:not([data-marketing-overlay]),
+html.marketing-locale-exit .v03-about-root > *:not([data-marketing-overlay]),
+html.marketing-locale-exit .v03-knowledge-article-root > *:not([data-marketing-overlay]) {
+  opacity: 0 !important;
+  transition: opacity 0.2s ease-out !important;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v03-landing-root .landing-mockup-fade,
+  .marketing-page-fade,
+  html.marketing-locale-exit .v03-landing-root > *:not([data-marketing-overlay]),
+  html.marketing-locale-exit .v03-about-root > *:not([data-marketing-overlay]),
+  html.marketing-locale-exit .v03-knowledge-article-root > *:not([data-marketing-overlay]) {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+  }
 }
 
 .v03-landing-root .landing-step-swap {

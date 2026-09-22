@@ -177,7 +177,7 @@ export function MarketingStats() {
             : 'landing-gutter flex min-h-[100svh] w-full flex-col justify-center py-16 md:min-h-0 md:pt-[90px] md:pb-16 lg:pb-[298px]'
         }
       >
-        <div className="relative mx-auto w-full max-w-[341px] overflow-visible text-center md:max-w-[1200px] md:min-h-[308px]">
+        <div className="relative mx-auto w-full overflow-visible text-center md:max-w-[1200px] md:min-h-[308px]">
           <LandingStatsGlow />
           <div className="landing-section-fg relative z-10">
             <div

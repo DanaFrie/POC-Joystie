@@ -66,23 +66,33 @@ function ScienceDigit({ n }: { n: 1 | 2 | 3 }) {
 
 /**
  * Badge — Figma 15445:6202: 37×37, radius 19.788, bg white/10,
- * absolute right 28 / top -19. Digit flex-centered (ignore Dev Mode
+ * absolute start / top -19. Digit flex-centered (ignore Dev Mode
  * horizontal padding — it would collapse a border-box 37px frame).
+ * EN: left; HE: right (RTL visual start).
  */
 function ScienceBadge({
   n,
   size = 'mobile',
+  isEn,
 }: {
   n: 1 | 2 | 3;
   size?: 'mobile' | 'desktop';
+  isEn: boolean;
 }) {
   const mobile = size === 'mobile';
+  const side = isEn
+    ? mobile
+      ? 'left-7'
+      : 'left-9'
+    : mobile
+      ? 'right-7'
+      : 'right-9';
   return (
     <div
       className={
         mobile
-          ? 'absolute right-7 top-[-19px] z-10 flex h-[37px] w-[37px] shrink-0 flex-col items-center justify-center rounded-[19.788px] bg-[rgba(255,255,255,0.10)]'
-          : 'absolute -top-6 right-9 z-10 flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[24px] bg-[rgba(255,255,255,0.10)]'
+          ? `absolute ${side} top-[-19px] z-10 flex h-[37px] w-[37px] shrink-0 flex-col items-center justify-center rounded-[19.788px] bg-[rgba(255,255,255,0.10)]`
+          : `absolute -top-6 ${side} z-10 flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[24px] bg-[rgba(255,255,255,0.10)]`
       }
       aria-hidden
     >
@@ -133,12 +143,11 @@ function DoriVideoMobile({ ariaLabel }: { ariaLabel: string }) {
 
 type ScienceCardData = ReturnType<typeof getLandingScience>[number];
 
-/** Mint underline bar behind highlighted title words — Figma Rectangle 6552 */
-const MOBILE_HIGHLIGHT_BAR: Record<number, { left: number; top: number; width: number }> = {
-  0: { left: 108, top: 22, width: 101 },
-  1: { left: 17, top: 1, width: 192 },
-  2: { left: 51, top: 22, width: 156 },
-};
+/** Mint marker — turquoise bar at 78% line height; rest transparent (no UA yellow). */
+const HIGHLIGHT_MARK =
+  'px-0.5 text-[#05161a] [background-color:transparent] [background-image:linear-gradient(#00ffb3,#00ffb3)] [background-size:100%_78%] [background-position:center] [background-repeat:no-repeat] [box-decoration-break:clone] [-webkit-box-decoration-break:clone]';
+const HIGHLIGHT_MARK_ALT =
+  'px-0.5 text-[#092125] [background-color:transparent] [background-image:linear-gradient(#00ffb3,#00ffb3)] [background-size:100%_78%] [background-position:center] [background-repeat:no-repeat] [box-decoration-break:clone] [-webkit-box-decoration-break:clone]';
 
 function ScienceTitle({
   card,
@@ -149,16 +158,16 @@ function ScienceTitle({
   size: 'mobile' | 'desktop';
   isEn: boolean;
 }) {
-  const textClass =
-    size === 'mobile'
+  const textClass = isEn
+    ? 'font-sf text-[20px] font-extrabold leading-[1.1] tracking-[-0.8px]'
+    : size === 'mobile'
       ? 'font-rubik text-[20px] font-bold leading-[1.05] tracking-[-0.6px]'
       : 'font-rubik text-2xl font-bold leading-[1.1] tracking-[-0.72px]';
-  const highlightClass =
-    size === 'mobile' ? 'text-[#092125]' : 'bg-[#00ffb3] text-[#05161a]';
   const align = isEn ? 'text-left' : 'text-right';
+  const markClass = card.n === 1 ? HIGHLIGHT_MARK : HIGHLIGHT_MARK_ALT;
 
   return (
-    <h3 className={`relative z-[1] w-full text-white ${align} ${textClass}`}>
+    <h3 className={`relative z-[1] w-full self-stretch text-white ${align} ${textClass}`}>
       {card.titleParts.map((part) => {
         const highlighted = 'highlight' in part && part.highlight;
         if (part.text.includes('\n')) {
@@ -167,12 +176,8 @@ function ScienceTitle({
               {part.text.split('\n').map((line, i) => (
                 <span key={`${part.text}-${i}`}>
                   {i > 0 ? <br /> : null}
-                  {highlighted ? (
-                    size === 'mobile' ? (
-                      <span className={highlightClass}>{line}</span>
-                    ) : (
-                      <mark className={highlightClass}>{line}</mark>
-                    )
+                  {highlighted && line ? (
+                    <mark className={markClass}>{line}</mark>
                   ) : (
                     line
                   )}
@@ -182,12 +187,8 @@ function ScienceTitle({
           );
         }
         if (highlighted) {
-          return size === 'mobile' ? (
-            <span key={part.text} className={highlightClass}>
-              {part.text}
-            </span>
-          ) : (
-            <mark key={part.text} className={highlightClass}>
+          return (
+            <mark key={part.text} className={markClass}>
               {part.text}
             </mark>
           );
@@ -208,16 +209,22 @@ function ScienceCard({
   isEn: boolean;
 }) {
   const align = isEn ? 'text-left' : 'text-right';
-  const items = isEn ? 'items-start' : 'items-end';
+  const items = isEn ? 'items-stretch' : 'items-end';
   return (
     <article
       dir={isEn ? 'ltr' : 'rtl'}
       className={`relative flex h-[305.297px] w-full flex-col overflow-visible rounded-[26px] bg-white/10 px-[30px] pb-[35px] pt-[45px] ${align} ${className}`}
     >
-      <ScienceBadge n={card.n} size="desktop" />
+      <ScienceBadge n={card.n} size="desktop" isEn={isEn} />
       <div className={`relative z-[1] flex w-full flex-col gap-[9px] text-white ${items} ${align}`}>
         <ScienceTitle card={card} size="desktop" isEn={isEn} />
-        <p className={`w-full font-rubik text-base leading-[1.28] tracking-[-0.32px] ${align}`}>
+        <p
+          className={
+            isEn
+              ? `w-full self-stretch font-sf text-[14px] font-normal leading-[1.28] tracking-[-0.56px] text-[#BCC8CB] ${align}`
+              : `w-full font-rubik text-base leading-[1.28] tracking-[-0.32px] ${align}`
+          }
+        >
           {card.body}
         </p>
       </div>
@@ -228,34 +235,28 @@ function ScienceCard({
 /** Mobile card — Figma 15445:6196 / 6204 / 6214: 267×262, radius 25.671 */
 function ScienceCardMobile({
   card,
-  index,
   isEn,
 }: {
   card: ScienceCardData;
-  index: number;
   isEn: boolean;
 }) {
-  const bar = MOBILE_HIGHLIGHT_BAR[index];
   const align = isEn ? 'text-left' : 'text-right';
-  const items = isEn ? 'items-start' : 'items-end';
+  const items = isEn ? 'items-stretch' : 'items-end';
 
   return (
     <article
       dir={isEn ? 'ltr' : 'rtl'}
       className={`relative flex h-[262px] w-[267px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-[30px] pb-5 pt-[30px] ${align}`}
     >
-      <ScienceBadge n={card.n} size="mobile" />
+      <ScienceBadge n={card.n} size="mobile" isEn={isEn} />
       <div className={`relative z-[1] flex w-full flex-col gap-[9px] ${items} ${align}`}>
-        {bar ? (
-          <div
-            className="pointer-events-none absolute bg-[#00ffb3]"
-            style={{ left: bar.left, top: bar.top, width: bar.width, height: 20 }}
-            aria-hidden
-          />
-        ) : null}
         <ScienceTitle card={card} size="mobile" isEn={isEn} />
         <p
-          className={`relative z-[1] w-full font-rubik text-sm leading-[1.25] tracking-[-0.28px] text-white ${align}`}
+          className={
+            isEn
+              ? `relative z-[1] w-full self-stretch font-sf text-[14px] font-normal leading-[1.28] tracking-[-0.56px] text-[#BCC8CB] ${align}`
+              : `relative z-[1] w-full font-rubik text-sm leading-[1.25] tracking-[-0.28px] text-white ${align}`
+          }
         >
           {card.body}
         </p>
@@ -283,7 +284,7 @@ export function MarketingScience() {
       {/* Mobile — Figma 15445:6187 */}
       <div className="relative z-[2] flex flex-col gap-[45px] lg:hidden">
         <LandingReveal className={`flex w-full flex-col items-start gap-[18px] px-6 ${textAlign}`}>
-          <div className="flex w-full max-w-[329px] flex-col items-start gap-[18px] self-start">
+          <div className="flex w-full flex-col items-start gap-[18px] self-stretch">
             <DoriVideoMobile ariaLabel={ui.scienceVideoAria} />
             <div className={`flex w-full flex-col gap-2 ${itemsAlign} ${textAlign}`}>
               <h2 className="w-full font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
@@ -306,11 +307,10 @@ export function MarketingScience() {
             dir={dir}
           >
             <div className="w-6 shrink-0" aria-hidden />
-            {science.map((card, index) => (
+            {science.map((card) => (
               <ScienceCardMobile
                 key={card.body.slice(0, 24)}
                 card={card}
-                index={index}
                 isEn={isEn}
               />
             ))}
@@ -320,15 +320,19 @@ export function MarketingScience() {
       </div>
 
       {/*
-        Desktop — Figma: cards left (1597882682), copy+Dori right (1597882688).
-        Cards use locale dir + text alignment for in-box copy.
+        Desktop — HE: cards left, copy+Dori right (Figma).
+        EN: swapped — copy+Dori left, cards right.
       */}
       <div
         className="landing-section-fg relative mx-auto hidden min-h-[1299px] w-full max-w-[806px] lg:block"
         dir="ltr"
       >
         {/* pt-6 so card badges (-top-6) are not clipped by stacking/overflow */}
-        <div className="absolute left-0 top-[213px] flex w-[320px] flex-col gap-[72px] overflow-visible pt-6">
+        <div
+          className={`absolute top-[213px] flex w-[320px] flex-col gap-[72px] overflow-visible pt-6 ${
+            isEn ? 'right-0' : 'left-0'
+          }`}
+        >
           {science.map((card, index) => (
             <LandingReveal
               key={card.body.slice(0, 24)}
@@ -341,7 +345,9 @@ export function MarketingScience() {
         </div>
 
         <LandingReveal
-          className={`absolute left-[374px] top-[237px] flex w-[432px] flex-col items-start gap-[61px] ${textAlign}`}
+          className={`absolute top-[237px] flex w-[432px] flex-col items-start gap-[61px] ${textAlign} ${
+            isEn ? 'left-0' : 'left-[374px]'
+          }`}
           dir={dir}
         >
           <div className={`flex w-full flex-col gap-[7px] ${textAlign}`}>

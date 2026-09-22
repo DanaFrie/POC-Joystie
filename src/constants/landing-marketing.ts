@@ -67,6 +67,7 @@ export const LANDING_ASSETS = {
   donex2Full: '/landing/figma/donex2-full.png',
   donex2FullEn: '/landing/figma/donex2-full-en.webp',
   doriFlyHappy: '/landing/dori-fly-happy.webp',
+  doriJoyApp: '/landing/dori-joy-app.webp',
 } as const;
 
 export const LANDING_NAV_LINKS = [

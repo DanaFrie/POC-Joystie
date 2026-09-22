@@ -2,6 +2,11 @@
 
 import Link from 'next/link';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
+import { useEnglishAppGateOptional } from '@/components/landing/EnglishAppGateContext';
+import {
+  startMarketingExit,
+  useMarketingFadeNavigate,
+} from '@/components/landing/useMarketingFadeNavigate';
 
 type MarketingCtaButtonProps = {
   href: string;
@@ -27,6 +32,8 @@ export function MarketingCtaButton({
 }: MarketingCtaButtonProps) {
   const locale = useLandingLocale();
   const isEn = locale === 'en';
+  const gate = useEnglishAppGateOptional();
+  const fadeNavigate = useMarketingFadeNavigate();
   const iconFill = iconTone === 'mint' ? '#00ffb3' : '#8C00FF';
   const sizeClasses =
     size === 'compact'
@@ -47,15 +54,28 @@ export function MarketingCtaButton({
         ? 'size-[24.426px]'
         : 'size-8';
   const iconRadius = size === 'compact' ? 8.72 : 10.2535;
+  const isAuthHref = href === '/onboarding' || href === '/login';
 
   return (
     <Link
       href={href}
-      onClick={onClick}
+      onClick={(event) => {
+        if (isAuthHref) {
+          event.preventDefault();
+          if (isEn && gate) {
+            startMarketingExit(() => {
+              gate.show(href === '/login' ? 'login' : 'join');
+            });
+          } else {
+            fadeNavigate(href);
+          }
+        }
+        onClick?.();
+      }}
       dir={isEn ? 'ltr' : 'rtl'}
-      className={`inline-flex flex-row items-center bg-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-95 hover:-translate-y-0.5 ${sizeClasses} ${className}`}
+      className={`inline-flex flex-row items-center whitespace-nowrap bg-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-95 hover:-translate-y-0.5 ${sizeClasses} ${className}`}
     >
-      <span className={`font-rubik font-bold text-[#05161a] ${labelClasses}`}>{label}</span>
+      <span className={`whitespace-nowrap font-bold text-[#05161a] ${isEn ? 'font-sf' : 'font-rubik'} ${labelClasses}`}>{label}</span>
       <span className={`inline-flex shrink-0 ${iconSize}`} aria-hidden>
         <svg
           xmlns="http://www.w3.org/2000/svg"

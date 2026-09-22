@@ -1,11 +1,48 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { useLayoutEffect, useRef, type CSSProperties } from 'react';
 import Image from 'next/image';
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingUi } from '@/constants/landing-i18n';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
+
+/** Fit the EN title + turquoise marker inside the 327px stack without clipping. */
+function useFitScaleX() {
+  const ref = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const parent = el.parentElement;
+    if (!parent) return;
+    const apply = () => {
+      el.style.position = '';
+      el.style.left = '';
+      el.style.top = '';
+      el.style.transform = '';
+      el.style.removeProperty('zoom');
+      parent.style.height = '';
+      const maxW = parent.clientWidth;
+      const need = el.scrollWidth;
+      if (need > maxW && maxW > 0) {
+        const s = maxW / need;
+        el.style.position = 'absolute';
+        el.style.left = '50%';
+        el.style.top = '0';
+        el.style.transformOrigin = 'top center';
+        el.style.transform = `translateX(-50%) scale(${s})`;
+        parent.style.position = 'relative';
+        /* offsetHeight already includes marker bottom padding — do not add markerH again */
+        parent.style.height = `${el.offsetHeight * s}px`;
+      }
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, []);
+  return ref;
+}
 
 /** EN desktop — sit text higher in the sky above phone/coins */
 const DESKTOP_HERO_TOP_EN = 120;
@@ -62,10 +99,11 @@ export function MarketingHero() {
   const locale = useLandingLocale();
   const ui = getLandingUi(locale);
   const isEn = locale === 'en';
+  const enMobileTitleRef = useFitScaleX();
 
   return (
     <section
-      className="relative lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden"
+      className="relative w-full lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden"
       dir={isEn ? 'ltr' : 'rtl'}
     >
       <div className="landing-hero-bg pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -97,50 +135,66 @@ export function MarketingHero() {
         />
       </div>
 
-      {/* Mobile */}
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[327px] flex-col items-center gap-10 px-0 pb-20 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
-        <div className="relative flex w-full flex-col items-center gap-[39px]">
-          <div className="flex w-full flex-col items-center gap-[30px]">
-            <div className="flex w-full flex-col items-center gap-3 self-stretch">
-              <p
-                className={`landing-hero-item landing-hero-item--1 w-full self-stretch text-center font-rubik font-normal leading-[1.25] text-[rgba(237,239,239,0.45)] ${
-                  isEn
-                    ? 'text-[13px] tracking-[3.9px]'
-                    : 'text-[14px] tracking-[5.32px]'
-                }`}
-              >
+      {/* Mobile — Figma 327×, left 24 / top 92 */}
+      <div className="relative z-10 min-h-[100svh] w-full text-center lg:hidden">
+        <div
+          className="absolute left-1/2 flex w-[calc(100vw-48px)] -translate-x-1/2 flex-col items-center justify-center gap-[39px]"
+          style={{ top: 'calc(92px + env(safe-area-inset-top, 0px))' }}
+        >
+          {isEn ? (
+            <div className="flex w-full flex-col items-center self-stretch">
+              <p className="landing-hero-item landing-hero-item--1 mb-3 w-full self-stretch text-center font-rubik text-[13px] font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]">
                 {ui.heroEyebrow}
               </p>
-              <div className="landing-hero-item landing-hero-item--2">
-                <h1
-                  className={`relative text-center font-rubik text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)] ${
-                    isEn
-                      ? 'mx-auto w-max origin-center scale-x-[0.78] text-[52px] font-extrabold leading-[54.6px] tracking-[-1.56px]'
-                      : 'w-full self-stretch text-[40px] font-bold leading-[1.1] tracking-[-1.2px]'
-                  }`}
-                >
-                {isEn ? (
-                  <>
+              {/* Title + body — exact 40px between text box and body; marker paints into that gap */}
+              <div className="flex w-full flex-col items-center gap-[40px] self-stretch">
+                <div className="landing-hero-item landing-hero-item--2 relative w-full self-stretch overflow-visible">
+                  <h1
+                    ref={enMobileTitleRef}
+                    className="relative mx-auto w-max origin-center text-center font-rubik text-[52px] leading-[1.05] tracking-[-1.56px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
+                    style={{ fontWeight: 760 }}
+                  >
                     <span className="block text-center whitespace-nowrap">
                       {ui.heroTitleLine1}
                     </span>
                     <span className="block text-center whitespace-nowrap">
-                      <span className="relative">
+                      <span className="relative inline-block">
                         {ui.heroTitleMobileUnderline}
                         <Image
                           src={LANDING_ASSETS.heroUnderlineMobile}
                           alt=""
                           width={280}
                           height={28}
-                          className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-[1] h-[22px] w-[280px] max-w-none -translate-x-1/2"
+                          className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-[1] h-[33px] w-[150%] max-w-none -translate-x-1/2"
                           unoptimized
                         />
                       </span>{' '}
                       {ui.heroTitleMobileLine2After}
                     </span>
-                  </>
-                ) : (
-                  <>
+                  </h1>
+                </div>
+                <p className="landing-hero-item landing-hero-item--3 w-full self-stretch text-center font-sf text-[16px] font-normal leading-[1.28] tracking-[-0.48px] text-[#d1edf4]">
+                  {ui.heroBodyMobile}
+                </p>
+                <div className="landing-hero-item landing-hero-item--4 flex flex-row items-center justify-center gap-[7px]">
+                  <a
+                    href="#what-is-joystie"
+                    className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-2xl border border-white bg-[rgba(255,255,255,0.10)] px-[22px] py-[11px] font-rubik text-base font-bold leading-[1.28] tracking-[-0.64px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20"
+                  >
+                    {ui.heroLearnMore}
+                  </a>
+                  <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-[30px] self-stretch">
+              <div className="flex w-full flex-col items-center gap-3 self-stretch">
+                <p className="landing-hero-item landing-hero-item--1 w-full self-stretch text-center font-rubik text-[14px] font-normal leading-[1.25] tracking-[5.32px] text-[rgba(237,239,239,0.45)]">
+                  {ui.heroEyebrow}
+                </p>
+                <div className="landing-hero-item landing-hero-item--2 relative w-full self-stretch overflow-visible">
+                  <h1 className="relative mx-auto w-full self-stretch text-center font-rubik text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]">
                     {ui.heroTitleLine1}
                     <br />
                     <span className="relative inline-block">
@@ -155,33 +209,23 @@ export function MarketingHero() {
                       />
                     </span>{' '}
                     {ui.heroTitleLine2After}
-                  </>
-                )}
-              </h1>
+                  </h1>
+                </div>
+              </div>
+              <p className="landing-hero-item landing-hero-item--3 w-full self-stretch text-center font-rubik text-[18px] font-normal leading-[1.25] tracking-[-0.36px] text-[#d1edf4]">
+                {ui.heroBodyMobile}
+              </p>
+              <div className="landing-hero-item landing-hero-item--4 flex flex-row items-center justify-center gap-[7px]">
+                <a
+                  href="#what-is-joystie"
+                  className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-2xl border border-white bg-[rgba(255,255,255,0.10)] px-[22px] py-[11px] font-rubik text-base font-bold leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20"
+                >
+                  {ui.heroLearnMore}
+                </a>
+                <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
               </div>
             </div>
-            <p
-              className={`landing-hero-item landing-hero-item--3 w-full self-stretch text-center font-rubik font-normal ${
-                isEn
-                  ? 'text-[16px] leading-[1.28] tracking-[-0.48px] text-[#d1edf4]'
-                  : 'text-[18px] leading-[1.25] tracking-[-0.36px] text-[#d1edf4]'
-              }`}
-            >
-              {ui.heroBodyMobile}
-            </p>
-          </div>
-          {/* HE RTL: Learn more right / Join left · EN LTR: Learn more left / Join right */}
-          <div className="landing-hero-item landing-hero-item--4 flex flex-row items-center justify-center gap-[7px]">
-            <a
-              href="#what-is-joystie"
-              className={`inline-flex h-[46px] shrink-0 items-center justify-center rounded-2xl border border-white bg-[rgba(255,255,255,0.10)] px-[22px] py-[11px] font-rubik text-base font-bold leading-[1.28] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20 ${
-                isEn ? 'tracking-[-0.64px]' : 'tracking-[-0.32px]'
-              }`}
-            >
-              {ui.heroLearnMore}
-            </a>
-            <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
-          </div>
+          )}
         </div>
 
         {/* Figma ~ top 710 / left 150 on 375 — bottom-center of first viewport */}
@@ -208,7 +252,7 @@ export function MarketingHero() {
                 </div>
                 <div className="landing-hero-item landing-hero-item--2 flex w-full justify-center">
                   <h1
-                    className="inline-flex origin-center scale-x-[0.86] flex-col items-center text-center font-rubik text-[75px] leading-[78.75px] text-[#06171B]"
+                    className="inline-flex flex-col items-center text-center font-rubik text-[75px] leading-[1.05] tracking-[-2.25px] text-[#06171B]"
                     style={{ fontWeight: 760 }}
                   >
                     <span className="whitespace-nowrap">{ui.heroTitleLine1}</span>

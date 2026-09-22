@@ -13,7 +13,9 @@ export default function ConditionalMainWrapper({
     pathname === '/' ||
     pathname === '/en' ||
     pathname === '/about' ||
+    pathname === '/en/about' ||
     pathname?.startsWith('/knowledge') ||
+    pathname?.startsWith('/en/knowledge') ||
     pathname === '/onboarding' ||
     pathname?.startsWith('/onboarding/') ||
     pathname?.startsWith('/game') ||
