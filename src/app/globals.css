@@ -575,55 +575,35 @@ body.layout-root:has(.v03-knowledge-article-root) {
   overflow: clip;
 }
 
-/* EN marketing — SF Pro everywhere (quoted names; unquoted "SF Pro" is invalid → Rubik). */
+/*
+ * EN marketing type — never fall back to Rubik (next/font Rubik is always loaded and
+ * would “win” whenever “SF Pro” isn’t installed).
+ * Apple: -apple-system / BlinkMacSystemFont → San Francisco (SF).
+ * Windows/Android: Segoe UI / system-ui.
+ * Keep .font-he-rubik for Hebrew labels on EN pages.
+ */
 .v03-landing-root[lang='en'],
 .v03-landing-root.font-sf,
 .v03-about-root[lang='en'],
 .v03-about-root.font-sf,
 .v03-knowledge-article-root[lang='en'],
 .v03-knowledge-article-root.font-sf {
-  --font-body: 'SF Pro', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', system-ui, sans-serif;
-  font-family: 'SF Pro', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', system-ui, sans-serif !important;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Segoe UI', system-ui,
+    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Segoe UI', system-ui,
+    sans-serif !important;
 }
 
-/*
- * Force SF Pro on all EN marketing descendants — Tailwind font-* utilities otherwise
- * resolve to Rubik when SF Pro is missing from the cascade. Keep .font-he-rubik for HE labels.
- */
-.v03-landing-root[lang='en'] *:not(.font-he-rubik):not(.font-he-rubik *),
-.v03-landing-root.font-sf *:not(.font-he-rubik):not(.font-he-rubik *),
-.v03-about-root[lang='en'] *:not(.font-he-rubik):not(.font-he-rubik *),
-.v03-about-root.font-sf *:not(.font-he-rubik):not(.font-he-rubik *),
-.v03-knowledge-article-root[lang='en'] *:not(.font-he-rubik):not(.font-he-rubik *),
-.v03-knowledge-article-root.font-sf *:not(.font-he-rubik):not(.font-he-rubik *),
-.v03-landing-root[lang='en'] .font-rubik,
-.v03-landing-root[lang='en'] .font-sf,
-.v03-landing-root[lang='en'] .font-simpler,
-.v03-landing-root[lang='en'] .font-marketing,
-.v03-landing-root[lang='en'] .font-assistant,
-.v03-landing-root[lang='en'] .font-heebo,
-.v03-landing-root.font-sf .font-rubik,
-.v03-landing-root.font-sf .font-sf,
-.v03-landing-root.font-sf .font-simpler,
-.v03-landing-root.font-sf .font-marketing,
-.v03-landing-root.font-sf .font-assistant,
-.v03-landing-root.font-sf .font-heebo,
-.v03-about-root[lang='en'] .font-rubik,
-.v03-about-root[lang='en'] .font-sf,
-.v03-about-root[lang='en'] .font-simpler,
-.v03-about-root[lang='en'] .font-marketing,
-.v03-knowledge-article-root[lang='en'] .font-rubik,
-.v03-knowledge-article-root[lang='en'] .font-sf,
-.v03-knowledge-article-root[lang='en'] .font-simpler,
-.v03-knowledge-article-root[lang='en'] .font-marketing,
+.v03-landing-root[lang='en'] *:not(.font-he-rubik),
+.v03-landing-root.font-sf *:not(.font-he-rubik),
+.v03-about-root[lang='en'] *:not(.font-he-rubik),
+.v03-about-root.font-sf *:not(.font-he-rubik),
+.v03-knowledge-article-root[lang='en'] *:not(.font-he-rubik),
+.v03-knowledge-article-root.font-sf *:not(.font-he-rubik),
 .marketing-en-sf,
-.marketing-en-sf .font-rubik,
-.marketing-en-sf .font-sf,
-.marketing-en-sf .font-simpler {
-  font-family: 'SF Pro', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont,
-    'Segoe UI', system-ui, sans-serif !important;
+.marketing-en-sf *:not(.font-he-rubik) {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Segoe UI', system-ui,
+    sans-serif !important;
 }
 
 .v03-landing-root[lang='en'] .font-he-rubik,
@@ -674,6 +654,70 @@ body.layout-root:has(.v03-knowledge-article-root) {
 .v03-landing-root .landing-section-fg {
   position: relative;
   z-index: 10;
+}
+
+/*
+ * Mobile hero — stay in 100vh×100vw. On short viewports shrink title, marker, CTAs
+ * (and tighten gaps) instead of scrolling inside the frame.
+ */
+.v03-landing-root .landing-hero-mobile-fit {
+  --hero-en-title: 52px;
+  --hero-he-title: 40px;
+  --hero-en-body: 16px;
+  --hero-he-body: 18px;
+  --hero-en-gap: 40px;
+  --hero-he-gap: 30px;
+  --hero-btn-h: 46px;
+  --hero-btn-px: 22px;
+  --hero-btn-py: 11px;
+  --hero-btn-text: 16px;
+  --hero-cta-icon: 24.426px;
+  --hero-marker-en-h: 33px;
+  --hero-marker-he-h: 20px;
+  --hero-marker-he-w: 144px;
+  --hero-top-pad: 92px;
+  --hero-eyebrow-en: 13px;
+  --hero-eyebrow-he: 14px;
+}
+
+@media (max-height: 740px) {
+  .v03-landing-root .landing-hero-mobile-fit {
+    --hero-en-title: 42px;
+    --hero-he-title: 34px;
+    --hero-en-gap: 28px;
+    --hero-he-gap: 22px;
+    --hero-btn-h: 42px;
+    --hero-btn-px: 18px;
+    --hero-btn-py: 9px;
+    --hero-btn-text: 15px;
+    --hero-cta-icon: 22px;
+    --hero-marker-en-h: 26px;
+    --hero-marker-he-h: 17px;
+    --hero-marker-he-w: 122px;
+    --hero-top-pad: 76px;
+  }
+}
+
+@media (max-height: 640px) {
+  .v03-landing-root .landing-hero-mobile-fit {
+    --hero-en-title: 34px;
+    --hero-he-title: 28px;
+    --hero-en-body: 14px;
+    --hero-he-body: 15px;
+    --hero-en-gap: 18px;
+    --hero-he-gap: 14px;
+    --hero-btn-h: 38px;
+    --hero-btn-px: 14px;
+    --hero-btn-py: 8px;
+    --hero-btn-text: 13px;
+    --hero-cta-icon: 20px;
+    --hero-marker-en-h: 20px;
+    --hero-marker-he-h: 14px;
+    --hero-marker-he-w: 100px;
+    --hero-top-pad: 64px;
+    --hero-eyebrow-en: 11px;
+    --hero-eyebrow-he: 12px;
+  }
 }
 
 /* Full-bleed on small screens (carousels); gutters from md up */

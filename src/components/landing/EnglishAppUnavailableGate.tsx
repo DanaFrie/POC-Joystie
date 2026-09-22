@@ -130,8 +130,8 @@ function EmailField({
   id: string;
 }) {
   return (
-    <label className="flex w-full flex-col items-start gap-0.5" htmlFor={id}>
-      <span className="px-2.5 font-sf text-[16px] font-normal leading-[20.48px] text-white">
+    <label className="flex w-full flex-col items-start gap-0.5 text-left" htmlFor={id} dir="ltr">
+      <span className="px-2.5 text-left font-sf text-[16px] font-normal leading-[20.48px] text-white">
         {copy.emailLabel}
       </span>
       <input
@@ -139,9 +139,10 @@ function EmailField({
         type="email"
         inputMode="email"
         autoComplete="email"
+        dir="ltr"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-[48.5px] w-full rounded-[18px] bg-white/5 px-[15px] py-3.5 font-sf text-[16px] font-normal leading-[20.48px] text-white outline outline-1 outline-white/20 focus:outline-white/40"
+        className="h-[48.5px] w-full rounded-[18px] bg-white/5 px-[15px] py-3.5 text-left font-sf text-[16px] font-normal leading-[20.48px] text-white outline outline-1 outline-white/20 focus:outline-white/40"
       />
       {error ? (
         <span className="px-2.5 font-sf text-[13px] text-[#ff8a8a]">{error}</span>
@@ -271,9 +272,12 @@ export function EnglishAppUnavailableGate() {
     try {
       await submitEnglishWaitlist(trimmed);
       setDone(true);
+      window.setTimeout(() => {
+        gate.hide();
+        router.push('/en');
+      }, 700);
     } catch {
       setError(copy.waitlistError);
-    } finally {
       setBusy(false);
     }
   };
@@ -291,14 +295,27 @@ export function EnglishAppUnavailableGate() {
   return (
     <div
       data-marketing-overlay
-      className="marketing-page-fade fixed inset-0 z-[80] isolate w-[100vw] max-w-[100vw] lg:overflow-hidden lg:bg-[#05161A]"
+      dir="ltr"
+      lang="en"
+      className="marketing-page-fade fixed inset-0 z-[80] w-[100vw] max-w-[100vw] text-left [direction:ltr] lg:isolate lg:overflow-hidden lg:bg-[#05161A]"
       role="dialog"
       aria-modal="true"
       aria-label={copy.titleDesktop.replace('\n', ' ')}
     >
+      {/* Mobile — blurred hero behind the card */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden lg:hidden" aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LANDING_ASSETS.heroMobile}
+          alt=""
+          decoding="async"
+          className="absolute inset-0 h-full w-full scale-110 object-cover object-[center_40%] blur-[15px]"
+        />
+        <div className="absolute inset-0 bg-black/25" />
+      </div>
       <button
         type="button"
-        className="absolute inset-0 bg-black/20 backdrop-blur-[15px] lg:bg-transparent lg:backdrop-blur-0"
+        className="absolute inset-0 bg-transparent lg:bg-transparent"
         aria-label={copy.close}
         onClick={gate.hide}
       />
@@ -393,18 +410,19 @@ export function EnglishAppUnavailableGate() {
         )}
       </div>
 
-      {/* Desktop — two frames in a row, same bg + centering as QR screen */}
+      {/* Desktop — message left, waitlist form right (LTR) */}
       <div className="relative z-10 hidden h-full w-full max-w-[100vw] items-center justify-center overflow-y-auto px-8 py-12 lg:flex">
-        <div className="flex w-full flex-row items-stretch justify-center gap-10">
-          <div className="flex min-w-0 w-full max-w-[563px] flex-1 flex-col items-start justify-center gap-10">
+        <div className="flex w-full flex-row items-stretch justify-center gap-10" dir="ltr">
+          <div className="flex min-w-0 w-full max-w-[563px] flex-1 flex-col items-start justify-center gap-10 text-left">
             <JoystieWordmark width={140} height={69} className="h-auto w-[140px] shrink-0" />
-            <h2 className="w-full whitespace-pre-line font-sf text-[45px] font-bold leading-[54px] text-white">
+            <h2 className="w-full whitespace-pre-line text-left font-sf text-[45px] font-bold leading-[54px] text-white">
               {copy.titleDesktop}
             </h2>
           </div>
           <form
-            className="flex w-[337px] shrink-0 flex-col items-start justify-between self-stretch"
+            className="flex w-[337px] shrink-0 flex-col items-start justify-between self-stretch text-left"
             onSubmit={onWaitlist}
+            dir="ltr"
           >
             <div className="flex w-full flex-col gap-[19px]">
               <EmailField
@@ -419,7 +437,8 @@ export function EnglishAppUnavailableGate() {
               <button
                 type="submit"
                 disabled={busy || done}
-                className="inline-flex h-[46px] items-center justify-center gap-3 self-stretch rounded-2xl bg-[#00FFB3] px-[22px] py-[11px] disabled:opacity-70"
+                dir="ltr"
+                className="inline-flex h-[46px] flex-row items-center justify-center gap-3 self-stretch rounded-2xl bg-[#00FFB3] px-[22px] py-[11px] disabled:opacity-70"
               >
                 <span className="font-sf text-[18px] font-bold leading-[23.94px] text-[#282828]">
                   {done ? copy.waitlistSuccess : copy.joinWaitlist}

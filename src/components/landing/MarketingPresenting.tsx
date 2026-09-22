@@ -46,9 +46,6 @@ const MOBILE_MOCKUP_FRAME_H = 435;
 const MOBILE_PHONE_LEFT = 58;
 const MOBILE_PHONE_W = 210;
 
-/** Visible phone image — enlarge mobile mockups by 15%. */
-const MOBILE_IMAGE_MAX_PX = Math.round(149.9 * 1.15 * 10) / 10; // 172.4
-
 export function MarketingPresenting() {
   const locale = useLandingLocale();
   const ui = getLandingUi(locale);
@@ -110,8 +107,8 @@ export function MarketingPresenting() {
                 useAbsoluteDesktop
                   ? `lg:block ${isSection2 ? 'lg:min-h-[657px]' : 'lg:min-h-[654px]'}`
                   : feature.reverse
-                    ? 'lg:grid-cols-[1fr_minmax(0,320px)] lg:items-center'
-                    : 'lg:grid-cols-[minmax(0,320px)_1fr]'
+                    ? 'lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center'
+                    : 'lg:grid-cols-[320px_minmax(0,1fr)]'
               } ${isSection1 ? 'lg:min-h-[665px]' : ''}`}
             >
               {isSection1 ? (
@@ -136,7 +133,7 @@ export function MarketingPresenting() {
                 Mobile: slot keeps Figma 210×435 footprint; image is smaller inside.
               */}
               <div
-                className={`relative z-10 order-1 mx-auto w-full max-w-[327px] overflow-visible md:max-w-[320px] ${
+                className={`relative z-10 order-1 mx-auto w-full max-w-[327px] overflow-visible md:w-[320px] md:max-w-[320px] md:shrink-0 ${
                   isSection2
                     ? isEn
                       ? 'lg:absolute lg:right-0 lg:top-[19px] lg:mx-0'
@@ -157,7 +154,7 @@ export function MarketingPresenting() {
 
                 <LandingReveal delayMs={180 + index * 40} className="relative z-[1] overflow-visible">
                   <LandingFeatureEllipse showDesktop={!useArticleEllipse} />
-                  <LandingMockupFade className="relative mx-auto w-full overflow-visible md:aspect-[320/663] md:max-w-[320px] md:overflow-hidden">
+                  <LandingMockupFade className="relative mx-auto w-full overflow-visible md:h-[663px] md:w-[320px] md:overflow-hidden">
                     {/*
                       Mobile mockup frame — Figma 327×435, gap-5 (20px) to badge below.
                       Phone @ left 58 / width 210; fade @ top 268 × full 327 width.
@@ -167,36 +164,28 @@ export function MarketingPresenting() {
                       style={{ height: MOBILE_MOCKUP_FRAME_H }}
                     >
                       <div
-                        className="absolute top-0 flex items-center justify-center overflow-hidden"
+                        className="absolute top-0 overflow-hidden"
                         style={{
                           left: `${(MOBILE_PHONE_LEFT / MOBILE_MOCKUP_FRAME_W) * 100}%`,
                           width: `${(MOBILE_PHONE_W / MOBILE_MOCKUP_FRAME_W) * 100}%`,
                           height: MOBILE_MOCKUP_FRAME_H,
                         }}
                       >
-                        <div
-                          className="relative overflow-hidden"
-                          style={{
-                            width: MOBILE_IMAGE_MAX_PX,
-                            aspectRatio: '210 / 435',
-                          }}
-                        >
-                          <Image
-                            src={feature.image}
-                            alt={feature.imageAlt}
-                            fill
-                            loading={index === 0 ? 'eager' : 'lazy'}
-                            priority={index === 0}
-                            decoding="async"
-                            className="object-contain object-center"
-                            sizes="175px"
-                          />
-                        </div>
+                        <Image
+                          src={feature.image}
+                          alt={feature.imageAlt}
+                          fill
+                          loading={index === 0 ? 'eager' : 'lazy'}
+                          priority={index === 0}
+                          decoding="async"
+                          className="object-contain object-center"
+                          sizes="210px"
+                        />
                       </div>
                     </div>
 
-                    {/* Desktop phone */}
-                    <div className="relative mx-auto hidden aspect-[320/663] w-full max-w-[320px] overflow-hidden md:block">
+                    {/* Desktop phone — fixed 320×663 for every feature (never shrink with grid) */}
+                    <div className="relative mx-auto hidden h-[663px] w-[320px] overflow-hidden md:block">
                       <Image
                         src={feature.image}
                         alt={feature.imageAlt}
@@ -223,7 +212,7 @@ export function MarketingPresenting() {
                 } ${
                   isSection1
                     ? isEn
-                      ? 'lg:w-[560px] lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
+                      ? 'lg:min-w-0 lg:max-w-[560px] lg:w-full lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
                       : 'lg:mr-0 lg:ml-auto lg:w-[431px] lg:items-end lg:justify-center lg:gap-6 lg:pt-[120px]'
                     : isSection2
                       ? isEn

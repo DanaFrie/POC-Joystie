@@ -390,7 +390,7 @@ export const LANDING_BLOG_EN: readonly LandingBlogPost[] = [
     avatar: LANDING_ASSETS.founderAvatar,
     title: 'From the age kids get a smartphone to parenting that teaches healthy use',
     excerpt:
-      'The average age for a first smartphone is 6.2. The solution isn’t parent-as-cop vs child-as-thief of screen time — it’s intentionality and delayed gratification from day one.',
+      'The average age for a first smartphone is 6.2. The solution isn’t parent-as-cop vs child-as-thief of screen time - it’s intentionality and delayed gratification from day one.',
     image: LANDING_ASSETS.ideaScreenTime,
     thumb: LANDING_ASSETS.thumbScreenTime,
     body: [

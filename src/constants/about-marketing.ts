@@ -84,7 +84,7 @@ const ABOUT_STORY_PARAS_EN: readonly (readonly string[])[] = [
     'What kind of child do we want to raise in the age of AI?',
   ],
   [
-    'To grasp how absurd this is: between ages 8 and 12, our child taps an innocent “Accept” button — a button owned by one of the tech giants — and behind that button sits a simple deal:',
+    'To grasp how absurd this is: between ages 8 and 12, our child taps an innocent “Accept” button a button owned by one of the tech giants and behind that button sits a simple deal:',
     'We’ll give you free excitement and you’ll give us your attention - for free!',
   ],
   [
