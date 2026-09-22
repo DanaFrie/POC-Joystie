@@ -103,7 +103,7 @@ export function MarketingHero() {
 
   return (
     <section
-      className="relative w-full lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden"
+      className="relative h-[100vh] w-[100vw] max-w-[100vw] overflow-hidden lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh]"
       dir={isEn ? 'ltr' : 'rtl'}
     >
       <div className="landing-hero-bg pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -135,11 +135,11 @@ export function MarketingHero() {
         />
       </div>
 
-      {/* Mobile — Figma 327×, left 24 / top 92 */}
-      <div className="relative z-10 min-h-[100svh] w-full text-center lg:hidden">
+      {/* Mobile — locked to 100vh × 100vw so copy/CTAs/cue stay in one frame */}
+      <div className="relative z-10 flex h-[100vh] w-[100vw] max-w-[100vw] flex-col overflow-hidden text-center lg:hidden">
         <div
-          className="absolute left-1/2 flex w-[calc(100vw-48px)] -translate-x-1/2 flex-col items-center justify-center gap-[39px]"
-          style={{ top: 'calc(92px + env(safe-area-inset-top, 0px))' }}
+          className="mx-auto flex min-h-0 w-[calc(100vw-48px)] max-w-[100vw] flex-1 flex-col items-center justify-start overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ paddingTop: 'calc(92px + env(safe-area-inset-top, 0px))' }}
         >
           {isEn ? (
             <div className="flex w-full flex-col items-center self-stretch">
@@ -228,8 +228,8 @@ export function MarketingHero() {
           )}
         </div>
 
-        {/* Figma ~ top 710 / left 150 on 375 — bottom-center of first viewport */}
-        <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 justify-center">
+        {/* Figma ~ top 710 / left 150 on 375 — bottom of 100vh frame */}
+        <div className="pointer-events-none relative z-20 flex shrink-0 justify-center pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
           <div className="landing-hero-item landing-hero-item--5">
             <HeroScrollCue label={ui.scrollExplore} size="mobile" />
           </div>

@@ -249,7 +249,7 @@ const UI_EN = {
   scienceReadMore: 'Read more >>',
   behindTitle: 'Behind the idea',
   behindP1:
-    'We catch ourselves pulled into endless scrolling — and instantly regret it. When our kids start copying us, we see the problem: a generation growing into a new reality where, over time, children become more and more addicted to screens.',
+    'We catch ourselves pulled into endless scrolling and instantly regret it. When our kids start copying us, we see the problem: a generation growing into a new reality where, over time, children become more and more addicted to screens.',
   behindP2: 'What kind of child do we want in the age of AI?',
   behindAuthor: 'Meir Nitzan',
   behindRole: 'Founder of Joystie',

@@ -786,10 +786,20 @@ export function MarketingNav({
                   >
                     <p
                       className={`w-full max-w-[282px] font-rubik font-bold leading-[1.15] text-white ${
-                        isEn ? 'text-[28px] tracking-[-1.28px]' : 'text-[30px] tracking-[-0.9px]'
+                        isEn
+                          ? 'text-[22px] tracking-[-0.88px] min-[390px]:text-[28px] min-[390px]:tracking-[-1.28px]'
+                          : 'text-[22px] tracking-[-0.66px] min-[390px]:text-[26px] min-[390px]:tracking-[-0.78px]'
                       }`}
                     >
-                      {ui.menuTagline}
+                      {isEn ? (
+                        ui.menuTagline
+                      ) : (
+                        <>
+                          הדרך החדשה לנהל
+                          <br />
+                          הרגלי מסך בריאים
+                        </>
+                      )}
                     </p>
                     <div className="inline-flex w-full items-start justify-start">
                       <MarketingCtaButton

@@ -112,7 +112,7 @@ export const LANDING_BLOG_EN: readonly LandingBlogPost[] = [
     avatar: LANDING_ASSETS.dvirAvatar,
     title: 'Attention, motivation, and creativity in AI-generation kids',
     excerpt:
-      'The broad impact of using AI in the most important period when our brains are shaped — and what we should do.',
+      'The broad impact of using AI in the most important period when our brains are shaped and the things we should do.',
     image: LANDING_ASSETS.ideaAiGeneration,
     thumb: LANDING_ASSETS.thumbAiGeneration,
     body: [

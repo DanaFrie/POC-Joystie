@@ -303,7 +303,7 @@ export function MarketingScience() {
         */}
         <LandingReveal className="w-full overflow-visible">
           <div
-            className="flex w-full flex-row items-start gap-[21px] overflow-x-auto overscroll-x-contain pt-[19px] v03-scroll-hidden"
+            className="flex w-full flex-row items-start gap-[21px] overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pt-[19px] v03-scroll-hidden"
             dir={dir}
           >
             <div className="w-6 shrink-0" aria-hidden />

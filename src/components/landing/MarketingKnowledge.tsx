@@ -117,10 +117,9 @@ export function MarketingKnowledge() {
         </LandingReveal>
 
         {/*
-          Mobile cards strip — horizontal scroll only.
-          touch-pan-x + overscroll-x-contain: swipe X through cards; Y gestures don’t scroll this strip.
+          Mobile cards strip — horizontal scroll for cards; vertical gestures scroll the page.
         */}
-        <div className="flex items-stretch gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x px-6 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-stretch gap-4 overflow-x-auto overflow-y-hidden overscroll-x-contain px-6 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
           {blog.map((post, index) => (
             <LandingReveal
               key={post.slug ?? post.title}
