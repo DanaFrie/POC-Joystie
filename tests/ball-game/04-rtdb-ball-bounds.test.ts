@@ -1,0 +1,69 @@
+/**
+ * Type 4 — contract (RTDB rules).
+ * Ball y was not clamped. A single write with y∉[0,1] or |v|>1 is rejected
+ * and the 50ms loop stops advancing — stuck after serve.
+ */
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import {
+  clampBallCenter,
+  createStartBall,
+  DEFAULT_PADDLE_WIDTH,
+  stepBallPhysics,
+} from '@/lib/game/physics';
+import {
+  clampBallForRtdbWrite,
+  isLegalRtdbBallWrite,
+} from '@/lib/game/stallGuards';
+
+const paddles = { parentX: 0.5, childX: 0.5, width: DEFAULT_PADDLE_WIDTH };
+
+describe('RTDB ball bounds (contract)', () => {
+  it('clamps y into [0,1] before a write (the old center helper left y raw)', () => {
+    assert.deepEqual(clampBallCenter(0.5, -0.04), {
+      x: clampBallCenter(0.5, 0.5).x,
+      y: 0,
+    });
+    assert.equal(clampBallCenter(0.5, 1.2).y, 1);
+  });
+
+  it('repairs illegal velocity so rules (.validate |v|<=1) accept the write', () => {
+    const repaired = clampBallForRtdbWrite({ x: 0.5, y: 0.5, vx: 1.8, vy: -2 });
+    assert.equal(isLegalRtdbBallWrite(repaired), true);
+    assert.equal(repaired.vx, 1);
+    assert.equal(repaired.vy, -1);
+  });
+
+  it('keeps a served ball legal for the first 80 physics ticks', () => {
+    let state = {
+      ball: createStartBall(),
+      paddles,
+      score: { shared: 0 },
+      phase: 'playing' as const,
+      winner: null as null,
+    };
+
+    for (let i = 0; i < 80; i += 1) {
+      const result = stepBallPhysics(state);
+      const write = clampBallForRtdbWrite(result.ball);
+      assert.equal(
+        isLegalRtdbBallWrite(write),
+        true,
+        `tick ${i} produced an illegal RTDB ball ${JSON.stringify(write)}`
+      );
+      if (result.phase !== 'playing') break;
+      state = {
+        ball: result.ball,
+        paddles: result.paddles,
+        score: result.score,
+        phase: result.phase,
+        winner: result.winner,
+      };
+    }
+  });
+
+  it('rejects the pre-fix out-of-range write the rules would drop', () => {
+    assert.equal(isLegalRtdbBallWrite({ x: 0.5, y: -0.01, vx: 0, vy: -0.4 }), false);
+    assert.equal(isLegalRtdbBallWrite({ x: 0.5, y: 1.01, vx: 0, vy: 0.4 }), false);
+  });
+});

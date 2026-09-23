@@ -94,7 +94,10 @@ export function clampPaddleCenterX(x: number, paddleWidth: number): number {
 }
 
 export function clampBallCenter(x: number, y: number): { x: number; y: number } {
-  return { x: clampBallX(x), y };
+  return {
+    x: clampBallX(x),
+    y: Math.min(1, Math.max(0, y)),
+  };
 }
 
 function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
