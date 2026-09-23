@@ -15,12 +15,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: '/favicon.ico?v=3', type: 'image/x-icon' }],
   },
-}
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  viewportFit: 'cover' as const,
+  // Next 13.4 expects viewport on metadata (separate `export const viewport` is Next 14+).
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  },
 }
 
 export default function RootLayout({

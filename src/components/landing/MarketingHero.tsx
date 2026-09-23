@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingUi } from '@/constants/landing-i18n';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
-import { LandingReveal } from '@/components/landing/LandingReveal';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 
 /** Fit the EN title + turquoise marker inside the 327px stack without clipping. */
@@ -170,24 +169,19 @@ export function MarketingHero() {
       </div>
 
       {/*
-        Mobile — main shell (min-h-[100svh], 327 content) + Learn more | Join
-        CTA row scales to stay inside the column (no crop past 100vw).
+        Mobile — main shell + Learn more | Join.
+        Same entrance stagger as desktop (`landing-hero-item--*`).
       */}
       <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[327px] flex-col items-center gap-10 overflow-x-clip px-0 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
         <div className="relative flex w-full flex-col items-center gap-[39px]">
-          <LandingReveal
-            immediate
-            variant="fade"
-            delayMs={80}
-            className="flex w-full flex-col items-center gap-[30px]"
-          >
+          <div className="flex w-full flex-col items-center gap-[30px]">
             {isEn ? (
               <>
                 <div className="flex w-full flex-col items-center gap-3">
-                  <p className="w-full font-rubik text-[13px] font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]">
+                  <p className="landing-hero-item landing-hero-item--1 w-full font-rubik text-[13px] font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]">
                     {ui.heroEyebrow}
                   </p>
-                  <div className="relative w-full overflow-visible">
+                  <div className="landing-hero-item landing-hero-item--2 relative w-full overflow-visible">
                     <h1
                       ref={enMobileTitleRef}
                       className="relative mx-auto w-max origin-center text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
@@ -211,17 +205,17 @@ export function MarketingHero() {
                     </h1>
                   </div>
                 </div>
-                <p className="w-full font-sf text-[16px] font-normal leading-[1.28] tracking-[-0.48px] text-[#d1edf4]">
+                <p className="landing-hero-item landing-hero-item--3 w-full font-sf text-[16px] font-normal leading-[1.28] tracking-[-0.48px] text-[#d1edf4]">
                   {ui.heroBodyMobile}
                 </p>
               </>
             ) : (
               <>
                 <div className="flex w-full flex-col items-center gap-3">
-                  <p className="font-rubik text-[14px] tracking-[5.32px] text-[rgba(237,239,239,0.45)]">
+                  <p className="landing-hero-item landing-hero-item--1 font-rubik text-[14px] tracking-[5.32px] text-[rgba(237,239,239,0.45)]">
                     {ui.heroEyebrow}
                   </p>
-                  <h1 className="relative w-full font-rubik text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]">
+                  <h1 className="landing-hero-item landing-hero-item--2 relative w-full font-rubik text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]">
                     {ui.heroTitleLine1}
                     <br />
                     <span className="relative inline-block">
@@ -238,20 +232,20 @@ export function MarketingHero() {
                     {ui.heroTitleLine2After}
                   </h1>
                 </div>
-                <p className="font-rubik text-[18px] leading-[1.25] tracking-[-0.36px] text-[#d1edf4]">
+                <p className="landing-hero-item landing-hero-item--3 font-rubik text-[18px] leading-[1.25] tracking-[-0.36px] text-[#d1edf4]">
                   {ui.heroBodyMobile}
                 </p>
               </>
             )}
-          </LandingReveal>
-          <LandingReveal immediate variant="fade" delayMs={280} className="w-full self-stretch">
+          </div>
+          <div className="landing-hero-item landing-hero-item--4 w-full self-stretch">
             <div
               ref={mobileCtaRef}
               className="mx-auto flex w-max max-w-none flex-row items-center justify-center gap-[7px]"
             >
               <a
                 href="#what-is-joystie"
-                className={`inline-flex h-[46px] items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-[rgba(255,255,255,0.10)] font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20 ${
+                className={`inline-flex h-[46px] items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-[rgba(255,255,255,0.10)] font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/20 ${
                   isEn
                     ? 'gap-[25px] px-4 py-[9px] text-left'
                     : 'gap-3 px-[22px] py-[11px] text-right'
@@ -261,7 +255,7 @@ export function MarketingHero() {
               </a>
               <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
             </div>
-          </LandingReveal>
+          </div>
         </div>
       </div>
 

@@ -45,6 +45,8 @@ const MOBILE_MOCKUP_FRAME_H = 435;
 /** Phone x inside the 327 frame — (327 − 210) / 2 ≈ 58. */
 const MOBILE_PHONE_LEFT = 58;
 const MOBILE_PHONE_W = 210;
+/** Visible phone image — matches main (smaller than 210 slot → space above badge). */
+const MOBILE_IMAGE_MAX_PX = Math.round(149.9 * 1.15 * 10) / 10; // 172.4
 
 export function MarketingPresenting() {
   const locale = useLandingLocale();
@@ -102,8 +104,8 @@ export function MarketingPresenting() {
           return (
             <article
               key={feature.badge}
-              className={`relative grid w-full items-start gap-2.5 overflow-visible md:max-w-none md:gap-12 ${
-                /* gap-2.5 = 10px mobile — half of previous 20px mockup→badge gap */
+              className={`relative grid w-full max-w-[327px] items-start gap-2.5 overflow-visible md:max-w-none md:gap-12 ${
+                /* gap-2.5 = 10px mobile — matches main mockup→badge gap */
                 useAbsoluteDesktop
                   ? `lg:block ${isSection2 ? 'lg:min-h-[657px]' : 'lg:min-h-[654px]'}`
                   : feature.reverse
@@ -164,23 +166,31 @@ export function MarketingPresenting() {
                       style={{ height: MOBILE_MOCKUP_FRAME_H }}
                     >
                       <div
-                        className="absolute top-0 overflow-hidden"
+                        className="absolute top-0 flex items-center justify-center overflow-hidden"
                         style={{
                           left: `${(MOBILE_PHONE_LEFT / MOBILE_MOCKUP_FRAME_W) * 100}%`,
                           width: `${(MOBILE_PHONE_W / MOBILE_MOCKUP_FRAME_W) * 100}%`,
                           height: MOBILE_MOCKUP_FRAME_H,
                         }}
                       >
-                        <Image
-                          src={feature.image}
-                          alt={feature.imageAlt}
-                          fill
-                          loading={index === 0 ? 'eager' : 'lazy'}
-                          priority={index === 0}
-                          decoding="async"
-                          className="object-contain object-center"
-                          sizes="210px"
-                        />
+                        <div
+                          className="relative overflow-hidden"
+                          style={{
+                            width: MOBILE_IMAGE_MAX_PX,
+                            aspectRatio: '210 / 435',
+                          }}
+                        >
+                          <Image
+                            src={feature.image}
+                            alt={feature.imageAlt}
+                            fill
+                            loading={index === 0 ? 'eager' : 'lazy'}
+                            priority={index === 0}
+                            decoding="async"
+                            className="object-contain object-center"
+                            sizes="172px"
+                          />
+                        </div>
                       </div>
                     </div>
 
