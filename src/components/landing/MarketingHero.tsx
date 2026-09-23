@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingUi } from '@/constants/landing-i18n';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
+import { LandingReveal } from '@/components/landing/LandingReveal';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 
 /** Fit the EN title + turquoise marker inside the 327px stack without clipping. */
@@ -32,7 +33,6 @@ function useFitScaleX() {
         el.style.transformOrigin = 'top center';
         el.style.transform = `translateX(-50%) scale(${s})`;
         parent.style.position = 'relative';
-        /* offsetHeight already includes marker bottom padding — do not add markerH again */
         parent.style.height = `${el.offsetHeight * s}px`;
       }
     };
@@ -45,8 +45,8 @@ function useFitScaleX() {
 }
 
 /**
- * Scale a CTA row down so both buttons stay inside the content column
- * (EN “Join Joystie” + “Learn more” can exceed 327px at full size).
+ * Scale the Learn more + Join row so both stay inside the content width
+ * (never crop past 100vw / 327px column).
  */
 function useFitCtaRow(localeKey: string) {
   const ref = useRef<HTMLDivElement>(null);
@@ -64,7 +64,6 @@ function useFitCtaRow(localeKey: string) {
         const s = maxW / need;
         el.style.transformOrigin = 'center center';
         el.style.transform = `scale(${s})`;
-        /* reclaim layout width so siblings / overflow stay correct */
         el.style.marginInline = `${((s - 1) * need) / 2}px`;
       }
     };
@@ -105,7 +104,6 @@ function HeroScrollCue({
       >
         {label}
       </span>
-      {/* Chevron tip down — outline turquoise #00FFB3 */}
       <span className="landing-scroll-cue-bob relative mt-0.5 flex h-6 w-6 items-center justify-center">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -136,8 +134,10 @@ export function MarketingHero() {
   const mobileCtaRef = useFitCtaRow(locale);
 
   return (
+    // Mobile: no overflow lock (main) — min-h fills viewport, height grows with content.
+    // Desktop: one viewport tall so scroll cue stays visible.
     <section
-      className="relative h-[100vh] w-[100vw] max-w-[100vw] overflow-hidden lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh]"
+      className="relative lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden"
       dir={isEn ? 'ltr' : 'rtl'}
     >
       <div className="landing-hero-bg pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -169,95 +169,59 @@ export function MarketingHero() {
         />
       </div>
 
-      {/* Mobile — locked 100vh × 100vw; short screens shrink title/marker/CTAs */}
-      <div className="landing-hero-mobile-fit relative z-10 flex h-[100vh] w-[100vw] max-w-[100vw] flex-col overflow-hidden text-center lg:hidden">
-        <div
-          className="mx-auto flex min-h-0 w-[calc(100vw-48px)] max-w-[100vw] flex-1 flex-col items-center justify-start overflow-hidden"
-          style={{ paddingTop: 'calc(var(--hero-top-pad) + env(safe-area-inset-top, 0px))' }}
-        >
-          {isEn ? (
-            <div className="flex w-full flex-col items-center self-stretch">
-              <p
-                className="landing-hero-item landing-hero-item--1 mb-3 w-full self-stretch text-center font-rubik font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]"
-                style={{ fontSize: 'var(--hero-eyebrow-en)' }}
-              >
-                {ui.heroEyebrow}
-              </p>
-              <div
-                className="flex w-full flex-col items-center self-stretch"
-                style={{ gap: 'var(--hero-en-gap)' }}
-              >
-                <div className="landing-hero-item landing-hero-item--2 relative w-full self-stretch overflow-visible">
-                  <h1
-                    ref={enMobileTitleRef}
-                    className="relative mx-auto w-max origin-center text-center font-rubik leading-[1.05] tracking-[-1.56px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
-                    style={{ fontWeight: 760, fontSize: 'var(--hero-en-title)' }}
-                  >
-                    <span className="block text-center whitespace-nowrap">
-                      {ui.heroTitleLine1}
-                    </span>
-                    <span className="block text-center whitespace-nowrap">
-                      <span className="relative inline-block">
-                        {ui.heroTitleMobileUnderline}
-                        <Image
-                          src={LANDING_ASSETS.heroUnderlineMobile}
-                          alt=""
-                          width={280}
-                          height={28}
-                          className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-[1] w-[150%] max-w-none -translate-x-1/2"
-                          style={{ height: 'var(--hero-marker-en-h)' }}
-                          unoptimized
-                        />
-                      </span>{' '}
-                      {ui.heroTitleMobileLine2After}
-                    </span>
-                  </h1>
-                </div>
-                <p
-                  className="landing-hero-item landing-hero-item--3 w-full self-stretch text-center font-sf font-normal leading-[1.28] tracking-[-0.48px] text-[#d1edf4]"
-                  style={{ fontSize: 'var(--hero-en-body)' }}
-                >
-                  {ui.heroBodyMobile}
-                </p>
-                <div className="landing-hero-item landing-hero-item--4 w-full self-stretch">
-                  <div
-                    ref={mobileCtaRef}
-                    className="mx-auto flex w-max max-w-none flex-row items-center justify-center gap-[7px]"
-                  >
-                    <a
-                      href="#what-is-joystie"
-                      className="inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-white bg-[rgba(255,255,255,0.10)] font-rubik font-bold leading-[1.28] tracking-[-0.64px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20"
-                      style={{
-                        height: 'var(--hero-btn-h)',
-                        paddingInline: 'var(--hero-btn-px)',
-                        paddingBlock: 'var(--hero-btn-py)',
-                        fontSize: 'var(--hero-btn-text)',
-                      }}
+      {/*
+        Mobile — main shell (min-h-[100svh], 327 content) + Learn more | Join
+        CTA row scales to stay inside the column (no crop past 100vw).
+      */}
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[327px] flex-col items-center gap-10 overflow-x-clip px-0 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
+        <div className="relative flex w-full flex-col items-center gap-[39px]">
+          <LandingReveal
+            immediate
+            variant="fade"
+            delayMs={80}
+            className="flex w-full flex-col items-center gap-[30px]"
+          >
+            {isEn ? (
+              <>
+                <div className="flex w-full flex-col items-center gap-3">
+                  <p className="w-full font-rubik text-[13px] font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]">
+                    {ui.heroEyebrow}
+                  </p>
+                  <div className="relative w-full overflow-visible">
+                    <h1
+                      ref={enMobileTitleRef}
+                      className="relative mx-auto w-max origin-center text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
+                      style={{ fontWeight: 760 }}
                     >
-                      {ui.heroLearnMore}
-                    </a>
-                    <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
+                      <span className="block whitespace-nowrap">{ui.heroTitleLine1}</span>
+                      <span className="block whitespace-nowrap">
+                        <span className="relative inline-block">
+                          {ui.heroTitleMobileUnderline}
+                          <Image
+                            src={LANDING_ASSETS.heroUnderlineMobile}
+                            alt=""
+                            width={280}
+                            height={28}
+                            className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-[1] h-5 w-[150%] max-w-none -translate-x-1/2"
+                            unoptimized
+                          />
+                        </span>{' '}
+                        {ui.heroTitleMobileLine2After}
+                      </span>
+                    </h1>
                   </div>
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div
-              className="flex flex-col items-center justify-center self-stretch"
-              style={{ gap: 'var(--hero-he-gap)' }}
-            >
-              <div className="flex w-full flex-col items-center gap-3 self-stretch">
-                <p
-                  className="landing-hero-item landing-hero-item--1 w-full self-stretch text-center font-rubik font-normal leading-[1.25] tracking-[5.32px] text-[rgba(237,239,239,0.45)]"
-                  style={{ fontSize: 'var(--hero-eyebrow-he)' }}
-                >
-                  {ui.heroEyebrow}
+                <p className="w-full font-sf text-[16px] font-normal leading-[1.28] tracking-[-0.48px] text-[#d1edf4]">
+                  {ui.heroBodyMobile}
                 </p>
-                <div className="landing-hero-item landing-hero-item--2 relative w-full self-stretch overflow-visible">
-                  <h1
-                    className="relative mx-auto w-full self-stretch text-center font-rubik font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
-                    style={{ fontSize: 'var(--hero-he-title)' }}
-                  >
+              </>
+            ) : (
+              <>
+                <div className="flex w-full flex-col items-center gap-3">
+                  <p className="font-rubik text-[14px] tracking-[5.32px] text-[rgba(237,239,239,0.45)]">
+                    {ui.heroEyebrow}
+                  </p>
+                  <h1 className="relative w-full font-rubik text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]">
                     {ui.heroTitleLine1}
                     <br />
                     <span className="relative inline-block">
@@ -267,52 +231,37 @@ export function MarketingHero() {
                         alt=""
                         width={144}
                         height={20}
-                        className="pointer-events-none absolute left-1/2 top-[calc(100%-1px)] z-[1] max-w-none -translate-x-1/2"
-                        style={{
-                          height: 'var(--hero-marker-he-h)',
-                          width: 'var(--hero-marker-he-w)',
-                        }}
+                        className="pointer-events-none absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2"
                         unoptimized
                       />
                     </span>{' '}
                     {ui.heroTitleLine2After}
                   </h1>
                 </div>
-              </div>
-              <p
-                className="landing-hero-item landing-hero-item--3 w-full self-stretch text-center font-rubik font-normal leading-[1.25] tracking-[-0.36px] text-[#d1edf4]"
-                style={{ fontSize: 'var(--hero-he-body)' }}
+                <p className="font-rubik text-[18px] leading-[1.25] tracking-[-0.36px] text-[#d1edf4]">
+                  {ui.heroBodyMobile}
+                </p>
+              </>
+            )}
+          </LandingReveal>
+          <LandingReveal immediate variant="fade" delayMs={280} className="w-full self-stretch">
+            <div
+              ref={mobileCtaRef}
+              className="mx-auto flex w-max max-w-none flex-row items-center justify-center gap-[7px]"
+            >
+              <a
+                href="#what-is-joystie"
+                className={`inline-flex h-[46px] items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-[rgba(255,255,255,0.10)] font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20 ${
+                  isEn
+                    ? 'gap-[25px] px-4 py-[9px] text-left'
+                    : 'gap-3 px-[22px] py-[11px] text-right'
+                }`}
               >
-                {ui.heroBodyMobile}
-              </p>
-              <div className="landing-hero-item landing-hero-item--4 w-full self-stretch">
-                <div
-                  ref={mobileCtaRef}
-                  className="mx-auto flex w-max max-w-none flex-row items-center justify-center gap-[7px]"
-                >
-                  <a
-                    href="#what-is-joystie"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-2xl border border-white bg-[rgba(255,255,255,0.10)] font-rubik font-bold leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-colors duration-500 ease-out hover:bg-white/20"
-                    style={{
-                      height: 'var(--hero-btn-h)',
-                      paddingInline: 'var(--hero-btn-px)',
-                      paddingBlock: 'var(--hero-btn-py)',
-                      fontSize: 'var(--hero-btn-text)',
-                    }}
-                  >
-                    {ui.heroLearnMore}
-                  </a>
-                  <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
-                </div>
-              </div>
+                {ui.heroLearnMore}
+              </a>
+              <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
             </div>
-          )}
-        </div>
-
-        <div className="pointer-events-none relative z-20 flex shrink-0 justify-center pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
-          <div className="landing-hero-item landing-hero-item--5">
-            <HeroScrollCue label={ui.scrollExplore} size="mobile" />
-          </div>
+          </LandingReveal>
         </div>
       </div>
 
@@ -416,7 +365,6 @@ export function MarketingHero() {
           </div>
         </div>
 
-        {/* Figma ~ top 940 / left 922 — bottom-center of desktop hero */}
         <div className="pointer-events-none absolute bottom-10 left-1/2 z-20 flex -translate-x-1/2 justify-center">
           <div className="landing-hero-item landing-hero-item--5">
             <HeroScrollCue label={ui.scrollExplore} size="desktop" />

@@ -39,19 +39,19 @@ export function MarketingCtaButton({
     size === 'compact'
       ? 'gap-[21.81px] rounded-[13.96px] py-[6.98px] pe-[6.98px] ps-[17.45px]'
       : size === 'mobile'
-        ? 'gap-[calc(var(--hero-cta-icon,24.426px)*0.9)] rounded-2xl py-[var(--hero-btn-py,6.979px)] pe-[var(--hero-btn-py,6.979px)] ps-[var(--hero-btn-px,17.447px)] h-[var(--hero-btn-h,46px)]'
+        ? 'h-[46px] gap-[21.809px] rounded-2xl py-[6.979px] pe-[6.979px] ps-[17.447px]'
         : 'h-[50px] gap-6 rounded-[18px] py-2 pe-2 ps-6';
   const labelClasses =
     size === 'compact'
       ? 'text-[13.96px] leading-[17.87px] tracking-[-0.28px]'
       : size === 'mobile'
-        ? 'text-[length:var(--hero-btn-text,16px)] leading-[1.28] tracking-[-0.32px]'
+        ? 'text-base leading-[1.28] tracking-[-0.32px]'
         : 'text-[18px] leading-[1.2] tracking-[-0.36px]';
   const iconSize =
     size === 'compact'
       ? 'size-[24.43px]'
       : size === 'mobile'
-        ? 'size-[var(--hero-cta-icon,24.426px)]'
+        ? 'size-[24.426px]'
         : 'size-8';
   const iconRadius = size === 'compact' ? 8.72 : 10.2535;
   const isAuthHref = href === '/onboarding' || href === '/login';

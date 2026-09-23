@@ -352,7 +352,7 @@ export function MarketingScience() {
         >
           <div className={`flex w-full flex-col gap-[7px] ${textAlign}`}>
             <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[45px] font-bold leading-[1.15] tracking-[-1.35px] text-transparent">
-              {ui.scienceTitle}
+              {ui.scienceTitleDesktop}
             </h2>
             <p className="font-rubik text-[20px] leading-[1.33] tracking-[-0.3px] text-white">
               {ui.scienceLead}

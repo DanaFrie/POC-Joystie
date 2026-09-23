@@ -484,7 +484,7 @@ export function MarketingHowItWorks() {
         {/* Desktop header */}
         <LandingReveal className="relative z-[1] hidden w-full text-center md:block">
           <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[40px] font-bold leading-[1.1] tracking-[-0.9px] text-transparent lg:text-[45px]">
-            {ui.howTitle}
+            {ui.howTitleDesktop}
           </h2>
           <p className="mx-auto mt-2 max-w-[431px] font-rubik text-[20px] leading-[1.33] tracking-[-0.3px] text-white">
             {ui.howLead}
