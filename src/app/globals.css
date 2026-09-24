@@ -576,11 +576,9 @@ body.layout-root:has(.v03-knowledge-article-root) {
 }
 
 /*
- * EN marketing type — never fall back to Rubik (next/font Rubik is always loaded and
- * would “win” whenever “SF Pro” isn’t installed).
- * Apple: -apple-system / BlinkMacSystemFont → San Francisco (SF).
- * Windows/Android: Segoe UI / system-ui.
+ * EN marketing type — Plus Jakarta Sans (next/font `--font-plus-jakarta`).
  * Keep .font-he-rubik for Hebrew labels on EN pages.
+ * Class `.font-sf` kept as the EN utility name for call-site compat.
  */
 .v03-landing-root[lang='en'],
 .v03-landing-root.font-sf,
@@ -588,10 +586,8 @@ body.layout-root:has(.v03-knowledge-article-root) {
 .v03-about-root.font-sf,
 .v03-knowledge-article-root[lang='en'],
 .v03-knowledge-article-root.font-sf {
-  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Segoe UI', system-ui,
-    sans-serif;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Segoe UI', system-ui,
-    sans-serif !important;
+  --font-body: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif !important;
 }
 
 .v03-landing-root[lang='en'] *:not(.font-he-rubik),
@@ -602,8 +598,7 @@ body.layout-root:has(.v03-knowledge-article-root) {
 .v03-knowledge-article-root.font-sf *:not(.font-he-rubik),
 .marketing-en-sf,
 .marketing-en-sf *:not(.font-he-rubik) {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', 'Segoe UI', system-ui,
-    sans-serif !important;
+  font-family: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif !important;
 }
 
 .v03-landing-root[lang='en'] .font-he-rubik,
@@ -760,6 +755,18 @@ body.layout-root:has(.v03-knowledge-article-root) {
 .v03-landing-root .landing-reveal.landing-reveal--fade.is-in {
   transform: none;
   transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
+}
+
+/*
+  Gradient section titles — bg-clip-text clips glyphs outside the line box.
+  Plus Jakarta (EN) has taller ascenders/descenders than Rubik; pad the paint
+  box so tops (T, h, l) and bottoms (g, q, y) aren’t cropped.
+ */
+.v03-landing-root .landing-gradient-title {
+  overflow: visible;
+  padding-block: 0.1em 0.18em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 /* Hero — image fades first (1.6s); copy cascade overlaps mid-fade (same mobile + desktop) */

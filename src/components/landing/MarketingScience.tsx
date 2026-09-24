@@ -159,7 +159,7 @@ function ScienceTitle({
   isEn: boolean;
 }) {
   const textClass = isEn
-    ? 'font-sf text-[20px] font-extrabold leading-[1.1] tracking-[-0.8px]'
+    ? 'font-sf text-[20px] font-extrabold leading-[1.25] tracking-[-0.8px]'
     : size === 'mobile'
       ? 'font-rubik text-[20px] font-bold leading-[1.05] tracking-[-0.6px]'
       : 'font-rubik text-2xl font-bold leading-[1.1] tracking-[-0.72px]';
@@ -232,7 +232,7 @@ function ScienceCard({
   );
 }
 
-/** Mobile card — Figma 15445:6196 / 6204 / 6214: 267×262, radius 25.671 */
+/** Mobile card — Figma ~267×262; EN grows with content (Jakarta + long copy). */
 function ScienceCardMobile({
   card,
   isEn,
@@ -246,10 +246,10 @@ function ScienceCardMobile({
   return (
     <article
       dir={isEn ? 'ltr' : 'rtl'}
-      className={`relative flex h-[262px] w-[290px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-10 pb-5 pt-[30px] ${align}`}
+      className={`relative flex min-h-[262px] w-[290px] shrink-0 flex-col self-stretch overflow-visible rounded-[25.671px] bg-white/10 px-10 pb-6 pt-[34px] ${align}`}
     >
       <ScienceBadge n={card.n} size="mobile" isEn={isEn} />
-      <div className={`relative z-[1] flex w-full flex-col gap-[9px] ${items} ${align}`}>
+      <div className={`relative z-[1] flex min-h-0 w-full flex-1 flex-col gap-[9px] ${items} ${align}`}>
         <ScienceTitle card={card} size="mobile" isEn={isEn} />
         <p
           className={
@@ -299,11 +299,11 @@ export function MarketingScience() {
 
         {/*
           Horizontal cards — Figma 15445:6195 gap 21.
-          pt-[19px]: overflow-x-auto clips Y; pad so badge (top:-19) stays visible above the card.
+          pt-[19px]: room for badge (top:-19). No overflow-y-hidden — EN cards grow with copy.
         */}
         <LandingReveal className="w-full overflow-visible">
           <div
-            className="flex w-full flex-row items-start gap-[21px] overflow-x-auto overflow-y-hidden overscroll-x-contain touch-pan-x pt-[19px] v03-scroll-hidden"
+            className="flex w-full flex-row items-stretch gap-[21px] overflow-x-auto overscroll-x-contain touch-pan-x pt-[19px] pb-1 v03-scroll-hidden"
             dir={dir}
           >
             <div className="w-6 shrink-0" aria-hidden />
@@ -351,7 +351,7 @@ export function MarketingScience() {
           dir={dir}
         >
           <div className={`flex w-full flex-col gap-[7px] ${textAlign}`}>
-            <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[45px] font-bold leading-[1.15] tracking-[-1.35px] text-transparent">
+            <h2 className="landing-gradient-title bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[45px] font-bold leading-[1.25] tracking-[-1.35px] text-transparent">
               {ui.scienceTitleDesktop}
             </h2>
             <p className="font-rubik text-[20px] leading-[1.33] tracking-[-0.3px] text-white">

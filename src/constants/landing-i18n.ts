@@ -264,7 +264,7 @@ const UI_EN = {
   behindP2: 'What kind of child do we want in the age of AI?',
   behindAuthor: 'Meir Nitzan',
   behindRole: 'Founder of Joystie',
-  behindCta: 'Read our Story',
+  behindCta: 'Read our story',
   behindPhotoAlt: 'Calm family in nature',
   faqTitle: 'Some good questions to ask',
   knowledgeTitle: 'The knowledge center of Joystie',

@@ -220,7 +220,7 @@ export function MarketingPresenting() {
                 className={`relative z-10 order-2 flex w-full flex-col gap-4 ${
                   isEn
                     ? 'items-center text-center lg:text-left'
-                    : 'items-start text-right'
+                    : 'items-center text-center lg:items-start lg:text-right'
                 } ${
                   isSection1
                     ? isEn
@@ -239,11 +239,7 @@ export function MarketingPresenting() {
                           : 'lg:order-2 lg:gap-[30px]'
                 }`}
               >
-                <div
-                  className={`flex w-full ${
-                    isEn ? 'justify-center lg:justify-start' : 'justify-start'
-                  }`}
-                >
+                <div className="flex w-full justify-center lg:justify-start">
                   <div className="inline-flex items-center justify-center gap-2.5 rounded-full bg-white/20 px-3 py-1.5">
                     <span className="font-rubik text-[13px] tracking-[-0.24px] text-white md:text-base">
                       {feature.badge}
@@ -278,9 +274,7 @@ export function MarketingPresenting() {
                 ) : null}
                 {/* Figma text spacer — 7×72 rotate -90° → horizontal pill; mobile only */}
                 <div
-                  className={`flex h-[7px] w-[72px] shrink-0 items-center justify-center lg:hidden ${
-                    isEn ? 'mx-auto' : 'self-start'
-                  }`}
+                  className="mx-auto flex h-[7px] w-[72px] shrink-0 items-center justify-center lg:hidden"
                   aria-hidden
                 >
                   <div

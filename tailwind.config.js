@@ -55,15 +55,8 @@ module.exports = {
         heebo: ['var(--font-body, var(--font-rubik))', 'sans-serif'],
         montserrat: ['"Montserrat Alternates"', 'sans-serif'],
         varela: ['"Varela Round"', 'sans-serif'],
-        sf: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"SF Pro Text"',
-          '"SF Pro"',
-          '"Segoe UI"',
-          'system-ui',
-          'sans-serif',
-        ],
+        sf: ['var(--font-plus-jakarta)', '"Plus Jakarta Sans"', 'sans-serif'],
+        jakarta: ['var(--font-plus-jakarta)', '"Plus Jakarta Sans"', 'sans-serif'],
       },
       fontSize: {
         'v03-eyebrow': ['var(--v03-text-eyebrow-size)', { lineHeight: 'var(--v03-text-eyebrow-leading)', letterSpacing: 'var(--v03-text-eyebrow-tracking)' }],
