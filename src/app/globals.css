@@ -762,7 +762,7 @@ body.layout-root:has(.v03-knowledge-article-root) {
   transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
 }
 
-/* Hero — image fades in; copy cascade starts early (overlaps image fade) */
+/* Hero — image fades first (1.6s); copy cascade overlaps mid-fade (same mobile + desktop) */
 @keyframes landing-hero-bg-in {
   from {
     opacity: 0;
@@ -783,7 +783,10 @@ body.layout-root:has(.v03-knowledge-article-root) {
   }
 }
 
-/* Opacity-only — parent transform/opacity < 1 isolates backdrop-filter on Learn more */
+/*
+  Opacity-only on the glass CTA itself (not a parent) so backdrop-blur
+  fades in with the button instead of popping in after the parent hits opacity 1.
+ */
 @keyframes landing-hero-item-in-fade {
   from {
     opacity: 0;
@@ -795,11 +798,18 @@ body.layout-root:has(.v03-knowledge-article-root) {
 
 .v03-landing-root .landing-hero-bg {
   opacity: 0;
+}
+
+/* Start fade only after the active hero img is ready — desktop was missing the fade */
+.v03-landing-root .landing-hero--ready .landing-hero-bg {
   animation: landing-hero-bg-in 1.6s cubic-bezier(0.33, 0.1, 0.25, 1) forwards;
 }
 
 .v03-landing-root .landing-hero-item {
   opacity: 0;
+}
+
+.v03-landing-root .landing-hero--ready .landing-hero-item {
   animation: landing-hero-item-in 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   animation-delay: var(--hero-stagger, 0.35s);
 }
@@ -815,12 +825,14 @@ body.layout-root:has(.v03-knowledge-article-root) {
 }
 .v03-landing-root .landing-hero-item--4 {
   --hero-stagger: 0.95s;
-  /* No transform — keeps glass CTA backdrop-blur sampling the hero */
+}
+.v03-landing-root .landing-hero--ready .landing-hero-item--4 {
   animation-name: landing-hero-item-in-fade;
 }
 .v03-landing-root .landing-hero-item--5 {
   --hero-stagger: 1.15s;
 }
+
 
 /* Introducing mockups — fade when ~25% from top of viewport */
 .v03-landing-root .landing-mockup-fade {

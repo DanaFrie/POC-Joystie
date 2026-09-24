@@ -1,7 +1,13 @@
 'use client';
 
-import { useLayoutEffect, useRef, type CSSProperties } from 'react';
-import Image from 'next/image';
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { LANDING_ASSETS } from '@/constants/landing-marketing';
 import { getLandingUi } from '@/constants/landing-i18n';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
@@ -84,7 +90,49 @@ const DESKTOP_HERO_TOP_HE = 165;
 /** Skip top of hero art so the viewport starts at this image Y (desktop). */
 const DESKTOP_HERO_IMAGE_TOP_CROP_PX = 73;
 
-/** Figma “גוללים למטה” — decorative cue only (not tappable). */
+/**
+ * Turquoise underline — absolute under the marked word (Figma),
+ * inside the same title fade (preloaded SVG, no late pop-in).
+ */
+function HeroTitleMark({
+  children,
+  variant,
+}: {
+  children: ReactNode;
+  variant: 'mobile-en' | 'mobile-he' | 'desktop-en' | 'desktop-he';
+}) {
+  const mobile = variant.startsWith('mobile');
+  const src = mobile
+    ? LANDING_ASSETS.heroUnderlineMobile
+    : LANDING_ASSETS.heroUnderline;
+  const markClass =
+    variant === 'mobile-en'
+      ? 'absolute left-1/2 top-[calc(100%-2px)] z-[1] h-5 w-[150%] max-w-none -translate-x-1/2'
+      : variant === 'mobile-he'
+        ? 'absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2'
+        : variant === 'desktop-en'
+          ? 'absolute left-1/2 top-[calc(100%-2px)] z-[1] h-7 w-[320px] max-w-none -translate-x-1/2'
+          : 'absolute left-1/2 top-[calc(100%-4px)] z-[1] w-[247px] max-w-none -translate-x-1/2';
+
+  return (
+    <span className="relative inline-block">
+      {children}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        width={mobile ? 144 : 320}
+        height={mobile ? 20 : 28}
+        decoding="async"
+        fetchPriority="high"
+        className={`pointer-events-none ${markClass}`}
+        aria-hidden
+      />
+    </span>
+  );
+}
+
+/** Figma “גוללים למטה” / “Scroll to explore” — decorative cue only (not tappable). */
 function HeroScrollCue({
   label,
   size,
@@ -133,32 +181,67 @@ export function MarketingHero() {
   const isEn = locale === 'en';
   const mobileTitleRef = useFitScaleX(locale);
   const mobileCtaRef = useFitCtaRow(locale);
+  const [heroReady, setHeroReady] = useState(false);
+  const heroReadyRef = useRef(false);
+
+  const markHeroReady = useCallback(() => {
+    if (heroReadyRef.current) return;
+    heroReadyRef.current = true;
+    setHeroReady(true);
+  }, []);
+
+  /* Desktop (and mobile) — start the shared fade only once the visible hero img is decoded */
+  useLayoutEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const src = mq.matches
+      ? LANDING_ASSETS.heroDesktop
+      : LANDING_ASSETS.heroMobile;
+    const probe = new window.Image();
+    const onDone = () => markHeroReady();
+    probe.addEventListener('load', onDone);
+    probe.addEventListener('error', onDone);
+    probe.src = src;
+    if (probe.complete) onDone();
+    return () => {
+      probe.removeEventListener('load', onDone);
+      probe.removeEventListener('error', onDone);
+    };
+  }, [markHeroReady]);
 
   return (
     // Mobile: no overflow lock (main) — min-h fills viewport, height grows with content.
     // Desktop: one viewport tall so scroll cue stays visible.
     <section
-      className="relative lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden"
+      className={`relative lg:h-[100dvh] lg:min-h-[100dvh] lg:max-h-[100dvh] lg:overflow-hidden${
+        heroReady ? ' landing-hero--ready' : ''
+      }`}
       dir={isEn ? 'ltr' : 'rtl'}
     >
       <div className="landing-hero-bg pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <picture className="absolute inset-0 block h-full w-full overflow-hidden">
-          <source media="(min-width: 1024px)" srcSet={LANDING_ASSETS.heroDesktop} type="image/webp" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={LANDING_ASSETS.heroMobile}
-            alt=""
-            decoding="async"
-            fetchPriority="high"
-            className="h-full w-full object-cover object-[center_40%] lg:absolute lg:left-0 lg:w-full lg:object-cover lg:object-top lg:top-[calc(var(--desktop-hero-crop)*-1)] lg:h-[calc(100%+var(--desktop-hero-crop))]"
-            style={
-              {
-                ['--desktop-hero-crop']: `${DESKTOP_HERO_IMAGE_TOP_CROP_PX}px`,
-              } as CSSProperties
-            }
-            sizes="100vw"
-          />
-        </picture>
+        {/* Separate imgs — desktop gets its own high-priority fetch (not picture/source). */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LANDING_ASSETS.heroMobile}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+          className="h-full w-full object-cover object-[center_40%] lg:hidden"
+          sizes="100vw"
+        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LANDING_ASSETS.heroDesktop}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+          className="absolute left-0 hidden w-full object-cover object-top lg:block lg:top-[calc(var(--desktop-hero-crop)*-1)] lg:h-[calc(100%+var(--desktop-hero-crop))]"
+          style={
+            {
+              ['--desktop-hero-crop']: `${DESKTOP_HERO_IMAGE_TOP_CROP_PX}px`,
+            } as CSSProperties
+          }
+          sizes="100vw"
+        />
         <div className="absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-b from-transparent to-[#05161a] lg:hidden" />
         <div
           className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[314px] lg:block"
@@ -175,7 +258,7 @@ export function MarketingHero() {
         Same entrance stagger as desktop (`landing-hero-item--*`).
       */}
       {/* No overflow-x-clip here — it prevents glass CTA backdrop-blur from sampling the hero bg */}
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-[100vw] max-w-[100vw] flex-col items-center gap-10 px-6 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-[100vw] max-w-[100vw] flex-col items-center gap-10 px-6 pb-10 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
         <div className="relative mx-auto flex w-full max-w-[327px] flex-col items-center gap-[39px]">
           <div className="flex w-full min-w-0 flex-col items-center gap-[30px]">
             {isEn ? (
@@ -192,17 +275,9 @@ export function MarketingHero() {
                     >
                       <span className="block whitespace-nowrap">{ui.heroTitleLine1}</span>
                       <span className="block whitespace-nowrap">
-                        <span className="relative inline-block">
+                        <HeroTitleMark variant="mobile-en">
                           {ui.heroTitleMobileUnderline}
-                          <Image
-                            src={LANDING_ASSETS.heroUnderlineMobile}
-                            alt=""
-                            width={280}
-                            height={28}
-                            className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-[1] h-5 w-[150%] max-w-none -translate-x-1/2"
-                            unoptimized
-                          />
-                        </span>{' '}
+                        </HeroTitleMark>{' '}
                         {ui.heroTitleMobileLine2After}
                       </span>
                     </h1>
@@ -226,17 +301,9 @@ export function MarketingHero() {
                     >
                       <span className="block whitespace-nowrap">{ui.heroTitleLine1}</span>
                       <span className="block whitespace-nowrap">
-                        <span className="relative inline-block">
+                        <HeroTitleMark variant="mobile-he">
                           {ui.heroTitleUnderline}
-                          <Image
-                            src={LANDING_ASSETS.heroUnderlineMobile}
-                            alt=""
-                            width={144}
-                            height={20}
-                            className="pointer-events-none absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2"
-                            unoptimized
-                          />
-                        </span>{' '}
+                        </HeroTitleMark>{' '}
                         {ui.heroTitleLine2After}
                       </span>
                     </h1>
@@ -248,14 +315,18 @@ export function MarketingHero() {
               </>
             )}
           </div>
-          <div className="landing-hero-item landing-hero-item--4 flex w-full min-w-0 justify-center self-stretch px-0.5">
+          {/*
+            Animate glass CTA on the <a> itself (not a parent) so backdrop-blur
+            is present for the whole fade — no late glass pop-in.
+          */}
+          <div className="flex w-full min-w-0 justify-center self-stretch px-0.5">
             <div
               ref={mobileCtaRef}
               className="flex w-max flex-row items-center justify-center gap-[7px]"
             >
               <a
                 href="#what-is-joystie"
-                className={`box-border inline-flex h-[46px] shrink items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-white/15 font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/25 ${
+                className={`landing-hero-item landing-hero-item--4 box-border inline-flex h-[46px] shrink items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-white/15 font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/25 ${
                   isEn
                     ? 'gap-[25px] px-4 py-[9px] text-left'
                     : 'gap-3 px-[22px] py-[11px] text-right'
@@ -267,10 +338,14 @@ export function MarketingHero() {
                 href="/onboarding"
                 label={ui.joinJoystie}
                 size="mobile"
-                className="shrink"
+                className="landing-hero-item landing-hero-item--4 shrink"
               />
             </div>
           </div>
+        </div>
+
+        <div className="landing-hero-item landing-hero-item--5 mt-auto flex justify-center pt-6">
+          <HeroScrollCue label={ui.scrollExplore} size="mobile" />
         </div>
       </div>
 
@@ -295,17 +370,9 @@ export function MarketingHero() {
                   >
                     <span className="whitespace-nowrap">{ui.heroTitleLine1}</span>
                     <span className="whitespace-nowrap">
-                      <span className="relative">
+                      <HeroTitleMark variant="desktop-en">
                         {ui.heroTitleUnderline}
-                        <Image
-                          src={LANDING_ASSETS.heroUnderline}
-                          alt=""
-                          width={320}
-                          height={28}
-                          className="pointer-events-none absolute left-1/2 top-[calc(100%-2px)] z-[1] h-7 w-[320px] max-w-none -translate-x-1/2"
-                          unoptimized
-                        />
-                      </span>{' '}
+                      </HeroTitleMark>{' '}
                       {ui.heroTitleLine2After}
                     </span>
                   </h1>
@@ -325,17 +392,9 @@ export function MarketingHero() {
                 <h1 className="landing-hero-item landing-hero-item--2 relative text-center font-rubik text-[65px] font-bold leading-[1.05] tracking-[-1.95px] text-[#05161a]">
                   {ui.heroTitleLine1}
                   <br />
-                  <span className="relative inline-block">
+                  <HeroTitleMark variant="desktop-he">
                     {ui.heroTitleUnderline}
-                    <Image
-                      src={LANDING_ASSETS.heroUnderline}
-                      alt=""
-                      width={247}
-                      height={27}
-                      className="pointer-events-none absolute left-1/2 top-[calc(100%-4px)] z-[1] w-[247px] max-w-none -translate-x-1/2"
-                      unoptimized
-                    />
-                  </span>{' '}
+                  </HeroTitleMark>{' '}
                   {ui.heroTitleLine2After}
                 </h1>
               </div>

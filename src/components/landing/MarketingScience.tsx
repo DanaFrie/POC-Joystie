@@ -213,7 +213,7 @@ function ScienceCard({
   return (
     <article
       dir={isEn ? 'ltr' : 'rtl'}
-      className={`relative flex h-[305.297px] w-full flex-col overflow-visible rounded-[26px] bg-white/10 px-[30px] pb-[35px] pt-[45px] ${align} ${className}`}
+      className={`relative flex h-[305.297px] w-full flex-col overflow-visible rounded-[26px] bg-white/10 px-10 pb-[35px] pt-[45px] ${align} ${className}`}
     >
       <ScienceBadge n={card.n} size="desktop" isEn={isEn} />
       <div className={`relative z-[1] flex w-full flex-col gap-[9px] text-white ${items} ${align}`}>
@@ -246,7 +246,7 @@ function ScienceCardMobile({
   return (
     <article
       dir={isEn ? 'ltr' : 'rtl'}
-      className={`relative flex h-[262px] w-[267px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-[30px] pb-5 pt-[30px] ${align}`}
+      className={`relative flex h-[262px] w-[290px] shrink-0 flex-col overflow-visible rounded-[25.671px] bg-white/10 px-10 pb-5 pt-[30px] ${align}`}
     >
       <ScienceBadge n={card.n} size="mobile" isEn={isEn} />
       <div className={`relative z-[1] flex w-full flex-col gap-[9px] ${items} ${align}`}>
