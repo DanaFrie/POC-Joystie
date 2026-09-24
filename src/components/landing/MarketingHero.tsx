@@ -7,8 +7,11 @@ import { getLandingUi } from '@/constants/landing-i18n';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 
-/** Fit the EN title + turquoise marker inside the 327px stack without clipping. */
-function useFitScaleX() {
+/**
+ * Scale EN title to the content column width, centered (no right-crop).
+ * Uses flex-center + scale — avoids absolute/LTR asymmetry.
+ */
+function useFitScaleX(localeKey: string) {
   const ref = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -16,36 +19,30 @@ function useFitScaleX() {
     const parent = el.parentElement;
     if (!parent) return;
     const apply = () => {
-      el.style.position = '';
-      el.style.left = '';
-      el.style.top = '';
       el.style.transform = '';
-      el.style.removeProperty('zoom');
       parent.style.height = '';
       const maxW = parent.clientWidth;
       const need = el.scrollWidth;
       if (need > maxW && maxW > 0) {
         const s = maxW / need;
-        el.style.position = 'absolute';
-        el.style.left = '50%';
-        el.style.top = '0';
         el.style.transformOrigin = 'top center';
-        el.style.transform = `translateX(-50%) scale(${s})`;
-        parent.style.position = 'relative';
+        el.style.transform = `scale(${s})`;
         parent.style.height = `${el.offsetHeight * s}px`;
       }
     };
     apply();
+    void document.fonts?.ready?.then(apply);
     const ro = new ResizeObserver(apply);
     ro.observe(parent);
+    ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [localeKey]);
   return ref;
 }
 
 /**
- * Scale the Learn more + Join row so both stay inside the content width
- * (never crop past 100vw / 327px column).
+ * Scale CTA row to content width, centered in both LTR and RTL
+ * (no marginInline — that only kept one side’s gutter in Hebrew).
  */
 function useFitCtaRow(localeKey: string) {
   const ref = useRef<HTMLDivElement>(null);
@@ -63,10 +60,10 @@ function useFitCtaRow(localeKey: string) {
         const s = maxW / need;
         el.style.transformOrigin = 'center center';
         el.style.transform = `scale(${s})`;
-        el.style.marginInline = `${((s - 1) * need) / 2}px`;
       }
     };
     apply();
+    void document.fonts?.ready?.then(apply);
     const ro = new ResizeObserver(apply);
     ro.observe(parent);
     ro.observe(el);
@@ -129,7 +126,7 @@ export function MarketingHero() {
   const locale = useLandingLocale();
   const ui = getLandingUi(locale);
   const isEn = locale === 'en';
-  const enMobileTitleRef = useFitScaleX();
+  const enMobileTitleRef = useFitScaleX(locale);
   const mobileCtaRef = useFitCtaRow(locale);
 
   return (
@@ -169,22 +166,22 @@ export function MarketingHero() {
       </div>
 
       {/*
-        Mobile — main shell + Learn more | Join.
+        Mobile — 100vw with 24px side gutters (never flush on iPhone mini).
         Same entrance stagger as desktop (`landing-hero-item--*`).
       */}
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-full max-w-[327px] flex-col items-center gap-10 overflow-x-clip px-0 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
-        <div className="relative flex w-full flex-col items-center gap-[39px]">
-          <div className="flex w-full flex-col items-center gap-[30px]">
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-[100vw] max-w-[100vw] flex-col items-center gap-10 overflow-x-clip px-6 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
+        <div className="relative mx-auto flex w-full max-w-[327px] flex-col items-center gap-[39px]">
+          <div className="flex w-full min-w-0 flex-col items-center gap-[30px]">
             {isEn ? (
               <>
-                <div className="flex w-full flex-col items-center gap-3">
+                <div className="flex w-full min-w-0 flex-col items-center gap-3">
                   <p className="landing-hero-item landing-hero-item--1 w-full font-rubik text-[13px] font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]">
                     {ui.heroEyebrow}
                   </p>
-                  <div className="landing-hero-item landing-hero-item--2 relative w-full overflow-visible">
+                  <div className="landing-hero-item landing-hero-item--2 flex w-full min-w-0 justify-center overflow-x-clip">
                     <h1
                       ref={enMobileTitleRef}
-                      className="relative mx-auto w-max origin-center text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
+                      className="w-max origin-top text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
                       style={{ fontWeight: 760 }}
                     >
                       <span className="block whitespace-nowrap">{ui.heroTitleLine1}</span>
@@ -211,7 +208,7 @@ export function MarketingHero() {
               </>
             ) : (
               <>
-                <div className="flex w-full flex-col items-center gap-3">
+                <div className="flex w-full min-w-0 flex-col items-center gap-3">
                   <p className="landing-hero-item landing-hero-item--1 font-rubik text-[14px] tracking-[5.32px] text-[rgba(237,239,239,0.45)]">
                     {ui.heroEyebrow}
                   </p>
@@ -238,14 +235,18 @@ export function MarketingHero() {
               </>
             )}
           </div>
-          <div className="landing-hero-item landing-hero-item--4 w-full self-stretch">
+          <div className="landing-hero-item landing-hero-item--4 flex w-full min-w-0 justify-center self-stretch overflow-x-clip">
             <div
               ref={mobileCtaRef}
-              className="mx-auto flex w-max max-w-none flex-row items-center justify-center gap-[7px]"
+              className="flex w-max flex-row items-center justify-center gap-[7px]"
             >
+              {/*
+                No backdrop-blur — on iOS it often paints after the fade-in,
+                flashing glass after the button is already visible.
+              */}
               <a
                 href="#what-is-joystie"
-                className={`inline-flex h-[46px] items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-[rgba(255,255,255,0.10)] font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/20 ${
+                className={`inline-flex h-[46px] shrink items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-white/15 font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/25 ${
                   isEn
                     ? 'gap-[25px] px-4 py-[9px] text-left'
                     : 'gap-3 px-[22px] py-[11px] text-right'
@@ -253,7 +254,12 @@ export function MarketingHero() {
               >
                 {ui.heroLearnMore}
               </a>
-              <MarketingCtaButton href="/onboarding" label={ui.joinJoystie} size="mobile" />
+              <MarketingCtaButton
+                href="/onboarding"
+                label={ui.joinJoystie}
+                size="mobile"
+                className="shrink"
+              />
             </div>
           </div>
         </div>
