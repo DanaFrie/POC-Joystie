@@ -24,13 +24,6 @@ import { generateSelfie } from './selfie/generateSelfie';
 import { saveChildShareCard } from './shareCard/saveChildShareCard';
 import { getChildShareCardAccess } from './shareCard/getChildShareCardAccess';
 import { createCardcomTrialCheckout, cardcomWebhook } from './billing/cardcom/handlers';
-// Notification functions are kept in code but not exported (not deployed)
-// import { 
-//   processFirstDayNotification,
-//   processMissingUploadNotifications,
-//   processTwoPendingApprovalsNotification,
-//   processUploadNotification
-// } from './notifications';
 
 // Initialize Firebase Admin
 // In Firebase Functions Gen 2, this automatically uses the default service account
@@ -173,98 +166,5 @@ export const processScreenshot = functions.https.onCall(
   }
 );
 
-/**
- * Notification functions - NOT DEPLOYED (commented out)
- * These functions are kept in code for future use but are not exported/deployed
- * 
- * To re-enable: uncomment the imports and exports below
- */
-
-// Determine service account based on project ID
 export { getServiceAccount } from './serviceAccount';
-
-
-// Scheduled function for first day notification - NOT DEPLOYED
-// Runs daily at 7:08 AM (Asia/Jerusalem)
-// export const scheduledFirstDayNotification = functions.scheduler.onSchedule(
-//   {
-//     schedule: '7 8 * * *', // Cron: 7:08 AM every day
-//     timeZone: 'Asia/Jerusalem',
-//     region: 'us-central1',
-//     serviceAccount: getServiceAccount(),
-//     secrets: [
-//       'SERVICE_FUNCTION_EMAIL_USER',
-//       'SERVICE_FUNCTION_EMAIL_PASSWORD',
-//       'SERVICE_FUNCTION_EMAIL_FROM',
-//       'SERVICE_FUNCTION_BASE_URL',
-//     ],
-//   },
-//   async (event) => {
-//     try {
-//       const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
-//       console.log('[ScheduledFirstDayNotification] Running at 7:08 AM');
-//       await processFirstDayNotification(baseUrl);
-//       console.log('[ScheduledFirstDayNotification] Completed successfully');
-//     } catch (error) {
-//       console.error('[ScheduledFirstDayNotification] Error:', error);
-//       throw error;
-//     }
-//   }
-// );
-
-// Scheduled function for missing upload notifications - NOT DEPLOYED
-// Runs daily at 7:07 AM (Asia/Jerusalem)
-// export const scheduledMissingUploadNotifications = functions.scheduler.onSchedule(
-//   {
-//     schedule: '7 7 * * *', // Cron: 7:07 AM every day
-//     timeZone: 'Asia/Jerusalem',
-//     region: 'us-central1',
-//     serviceAccount: getServiceAccount(),
-//     secrets: [
-//       'SERVICE_FUNCTION_EMAIL_USER',
-//       'SERVICE_FUNCTION_EMAIL_PASSWORD',
-//       'SERVICE_FUNCTION_EMAIL_FROM',
-//       'SERVICE_FUNCTION_BASE_URL',
-//     ],
-//   },
-//   async (event) => {
-//     try {
-//       const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
-//       console.log('[ScheduledMissingUploadNotifications] Running at 7:07 AM');
-//       await processMissingUploadNotifications(baseUrl);
-//       console.log('[ScheduledMissingUploadNotifications] Completed successfully');
-//     } catch (error) {
-//       console.error('[ScheduledMissingUploadNotifications] Error:', error);
-//       throw error;
-//     }
-//   }
-// );
-
-// Scheduled function for two pending approvals notification - NOT DEPLOYED
-// Runs daily at 20:48 PM (Asia/Jerusalem)
-// export const scheduledTwoPendingApprovalsNotification = functions.scheduler.onSchedule(
-//   {
-//     schedule: '48 20 * * *', // Cron: 20:48 PM every day
-//     timeZone: 'Asia/Jerusalem',
-//     region: 'us-central1',
-//     serviceAccount: getServiceAccount(),
-//     secrets: [
-//       'SERVICE_FUNCTION_EMAIL_USER',
-//       'SERVICE_FUNCTION_EMAIL_PASSWORD',
-//       'SERVICE_FUNCTION_EMAIL_FROM',
-//       'SERVICE_FUNCTION_BASE_URL',
-//     ],
-//   },
-//   async (event) => {
-//     try {
-//       const baseUrl = process.env.SERVICE_FUNCTION_BASE_URL || 'https://joystie.com';
-//       console.log('[ScheduledTwoPendingApprovalsNotification] Running at 20:48 PM');
-//       await processTwoPendingApprovalsNotification(baseUrl);
-//       console.log('[ScheduledTwoPendingApprovalsNotification] Completed successfully');
-//     } catch (error) {
-//       console.error('[ScheduledTwoPendingApprovalsNotification] Error:', error);
-//       throw error;
-//     }
-//   }
-// );
 

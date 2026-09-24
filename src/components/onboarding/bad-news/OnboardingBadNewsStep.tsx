@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CumulativeScreenTimeCard } from '@/components/onboarding/bad-news/CumulativeScreenTimeCard';
-import { ChildStoryProgress } from '@/components/onboarding/bad-news/ChildStoryProgress';
 import { useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
   ONBOARDING_BAD_NEWS_HERO_FALLBACK,
@@ -19,15 +18,15 @@ import {
   REVEAL_HEADLINE_CLASS,
 } from '@/constants/reveal-typography';
 
-/** How long each child card is held before auto-advance (story fill duration). */
-const CARD_HOLD_MS = 3200;
-const CARD_FADE_MS = 420;
-/** After staggered reveal enters, start the story timer. */
-const STORY_START_MS = 1000;
+/** Match `--v03-funnel-enter-reveal-*` tokens (tokens.css). */
+const REVEAL_STAGGER_MS = 440;
+const REVEAL_DURATION_MS = 1040;
+/** Upper stack: hero → headline → body → «לפי החישוב» (indices 0–3). */
+const UPPER_REVEAL_LAST_INDEX = 3;
+/** Wait after upper elements finished, then show the card. */
+const CARD_AFTER_UPPER_MS = 1000;
 
-/** Figma @ 812 — gap between copy block and kids report. */
 const COPY_REPORT_GAP_MAX_PX = 65;
-/** Floor so short viewports still separate the two sections. */
 const COPY_REPORT_GAP_MIN_PX = 20;
 const TOP_PAD_MAX_PX = 30;
 const TOP_PAD_MIN_PX = 10;
@@ -35,9 +34,8 @@ const HERO_MAX_PX = 150;
 const HERO_MIN_PX = 112;
 
 /**
- * Figma Screen 7 (12703:42214) — bad-news facts with story loader between
- * children. After the last card finishes, returns to the first card static
- * (no loader); chevrons allow optional manual browsing.
+ * Figma Screen 7 — bad-news facts for the single child.
+ * Upper copy reveals at a constant stagger; card waits 1s after that.
  */
 export function OnboardingBadNewsStep() {
   const { usableCanvasHeightPx } = useFunnelViewportMetrics();
@@ -56,118 +54,22 @@ export function OnboardingBadNewsStep() {
   const reportStackGapPx = Math.max(8, Math.round(15 * heightScale));
 
   const [heroSrc, setHeroSrc] = useState<string>(ONBOARDING_BAD_NEWS_HERO_IMAGE);
-  const [children, setChildren] = useState<ChildCumulativeProjection[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [cardOpaque, setCardOpaque] = useState(true);
-  const [storyProgress, setStoryProgress] = useState(0);
-  const [storyKey, setStoryKey] = useState(0);
-  /** Auto story finished (or user took over) — no purple loader. */
-  const [staticMode, setStaticMode] = useState(false);
-  const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [child, setChild] = useState<ChildCumulativeProjection | null>(null);
+  const [showCard, setShowCard] = useState(false);
 
   useEffect(() => {
-    setChildren(getChildCumulativeProjections());
+    const projections = getChildCumulativeProjections();
+    setChild(projections[0] ?? null);
   }, []);
 
-  const child = children[activeIndex];
-  const multiChild = children.length > 1;
-
-  const goToIndex = useCallback(
-    (nextIndex: number, opts?: { enterStatic?: boolean }) => {
-      if (children.length < 1) return;
-      const wrapped =
-        ((nextIndex % children.length) + children.length) % children.length;
-      if (wrapped === activeIndex && !opts?.enterStatic) return;
-
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-      setCardOpaque(false);
-      fadeTimerRef.current = setTimeout(() => {
-        setActiveIndex(wrapped);
-        setCardOpaque(true);
-        setStoryProgress(0);
-        if (opts?.enterStatic) {
-          setStaticMode(true);
-        }
-        fadeTimerRef.current = null;
-      }, CARD_FADE_MS);
-    },
-    [activeIndex, children.length]
-  );
-
-  const handlePrev = useCallback(() => {
-    setStaticMode(true);
-    goToIndex(activeIndex - 1);
-  }, [activeIndex, goToIndex]);
-
-  const handleNext = useCallback(() => {
-    setStaticMode(true);
-    goToIndex(activeIndex + 1);
-  }, [activeIndex, goToIndex]);
-
-  // Story fill 0→1; when done, advance — last card loops to first in static mode.
   useEffect(() => {
-    if (children.length < 1 || staticMode) return;
-
-    let cancelled = false;
-    let raf = 0;
-    let startTimer: ReturnType<typeof setTimeout> | undefined;
-    let fadeTimer: ReturnType<typeof setTimeout> | undefined;
-    const index = activeIndex;
-
-    const runFill = () => {
-      const startedAt = performance.now();
-      setStoryProgress(0);
-
-      const tick = (now: number) => {
-        if (cancelled) return;
-        const t = Math.min(1, (now - startedAt) / CARD_HOLD_MS);
-        setStoryProgress(t);
-        if (t < 1) {
-          raf = requestAnimationFrame(tick);
-          return;
-        }
-
-        if (index >= children.length - 1) {
-          // Last card done → first card, static (no loader).
-          setCardOpaque(false);
-          fadeTimer = setTimeout(() => {
-            if (cancelled) return;
-            setActiveIndex(0);
-            setCardOpaque(true);
-            setStoryProgress(0);
-            setStaticMode(true);
-          }, CARD_FADE_MS);
-          return;
-        }
-
-        setCardOpaque(false);
-        fadeTimer = setTimeout(() => {
-          if (cancelled) return;
-          setActiveIndex(index + 1);
-          setCardOpaque(true);
-          setStoryKey((k) => k + 1);
-        }, CARD_FADE_MS);
-      };
-
-      raf = requestAnimationFrame(tick);
-    };
-
-    startTimer = setTimeout(runFill, storyKey === 0 ? STORY_START_MS : 0);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(startTimer);
-      clearTimeout(fadeTimer);
-      cancelAnimationFrame(raf);
-    };
-  }, [children.length, storyKey, staticMode]); // eslint-disable-line react-hooks/exhaustive-deps -- storyKey driver
-
-  useEffect(
-    () => () => {
-      if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
-    },
-    []
-  );
+    const delayMs =
+      UPPER_REVEAL_LAST_INDEX * REVEAL_STAGGER_MS +
+      REVEAL_DURATION_MS +
+      CARD_AFTER_UPPER_MS;
+    const timer = setTimeout(() => setShowCard(true), delayMs);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <section
@@ -233,34 +135,13 @@ export function OnboardingBadNewsStep() {
               לפי החישוב, עד גיל 18:
             </p>
 
-            <div className="v03-funnel-enter-reveal-4 w-full">
-              {child ? (
-                <div
-                  className={`w-full transition-opacity duration-[420ms] ease-out ${
-                    cardOpaque ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
-                  <CumulativeScreenTimeCard
-                    child={child}
-                    className="w-full"
-                    showNav={multiChild}
-                    canPrev={multiChild}
-                    canNext={multiChild}
-                    onPrev={handlePrev}
-                    onNext={handleNext}
-                  />
-                </div>
-              ) : null}
+            <div
+              className={`w-full transition-opacity duration-500 ease-out ${
+                showCard ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              {child ? <CumulativeScreenTimeCard child={child} className="w-full" /> : null}
             </div>
-          </div>
-
-          <div className="v03-funnel-enter-reveal-5 flex w-full shrink-0 justify-center overflow-visible">
-            <ChildStoryProgress
-              count={children.length}
-              activeIndex={activeIndex}
-              progress={storyProgress}
-              staticMode={staticMode}
-            />
           </div>
         </div>
 

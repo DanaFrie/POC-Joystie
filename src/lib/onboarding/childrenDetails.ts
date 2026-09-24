@@ -7,7 +7,8 @@ export type OnboardingChildDraft = {
 };
 
 export const ONBOARDING_CHILD_AGE_MIN = 6;
-export const ONBOARDING_CHILD_AGE_MAX = 14;
+/** Figma child-setup screen — app suitable ages 6–12. */
+export const ONBOARDING_CHILD_AGE_MAX = 12;
 export const ONBOARDING_CHILD_DEFAULT_AGE = 8;
 
 import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';

@@ -5,9 +5,7 @@ import { useParentChildProgress } from '@/hooks/useParentChildProgress';
 import { usePairingResume } from '@/hooks/usePairingResume';
 import { flushSync } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChildrenPhoneCountStep } from '@/components/onboarding/children-count/ChildrenPhoneCountStep';
-import { ChildrenDetailsStep } from '@/components/onboarding/children-details/ChildrenDetailsStep';
-import { ChildrenScreenTimeStep } from '@/components/onboarding/screen-time/ChildrenScreenTimeStep';
+import { SingleChildSetupStep } from '@/components/onboarding/children-setup/SingleChildSetupStep';
 import { ScreenTimeCalculatingStep } from '@/components/onboarding/screen-time/ScreenTimeCalculatingStep';
 import { OnboardingBackButton } from '@/components/onboarding/OnboardingBackButton';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
@@ -19,8 +17,8 @@ import nextDynamic from 'next/dynamic';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { ParentOnboardingCompletionStep } from '@/components/onboarding/parent/ParentOnboardingCompletionStep';
 import type { ParentPostGamePhase } from '@/components/onboarding/parent/ParentGamePostWinFlow';
+import { ParentWelcomeWhatAwaitsStep } from '@/components/onboarding/parent/ParentWelcomeWhatAwaitsStep';
 import { ParentRoleStep } from '@/components/onboarding/parent-role/ParentRoleStep';
-import { PickFirstChildStep } from '@/components/onboarding/pick-child/PickFirstChildStep';
 import {
   OnboardingRevealStepContent,
   type RevealFlowStep,
@@ -59,40 +57,32 @@ import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { SIGNUP_CHILD_INVITE_WAITING_STALL_MS } from '@/constants/signup-child-invite-layout';
 import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
 import {
-  PICK_FIRST_CHILD_HEADER_TOP_PX,
-} from '@/constants/pick-first-child-layout';
-import {
   SIGNUP_FORM_SCROLL_PAD_TOP_PX,
 } from '@/constants/signup-layout';
 import {
   SIGNUP_JOURNEY_STAGE_COUNT,
   type SignupJourneyStageIndex,
 } from '@/constants/signup-journey';
-import {
-  ONBOARDING_CHILDREN_PHONE_MIN,
-  setOnboardingChildrenPhoneCount,
-} from '@/lib/onboarding/childrenPhoneCount';
+import { setOnboardingChildrenPhoneCount } from '@/lib/onboarding/childrenPhoneCount';
 import {
   childrenDetailsComplete,
   createEmptyChildren,
   getChildrenHebrewNameErrors,
   getOnboardingChildrenDetails,
   isHebrewChildName,
+  ONBOARDING_CHILD_DEFAULT_AGE,
   ONBOARDING_HEBREW_ONLY_ERROR,
   setOnboardingChildrenDetails,
   type OnboardingChildDraft,
 } from '@/lib/onboarding/childrenDetails';
 import {
   createScreenTimesFromChildren,
+  DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
   getOnboardingChildrenScreenTime,
   setOnboardingChildrenScreenTime,
   type OnboardingChildScreenTime,
 } from '@/lib/onboarding/childrenScreenTime';
-import {
-  getSignupPickChildOptions,
-  setOnboardingFirstChildIndex,
-  type PickFirstChildOption,
-} from '@/lib/onboarding/pickFirstChild';
+import { setOnboardingFirstChildIndex } from '@/lib/onboarding/pickFirstChild';
 import {
   getOnboardingParentRole,
   parentRoleToGender,
@@ -164,7 +154,6 @@ import {
 import { ONBOARDING_RESUME_KIND_KEY } from '@/lib/auth/userOnboardingStatus';
 import { createContextLogger } from '@/utils/logger';
 import {
-  FunnelInlineActions,
   FunnelStepFooter,
   FunnelStepForeground,
   FunnelStepMain,
@@ -172,7 +161,6 @@ import {
   FunnelStepSection,
 } from '@/components/ui/funnel-layout';
 import {
-  getFunnelScrollFrameBottomInsetPx,
   FUNNEL_FOREGROUND_PAD_BOTTOM_PX,
   FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
 } from '@/constants/funnel-vertical-layout';
@@ -188,18 +176,15 @@ function shouldAttemptOAuthRedirectRecovery(): boolean {
 
 type ParentFlowStep =
   | 'role'
-  | 'phoneCount'
-  | 'details'
-  | 'screenTime'
+  | 'whatAwaits'
+  | 'childSetup'
   | 'calculating'
   | 'revealIntro'
   | 'badNews'
   | 'goodNews'
-  | 'realData'
+  | 'signupIntro'
   | 'signupForm'
   | 'signupWelcome'
-  | 'signupIntro'
-  | 'pickChild'
   | 'childInviteIntro'
   | 'childInviteShare'
   | 'childInviteWaiting'
@@ -209,8 +194,6 @@ type ParentFlowStep =
 
 const POST_SIGNUP_STEPS: ParentFlowStep[] = [
   'signupWelcome',
-  'signupIntro',
-  'pickChild',
   'childInviteIntro',
   'childInviteShare',
   'childInviteWaiting',
@@ -226,6 +209,17 @@ function isPostSignupStep(step: ParentFlowStep) {
 function normalizeStoredFlowStep(raw: string | null): ParentFlowStep | null {
   if (!raw) return null;
   if (raw === 'childInviteWaitingCompanion') return 'childInviteWaiting';
+  // Legacy multi-child / pick / real-data steps → new single-child flow.
+  if (
+    raw === 'phoneCount' ||
+    raw === 'details' ||
+    raw === 'screenTime' ||
+    raw === 'childSetup'
+  ) {
+    return 'childSetup';
+  }
+  if (raw === 'realData') return 'goodNews';
+  if (raw === 'pickChild') return 'childInviteIntro';
   return raw as ParentFlowStep;
 }
 
@@ -250,20 +244,15 @@ function resolveStoredResumeStep(): ParentFlowStep {
   return 'signupIntro';
 }
 
-const REVEAL_STEPS: ParentFlowStep[] = [
-  'revealIntro',
-  'badNews',
-  'goodNews',
-  'realData',
-];
+const REVEAL_STEPS: ParentFlowStep[] = ['revealIntro', 'badNews', 'goodNews'];
 
 const ALL_FLOW_STEPS: ParentFlowStep[] = [
   'role',
-  'phoneCount',
-  'details',
-  'screenTime',
+  'whatAwaits',
+  'childSetup',
   'calculating',
   ...REVEAL_STEPS,
+  'signupIntro',
   'signupForm',
   ...POST_SIGNUP_STEPS,
 ];
@@ -274,9 +263,8 @@ function isValidFlowStep(value: string | null): value is ParentFlowStep {
 
 const KIDS_COLLECTION_STEPS: ParentFlowStep[] = [
   'role',
-  'phoneCount',
-  'details',
-  'screenTime',
+  'whatAwaits',
+  'childSetup',
   'calculating',
   ...REVEAL_STEPS,
 ];
@@ -305,9 +293,9 @@ function readInitialFlowStep(): ParentFlowStep {
     if (isV02LegacyKidsResume() && saved && isValidFlowStep(saved) && isKidsCollectionStep(saved)) {
       return saved;
     }
-    if (isV02LegacyKidsResume()) return 'phoneCount';
+    if (isV02LegacyKidsResume()) return 'childSetup';
     if (shouldShowOAuthSignupWelcome()) return 'signupWelcome';
-    return 'signupIntro';
+    return 'childInviteIntro';
   }
   if (readOAuthPending()) {
     return 'signupForm';
@@ -343,7 +331,6 @@ export function OnboardingParentFlow({
   const funnelScrollRef = useRef<HTMLDivElement>(null);
   const signupScrollRef = useRef<HTMLDivElement>(null);
   const signupFormPadTopPx = useFunnelProportionalTopPx(SIGNUP_FORM_SCROLL_PAD_TOP_PX);
-  const pickChildPadTopPx = useFunnelProportionalTopPx(PICK_FIRST_CHILD_HEADER_TOP_PX);
   const [oauthDialogOpen, setOauthDialogOpen] = useState<'google' | 'apple' | null>(
     null
   );
@@ -360,16 +347,18 @@ export function OnboardingParentFlow({
     }
   );
   const [role, setRole] = useState<OnboardingParentRole | null>(null);
-  const [count, setCount] = useState(ONBOARDING_CHILDREN_PHONE_MIN);
   const [children, setChildren] = useState<OnboardingChildDraft[]>(() =>
-    createEmptyChildren(ONBOARDING_CHILDREN_PHONE_MIN)
+    createEmptyChildren(1)
   );
   const [screenTimes, setScreenTimes] = useState<OnboardingChildScreenTime[]>(
-    []
+    () => [
+      {
+        name: '',
+        hours: DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
+      },
+    ]
   );
   const [journeyStage, setJourneyStage] = useState<SignupJourneyStageIndex>(0);
-  const [pickOptions, setPickOptions] = useState<PickFirstChildOption[]>([]);
-  const [selectedChildIndex, setSelectedChildIndex] = useState(0);
   const [values, setValues] = useState<SignupFormValues>({
     firstName: '',
     lastName: '',
@@ -420,20 +409,18 @@ export function OnboardingParentFlow({
     step,
     children,
     screenTimes,
-    count,
-    pickOptions,
   ]);
 
   const selectedChildName = useMemo(() => {
-    const fromPick = pickOptions[selectedChildIndex]?.name?.trim();
-    if (fromPick) return fromPick;
+    const fromDraft = children[0]?.name?.trim();
+    if (fromDraft) return fromDraft;
     return getBondingChildName() || getSelectedFirstChildName();
-  }, [pickOptions, selectedChildIndex]);
+  }, [children]);
   const selectedChildGender = useMemo(() => {
-    const fromPick = pickOptions[selectedChildIndex]?.gender;
-    if (fromPick) return fromPick;
+    const fromDraft = children[0]?.gender;
+    if (fromDraft) return fromDraft;
     return getBondingChildGender() ?? getSelectedFirstChildGender();
-  }, [pickOptions, selectedChildIndex]);
+  }, [children]);
   useOnboardingLightFunnel(isRevealStep(step) || step === 'onboardingComplete');
 
   useEffect(() => {
@@ -454,12 +441,12 @@ export function OnboardingParentFlow({
         const hydratedTimes = getOnboardingChildrenScreenTime();
         if (!hydratedChildren?.length || cancelled) return;
 
-        setCount(hydratedChildren.length);
-        setChildren(hydratedChildren);
+        setChildren(hydratedChildren.slice(0, 1));
         setScreenTimes(
-          hydratedTimes?.length
+          (hydratedTimes?.length
             ? hydratedTimes
             : createScreenTimesFromChildren(hydratedChildren)
+          ).slice(0, 1)
         );
       } catch (error) {
         logger.warn('Could not sync children from Firestore user', error);
@@ -514,6 +501,22 @@ export function OnboardingParentFlow({
     }
   }, []);
 
+  /** After account create — skip re-showing signupIntro (already before form). */
+  const goToChildInviteAfterAccount = useCallback(() => {
+    setAccountCreated(true);
+    clearOAuthSignupWelcomePending();
+    setOnboardingFirstChildIndex(0);
+    const draft = getOnboardingChildrenDetails()?.[0];
+    clearBondingChildUrl();
+    clearOnboardingBondingInviteId();
+    if (draft?.name?.trim()) setBondingChildName(draft.name.trim());
+    if (draft?.gender) setBondingChildGender(draft.gender);
+    setStep('childInviteIntro');
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'childInviteIntro');
+    }
+  }, []);
+
   /** After login routing while already on `/onboarding` (same-route push is a no-op). */
   const applySameRouteOnboardingResume = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -522,12 +525,12 @@ export function OnboardingParentFlow({
     const hydratedChildren = getOnboardingChildrenDetails();
     const hydratedTimes = getOnboardingChildrenScreenTime();
     if (hydratedChildren?.length) {
-      setCount(hydratedChildren.length);
-      setChildren(hydratedChildren);
+      setChildren(hydratedChildren.slice(0, 1));
       setScreenTimes(
-        hydratedTimes?.length
+        (hydratedTimes?.length
           ? hydratedTimes
           : createScreenTimesFromChildren(hydratedChildren)
+        ).slice(0, 1)
       );
     }
 
@@ -549,8 +552,8 @@ export function OnboardingParentFlow({
     }
     setOauthTermsError('');
     markOnboardingTermsAccepted();
-    goToSignupIntro();
-  }, [goToSignupIntro, oauthTermsAccepted]);
+    goToChildInviteAfterAccount();
+  }, [goToChildInviteAfterAccount, oauthTermsAccepted]);
 
   const handleOAuthTermsAcceptedChange = useCallback((accepted: boolean) => {
     setOauthTermsAccepted(accepted);
@@ -583,12 +586,12 @@ export function OnboardingParentFlow({
           if (params.oauthProvider) {
             // Terms already accepted before OAuth popup when gate was used.
             if (params.termsAccepted || readOnboardingTermsAccepted()) {
-              goToSignupIntro();
+              goToChildInviteAfterAccount();
             } else {
               goToSignupWelcome();
             }
           } else {
-            goToSignupIntro();
+            goToChildInviteAfterAccount();
           }
           return;
         }
@@ -654,12 +657,12 @@ export function OnboardingParentFlow({
         const hydratedChildren = getOnboardingChildrenDetails();
         const hydratedTimes = getOnboardingChildrenScreenTime();
         if (hydratedChildren?.length) {
-          setCount(hydratedChildren.length);
-          setChildren(hydratedChildren);
+          setChildren(hydratedChildren.slice(0, 1));
           setScreenTimes(
-            hydratedTimes?.length
+            (hydratedTimes?.length
               ? hydratedTimes
               : createScreenTimesFromChildren(hydratedChildren)
+            ).slice(0, 1)
           );
         }
       }
@@ -670,15 +673,15 @@ export function OnboardingParentFlow({
       });
       if (params.oauthProvider) {
         if (params.termsAccepted || readOnboardingTermsAccepted()) {
-          goToSignupIntro();
+          goToChildInviteAfterAccount();
         } else {
           goToSignupWelcome();
         }
       } else {
-        goToSignupIntro();
+        goToChildInviteAfterAccount();
       }
     },
-    [goToSignupIntro, goToSignupWelcome]
+    [goToChildInviteAfterAccount, goToSignupWelcome]
   );
 
   useEffect(() => {
@@ -712,12 +715,10 @@ export function OnboardingParentFlow({
           : shouldShowOAuthSignupWelcome()
             ? ('signupWelcome' as const)
             : isV02LegacyKidsResume()
-              ? ('phoneCount' as const)
-              : ('signupIntro' as const);
-      if (targetStep === 'signupIntro' || targetStep === 'signupWelcome') {
-        if (targetStep === 'signupIntro') {
-          postSignupIntroNavigatedRef.current = true;
-        }
+              ? ('childSetup' as const)
+              : ('childInviteIntro' as const);
+      if (targetStep === 'signupWelcome') {
+        // keep welcome path
       }
       setStep(targetStep);
     })();
@@ -823,34 +824,6 @@ export function OnboardingParentFlow({
       active = false;
     };
   }, [finishAccountSetup, router]);
-
-  useEffect(() => {
-    if (step !== 'pickChild') return;
-    let cancelled = false;
-    void (async () => {
-      let options = getSignupPickChildOptions();
-      if (!options.length) {
-        try {
-          const uid = await getCurrentUserIdAsync();
-          const user = uid ? await getUser(uid, false) : null;
-          if (user) await hydrateSessionChildrenFromAccount(user);
-        } catch (error) {
-          logger.warn('Could not hydrate kids before pickChild', error);
-        }
-        if (cancelled) return;
-        options = getSignupPickChildOptions();
-      }
-      if (!options.length) {
-        setStep('phoneCount');
-        return;
-      }
-      setPickOptions(options);
-      setSelectedChildIndex(0);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [step]);
 
   useEffect(() => {
     if (step !== 'signupForm') return;
@@ -1189,20 +1162,27 @@ export function OnboardingParentFlow({
     }
   };
 
+  const bindSingleChildForInvite = useCallback(() => {
+    setOnboardingFirstChildIndex(0);
+    const draft = children[0];
+    clearBondingChildUrl();
+    clearOnboardingBondingInviteId();
+    if (draft?.name?.trim()) setBondingChildName(draft.name.trim());
+    if (draft?.gender) setBondingChildGender(draft.gender);
+  }, [children]);
+
   const handleParentContinue = () => {
     if (step === 'role') {
       if (!role) return;
       setOnboardingParentRole(role);
-      setStep('phoneCount');
+      setStep('whatAwaits');
       return;
     }
-    if (step === 'phoneCount') {
-      setOnboardingChildrenPhoneCount(count);
-      setChildren(createEmptyChildren(count));
-      setStep('details');
+    if (step === 'whatAwaits') {
+      setStep('childSetup');
       return;
     }
-    if (step === 'details') {
+    if (step === 'childSetup') {
       const hebrewErrors = getChildrenHebrewNameErrors(children);
       if (Object.keys(hebrewErrors).length > 0) {
         setChildNameErrors(hebrewErrors);
@@ -1210,15 +1190,19 @@ export function OnboardingParentFlow({
       }
       if (!childrenDetailsComplete(children)) return;
       setChildNameErrors({});
-      const times = createScreenTimesFromChildren(children);
-      setOnboardingChildrenDetails(children);
+      const single = children.slice(0, 1);
+      const hours = screenTimes[0]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS;
+      const times: OnboardingChildScreenTime[] = [
+        { name: single[0]?.name.trim() ?? '', hours },
+      ];
+      setOnboardingChildrenPhoneCount(1);
+      setOnboardingChildrenDetails(single);
+      setOnboardingFirstChildIndex(0);
+      setChildren(single);
       setScreenTimes(times);
       setOnboardingChildrenScreenTime(times);
-      setStep('screenTime');
-      return;
+      setStep('calculating');
     }
-    setOnboardingChildrenScreenTime(screenTimes);
-    setStep('calculating');
   };
 
   const handleRevealContinue = () => {
@@ -1231,24 +1215,25 @@ export function OnboardingParentFlow({
       return;
     }
     if (step === 'goodNews') {
-      setStep('realData');
+      // Already authenticated — sync kids then invite (signupIntro runs before form for guests).
+      if (accountCreated) {
+        void (async () => {
+          try {
+            const auth = await getAuthInstance();
+            const uid = auth.currentUser?.uid;
+            if (uid) await syncFunnelKidsAgesToUser(uid);
+          } catch (error) {
+            logger.warn('Could not sync kidsAges after reveal', error);
+          }
+          bindSingleChildForInvite();
+          setStep('childInviteIntro');
+        })();
+        return;
+      }
+      setJourneyStage(0);
+      setStep('signupIntro');
       return;
     }
-    // Already authenticated (e.g. v02_legacy login) — store kidsAges and skip signup form.
-    if (accountCreated) {
-      void (async () => {
-        try {
-          const auth = await getAuthInstance();
-          const uid = auth.currentUser?.uid;
-          if (uid) await syncFunnelKidsAgesToUser(uid);
-        } catch (error) {
-          logger.warn('Could not sync kidsAges after reveal', error);
-        }
-        goToSignupIntro();
-      })();
-      return;
-    }
-    setStep('signupForm');
   };
 
   const handleIntroContinue = () => {
@@ -1256,18 +1241,12 @@ export function OnboardingParentFlow({
       setJourneyStage((s) => (s + 1) as SignupJourneyStageIndex);
       return;
     }
-    setStep('pickChild');
-  };
-
-  const handlePickChildContinue = () => {
-    setOnboardingFirstChildIndex(selectedChildIndex);
-    const picked = pickOptions[selectedChildIndex];
-    // Invalidate prior invite (e.g. אלונה) so share rebuilds cn/cg for this child.
-    clearBondingChildUrl();
-    clearOnboardingBondingInviteId();
-    if (picked?.name?.trim()) setBondingChildName(picked.name.trim());
-    if (picked?.gender) setBondingChildGender(picked.gender);
-    setStep('childInviteIntro');
+    if (accountCreated) {
+      bindSingleChildForInvite();
+      setStep('childInviteIntro');
+      return;
+    }
+    setStep('signupForm');
   };
 
   const handleRemindLater = () => {
@@ -1297,18 +1276,16 @@ export function OnboardingParentFlow({
       return;
     }
     if (step === 'childInviteShare') {
-      // Skip pick/intro — back to «איך מתחילים?» (signup intro first screen).
-      setJourneyStage(0);
-      setStep('signupIntro');
+      setStep('childInviteIntro');
       return;
     }
     if (step === 'childInviteIntro') {
-      setStep('pickChild');
-      return;
-    }
-    if (step === 'pickChild') {
-      setStep('signupIntro');
-      setJourneyStage(2);
+      if (accountCreated) {
+        setJourneyStage((SIGNUP_JOURNEY_STAGE_COUNT - 1) as SignupJourneyStageIndex);
+        setStep('signupIntro');
+      } else {
+        setStep('signupForm');
+      }
       return;
     }
     if (step === 'signupIntro') {
@@ -1316,20 +1293,15 @@ export function OnboardingParentFlow({
         setJourneyStage((s) => (s - 1) as SignupJourneyStageIndex);
         return;
       }
-      // Came from reveal — skip back through facts; return to screen-time details.
-      setStep('screenTime');
+      setStep('goodNews');
       return;
     }
     if (step === 'signupWelcome') {
       return;
     }
     if (step === 'signupForm') {
-      // Came from reveal — skip back through facts; return to screen-time details.
-      setStep('screenTime');
-      return;
-    }
-    if (step === 'realData') {
-      setStep('goodNews');
+      setJourneyStage((SIGNUP_JOURNEY_STAGE_COUNT - 1) as SignupJourneyStageIndex);
+      setStep('signupIntro');
       return;
     }
     if (step === 'goodNews') {
@@ -1341,22 +1313,18 @@ export function OnboardingParentFlow({
       return;
     }
     if (step === 'revealIntro') {
-      setStep('role');
+      setStep('childSetup');
       return;
     }
     if (step === 'calculating') {
-      setStep('screenTime');
+      setStep('childSetup');
       return;
     }
-    if (step === 'screenTime') {
-      setStep('details');
+    if (step === 'childSetup') {
+      setStep('whatAwaits');
       return;
     }
-    if (step === 'details') {
-      setStep('phoneCount');
-      return;
-    }
-    if (step === 'phoneCount') {
+    if (step === 'whatAwaits') {
       setStep('role');
       return;
     }
@@ -1377,10 +1345,8 @@ export function OnboardingParentFlow({
     step === 'revealIntro'
       ? 'v03-funnel-enter-reveal-3'
       : step === 'badNews'
-        ? 'v03-funnel-enter-reveal-6'
-        : step === 'goodNews'
-          ? 'v03-funnel-enter-reveal-4'
-          : 'v03-funnel-enter-reveal-4';
+        ? 'v03-funnel-enter-reveal-4'
+        : 'v03-funnel-enter-reveal-4';
 
   const showBackButton =
     !(accountCreated && step === 'signupForm') &&
@@ -1549,45 +1515,6 @@ export function OnboardingParentFlow({
     );
   }
 
-  if (step === 'pickChild') {
-    return (
-      <>
-        <OnboardingMintGridBackdrop showGrid={false} />
-        <OnboardingFunnelStepSlot stepKey="pickChild" clipOverflow={false}>
-          <FunnelStepRoot fitViewport aria-label="בחירת ילד ראשון">
-            <FunnelStepForeground
-              distribution="between"
-              padTopPx={pickChildPadTopPx}
-              padBottomPx={getFunnelScrollFrameBottomInsetPx()}
-              fitViewport
-            >
-              <FunnelStepMain
-                scroll
-                scrollRef={funnelScrollRef}
-                className="relative min-h-0 w-full flex-1"
-              >
-                <PickFirstChildStep
-                  options={pickOptions}
-                  selectedIndex={selectedChildIndex}
-                  onSelectIndex={setSelectedChildIndex}
-                />
-              </FunnelStepMain>
-              <FunnelStepFooter
-                className="v03-funnel-enter-2"
-                variant="secondary"
-                overlay
-                blur={funnelScrollOverflows}
-                onClick={handlePickChildContinue}
-              >
-                המשך
-              </FunnelStepFooter>
-            </FunnelStepForeground>
-          </FunnelStepRoot>
-        </OnboardingFunnelStepSlot>
-      </>
-    );
-  }
-
   if (step === 'signupWelcome') {
     return (
       <>
@@ -1624,16 +1551,33 @@ export function OnboardingParentFlow({
                   flow
                   stage={journeyStage}
                   onStageChange={setJourneyStage}
+                  childName={selectedChildName}
                 />
               </FunnelStepMain>
-              <FunnelStepFooter
-                className="v03-funnel-enter-3"
-                variant="secondary"
-                blur={false}
-                onClick={handleIntroContinue}
-              >
-                המשך
-              </FunnelStepFooter>
+              {journeyStage === 2 ? (
+                <FunnelStepFooter
+                  className="v03-funnel-enter-3"
+                  blur={false}
+                  customFooter={
+                    <button
+                      type="button"
+                      onClick={handleIntroContinue}
+                      className="inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-[var(--turquoise-200,#00FFB3)] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-v03-green-900 shadow-[2px_2px_20px_0_rgba(109,109,109,0.15)] transition hover:brightness-95"
+                    >
+                      יצאנו לדרך
+                    </button>
+                  }
+                />
+              ) : (
+                <FunnelStepFooter
+                  className="v03-funnel-enter-3"
+                  variant="secondary"
+                  blur={false}
+                  onClick={handleIntroContinue}
+                >
+                  המשך
+                </FunnelStepFooter>
+              )}
             </FunnelStepForeground>
           </FunnelStepRoot>
         </OnboardingFunnelStepSlot>
@@ -1753,65 +1697,24 @@ export function OnboardingParentFlow({
     );
   }
 
-  if (step === 'details' || step === 'screenTime') {
-    const continueDisabled =
-      step === 'details' && !childrenDetailsComplete(children);
-
+  if (step === 'whatAwaits') {
     return (
       <>
         <OnboardingMintGridBackdrop showGrid={false} />
-        {showBackButton && step === 'details' && (
-          <OnboardingBackButton onClick={handleBack} />
-        )}
-        <OnboardingFunnelStepSlot stepKey={step} clipOverflow={false}>
-          <FunnelStepRoot fitViewport aria-label={step === 'details' ? 'פרטי ילדים' : 'שעות מסך יומיות'}>
+        <OnboardingBackButton onClick={handleBack} />
+        <OnboardingFunnelStepSlot stepKey="whatAwaits" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="מה מחכה לנו">
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}
               padBottomPx={0}
               fitViewport
             >
-              <FunnelStepMain
-                scroll
-                scrollRef={funnelScrollRef}
-                className="relative min-h-0 w-full flex-1"
-              >
-                <div className="flex min-h-full w-full flex-col">
-                  {showBackButton && step === 'screenTime' && (
-                    <OnboardingBackButton scrollWithContent onClick={handleBack} />
-                  )}
-                  {step === 'details' ? (
-                    <ChildrenDetailsStep
-                      children={children}
-                      nameErrors={childNameErrors}
-                      onChildrenChange={(next) => {
-                        setChildren(next);
-                        setChildNameErrors(getChildrenHebrewNameErrors(next));
-                      }}
-                    />
-                  ) : (
-                    <ChildrenScreenTimeStep
-                      children={children}
-                      entries={screenTimes}
-                      onEntriesChange={setScreenTimes}
-                    />
-                  )}
-                  <div className="mt-auto w-full shrink-0 pt-[54px]">
-                    <FunnelInlineActions
-                      className="v03-funnel-enter-2"
-                      variant="secondary"
-                      disabled={continueDisabled}
-                      onClick={handleParentContinue}
-                    >
-                      המשך
-                    </FunnelInlineActions>
-                    <div
-                      className="w-full shrink-0"
-                      style={{ height: FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX }}
-                      aria-hidden
-                    />
-                  </div>
-                </div>
+              <FunnelStepMain className="relative min-h-0 w-full flex-1 overflow-hidden">
+                <ParentWelcomeWhatAwaitsStep
+                  role={role}
+                  onContinue={handleParentContinue}
+                />
               </FunnelStepMain>
             </FunnelStepForeground>
           </FunnelStepRoot>
@@ -1853,26 +1756,62 @@ export function OnboardingParentFlow({
     );
   }
 
-  if (step === 'phoneCount') {
+  if (step === 'childSetup') {
+    const child = children[0] ?? {
+      name: '',
+      age: ONBOARDING_CHILD_DEFAULT_AGE,
+      gender: 'girl' as const,
+    };
+    const hours = screenTimes[0]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS;
+    const continueDisabled = !childrenDetailsComplete([child]);
+
     return (
       <>
         <OnboardingMintGridBackdrop showGrid={false} />
         <OnboardingBackButton onClick={handleBack} />
-        <OnboardingFunnelStepSlot stepKey="phoneCount" clipOverflow={false}>
-          <FunnelStepRoot fitViewport aria-label="מספר ילדים עם טלפון">
+        <OnboardingFunnelStepSlot stepKey="childSetup" clipOverflow={false}>
+          <FunnelStepRoot fitViewport aria-label="פרטי הילד">
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}
               padBottomPx={0}
               fitViewport
             >
-              <FunnelStepSection>
-                <ChildrenPhoneCountStep count={count} onCountChange={setCount} />
-              </FunnelStepSection>
+              <FunnelStepMain
+                scroll
+                scrollRef={funnelScrollRef}
+                className="relative min-h-0 w-full flex-1"
+              >
+                <SingleChildSetupStep
+                  child={child}
+                  hours={hours}
+                  nameError={childNameErrors[0]}
+                  onChildChange={(next) => {
+                    setChildren([next]);
+                    setChildNameErrors(getChildrenHebrewNameErrors([next]));
+                    setScreenTimes((prev) => [
+                      {
+                        name: next.name.trim(),
+                        hours: prev[0]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
+                      },
+                    ]);
+                  }}
+                  onHoursChange={(nextHours) => {
+                    setScreenTimes([
+                      {
+                        name: child.name.trim(),
+                        hours: nextHours,
+                      },
+                    ]);
+                  }}
+                />
+              </FunnelStepMain>
               <FunnelStepFooter
                 className="v03-funnel-enter-3"
                 variant="secondary"
-                blur={false}
+                blur={funnelScrollOverflows}
+                overlay
+                disabled={continueDisabled}
                 onClick={handleParentContinue}
               >
                 המשך

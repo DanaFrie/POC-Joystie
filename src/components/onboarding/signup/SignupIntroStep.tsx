@@ -29,6 +29,8 @@ type SignupIntroStepProps = {
   onStageChange?: (stage: SignupJourneyStageIndex) => void;
   /** 100vh funnel — dots centered in gap between visual bottom and footer top. */
   flow?: boolean;
+  /** Shown in the top pill — «חולקים חווית מסך עם {name}». */
+  childName?: string;
 };
 
 function SignupIntroStageVisual({
@@ -87,6 +89,7 @@ export function SignupIntroStep({
   stage,
   onStageChange,
   flow = false,
+  childName,
 }: SignupIntroStepProps) {
   const copy = SIGNUP_JOURNEY_STEPS[stage];
   const { usableCanvasHeightPx } = useFunnelViewportMetrics();
@@ -107,7 +110,7 @@ export function SignupIntroStep({
         aria-label="איך זה עובד"
       >
         <div className="w-full shrink-0" style={{ paddingTop: topPx }}>
-          <SignupHowItWorksPill />
+          <SignupHowItWorksPill childName={childName} />
         </div>
 
         <div
@@ -160,7 +163,7 @@ export function SignupIntroStep({
       aria-label="איך זה עובד"
     >
       <div className="w-full shrink-0" style={{ paddingTop: topPx }}>
-        <SignupHowItWorksPill />
+        <SignupHowItWorksPill childName={childName} />
       </div>
 
       <div

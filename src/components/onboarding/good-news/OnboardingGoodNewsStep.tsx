@@ -10,7 +10,6 @@ import {
 import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 
 const COPY_BLOCK_WIDTH_PX = 327;
-const PERCENT_ARROW_GAP_PX = 12;
 const LOWER_BLOCK_GAP_PX = 15;
 
 /** Figma — upper (phone + eyebrow) + lower (headline + 55%). */
@@ -65,18 +64,16 @@ export function OnboardingGoodNewsStep() {
             שימוש ב-Joystie יכול לצמצם זמן מסך ב-
           </h1>
 
-          <div className="relative flex w-full self-stretch justify-center">
-            <div className="v03-funnel-enter-reveal-3 relative inline-flex items-center">
-              <GoodNewsPercentArrow
-                className="absolute top-1/2 h-[37px] w-[37px] -translate-y-1/2"
-                style={{ right: `calc(100% + ${PERCENT_ARROW_GAP_PX}px)` }}
-              />
-              <div
-                className="text-center font-simpler text-v03-accent-purple inline-flex items-center"
-                dir="ltr"
-              >
-                <span className="text-[80px] font-black leading-[43.8px]">55</span>
-                <span className="text-[35px] font-black leading-[43.8px]">%</span>
+          <div className="v03-funnel-enter-reveal-3 flex w-full items-center justify-center self-stretch">
+            <div className="relative inline-flex items-center gap-3">
+              <GoodNewsPercentArrow className="absolute left-[-27px] top-[8.5px]" />
+              <div className="text-center font-simpler" dir="ltr">
+                <span className="text-[80px] font-bold leading-[43.8px] text-[#8C00FF]">
+                  55
+                </span>
+                <span className="text-[35px] font-medium leading-[43.8px] text-[#8C00FF]">
+                  %
+                </span>
               </div>
             </div>
           </div>
