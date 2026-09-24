@@ -41,8 +41,9 @@ function useFitScaleX(localeKey: string) {
 }
 
 /**
- * Scale CTA row to content width, centered in both LTR and RTL
- * (no marginInline — that only kept one side’s gutter in Hebrew).
+ * Scale CTA row to content width, centered in both LTR and RTL.
+ * Uses `zoom` (not transform) so Learn more / ספרו לי עוד backdrop-blur
+ * can still sample the hero. Leaves a few px inset so the outline isn’t clipped.
  */
 function useFitCtaRow(localeKey: string) {
   const ref = useRef<HTMLDivElement>(null);
@@ -51,15 +52,19 @@ function useFitCtaRow(localeKey: string) {
     if (!el) return;
     const parent = el.parentElement;
     if (!parent) return;
+    const SAFETY_PX = 8; /* keeps outlined CTA border fully visible */
     const apply = () => {
       el.style.transform = '';
       el.style.marginInline = '';
-      const maxW = parent.clientWidth;
+      el.style.removeProperty('zoom');
+      const cs = getComputedStyle(parent);
+      const padX =
+        (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+      const available = Math.max(0, parent.clientWidth - padX - SAFETY_PX);
       const need = el.scrollWidth;
-      if (need > maxW && maxW > 0) {
-        const s = maxW / need;
-        el.style.transformOrigin = 'center center';
-        el.style.transform = `scale(${s})`;
+      if (need > available && available > 0) {
+        /* zoom avoids a transform containing block that kills backdrop-filter */
+        el.style.setProperty('zoom', String(available / need));
       }
     };
     apply();
@@ -126,7 +131,7 @@ export function MarketingHero() {
   const locale = useLandingLocale();
   const ui = getLandingUi(locale);
   const isEn = locale === 'en';
-  const enMobileTitleRef = useFitScaleX(locale);
+  const mobileTitleRef = useFitScaleX(locale);
   const mobileCtaRef = useFitCtaRow(locale);
 
   return (
@@ -169,7 +174,8 @@ export function MarketingHero() {
         Mobile — 100vw with 24px side gutters (never flush on iPhone mini).
         Same entrance stagger as desktop (`landing-hero-item--*`).
       */}
-      <div className="relative z-10 mx-auto flex min-h-[100svh] w-[100vw] max-w-[100vw] flex-col items-center gap-10 overflow-x-clip px-6 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
+      {/* No overflow-x-clip here — it prevents glass CTA backdrop-blur from sampling the hero bg */}
+      <div className="relative z-10 mx-auto flex min-h-[100svh] w-[100vw] max-w-[100vw] flex-col items-center gap-10 px-6 pb-16 pt-[calc(93px+env(safe-area-inset-top))] text-center lg:hidden">
         <div className="relative mx-auto flex w-full max-w-[327px] flex-col items-center gap-[39px]">
           <div className="flex w-full min-w-0 flex-col items-center gap-[30px]">
             {isEn ? (
@@ -180,7 +186,7 @@ export function MarketingHero() {
                   </p>
                   <div className="landing-hero-item landing-hero-item--2 flex w-full min-w-0 justify-center overflow-x-clip">
                     <h1
-                      ref={enMobileTitleRef}
+                      ref={mobileTitleRef}
                       className="w-max origin-top text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
                       style={{ fontWeight: 760 }}
                     >
@@ -212,22 +218,29 @@ export function MarketingHero() {
                   <p className="landing-hero-item landing-hero-item--1 font-rubik text-[14px] tracking-[5.32px] text-[rgba(237,239,239,0.45)]">
                     {ui.heroEyebrow}
                   </p>
-                  <h1 className="landing-hero-item landing-hero-item--2 relative w-full font-rubik text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]">
-                    {ui.heroTitleLine1}
-                    <br />
-                    <span className="relative inline-block">
-                      {ui.heroTitleUnderline}
-                      <Image
-                        src={LANDING_ASSETS.heroUnderlineMobile}
-                        alt=""
-                        width={144}
-                        height={20}
-                        className="pointer-events-none absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2"
-                        unoptimized
-                      />
-                    </span>{' '}
-                    {ui.heroTitleLine2After}
-                  </h1>
+                  {/* Same 2-line + scale-to-fit as EN — no wrap to 3–4 lines on mini */}
+                  <div className="landing-hero-item landing-hero-item--2 flex w-full min-w-0 justify-center overflow-x-clip">
+                    <h1
+                      ref={mobileTitleRef}
+                      className="w-max origin-top text-center font-rubik text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
+                    >
+                      <span className="block whitespace-nowrap">{ui.heroTitleLine1}</span>
+                      <span className="block whitespace-nowrap">
+                        <span className="relative inline-block">
+                          {ui.heroTitleUnderline}
+                          <Image
+                            src={LANDING_ASSETS.heroUnderlineMobile}
+                            alt=""
+                            width={144}
+                            height={20}
+                            className="pointer-events-none absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2"
+                            unoptimized
+                          />
+                        </span>{' '}
+                        {ui.heroTitleLine2After}
+                      </span>
+                    </h1>
+                  </div>
                 </div>
                 <p className="landing-hero-item landing-hero-item--3 font-rubik text-[18px] leading-[1.25] tracking-[-0.36px] text-[#d1edf4]">
                   {ui.heroBodyMobile}
@@ -235,18 +248,14 @@ export function MarketingHero() {
               </>
             )}
           </div>
-          <div className="landing-hero-item landing-hero-item--4 flex w-full min-w-0 justify-center self-stretch overflow-x-clip">
+          <div className="landing-hero-item landing-hero-item--4 flex w-full min-w-0 justify-center self-stretch px-0.5">
             <div
               ref={mobileCtaRef}
               className="flex w-max flex-row items-center justify-center gap-[7px]"
             >
-              {/*
-                No backdrop-blur — on iOS it often paints after the fade-in,
-                flashing glass after the button is already visible.
-              */}
               <a
                 href="#what-is-joystie"
-                className={`inline-flex h-[46px] shrink items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-white/15 font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/25 ${
+                className={`box-border inline-flex h-[46px] shrink items-center justify-center whitespace-nowrap rounded-[16px] border border-solid border-white bg-white/15 font-rubik text-[16px] font-bold not-italic leading-[1.28] tracking-[-0.32px] text-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] backdrop-blur-[10px] transition-[filter,transform,background-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 hover:bg-white/25 ${
                   isEn
                     ? 'gap-[25px] px-4 py-[9px] text-left'
                     : 'gap-3 px-[22px] py-[11px] text-right'
