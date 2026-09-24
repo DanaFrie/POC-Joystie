@@ -9,7 +9,7 @@ import {
   parentResumeAction,
   readPairingSnapshot,
 } from '@/lib/onboarding/pairingResume';
-import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
+import { FLOW_STEP_STORAGE_KEY, isInviteWaitingTimedOut } from '@/lib/onboarding/parentFlowSession';
 import { writePersistedChildFlowStep } from '@/lib/onboarding/childFlowSession';
 import { getCurrentUserId } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
@@ -68,7 +68,8 @@ export function usePairingResume(options: ParentOptions | ChildOptions) {
           const action = parentResumeAction(
             snapshot.stage,
             currentPath as '/onboarding' | '/game',
-            currentStep
+            currentStep,
+            { inviteWaitingTimedOut: isInviteWaitingTimedOut() }
           );
           if (action.type === 'stay') return;
           if (appliedRef.current) return;

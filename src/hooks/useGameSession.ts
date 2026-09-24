@@ -13,7 +13,18 @@ import {
   logGameTransition,
   logOnboardingAdvanceReady,
 } from '@/lib/game/phaseLog';
-import { isPhysicsAuthority, stepBallPhysics } from '@/lib/game/physics';
+import { stepBallPhysicsN } from '@/lib/game/physics';
+import {
+  createExclusiveAsyncLock,
+  createWriteRateLimiter,
+  GAME_ROOM_LOST_ERROR,
+  nextGameRoomPresence,
+  PHYSICS_LOOP_INTERVAL_MS,
+  physicsStepsForElapsed,
+  shouldRunPhysics,
+  shouldStartPlayFromCountdown,
+  type GameRoomPresence,
+} from '@/lib/game/stallGuards';
 import {
   beginCountdown,
   restartAfterMiss,
@@ -25,7 +36,6 @@ import {
   updatePaddlePosition,
   updatePlayReady,
 } from '@/lib/game/rooms';
-import { BALL_GAME_COUNTDOWN_TOTAL_MS } from '@/constants/ball-game-countdown';
 import { ensureAnonymousChildAuth as signInAnonymousChild } from '@/lib/game/anonymousChildAuth';
 import { getCurrentUserId } from '@/utils/auth';
 import type { GameOnboardingContext } from '@/constants/game';
@@ -47,7 +57,7 @@ function formatGameError(e: unknown): string {
     return 'התחברות אנונימית לא מופעלת ב-Firebase. הפעילו Anonymous Auth בקונסול.';
   }
   if (msg.includes('not-found') || msg.includes('Room not found')) {
-    return 'החדר לא נמצא. צרו חדר חדש מהמסך של ההורה.';
+    return GAME_ROOM_LOST_ERROR;
   }
   if (msg.includes('permission-denied') || msg.includes('Invalid join code')) {
     return 'קוד הצטרפות שגוי. בדקו את הקישור מההורה.';
@@ -83,6 +93,7 @@ export function useGameSession({
   const [childJoinBlocked, setChildJoinBlocked] = useState(false);
 
   const roomRef = useRef<GameRoomState | null>(null);
+  const presenceRef = useRef<GameRoomPresence>('unknown');
   const childJoinAttempted = useRef(false);
   const lastPhaseRef = useRef<GameRoomPhase | null>(null);
 
@@ -105,8 +116,19 @@ export function useGameSession({
 
   useEffect(() => {
     if (!roomId) return;
+    presenceRef.current = 'unknown';
     setRoom(null);
-    return subscribeToGameRoom(roomId, setRoom);
+    return subscribeToGameRoom(roomId, (next) => {
+      const presence = nextGameRoomPresence(presenceRef.current, next);
+      presenceRef.current = presence;
+      if (presence === 'deleted') {
+        setError(GAME_ROOM_LOST_ERROR);
+        roomRef.current = null;
+        setRoom(null);
+        return;
+      }
+      setRoom(next);
+    });
   }, [roomId]);
 
   useEffect(() => {
@@ -133,49 +155,89 @@ export function useGameSession({
   }, [room, role]);
 
   useEffect(() => {
-    if (!roomId || !role || !isPhysicsAuthority(role)) return;
+    if (!roomId || !role) return;
 
-    const id = window.setInterval(async () => {
-      const current = roomRef.current;
-      if (!current || current.phase !== 'playing') return;
+    const physicsLock = createExclusiveAsyncLock();
+    const writeRate = createWriteRateLimiter();
+    let lastPhysicsAt = 0;
+    const id = window.setInterval(() => {
+      void physicsLock.run(async () => {
+        const current = roomRef.current;
+        if (!current || current.phase !== 'playing') {
+          lastPhysicsAt = 0;
+          return;
+        }
+        const nowMs = Date.now();
+        if (!writeRate.allow(nowMs)) return;
+        if (
+          !shouldRunPhysics({
+            role,
+            phase: current.phase,
+            ballUpdatedAt: current.ball.updatedAt,
+            nowMs,
+          })
+        ) {
+          return;
+        }
 
-      try {
-        const result = stepBallPhysics({
-          ball: current.ball,
-          paddles: current.paddles,
-          score: current.score,
-          phase: current.phase,
-          winner: current.winner,
-        });
+        try {
+          const steps =
+            lastPhysicsAt === 0 ? 1 : physicsStepsForElapsed(nowMs - lastPhysicsAt);
+          const result = stepBallPhysicsN(
+            {
+              ball: current.ball,
+              paddles: current.paddles,
+              score: current.score,
+              phase: current.phase,
+              winner: current.winner,
+            },
+            steps
+          );
+          lastPhysicsAt = nowMs;
 
-        const scoreChanged = result.score.shared !== current.score.shared;
-        const phaseChanged =
-          result.phase !== current.phase || result.winner !== current.winner;
+          const scoreChanged = result.score.shared !== current.score.shared;
+          const phaseChanged =
+            result.phase !== current.phase || result.winner !== current.winner;
 
-        await updateBallPosition(
-          roomId,
-          role,
-          result.ball.x,
-          result.ball.y,
-          result.ball.vx,
-          result.ball.vy,
-          result.ball.toward,
-          scoreChanged || phaseChanged
-            ? {
-                score: result.score,
-                phase: result.phase,
-                winner: result.winner,
-              }
-            : undefined
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? `עדכון כדור נכשל: ${err.message}`
-            : 'עדכון כדור נכשל'
-        );
-      }
-    }, 50);
+          roomRef.current = {
+            ...current,
+            ball: {
+              ...current.ball,
+              ...result.ball,
+              updatedBy: role,
+              updatedAt: new Date().toISOString(),
+            },
+            score: result.score,
+            phase: result.phase,
+            winner: result.winner,
+          };
+
+          writeRate.record(nowMs);
+          await updateBallPosition(
+            roomId,
+            role,
+            result.ball.x,
+            result.ball.y,
+            result.ball.vx,
+            result.ball.vy,
+            result.ball.toward,
+            scoreChanged || phaseChanged
+              ? {
+                  score: result.score,
+                  phase: result.phase,
+                  winner: result.winner,
+                }
+              : undefined
+          );
+        } catch (err) {
+          setError(
+            err instanceof Error
+              ? `עדכון כדור נכשל: ${err.message}`
+              : 'עדכון כדור נכשל'
+          );
+        }
+      });
+    }, PHYSICS_LOOP_INTERVAL_MS);
 
     return () => window.clearInterval(id);
   }, [roomId, role]);
@@ -359,12 +421,22 @@ export function useGameSession({
   /** Either device can end countdown — parent tab is often backgrounded on two phones. */
   useEffect(() => {
     if (!roomId || !room) return;
-    if (room.phase !== 'countdown' || !room.countdownAt) return;
+    if (room.phase !== 'countdown') return;
 
-    const key = `${roomId}:${room.countdownAt}`;
-    const startMs = new Date(room.countdownAt).getTime();
+    const countdownAt = room.countdownAt;
+    const key = `${roomId}:${countdownAt ?? 'missing'}`;
+    const observedAtMs = Date.now();
     const fire = () => {
-      if (Date.now() - startMs < BALL_GAME_COUNTDOWN_TOTAL_MS) return;
+      if (
+        !shouldStartPlayFromCountdown({
+          phase: 'countdown',
+          countdownAt,
+          observedAtMs,
+          nowMs: Date.now(),
+        })
+      ) {
+        return;
+      }
       if (playStartedRef.current === key) return;
       playStartedRef.current = key;
       void startGamePlay(roomId).catch((err) => {
@@ -384,7 +456,7 @@ export function useGameSession({
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
     };
-  }, [roomId, room]);
+  }, [roomId, room?.phase, room?.countdownAt]);
 
   /** Parent only — both tapped retry after miss. */
   useEffect(() => {

@@ -15,6 +15,7 @@ import {
   BALL_GAME_COUNTDOWN_STEP_MS,
   BALL_GAME_COUNTDOWN_TOTAL_MS,
 } from '@/constants/ball-game-countdown';
+import { countdownElapsedMs } from '@/lib/game/stallGuards';
 import {
   useScaledBallGameBallSizePx,
   useScaledBallGameLayout,
@@ -166,13 +167,17 @@ export function OnboardingBallGameScreen({
   }, [playing]);
 
   useEffect(() => {
-    if (!countdown || !room?.countdownAt) {
+    if (!countdown) {
       setCountdownGo(false);
       return;
     }
-    const startMs = new Date(room.countdownAt).getTime();
+    const observedAtMs = Date.now();
     const tick = () => {
-      const elapsed = Date.now() - startMs;
+      const elapsed = countdownElapsedMs({
+        countdownAt: room?.countdownAt,
+        observedAtMs,
+        nowMs: Date.now(),
+      });
       setCountdownGo(
         elapsed >= BALL_GAME_COUNTDOWN_STEP_MS * 4 &&
           elapsed < BALL_GAME_COUNTDOWN_TOTAL_MS
@@ -320,8 +325,8 @@ export function OnboardingBallGameScreen({
 
       {showWaitingOverlay ? <OnboardingWaitingOverlay headline={waitingHeadline} /> : null}
 
-      {countdown && room?.countdownAt ? (
-        <BallGameCountdownOverlay countdownAt={room.countdownAt} />
+      {countdown ? (
+        <BallGameCountdownOverlay countdownAt={room?.countdownAt ?? ''} />
       ) : null}
 
       {showFailureCard ? (

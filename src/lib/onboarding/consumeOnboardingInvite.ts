@@ -6,7 +6,7 @@
  * parent opens dashboard stranded the child on the waiting GIF with no RTDB signal.
  * Tombstone the invite + clear the game room / public snapshots only.
  */
-import { remove, ref } from 'firebase/database';
+import { remove, ref, get } from 'firebase/database';
 import { consumeBondingInvite } from '@/lib/api/bonding';
 import { getDatabaseInstance } from '@/lib/firebase';
 import { gameRoomPath } from '@/lib/game/paths';
@@ -14,6 +14,7 @@ import {
   clearOnboardingBondingSnapshots,
   readOnboardingBondingPublic,
 } from '@/lib/game/bondingPublic';
+import { shouldDeleteLeftoverGameRoom } from '@/lib/game/stallGuards';
 import { consumeLocalBondingInvite } from '@/lib/onboarding/localBondingInvite';
 import { useRtdbBondingInvites } from '@/lib/onboarding/bondingInviteTransport';
 import { createContextLogger } from '@/utils/logger';
@@ -25,7 +26,23 @@ async function clearLeftoverGameRoom(parentId: string): Promise<void> {
   const roomId = pub?.roomId?.trim();
   if (!roomId) return;
   const db = await getDatabaseInstance();
-  await remove(ref(db, gameRoomPath(roomId)));
+  const roomRef = ref(db, gameRoomPath(roomId));
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+  const raw = snap.val() as {
+    phase?: string;
+    onboardingAdvanced?: boolean;
+  };
+  if (
+    !shouldDeleteLeftoverGameRoom({
+      phase: raw.phase,
+      onboardingAdvanced: raw.onboardingAdvanced === true,
+    })
+  ) {
+    logger.warn('skip deleting live game room', { roomId, phase: raw.phase });
+    return;
+  }
+  await remove(roomRef);
 }
 
 /** Mark this invite consumed so leftover `?invite=` links cannot re-enter the child funnel. */

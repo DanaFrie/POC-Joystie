@@ -3,10 +3,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import {
-  BALL_GAME_COUNTDOWN_TOTAL_MS,
   ballGameCountdownStep,
   type BallGameCountdownStep,
 } from '@/constants/ball-game-countdown';
+import { countdownElapsedMs } from '@/lib/game/stallGuards';
 
 type BallGameCountdownOverlayProps = {
   countdownAt: string;
@@ -53,12 +53,15 @@ export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverl
   const [flashKey, setFlashKey] = useState(0);
 
   useEffect(() => {
-    const startMs = new Date(countdownAt).getTime();
+    const observedAtMs = Date.now();
     let lastStep: BallGameCountdownStep | null = null;
 
     const tick = () => {
-      const elapsed = Date.now() - startMs;
-      if (elapsed >= BALL_GAME_COUNTDOWN_TOTAL_MS) return;
+      const elapsed = countdownElapsedMs({
+        countdownAt,
+        observedAtMs,
+        nowMs: Date.now(),
+      });
       const next = ballGameCountdownStep(elapsed);
       if (next !== lastStep) {
         lastStep = next;

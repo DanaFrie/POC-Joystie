@@ -6,7 +6,11 @@ import {
   PHYSICS_PARENT_PADDLE_SURFACE_Y,
   PHYSICS_PADDLE_HEIGHT_NORM,
 } from '@/lib/game/ballGameCourt';
-import { velocityToward, ballTowardFromVy } from '@/lib/game/ballDirection';
+import {
+  velocityToward,
+  ballTowardFromVy,
+  randomChildServeStartX,
+} from '@/lib/game/ballDirection';
 import type {
   GamePlayerRole,
   GamePaddlesState,
@@ -67,10 +71,10 @@ export type PhysicsStepResult = PhysicsStepInput & {
   missedBy: GamePlayerRole | null;
 };
 
-/** Serve from center toward the child paddle (shared y → 0). */
+/** Serve toward the child first — random lane X and left/right angle each try. */
 export function createStartBall(): BallVector {
   const { vx, vy } = velocityToward('child');
-  return { x: 0.5, y: 0.5, vx, vy, toward: 'child' };
+  return { x: randomChildServeStartX(), y: 0.5, vx, vy, toward: 'child' };
 }
 
 /** Kick a stationary ball — preserve intended receiver. */
@@ -94,7 +98,10 @@ export function clampPaddleCenterX(x: number, paddleWidth: number): number {
 }
 
 export function clampBallCenter(x: number, y: number): { x: number; y: number } {
-  return { x: clampBallX(x), y };
+  return {
+    x: clampBallX(x),
+    y: Math.min(1, Math.max(0, y)),
+  };
 }
 
 function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
@@ -495,6 +502,26 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
     missed,
     missedBy,
   };
+}
+
+/** Run N 50ms physics ticks in one write so a 10 Hz cap does not slow the ball. */
+export function stepBallPhysicsN(
+  input: PhysicsStepInput,
+  steps: number
+): PhysicsStepResult {
+  const count = Math.max(1, Math.floor(steps));
+  let last = stepBallPhysics(input);
+  for (let i = 1; i < count; i += 1) {
+    if (last.phase !== 'playing' || last.missed || last.scored) break;
+    last = stepBallPhysics({
+      ...input,
+      ball: last.ball,
+      score: last.score,
+      phase: last.phase,
+      winner: last.winner,
+    });
+  }
+  return last;
 }
 
 /** Only the parent runs physics so both screens stay in sync. */
