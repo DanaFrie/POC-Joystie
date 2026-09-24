@@ -10,7 +10,9 @@ import {
   createStartBall,
   DEFAULT_PADDLE_WIDTH,
   stepBallPhysics,
+  stepBallPhysicsN,
 } from '@/lib/game/physics';
+import type { GameWinner } from '@/types/game';
 import {
   clampBallForRtdbWrite,
   isLegalRtdbBallWrite,
@@ -40,7 +42,7 @@ describe('RTDB ball bounds (contract)', () => {
       paddles,
       score: { shared: 0 },
       phase: 'playing' as const,
-      winner: null as null,
+      winner: null as GameWinner,
     };
 
     for (let i = 0; i < 80; i += 1) {
@@ -65,5 +67,30 @@ describe('RTDB ball bounds (contract)', () => {
   it('rejects the pre-fix out-of-range write the rules would drop', () => {
     assert.equal(isLegalRtdbBallWrite({ x: 0.5, y: -0.01, vx: 0, vy: -0.4 }), false);
     assert.equal(isLegalRtdbBallWrite({ x: 0.5, y: 1.01, vx: 0, vy: 0.4 }), false);
+  });
+
+  it('two catch-up steps match two 50ms ticks so 10 Hz writes keep original speed', () => {
+    const input = {
+      ball: { x: 0.5, y: 0.5, vx: 0.2, vy: -0.6, toward: 'child' as const },
+      paddles,
+      score: { shared: 0 },
+      phase: 'playing' as const,
+      winner: null as GameWinner,
+    };
+    const first = stepBallPhysics(input);
+    const second = stepBallPhysics({
+      ...input,
+      ball: first.ball,
+      score: first.score,
+      phase: first.phase,
+      winner: first.winner,
+    });
+    const catchup = stepBallPhysicsN(input, 2);
+    assert.ok(Math.abs(catchup.ball.y - second.ball.y) < 1e-9);
+    assert.ok(Math.abs(catchup.ball.x - second.ball.x) < 1e-9);
+    assert.ok(
+      Math.abs(catchup.ball.y - first.ball.y) > 0.001,
+      'catch-up must travel farther than a single skipped tick'
+    );
   });
 });

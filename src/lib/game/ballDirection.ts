@@ -9,10 +9,16 @@ export function ballTowardFromVy(vy: number): GamePlayerRole {
   return vy < 0 ? 'child' : 'parent';
 }
 
+/** Left/right serve angle — new each rally, still aimed at the child (vy). */
 function randomServeVx(): number {
-  const spread = 0.35 + Math.random() * 0.5;
+  const spread = 0.2 + Math.random() * 0.9;
   const sign = Math.random() < 0.5 ? -1 : 1;
   return sign * BALL_START_VX * spread;
+}
+
+/** Horizontal start — not always center, stays inside the lane. */
+export function randomChildServeStartX(): number {
+  return 0.22 + Math.random() * 0.56;
 }
 
 export function velocityToward(

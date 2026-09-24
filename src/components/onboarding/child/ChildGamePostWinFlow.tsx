@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BallGameWinFadeOverlay } from '@/components/onboarding/game/BallGameWinFadeOverlay';
 import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
+import { GameRoomLostStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
 import { OnboardingBallGameScreen } from '@/components/onboarding/game/OnboardingBallGameScreen';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
@@ -11,6 +12,7 @@ import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { CHILD_POST_GAME_WIN_FADE_MS } from '@/constants/child-post-game-layout';
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { useCelebrationBall } from '@/hooks/useCelebrationBall';
+import { isGameRoomLostError } from '@/lib/game/stallGuards';
 import type { BallVector } from '@/lib/game/physics';
 import type { GameRoomState } from '@/types/game';
 
@@ -97,6 +99,8 @@ export function ChildGamePostWinFlow({
               <p>{parentAsChildError}</p>
             </div>
           </FunnelStepRoot>
+        ) : setupError && isGameRoomLostError(setupError) ? (
+          <GameRoomLostStep parentGender={parentGender} />
         ) : setupError ? (
           <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
             <BallGameFunnelBackground />

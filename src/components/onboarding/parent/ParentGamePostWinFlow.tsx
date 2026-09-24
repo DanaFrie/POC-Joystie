@@ -10,6 +10,7 @@ import { OnboardingMintGridBackdrop } from '@/components/onboarding/OnboardingMi
 import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
 import { OnboardingWaitingCenterContent } from '@/components/onboarding/signup/OnboardingWaitingCenterContent';
 import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
+import { GameRoomLostStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
 import { ParentAdditionalChangeStep } from '@/components/onboarding/parent/ParentAdditionalChangeStep';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
 import { FunnelStepRoot } from '@/components/ui/funnel-layout';
@@ -40,6 +41,7 @@ import {
   parentWaitingChildChangeHeadline,
 } from '@/lib/onboarding/parentPostGameCopy';
 import { finishParentOnboardingAndGoToDashboard } from '@/lib/onboarding/finishParentOnboarding';
+import { isGameRoomLostError } from '@/lib/game/stallGuards';
 import { FLOW_STEP_STORAGE_KEY } from '@/lib/onboarding/parentFlowSession';
 import { prefetchParentCompletionAgreement } from '@/lib/onboarding/prefetchParentCompletionAgreement';
 import { useOnboardingLightFunnel } from '@/lib/onboarding/useOnboardingLightFunnel';
@@ -500,6 +502,8 @@ export function ParentGamePostWinFlow({
               <p>{parentAsChildError}</p>
             </div>
           </FunnelStepRoot>
+        ) : setupError && isGameRoomLostError(setupError) ? (
+          <GameRoomLostStep parentGender={parentGender} />
         ) : setupError ? (
           <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
             <BallGameFunnelBackground />

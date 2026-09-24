@@ -37,7 +37,7 @@ describe('deleted RTDB room (presence)', () => {
     const afterDelete = nextGameRoomPresence(afterLive, null);
     assert.equal(afterDelete, 'deleted');
     assert.equal(shouldShowConnectingOverlay(afterDelete), false);
-    assert.ok(GAME_ROOM_LOST_ERROR.includes('החדר לא נמצא'));
+    assert.equal(GAME_ROOM_LOST_ERROR, 'game_room_lost');
   });
 
   it('ball node stripped from an otherwise present record is a delete', () => {

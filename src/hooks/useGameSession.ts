@@ -13,12 +13,14 @@ import {
   logGameTransition,
   logOnboardingAdvanceReady,
 } from '@/lib/game/phaseLog';
-import { stepBallPhysics } from '@/lib/game/physics';
+import { stepBallPhysicsN } from '@/lib/game/physics';
 import {
   createExclusiveAsyncLock,
   createWriteRateLimiter,
   GAME_ROOM_LOST_ERROR,
   nextGameRoomPresence,
+  PHYSICS_LOOP_INTERVAL_MS,
+  physicsStepsForElapsed,
   shouldRunPhysics,
   shouldStartPlayFromCountdown,
   type GameRoomPresence,
@@ -55,7 +57,7 @@ function formatGameError(e: unknown): string {
     return 'התחברות אנונימית לא מופעלת ב-Firebase. הפעילו Anonymous Auth בקונסול.';
   }
   if (msg.includes('not-found') || msg.includes('Room not found')) {
-    return 'החדר לא נמצא. צרו חדר חדש מהמסך של ההורה.';
+    return GAME_ROOM_LOST_ERROR;
   }
   if (msg.includes('permission-denied') || msg.includes('Invalid join code')) {
     return 'קוד הצטרפות שגוי. בדקו את הקישור מההורה.';
@@ -157,10 +159,14 @@ export function useGameSession({
 
     const physicsLock = createExclusiveAsyncLock();
     const writeRate = createWriteRateLimiter();
+    let lastPhysicsAt = 0;
     const id = window.setInterval(() => {
       void physicsLock.run(async () => {
         const current = roomRef.current;
-        if (!current || current.phase !== 'playing') return;
+        if (!current || current.phase !== 'playing') {
+          lastPhysicsAt = 0;
+          return;
+        }
         const nowMs = Date.now();
         if (!writeRate.allow(nowMs)) return;
         if (
@@ -175,13 +181,19 @@ export function useGameSession({
         }
 
         try {
-          const result = stepBallPhysics({
-            ball: current.ball,
-            paddles: current.paddles,
-            score: current.score,
-            phase: current.phase,
-            winner: current.winner,
-          });
+          const steps =
+            lastPhysicsAt === 0 ? 1 : physicsStepsForElapsed(nowMs - lastPhysicsAt);
+          const result = stepBallPhysicsN(
+            {
+              ball: current.ball,
+              paddles: current.paddles,
+              score: current.score,
+              phase: current.phase,
+              winner: current.winner,
+            },
+            steps
+          );
+          lastPhysicsAt = nowMs;
 
           const scoreChanged = result.score.shared !== current.score.shared;
           const phaseChanged =
@@ -225,7 +237,7 @@ export function useGameSession({
           );
         }
       });
-    }, 50);
+    }, PHYSICS_LOOP_INTERVAL_MS);
 
     return () => window.clearInterval(id);
   }, [roomId, role]);

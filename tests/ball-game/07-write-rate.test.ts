@@ -7,8 +7,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   createWriteRateLimiter,
+  PHYSICS_LOOP_INTERVAL_MS,
+  PHYSICS_MAX_CATCHUP_STEPS,
   PHYSICS_MAX_WRITES_PER_SEC,
   PHYSICS_MIN_WRITE_INTERVAL_MS,
+  physicsStepsForElapsed,
   RTDB_WRITE_BUDGET_PER_SEC,
   simulateRtdbWriteLoad,
 } from '@/lib/game/stallGuards';
@@ -83,5 +86,13 @@ describe('RTDB write-rate (load simulation)', () => {
     });
     assert.equal(load.totalWritesPerSec, 20_000);
     assert.equal(load.overBudget, true);
+  });
+
+  it('maps 10 Hz write gaps back onto the original 50ms physics ticks', () => {
+    assert.equal(PHYSICS_LOOP_INTERVAL_MS, 50);
+    assert.equal(physicsStepsForElapsed(50), 1);
+    assert.equal(physicsStepsForElapsed(100), 2);
+    assert.equal(physicsStepsForElapsed(150), 3);
+    assert.equal(physicsStepsForElapsed(400), PHYSICS_MAX_CATCHUP_STEPS);
   });
 });

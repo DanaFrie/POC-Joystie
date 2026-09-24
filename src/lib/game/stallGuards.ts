@@ -30,15 +30,38 @@ export const RTDB_BALL_POS_MAX = 1;
 export const RTDB_BALL_VEL_MIN = -1;
 export const RTDB_BALL_VEL_MAX = 1;
 
+/** Loop still wakes every 50ms — visual speed was calibrated at this tick. */
+export const PHYSICS_LOOP_INTERVAL_MS = 50;
 /** ~10 Hz per writer. The old 50ms interval was 20 writes/s before drops. */
 export const PHYSICS_MIN_WRITE_INTERVAL_MS = 100;
 export const PHYSICS_MAX_WRITES_PER_SEC = 10;
+/** Cap hitch catch-up so a long pause does not tunnel through a paddle. */
+export const PHYSICS_MAX_CATCHUP_STEPS = 4;
+
+/**
+ * 10 Hz writes used to skip every other 50ms physics tick (half speed).
+ * Run extra steps so court speed matches the original 20 Hz loop.
+ */
+export function physicsStepsForElapsed(elapsedMs: number): number {
+  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1;
+  const steps = Math.round(elapsedMs / PHYSICS_LOOP_INTERVAL_MS);
+  return Math.min(PHYSICS_MAX_CATCHUP_STEPS, Math.max(1, steps));
+}
 
 /** Firebase RTDB documented simultaneous write budget for the whole database. */
 export const RTDB_WRITE_BUDGET_PER_SEC = 1000;
 
-export const GAME_ROOM_LOST_ERROR =
-  'המשחק נותק — החדר לא נמצא. רעננו את העמוד או פתחו מחדש מההורה.';
+/** Sentinel — UI maps this to the disappointed-Dori expired-game card. */
+export const GAME_ROOM_LOST_ERROR = 'game_room_lost';
+
+export function isGameRoomLostError(message?: string | null): boolean {
+  if (!message) return false;
+  return (
+    message === GAME_ROOM_LOST_ERROR ||
+    message.includes('החדר לא נמצא') ||
+    /room not found/i.test(message)
+  );
+}
 
 export type GameRoomPresence = 'unknown' | 'missing' | 'live' | 'deleted';
 
@@ -182,7 +205,9 @@ export function createExclusiveAsyncLock() {
   };
 }
 
-export function isUsableGameRoomRaw(raw: unknown): raw is { ball: object } {
+export function isUsableGameRoomRaw(
+  raw: unknown
+): raw is Record<string, unknown> & { ball: object } {
   if (raw == null || typeof raw !== 'object') return false;
   const ball = (raw as { ball?: unknown }).ball;
   return ball != null && typeof ball === 'object';
@@ -194,7 +219,7 @@ export function isUsableGameRoomRaw(raw: unknown): raw is { ball: object } {
  */
 export function nextGameRoomPresence(
   prev: GameRoomPresence,
-  room: { ball?: unknown } | null
+  room: unknown
 ): GameRoomPresence {
   if (isUsableGameRoomRaw(room)) return 'live';
   if (prev === 'live' || prev === 'deleted') return 'deleted';

@@ -32,6 +32,9 @@ export const SIGNUP_CHILD_INVITE_FOOTNOTE_MAX_W_PX = 297;
 /** Child invite waiting — Screen 29 */
 export type SignupChildInviteWaitingVariant = 'linkOpen' | 'companionPick';
 
+/** Each waiting variant (link / wake Dori) — then return to copy-invite. */
+export const SIGNUP_CHILD_INVITE_WAITING_STALL_MS = 3 * 60 * 1000;
+
 export const SIGNUP_CHILD_INVITE_WAITING_LINK_OPEN_MS = 20_000;
 
 export const SIGNUP_CHILD_INVITE_WAITING_CONTENT_TOP_PX = 284;

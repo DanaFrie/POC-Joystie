@@ -56,6 +56,7 @@ const ParentGamePostWinFlow = nextDynamic(
 import { getBondingChildName, getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName, setBondingChildGender, setBondingChildName, clearBondingChildUrl } from '@/lib/onboarding/bondingInvite';
 import { clearOnboardingBondingInviteId } from '@/lib/onboarding/bondingShare';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
+import { SIGNUP_CHILD_INVITE_WAITING_STALL_MS } from '@/constants/signup-child-invite-layout';
 import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
 import {
   PICK_FIRST_CHILD_HEADER_TOP_PX,
@@ -152,9 +153,11 @@ import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHer
 import {
   FLOW_STEP_STORAGE_KEY,
   LANDING_ACTIVE_KEY,
+  clearInviteWaitingTimedOut,
   clearOAuthSignupWelcomePending,
   clearParentFlowSession,
   consumeFreshParentFlowStart,
+  markInviteWaitingTimedOut,
   markOAuthSignupWelcomePending,
   shouldShowOAuthSignupWelcome,
 } from '@/lib/onboarding/parentFlowSession';
@@ -878,13 +881,18 @@ export function OnboardingParentFlow({
   }, [step]);
 
   const onMissionReady = useCallback(() => {
-    if (stepRef.current === 'childInviteWaiting') {
+    if (
+      stepRef.current === 'childInviteWaiting' ||
+      stepRef.current === 'childInviteShare'
+    ) {
+      clearInviteWaitingTimedOut();
       router.push('/game');
     }
   }, [router]);
 
   const onInviteShared = useCallback(() => {
     if (stepRef.current === 'childInviteWaiting') return;
+    clearInviteWaitingTimedOut();
     setStep('childInviteWaiting');
   }, []);
 
@@ -898,6 +906,15 @@ export function OnboardingParentFlow({
     onMissionReady,
     onLinkOpened: onInviteShared,
   });
+
+  useEffect(() => {
+    if (step !== 'childInviteWaiting') return;
+    const id = window.setTimeout(() => {
+      markInviteWaitingTimedOut();
+      setStep('childInviteShare');
+    }, SIGNUP_CHILD_INVITE_WAITING_STALL_MS);
+    return () => window.clearTimeout(id);
+  }, [step, inviteWaitingVariant]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;

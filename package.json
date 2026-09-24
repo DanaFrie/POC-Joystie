@@ -12,7 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:ball-game": "tsx --test tests/ball-game/01-countdown-clock.test.ts tests/ball-game/02-join-phase-guard.test.ts tests/ball-game/03-physics-tick-lock.test.ts tests/ball-game/04-rtdb-ball-bounds.test.ts tests/ball-game/05-physics-authority-failover.test.ts tests/ball-game/06-deleted-room.test.ts tests/ball-game/07-write-rate.test.ts",
+    "test:ball-game": "npx tsx --test tests/ball-game/01-countdown-clock.test.ts tests/ball-game/02-join-phase-guard.test.ts tests/ball-game/03-physics-tick-lock.test.ts tests/ball-game/04-rtdb-ball-bounds.test.ts tests/ball-game/05-physics-authority-failover.test.ts tests/ball-game/06-deleted-room.test.ts tests/ball-game/07-write-rate.test.ts tests/ball-game/08-random-child-serve.test.ts tests/onboarding/invite-waiting-timeout.test.ts",
     "firebase:use:intgr": "firebase use intgr",
     "firebase:use:prod": "firebase use prod",
     "deploy:rules:intgr": "firebase use intgr && firebase deploy --only firestore:rules",

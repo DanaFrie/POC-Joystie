@@ -3,6 +3,14 @@ export function parentCourtLabel(parentGender?: 'female' | 'male' | null): 'אמ
   return parentGender === 'female' ? 'אמא' : 'אבא';
 }
 
+export const GAME_ROOM_EXPIRED_TITLE = 'תוקף המשחק עבר';
+
+export function gameRoomExpiredDetail(
+  parentGender?: 'female' | 'male' | null
+): string {
+  return `נסה לבקש מ${parentCourtLabel(parentGender)} לינק חדש`;
+}
+
 /** Court labels — never show raw `male` / `female` or profile names. */
 export function resolveParentCourtLabel(
   parentGender?: 'female' | 'male' | null,
