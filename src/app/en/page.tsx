@@ -16,10 +16,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Home() {
+export default function EnglishHome() {
   return (
     <div className={marketingRubik.variable}>
-      <MarketingLandingPage />
+      <MarketingLandingPage locale="en" />
     </div>
   );
 }

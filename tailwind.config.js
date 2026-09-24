@@ -46,13 +46,17 @@ module.exports = {
         'danger': '#dc3545',
       },
       fontFamily: {
-        simpler: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
-        assistant: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
-        heebo: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
+        rubik: ['var(--font-body, var(--font-rubik))', 'sans-serif'],
+        /** Hebrew snippet on EN pages — always next/font Rubik, ignores --font-body */
+        'he-rubik': ['var(--font-rubik)', 'Rubik', 'sans-serif'],
+        marketing: ['var(--font-body, var(--font-rubik))', 'sans-serif'],
+        simpler: ['var(--font-body, var(--font-rubik))', 'sans-serif'],
+        assistant: ['var(--font-body, var(--font-rubik))', 'sans-serif'],
+        heebo: ['var(--font-body, var(--font-rubik))', 'sans-serif'],
         montserrat: ['"Montserrat Alternates"', 'sans-serif'],
-        rubik: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
-        marketing: ['var(--font-rubik)', 'Rubik', 'sans-serif'],
         varela: ['"Varela Round"', 'sans-serif'],
+        sf: ['var(--font-plus-jakarta)', '"Plus Jakarta Sans"', 'sans-serif'],
+        jakarta: ['var(--font-plus-jakarta)', '"Plus Jakarta Sans"', 'sans-serif'],
       },
       fontSize: {
         'v03-eyebrow': ['var(--v03-text-eyebrow-size)', { lineHeight: 'var(--v03-text-eyebrow-leading)', letterSpacing: 'var(--v03-text-eyebrow-tracking)' }],

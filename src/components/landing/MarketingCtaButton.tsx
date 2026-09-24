@@ -1,6 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
+import { useEnglishAppGateOptional } from '@/components/landing/EnglishAppGateContext';
+import {
+  startMarketingExit,
+  useMarketingFadeNavigate,
+} from '@/components/landing/useMarketingFadeNavigate';
 
 type MarketingCtaButtonProps = {
   href: string;
@@ -12,8 +18,9 @@ type MarketingCtaButtonProps = {
 };
 
 /**
- * White pill CTA — Figma CTA_Special_Button (RTL: label on the right, purple icon on the left).
- * Icon: 32×32, fill Purple-700 #8C00FF, white chevron.
+ * White pill CTA — Figma CTA_Special_Button.
+ * HE (RTL): label then purple icon with chevron pointing left (start).
+ * EN (LTR): label then purple icon with chevron pointing right.
  */
 export function MarketingCtaButton({
   href,
@@ -23,14 +30,17 @@ export function MarketingCtaButton({
   iconTone = 'purple',
   onClick,
 }: MarketingCtaButtonProps) {
+  const locale = useLandingLocale();
+  const isEn = locale === 'en';
+  const gate = useEnglishAppGateOptional();
+  const fadeNavigate = useMarketingFadeNavigate();
   const iconFill = iconTone === 'mint' ? '#00ffb3' : '#8C00FF';
   const sizeClasses =
     size === 'compact'
-      ? /* Figma compact: py 6.98, pe(icon) 6.98, ps(label) 17.45, radius 13.96 */
-        'gap-[21.81px] rounded-[13.96px] py-[6.98px] pe-[6.98px] ps-[17.45px]'
+      ? 'gap-[21.81px] rounded-[13.96px] py-[6.98px] pe-[6.98px] ps-[17.45px]'
       : size === 'mobile'
-        ? 'gap-[21.809px] rounded-2xl py-[6.979px] pe-[6.979px] ps-[17.447px]'
-      : 'h-[50px] gap-6 rounded-[18px] py-2 pe-2 ps-6';
+        ? 'h-[46px] gap-[21.809px] rounded-2xl py-[6.979px] pe-[6.979px] ps-[17.447px]'
+        : 'h-[50px] gap-6 rounded-[18px] py-2 pe-2 ps-6';
   const labelClasses =
     size === 'compact'
       ? 'text-[13.96px] leading-[17.87px] tracking-[-0.28px]'
@@ -42,17 +52,30 @@ export function MarketingCtaButton({
       ? 'size-[24.43px]'
       : size === 'mobile'
         ? 'size-[24.426px]'
-      : 'size-8';
+        : 'size-8';
   const iconRadius = size === 'compact' ? 8.72 : 10.2535;
+  const isAuthHref = href === '/onboarding' || href === '/login';
 
   return (
     <Link
       href={href}
-      onClick={onClick}
-      dir="rtl"
-      className={`inline-flex flex-row items-center bg-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-95 hover:-translate-y-0.5 ${sizeClasses} ${className}`}
+      onClick={(event) => {
+        if (isAuthHref) {
+          event.preventDefault();
+          if (isEn && gate) {
+            startMarketingExit(() => {
+              gate.show(href === '/login' ? 'login' : 'join');
+            });
+          } else {
+            fadeNavigate(href);
+          }
+        }
+        onClick?.();
+      }}
+      dir={isEn ? 'ltr' : 'rtl'}
+      className={`inline-flex flex-row items-center whitespace-nowrap bg-white shadow-[2px_2px_20px_rgba(0,0,0,0.05)] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-95 hover:-translate-y-0.5 ${sizeClasses} ${className}`}
     >
-      <span className={`font-rubik font-bold text-[#05161a] ${labelClasses}`}>{label}</span>
+      <span className={`whitespace-nowrap font-bold text-[#05161a] ${isEn ? 'font-sf' : 'font-rubik'} ${labelClasses}`}>{label}</span>
       <span className={`inline-flex shrink-0 ${iconSize}`} aria-hidden>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -60,7 +83,7 @@ export function MarketingCtaButton({
           height="32"
           viewBox="0 0 32 32"
           fill="none"
-          className="size-full"
+          className={`size-full ${isEn ? 'scale-x-[-1]' : ''}`}
         >
           <rect
             width="32"

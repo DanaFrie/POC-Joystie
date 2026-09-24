@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { LANDING_FAQ } from '@/constants/landing-marketing';
+import { getLandingFaq, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 
 const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
@@ -46,30 +47,38 @@ function FaqArrow({ open }: { open: boolean }) {
 }
 
 export function MarketingFaq() {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const faq = getLandingFaq(locale);
+  const isEn = locale === 'en';
+  const textAlign = isEn ? 'text-left' : 'text-right';
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section id="questions" className="landing-section landing-gutter py-12 md:py-24">
+    <section
+      id="questions"
+      className="landing-section landing-gutter py-12 md:py-24"
+      dir={isEn ? 'ltr' : 'rtl'}
+    >
       <div className="mx-auto flex max-w-[1000px] flex-col items-center gap-5">
         <LandingReveal>
-          <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text text-center font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[45px] md:tracking-[-1px]">
-            שאלות שחשוב לשאול
+          <h2 className="landing-gradient-title bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text text-center font-rubik text-[28px] font-bold leading-[1.25] tracking-[-0.9px] text-transparent md:text-[45px] md:tracking-[-1px]">
+            {ui.faqTitle}
           </h2>
         </LandingReveal>
 
         <div className="w-full">
-          {LANDING_FAQ.map((item, index) => {
+          {faq.map((item, index) => {
             const isOpen = open === index;
             return (
               <LandingReveal key={item.q} delayMs={80 + index * 70} variant="fade">
                 <div className="border-b border-[#293639]">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-[15px] px-3 py-[15px] text-right md:gap-4 md:px-6 md:py-7"
+                    className={`flex w-full items-center justify-between gap-[15px] px-3 py-[15px] md:gap-4 md:px-6 md:py-7 ${textAlign}`}
                     onClick={() => setOpen(isOpen ? null : index)}
                     aria-expanded={isOpen}
                   >
-                    {/* RTL: question on the right, arrow on the left (Figma) */}
                     <span className="min-w-0 flex-1 font-rubik text-base font-medium leading-[1.28] tracking-[-0.32px] text-white md:text-2xl md:leading-[1.1] md:tracking-[-0.72px]">
                       {item.q}
                     </span>
@@ -91,7 +100,9 @@ export function MarketingFaq() {
                           opacity: isOpen ? 1 : 0,
                         }}
                       >
-                        <div className="rounded-[15px] bg-white/10 p-5 font-rubik text-base leading-[1.2] tracking-[-0.4px] text-white md:text-[20px]">
+                        <div
+                          className={`rounded-[15px] bg-white/10 p-5 font-rubik text-base leading-[1.2] tracking-[-0.4px] text-white md:text-[20px] ${textAlign}`}
+                        >
                           {item.a.split('\n').map((line, lineIdx) =>
                             line ? (
                               <p key={lineIdx} className={lineIdx > 0 ? 'mt-3' : ''}>

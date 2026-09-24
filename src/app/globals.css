@@ -450,6 +450,8 @@ body.layout-root:has(.v03-funnel-light) {
 html.layout-root:has(.v03-landing-root) {
   background-color: #05161a !important;
   background-image: none !important;
+  width: 100%;
+  max-width: 100vw;
   overflow-x: clip !important;
   overflow-y: auto !important;
 }
@@ -464,9 +466,16 @@ html.layout-root.landing-stats-scroll-lock:has(.v03-landing-root) {
 body.layout-root:has(.v03-landing-root) {
   background-color: #05161a !important;
   background-image: none !important;
+  width: 100%;
+  max-width: 100vw;
   /* Override layout body overflow-y-auto — only html scrolls on landing */
   overflow: clip !important;
   overscroll-behavior-y: none;
+}
+
+body.layout-root:has(.v03-landing-root) > div.relative {
+  width: 100%;
+  max-width: 100%;
 }
 
 /* About — white page chrome (margins) while reusing landing reveal / nav tokens */
@@ -500,9 +509,13 @@ body.layout-root:has(.v03-knowledge-article-root) {
 }
 
 .v03-about-root {
-  font-family: var(--font-rubik), 'Rubik', sans-serif;
+  font-family: var(--font-body, var(--font-rubik)), 'Rubik', sans-serif;
   scroll-behavior: smooth;
   --landing-gutter: 1.5rem;
+  width: 100vw;
+  max-width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
   overflow: clip;
   background-color: #ffffff;
 }
@@ -547,15 +560,55 @@ body.layout-root:has(.v03-knowledge-article-root) {
 }
 
 .v03-landing-root {
-  font-family: var(--font-rubik), 'Rubik', sans-serif;
+  font-family: var(--font-body, var(--font-rubik)), 'Rubik', sans-serif;
   scroll-behavior: smooth;
   /* Side margins — mobile gutters stay in components; desktop uses this token */
   --landing-gutter: 1.5rem;
+  width: 100vw;
+  max-width: 100%;
+  min-width: 100%;
+  box-sizing: border-box;
   /*
    * clip (not hidden/auto): contain horizontal glow bleed without creating a
    * vertical scrollport (hidden/auto on one axis forces the other to auto).
    */
   overflow: clip;
+}
+
+/*
+ * EN marketing type — Plus Jakarta Sans (next/font `--font-plus-jakarta`).
+ * Keep .font-he-rubik for Hebrew labels on EN pages.
+ * Class `.font-sf` kept as the EN utility name for call-site compat.
+ */
+.v03-landing-root[lang='en'],
+.v03-landing-root.font-sf,
+.v03-about-root[lang='en'],
+.v03-about-root.font-sf,
+.v03-knowledge-article-root[lang='en'],
+.v03-knowledge-article-root.font-sf {
+  --font-body: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.v03-landing-root[lang='en'] *:not(.font-he-rubik),
+.v03-landing-root.font-sf *:not(.font-he-rubik),
+.v03-about-root[lang='en'] *:not(.font-he-rubik),
+.v03-about-root.font-sf *:not(.font-he-rubik),
+.v03-knowledge-article-root[lang='en'] *:not(.font-he-rubik),
+.v03-knowledge-article-root.font-sf *:not(.font-he-rubik),
+.marketing-en-sf,
+.marketing-en-sf *:not(.font-he-rubik) {
+  font-family: var(--font-plus-jakarta), 'Plus Jakarta Sans', sans-serif !important;
+}
+
+.v03-landing-root[lang='en'] .font-he-rubik,
+.v03-landing-root.font-sf .font-he-rubik,
+.v03-about-root[lang='en'] .font-he-rubik,
+.v03-about-root.font-sf .font-he-rubik,
+.v03-knowledge-article-root[lang='en'] .font-he-rubik,
+.v03-knowledge-article-root.font-sf .font-he-rubik,
+.marketing-en-sf .font-he-rubik {
+  font-family: var(--font-rubik), 'Rubik', sans-serif !important;
 }
 
 @media (min-width: 768px) {
@@ -596,6 +649,70 @@ body.layout-root:has(.v03-knowledge-article-root) {
 .v03-landing-root .landing-section-fg {
   position: relative;
   z-index: 10;
+}
+
+/*
+ * Mobile hero — stay in 100vh×100vw. On short viewports shrink title, marker, CTAs
+ * (and tighten gaps) instead of scrolling inside the frame.
+ */
+.v03-landing-root .landing-hero-mobile-fit {
+  --hero-en-title: 52px;
+  --hero-he-title: 40px;
+  --hero-en-body: 16px;
+  --hero-he-body: 18px;
+  --hero-en-gap: 40px;
+  --hero-he-gap: 30px;
+  --hero-btn-h: 46px;
+  --hero-btn-px: 22px;
+  --hero-btn-py: 11px;
+  --hero-btn-text: 16px;
+  --hero-cta-icon: 24.426px;
+  --hero-marker-en-h: 33px;
+  --hero-marker-he-h: 20px;
+  --hero-marker-he-w: 144px;
+  --hero-top-pad: 92px;
+  --hero-eyebrow-en: 13px;
+  --hero-eyebrow-he: 14px;
+}
+
+@media (max-height: 740px) {
+  .v03-landing-root .landing-hero-mobile-fit {
+    --hero-en-title: 42px;
+    --hero-he-title: 34px;
+    --hero-en-gap: 28px;
+    --hero-he-gap: 22px;
+    --hero-btn-h: 42px;
+    --hero-btn-px: 18px;
+    --hero-btn-py: 9px;
+    --hero-btn-text: 15px;
+    --hero-cta-icon: 22px;
+    --hero-marker-en-h: 26px;
+    --hero-marker-he-h: 17px;
+    --hero-marker-he-w: 122px;
+    --hero-top-pad: 76px;
+  }
+}
+
+@media (max-height: 640px) {
+  .v03-landing-root .landing-hero-mobile-fit {
+    --hero-en-title: 34px;
+    --hero-he-title: 28px;
+    --hero-en-body: 14px;
+    --hero-he-body: 15px;
+    --hero-en-gap: 18px;
+    --hero-he-gap: 14px;
+    --hero-btn-h: 38px;
+    --hero-btn-px: 14px;
+    --hero-btn-py: 8px;
+    --hero-btn-text: 13px;
+    --hero-cta-icon: 20px;
+    --hero-marker-en-h: 20px;
+    --hero-marker-he-h: 14px;
+    --hero-marker-he-w: 100px;
+    --hero-top-pad: 64px;
+    --hero-eyebrow-en: 11px;
+    --hero-eyebrow-he: 12px;
+  }
 }
 
 /* Full-bleed on small screens (carousels); gutters from md up */
@@ -640,6 +757,158 @@ body.layout-root:has(.v03-knowledge-article-root) {
   transition: opacity 1.45s cubic-bezier(0.33, 0.1, 0.25, 1);
 }
 
+/*
+  Gradient section titles — bg-clip-text clips glyphs outside the line box.
+  Plus Jakarta (EN) has taller ascenders/descenders than Rubik; pad the paint
+  box so tops (T, h, l) and bottoms (g, q, y) aren’t cropped.
+ */
+.v03-landing-root .landing-gradient-title {
+  overflow: visible;
+  padding-block: 0.1em 0.18em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Hero — image fades first (1.6s); copy cascade overlaps mid-fade (same mobile + desktop) */
+@keyframes landing-hero-bg-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes landing-hero-item-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/*
+  Opacity-only on the glass CTA itself (not a parent) so backdrop-blur
+  fades in with the button instead of popping in after the parent hits opacity 1.
+ */
+@keyframes landing-hero-item-in-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.v03-landing-root .landing-hero-bg {
+  opacity: 0;
+}
+
+/* Start fade only after the active hero img is ready — desktop was missing the fade */
+.v03-landing-root .landing-hero--ready .landing-hero-bg {
+  animation: landing-hero-bg-in 1.6s cubic-bezier(0.33, 0.1, 0.25, 1) forwards;
+}
+
+.v03-landing-root .landing-hero-item {
+  opacity: 0;
+}
+
+.v03-landing-root .landing-hero--ready .landing-hero-item {
+  animation: landing-hero-item-in 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--hero-stagger, 0.35s);
+}
+
+.v03-landing-root .landing-hero-item--1 {
+  --hero-stagger: 0.35s;
+}
+.v03-landing-root .landing-hero-item--2 {
+  --hero-stagger: 0.55s;
+}
+.v03-landing-root .landing-hero-item--3 {
+  --hero-stagger: 0.75s;
+}
+.v03-landing-root .landing-hero-item--4 {
+  --hero-stagger: 0.95s;
+}
+.v03-landing-root .landing-hero--ready .landing-hero-item--4 {
+  animation-name: landing-hero-item-in-fade;
+}
+.v03-landing-root .landing-hero-item--5 {
+  --hero-stagger: 1.15s;
+}
+
+
+/* Introducing mockups — fade when ~25% from top of viewport */
+.v03-landing-root .landing-mockup-fade {
+  opacity: 0;
+  transition: opacity 1.1s cubic-bezier(0.33, 0.1, 0.25, 1);
+  will-change: opacity;
+}
+
+.v03-landing-root .landing-mockup-fade.is-in {
+  opacity: 1;
+}
+
+/* Mobile nav overlay — gentle fade + soft rise (open/close) */
+.landing-mobile-menu {
+  opacity: 0;
+  transform: translate3d(0, -10px, 0);
+  transition:
+    opacity 0.34s cubic-bezier(0.33, 0.1, 0.25, 1),
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.landing-mobile-menu.is-open {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-mobile-menu {
+    transform: none;
+    transition: opacity 0.15s ease-out;
+  }
+}
+
+/* Soft page enter — waitlist / QR / about / articles */
+@keyframes marketing-page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.marketing-page-fade {
+  animation: marketing-page-fade-in 0.55s cubic-bezier(0.33, 0.1, 0.25, 1) both;
+}
+
+/* Fade current marketing screen out before navigation / gate */
+html.marketing-locale-exit .v03-landing-root > *:not([data-marketing-overlay]),
+html.marketing-locale-exit .v03-about-root > *:not([data-marketing-overlay]),
+html.marketing-locale-exit .v03-knowledge-article-root > *:not([data-marketing-overlay]) {
+  opacity: 0 !important;
+  transition: opacity 0.2s ease-out !important;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v03-landing-root .landing-mockup-fade,
+  .marketing-page-fade,
+  html.marketing-locale-exit .v03-landing-root > *:not([data-marketing-overlay]),
+  html.marketing-locale-exit .v03-about-root > *:not([data-marketing-overlay]),
+  html.marketing-locale-exit .v03-knowledge-article-root > *:not([data-marketing-overlay]) {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+  }
+}
+
 .v03-landing-root .landing-step-swap {
   animation: landing-step-swap 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -679,6 +948,13 @@ body.layout-root:has(.v03-knowledge-article-root) {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  .v03-landing-root .landing-hero-bg,
+  .v03-landing-root .landing-hero-item {
+    opacity: 1;
+    transform: none;
+    animation: none;
   }
 
   .v03-landing-root .landing-step-swap {
@@ -888,6 +1164,25 @@ html[dir="rtl"] {
 }
 .hero-wallet-shimmer {
   animation: heroWalletShimmer 3s infinite;
+}
+
+/* Hero scroll cue — finger-point bob down */
+@keyframes landingScrollCueBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+.landing-scroll-cue-bob {
+  animation: landingScrollCueBob 1.35s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-scroll-cue-bob {
+    animation: none;
+  }
 }
 
 /* Reveal on scroll */

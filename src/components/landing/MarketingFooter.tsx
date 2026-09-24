@@ -1,5 +1,9 @@
+'use client';
+
 import Image from 'next/image';
-import { LANDING_ASSETS, LANDING_FOOTER_LINKS } from '@/constants/landing-marketing';
+import { LANDING_ASSETS } from '@/constants/landing-marketing';
+import { getLandingFooterLinks, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { JoystieWordmarkLogo } from '@/components/brand/JoystieWordmarkLogo';
 import { LandingLazyBackground } from '@/components/landing/LandingLazyBackground';
@@ -15,15 +19,20 @@ type MarketingFooterProps = {
 /**
  * Mobile — Figma 15445:6248 (375, rounded-t 45).
  * Desktop — Screen 1786×410 / radius 74; link bar 1580.
- * All copy stays RTL on mobile and desktop.
  */
 export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const footerLinks = getLandingFooterLinks(locale);
+  const isEn = locale === 'en';
+  const dir = isEn ? 'ltr' : 'rtl';
+  const textAlign = isEn ? 'text-left' : 'text-right';
   const light = surface === 'light';
 
   return (
     <footer
       className={`relative px-0 pb-8 pt-0 md:pb-12 md:pt-6 ${light ? 'bg-white' : 'bg-[#05161a]'}`}
-      dir="rtl"
+      dir={dir}
     >
       <div className="mx-auto flex w-full max-w-[1786px] flex-col gap-3 md:gap-10 md:px-[var(--landing-gutter)] lg:px-[67px]">
           <div className="relative min-h-[479px] overflow-hidden rounded-t-[45px] md:min-h-[410px] md:rounded-[74px]">
@@ -84,7 +93,9 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
 
             <JoystieWordmarkLogo
               tone="dark"
-              className="absolute right-6 top-[29px] z-10 h-[58px] w-[117px] md:hidden"
+              className={`absolute top-[29px] z-10 h-[58px] w-[117px] md:hidden ${
+                isEn ? 'left-6' : 'right-6'
+              }`}
               aria-label="Joystie"
             />
 
@@ -92,23 +103,27 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
               Mobile gutters: 24px sides (px-6) so SE/320 never flush to the edge.
               Absolute inset + padding — not fixed 320px width (that fills 320 screens).
             */}
-            <div className="absolute inset-x-0 top-[min(185px,38%)] z-10 flex flex-col items-start gap-8 px-6 text-right sm:gap-10 md:inset-0 md:top-0 md:h-full md:w-full md:max-w-none md:items-start md:justify-center md:gap-8 md:px-12 lg:px-16 xl:px-20">
-              <p className="w-full max-w-[327px] font-rubik text-[40px] font-bold leading-[1.05] tracking-[-1.2px] text-white sm:text-[45px] sm:tracking-[-1.35px] md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
-                <span className="block md:hidden">בונים יחד עם</span>
-                <span className="block md:hidden">הילדים הרגלי</span>
-                <span className="block md:hidden">מסך בריאים</span>
-                <span className="hidden md:block md:whitespace-nowrap">בונים יחד עם הילדים</span>
-                <span className="hidden md:block md:whitespace-nowrap">הרגלי מסך בריאים</span>
+            <div
+              className={`absolute inset-x-0 top-[min(185px,38%)] z-10 flex flex-col items-start gap-8 px-6 sm:gap-10 md:inset-0 md:top-0 md:h-full md:w-full md:max-w-none md:items-start md:justify-center md:gap-8 md:px-12 lg:px-16 xl:px-20 ${textAlign}`}
+            >
+              <p className="w-full font-rubik text-[40px] font-bold leading-[1.05] tracking-[-1.2px] text-white sm:text-[45px] sm:tracking-[-1.35px] md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
+                <span className="block md:hidden">{ui.footerMountainM1}</span>
+                <span className="block md:hidden">{ui.footerMountainM2}</span>
+                {ui.footerMountainM3 ? (
+                  <span className="block md:hidden">{ui.footerMountainM3}</span>
+                ) : null}
+                <span className="hidden md:block md:whitespace-nowrap">{ui.footerMountainD1}</span>
+                <span className="hidden md:block md:whitespace-nowrap">{ui.footerMountainD2}</span>
               </p>
               <MarketingCtaButton
                 href="/onboarding"
-                label="הצטרפות לג׳ויסטי"
+                label={ui.footerCta}
                 size="mobile"
                 className="md:hidden"
               />
               <MarketingCtaButton
                 href="/onboarding"
-                label="הצטרפות לג׳ויסטי"
+                label={ui.footerCta}
                 className="hidden md:inline-flex"
               />
             </div>
@@ -137,12 +152,14 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
                 light ? 'text-[#092125]' : 'text-white'
               }`}
             >
-              {LANDING_FOOTER_LINKS.map((item) => (
+              {footerLinks.map((item) => (
                 <a
                   key={item.label}
                   href={item.href}
-                  className={`shrink-0 whitespace-nowrap transition-colors duration-500 ease-out ${
-                    light ? 'hover:text-[#092125]/70' : 'hover:text-v03-turquoise-300'
+                  className={`shrink-0 whitespace-nowrap transition-colors duration-500 ease-out visited:text-inherit focus:text-inherit active:text-inherit ${
+                    light
+                      ? 'text-[#092125] [@media(hover:hover)_and_(pointer:fine)]:hover:text-[#092125]/70'
+                      : 'text-white [@media(hover:hover)_and_(pointer:fine)]:hover:text-v03-turquoise-300'
                   }`}
                   target="_blank"
                   rel="noreferrer"
@@ -157,7 +174,7 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
               light ? 'text-[#092125]' : 'text-white'
             }`}
           >
-            כל הזכויות שמורות ל- Joystie בע&quot;מ ©
+            {ui.footerCopyright}
           </p>
         </div>
       </div>

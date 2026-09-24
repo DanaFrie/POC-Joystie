@@ -6,7 +6,9 @@ import type { Metadata } from 'next';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'קצת עלינו | Joystie',
+  title: 'About us | Joystie',
+  description:
+    'Attention is the most important resource of the next generation. Meet the Joystie team and our story.',
   alternates: {
     languages: {
       he: '/about',
@@ -15,10 +17,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AboutPage() {
+export default function EnglishAboutPage() {
   return (
     <div className={marketingRubik.variable}>
-      <MarketingAboutPage locale="he" />
+      <MarketingAboutPage locale="en" />
     </div>
   );
 }

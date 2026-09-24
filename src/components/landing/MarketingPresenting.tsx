@@ -1,6 +1,11 @@
+'use client';
+
 import Image from 'next/image';
-import { LANDING_ASSETS, LANDING_FEATURES } from '@/constants/landing-marketing';
+import { LANDING_ASSETS } from '@/constants/landing-marketing';
+import { getLandingFeatures, getLandingUi } from '@/constants/landing-i18n';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
+import { LandingMockupFade } from '@/components/landing/LandingMockupFade';
 import {
   LandingFeatureEllipse,
   LandingFeatureWave,
@@ -40,15 +45,19 @@ const MOBILE_MOCKUP_FRAME_H = 435;
 /** Phone x inside the 327 frame — (327 − 210) / 2 ≈ 58. */
 const MOBILE_PHONE_LEFT = 58;
 const MOBILE_PHONE_W = 210;
-
-/** Visible phone image — enlarge mobile mockups by 15%. */
+/** Visible phone image — matches main (smaller than 210 slot → space above badge). */
 const MOBILE_IMAGE_MAX_PX = Math.round(149.9 * 1.15 * 10) / 10; // 172.4
 
 export function MarketingPresenting() {
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const features = getLandingFeatures(locale);
+  const isEn = locale === 'en';
+
   return (
     <section
       className="landing-section landing-gutter relative pt-10 pb-12 md:py-24 lg:pt-0"
-      dir="rtl"
+      dir={isEn ? 'ltr' : 'rtl'}
     >
       {/* Soft seam from stats — mobile only */}
       <div
@@ -56,10 +65,10 @@ export function MarketingPresenting() {
         aria-hidden
       />
       <div className="landing-section-fg relative mx-auto flex max-w-[870px] flex-col items-center gap-10 pt-2 md:gap-[60px] md:pt-0 lg:gap-[104px]">
-        {/* Menu "מה זה ג׳ויסטי?" lands here — גאים להציג בפניכם */}
+        {/* Menu "מה זה ג׳ויסטי?" lands here — presenting prefix */}
         <LandingReveal
           id="what-is-joystie"
-          className="flex w-full max-w-[358px] scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 md:pt-10 lg:scroll-mt-36 lg:pt-14"
+          className="flex w-full scroll-mt-[102px] items-center justify-center gap-3 px-2 md:max-w-none md:scroll-mt-32 md:gap-9 md:px-0 md:pt-10 lg:scroll-mt-36 lg:pt-14"
         >
           <div
             className="h-px flex-1 bg-gradient-to-r from-transparent via-white/25 to-white/10"
@@ -67,7 +76,7 @@ export function MarketingPresenting() {
           />
           <div className="flex flex-col items-center gap-1 text-center">
             <p className="font-rubik text-[15px] font-light tracking-[-0.4px] text-white md:text-[30px] md:tracking-[-0.75px]">
-              גאים להציג בפניכם את
+              {ui.presentingPrefix}
             </p>
             <Image
               src={LANDING_ASSETS.presentingLogo}
@@ -85,7 +94,7 @@ export function MarketingPresenting() {
         </LandingReveal>
 
         <div className="flex w-full flex-col items-center gap-[100px] md:gap-[100px] lg:gap-[160px]">
-        {LANDING_FEATURES.map((feature, index) => {
+        {features.map((feature, index) => {
           const isSection1 = index === 0;
           const isSection2 = index === 1;
           const isSection3 = index === 2;
@@ -96,17 +105,19 @@ export function MarketingPresenting() {
             <article
               key={feature.badge}
               className={`relative grid w-full max-w-[327px] items-start gap-2.5 overflow-visible md:max-w-none md:gap-12 ${
-                /* gap-2.5 = 10px mobile — half of previous 20px mockup→badge gap */
+                /* gap-2.5 = 10px mobile — matches main mockup→badge gap */
                 useAbsoluteDesktop
                   ? `lg:block ${isSection2 ? 'lg:min-h-[657px]' : 'lg:min-h-[654px]'}`
                   : feature.reverse
-                    ? 'lg:grid-cols-[1fr_minmax(0,320px)] lg:items-center'
-                    : 'lg:grid-cols-[minmax(0,320px)_1fr]'
+                    ? 'lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center'
+                    : 'lg:grid-cols-[320px_minmax(0,1fr)]'
               } ${isSection1 ? 'lg:min-h-[665px]' : ''}`}
             >
-              {isSection1 ? <FeatureEllipse left={423} top={249} borderRadius={453.257} /> : null}
-              {isSection2 ? <FeatureEllipse left={60} top={150} /> : null}
-              {isSection3 ? <FeatureEllipse left={431} top={256} /> : null}
+              {isSection1 ? (
+                <FeatureEllipse left={isEn ? 112 : 423} top={249} borderRadius={453.257} />
+              ) : null}
+              {isSection2 ? <FeatureEllipse left={isEn ? 463 : 60} top={150} /> : null}
+              {isSection3 ? <FeatureEllipse left={isEn ? 112 : 431} top={256} /> : null}
 
               {/* Desktop dots — 1917×~652 (asset aspect; keeps dots round) */}
               <LandingFeatureWave
@@ -124,11 +135,15 @@ export function MarketingPresenting() {
                 Mobile: slot keeps Figma 210×435 footprint; image is smaller inside.
               */}
               <div
-                className={`relative z-10 order-1 mx-auto w-full max-w-[327px] overflow-visible md:max-w-[320px] ${
+                className={`relative z-10 order-1 mx-auto w-full max-w-[327px] overflow-visible md:w-[320px] md:max-w-[320px] md:shrink-0 ${
                   isSection2
-                    ? 'lg:absolute lg:left-0 lg:top-0 lg:mx-0'
+                    ? isEn
+                      ? 'lg:absolute lg:right-0 lg:top-[19px] lg:mx-0'
+                      : 'lg:absolute lg:left-0 lg:top-0 lg:mx-0'
                     : isSection3
-                      ? 'lg:absolute lg:right-0 lg:top-[-34px] lg:mx-0'
+                      ? isEn
+                        ? 'lg:absolute lg:left-0 lg:top-[-34px] lg:mx-0'
+                        : 'lg:absolute lg:right-0 lg:top-[-34px] lg:mx-0'
                       : feature.reverse
                         ? 'lg:order-2'
                         : 'lg:order-1'
@@ -141,7 +156,7 @@ export function MarketingPresenting() {
 
                 <LandingReveal delayMs={180 + index * 40} className="relative z-[1] overflow-visible">
                   <LandingFeatureEllipse showDesktop={!useArticleEllipse} />
-                  <div className="relative mx-auto w-full overflow-visible md:aspect-[320/663] md:max-w-[320px] md:overflow-hidden">
+                  <LandingMockupFade className="relative mx-auto w-full overflow-visible md:h-[663px] md:w-[320px] md:overflow-hidden">
                     {/*
                       Mobile mockup frame — Figma 327×435, gap-5 (20px) to badge below.
                       Phone @ left 58 / width 210; fade @ top 268 × full 327 width.
@@ -173,14 +188,14 @@ export function MarketingPresenting() {
                             priority={index === 0}
                             decoding="async"
                             className="object-contain object-center"
-                            sizes="175px"
+                            sizes="172px"
                           />
                         </div>
                       </div>
                     </div>
 
-                    {/* Desktop phone */}
-                    <div className="relative mx-auto hidden aspect-[320/663] w-full max-w-[320px] overflow-hidden md:block">
+                    {/* Desktop phone — fixed 320×663 for every feature (never shrink with grid) */}
+                    <div className="relative mx-auto hidden h-[663px] w-[320px] overflow-hidden md:block">
                       <Image
                         src={feature.image}
                         alt={feature.imageAlt}
@@ -191,39 +206,69 @@ export function MarketingPresenting() {
                         sizes="320px"
                       />
                     </div>
-                  </div>
+                  </LandingMockupFade>
                   {isSection1 ? <LandingFeatureDonex /> : null}
                   {isSection2 ? <LandingFeatureDonexConvert /> : null}
-                  {isSection3 ? <LandingFeatureDonexCelebrate /> : null}
+                  {isSection3 && !isEn ? <LandingFeatureDonexCelebrate /> : null}
                 </LandingReveal>
               </div>
 
+              {isSection3 && isEn ? <LandingFeatureDonexCelebrate /> : null}
+
               <LandingReveal
                 delayMs={80}
-                className={`relative z-10 order-2 flex w-full flex-col gap-4 text-center lg:gap-[30px] lg:text-right ${
-                  isSection2
-                    ? 'lg:absolute lg:left-[439px] lg:top-[279px] lg:order-none lg:w-[431px]'
-                    : isSection3
-                      ? 'lg:absolute lg:left-0 lg:top-[89px] lg:order-none lg:w-[431px] lg:gap-6'
-                      : feature.reverse
-                        ? 'lg:order-1'
-                        : 'lg:order-2'
-                } ${isSection1 ? 'lg:pt-[120px]' : ''}`}
+                className={`relative z-10 order-2 flex w-full flex-col gap-4 ${
+                  isEn
+                    ? 'items-center text-center lg:text-left'
+                    : 'items-center text-center lg:items-start lg:text-right'
+                } ${
+                  isSection1
+                    ? isEn
+                      ? 'lg:min-w-0 lg:max-w-[560px] lg:w-full lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
+                      : 'lg:mr-0 lg:ml-auto lg:w-[431px] lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
+                    : isSection2
+                      ? isEn
+                        ? 'lg:absolute lg:left-0 lg:top-[236px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
+                        : 'lg:absolute lg:left-[439px] lg:top-[279px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
+                      : isSection3
+                        ? isEn
+                          ? 'lg:absolute lg:left-[439px] lg:top-[25px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
+                          : 'lg:absolute lg:left-0 lg:top-[89px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
+                        : feature.reverse
+                          ? 'lg:order-1 lg:gap-[30px]'
+                          : 'lg:order-2 lg:gap-[30px]'
+                }`}
               >
                 <div className="flex w-full justify-center lg:justify-start">
-                  <div className="inline-flex rounded-full bg-white/20 px-3 py-1.5 lg:px-4 lg:py-2">
+                  <div className="inline-flex items-center justify-center gap-2.5 rounded-full bg-white/20 px-3 py-1.5">
                     <span className="font-rubik text-[13px] tracking-[-0.24px] text-white md:text-base">
                       {feature.badge}
                     </span>
                   </div>
                 </div>
-                <h2 className="font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-white md:text-[36px] lg:text-[45px] lg:tracking-[-1.35px]">
-                  {feature.titleBefore}
-                  {'breakBeforeAccent' in feature && feature.breakBeforeAccent ? <br /> : null}
-                  <span className="text-v03-turquoise-300">{feature.titleAccent}</span>
+                <h2
+                  className={`w-full font-rubik text-[28px] font-bold tracking-[-0.9px] text-white md:text-[36px] lg:text-[45px] lg:tracking-[-1.35px] ${
+                    'breakBeforeAccent' in feature && feature.breakBeforeAccent
+                      ? 'leading-[1.02]'
+                      : 'leading-[1.15]'
+                  }`}
+                >
+                  {'breakBeforeAccent' in feature && feature.breakBeforeAccent ? (
+                    <>
+                      <span className="block lg:whitespace-nowrap">{feature.titleBefore.trimEnd()}</span>
+                      <span className="block text-v03-turquoise-300 lg:whitespace-nowrap">
+                        {feature.titleAccent}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {feature.titleBefore}
+                      <span className="text-v03-turquoise-300">{feature.titleAccent}</span>
+                    </>
+                  )}
                 </h2>
                 {feature.lead ? (
-                  <p className="font-rubik text-base font-semibold text-white md:text-[20px] lg:text-lg">
+                  <p className="w-full font-rubik text-base font-semibold text-white md:text-[20px] lg:text-lg">
                     {feature.lead}
                   </p>
                 ) : null}
@@ -237,7 +282,7 @@ export function MarketingPresenting() {
                     style={{ transform: 'rotate(-90deg)' }}
                   />
                 </div>
-                <p className="font-rubik text-sm leading-[1.33] tracking-[-0.3px] text-white/70 md:text-[20px] lg:text-base">
+                <p className="w-full font-rubik text-sm leading-[1.33] tracking-[-0.3px] text-white/70 md:text-[20px] lg:text-base">
                   {feature.body}
                 </p>
               </LandingReveal>

@@ -2,10 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LandingStatsGlow } from '@/components/landing/LandingDecor';
-
-const HIGHLIGHT = '5 שעות ביום.';
-const LINE1 = 'זה הזמן הממוצע שילדים במסך בשנת 2026, וזה רק הולך וגדל.';
-const LINE2 = 'הגיע הזמן שנחזיר את הבחירה לידיים שלנו ושל הילדים שלנו.';
+import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
+import { getLandingUi } from '@/constants/landing-i18n';
 
 /** Scroll distance while copy stays pinned at 100svh (mobile / desktop). */
 const SCRUB_VH_MOBILE = 200;
@@ -56,9 +54,16 @@ function ReadingWords({
  * Ellipse uses pre-blurred SVG (no CSS filter:blur) so iOS Safari stays responsive.
  */
 export function MarketingStats() {
-  const highlightWords = useMemo(() => wordsOf(HIGHLIGHT), []);
-  const line1Words = useMemo(() => wordsOf(LINE1), []);
-  const line2Words = useMemo(() => wordsOf(LINE2), []);
+  const locale = useLandingLocale();
+  const ui = getLandingUi(locale);
+  const isEn = locale === 'en';
+  const highlight = ui.statsHighlight;
+  const line1 = ui.statsLine1;
+  const line2 = ui.statsLine2;
+
+  const highlightWords = useMemo(() => wordsOf(highlight), [highlight]);
+  const line1Words = useMemo(() => wordsOf(line1), [line1]);
+  const line2Words = useMemo(() => wordsOf(line2), [line2]);
 
   const totalWords = highlightWords.length + line1Words.length + line2Words.length;
 
@@ -172,12 +177,13 @@ export function MarketingStats() {
             : 'landing-gutter flex min-h-[100svh] w-full flex-col justify-center py-16 md:min-h-0 md:pt-[90px] md:pb-16 lg:pb-[298px]'
         }
       >
-        <div className="relative mx-auto w-full max-w-[341px] overflow-visible text-center md:max-w-[1200px] md:min-h-[308px]">
+        <div className="relative mx-auto w-full overflow-visible text-center md:max-w-[1200px] md:min-h-[308px]">
           <LandingStatsGlow />
           <div className="landing-section-fg relative z-10">
             <div
               className="relative mx-auto max-w-[850px] text-center font-rubik text-[24px] font-bold leading-[1.2] tracking-[-0.72px] md:pt-[26px] md:text-[50px] md:leading-[1.05] md:tracking-[-1.5px]"
-              aria-label={`${HIGHLIGHT} ${LINE1} ${LINE2}`}
+              dir={isEn ? 'ltr' : 'rtl'}
+              aria-label={`${highlight} ${line1} ${line2}`}
             >
               <p className="relative z-10 mx-auto inline-block isolate">
                 <span className="relative inline-block">
@@ -185,7 +191,7 @@ export function MarketingStats() {
                     className="absolute inset-0 z-0 bg-[#8D00FF]"
                     style={{
                       transform: `scaleX(${highlightFill})`,
-                      transformOrigin: 'right center',
+                      transformOrigin: isEn ? 'left center' : 'right center',
                     }}
                     aria-hidden
                   />

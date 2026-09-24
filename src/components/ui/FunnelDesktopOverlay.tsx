@@ -10,6 +10,9 @@ type FunnelDesktopOverlayProps = {
    * `fixed` — full-viewport gate (dashboard and other non-funnel shells).
    */
   position?: 'absolute' | 'fixed';
+  /** Path encoded in the QR (defaults to current `/login` or `/onboarding`). */
+  scanPath?: string;
+  homeHref?: string;
 };
 
 const HEADLINE = 'אנחנו זמינים במובייל,\nמחכים לכם שם :)';
@@ -48,20 +51,26 @@ function HomeChevron() {
  */
 export function FunnelDesktopOverlay({
   position = 'absolute',
+  scanPath,
+  homeHref = '/',
 }: FunnelDesktopOverlayProps) {
   const [scanUrl, setScanUrl] = useState('https://joystie.com/onboarding');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const origin = window.location.origin || 'https://joystie.com';
-    setScanUrl(`${origin}/onboarding`);
-  }, []);
+    const path =
+      scanPath ??
+      (window.location.pathname.startsWith('/login') ? '/login' : '/onboarding');
+    setScanUrl(`${origin}${path}`);
+  }, [scanPath]);
 
   return (
     <div
+      data-marketing-overlay
       className={`${
         position === 'fixed' ? 'fixed' : 'absolute'
-      } inset-0 z-50 overflow-hidden bg-[#05161A]`}
+      } inset-0 z-50 overflow-hidden bg-[#05161A] marketing-page-fade`}
       role="alert"
       dir="rtl"
       aria-live="polite"
@@ -96,7 +105,7 @@ export function FunnelDesktopOverlay({
             </div>
 
             <Link
-              href="/"
+              href={homeHref}
               className="inline-flex h-[46px] flex-row items-center justify-center gap-3 rounded-[16px] px-[22px] py-[11px] outline outline-1 outline-white transition hover:bg-white/10"
             >
               {/* RTL: first child = right → chevron on the right, pointing right */}
@@ -139,7 +148,7 @@ export function FunnelDesktopOverlay({
               }}
               aria-hidden
             >
-              <p className="text-center font-rubik text-[clamp(18px,2.2vw,32px)] font-bold leading-[1.17] text-white">
+              <p className="whitespace-nowrap text-center font-rubik text-[clamp(18px,2.2vw,32px)] font-bold leading-[1.17] text-white">
                 {SCAN_LABEL}
               </p>
             </div>

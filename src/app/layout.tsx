@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Suspense } from 'react'
-import { appRubik } from '@/lib/fonts'
+import { appRubik, plusJakarta } from '@/lib/fonts'
 import { isMetaPixelEnabled, META_PIXEL_ID } from '@/constants/meta-pixel'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
@@ -15,6 +15,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: '/favicon.ico?v=3', type: 'image/x-icon' }],
   },
+  // Next 13.4 expects viewport on metadata (separate `export const viewport` is Next 14+).
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  },
 }
 
 export default function RootLayout({
@@ -23,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={`layout-root ${appRubik.variable}`}>
+    <html lang="he" dir="rtl" className={`layout-root ${appRubik.variable} ${plusJakarta.variable}`}>
       <body className="layout-root font-rubik min-h-screen overflow-y-auto overflow-x-hidden">
         {isMetaPixelEnabled() ? (
           <Script id="meta-pixel-init" strategy="afterInteractive">

@@ -1,14 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
-import { LANDING_ASSETS, LANDING_NAV_LINKS } from '@/constants/landing-marketing';
+import { LANDING_ASSETS } from '@/constants/landing-marketing';
+import { getLandingNavLinks, getLandingUi } from '@/constants/landing-i18n';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { LandingMenuGlow } from '@/components/landing/LandingDecor';
 import { scrollLandingToSection } from '@/components/landing/landingStatsStory';
+import {
+  landingHomePath,
+  landingPathForLocale,
+  useLandingLocale,
+} from '@/components/landing/LandingLocaleContext';
+import { useMarketingLocaleSwitch } from '@/components/landing/useMarketingLocaleSwitch';
+import { useEnglishAppGateIntercept } from '@/components/landing/EnglishAppGateContext';
 
 /** Figma chrome heights removed permanently; remaining Y keeps same relative spacing. */
 const MOBILE_STATUS_BAR = 44;
@@ -30,9 +39,9 @@ type MarketingNavProps = {
 };
 
 /** Mobile logo — Figma 15461:4448 Joystie wordmark + turquoise swoosh */
-function MobileNavLogo({ onClick }: { onClick?: () => void }) {
+function MobileNavLogo({ href = '/', onClick }: { href?: string; onClick?: () => void }) {
   return (
-    <Link href="/" className="relative shrink-0" aria-label="Joystie" onClick={onClick}>
+    <Link href={href} className="relative shrink-0" aria-label="Joystie" onClick={onClick}>
       <span className="relative block h-[32px] w-[65px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -59,12 +68,32 @@ export function MarketingNav({
   chrome = 'onDark',
 }: MarketingNavProps = {}) {
   const [open, setOpen] = useState(false);
+  /** Keep menu mounted through exit so close can fade gently. */
+  const [menuMounted, setMenuMounted] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
   const [showMobileSolidBar, setShowMobileSolidBar] = useState(false);
+  const [langMenuPos, setLangMenuPos] = useState<{ top: number; left?: number; right?: number } | null>(
+    null,
+  );
   const router = useRouter();
+  const locale = useLandingLocale();
+  const pathname = usePathname();
+  const ui = getLandingUi(locale);
+  const navLinks = getLandingNavLinks(locale);
+  const homePath = landingHomePath(locale);
+  const isEn = locale === 'en';
+  const heLocaleHref = landingPathForLocale('he', pathname);
+  const enLocaleHref = landingPathForLocale('en', pathname);
+  const switchLocale = useMarketingLocaleSwitch(locale);
+  const joinGate = useEnglishAppGateIntercept('join');
+  const loginGate = useEnglishAppGateIntercept('login');
   const onLight = chrome === 'onLight';
   /** Section id to scroll after mobile menu unlock (iOS jumps to hero if we scroll while locked). */
   const pendingSectionIdRef = useRef<string | null>(null);
   const menuScrollYRef = useRef(0);
+  const langTriggerRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
 
   /* Mobile: transparent on the hero, then dark/translucent from stats onward. */
   const barGlass = showMobileSolidBar
@@ -79,12 +108,12 @@ export function MarketingNav({
   const resolveHref = useCallback(
     (href: string) => {
       if (href.startsWith('/')) return href;
-      if (!homeHashPrefix) return href;
-      const base = homeHashPrefix.replace(/\/$/, '');
-      // href is "#section" → "/#section"
+      const prefix = homeHashPrefix ?? (locale === 'en' ? '/en' : undefined);
+      if (!prefix) return href;
+      const base = prefix.replace(/\/$/, '');
       return `${base}/${href}`;
     },
-    [homeHashPrefix],
+    [homeHashPrefix, locale],
   );
 
   const goTo = useCallback(
@@ -108,14 +137,14 @@ export function MarketingNav({
         return;
       }
 
-      const onLanding =
-        typeof window !== 'undefined' &&
-        (window.location.pathname === '/' || window.location.pathname === '');
+      const path =
+        typeof window !== 'undefined' ? window.location.pathname.replace(/\/$/, '') || '/' : '/';
+      const onLanding = path === '/' || path === '/en';
 
       if (onLanding) {
-        window.history.pushState(null, '', `/#${id}`);
+        const base = path === '/en' ? '/en' : '';
+        window.history.pushState(null, '', `${base}/#${id}`);
         if (open) {
-          // Scroll only after menu unlock restores scrollY (mobile / iOS).
           pendingSectionIdRef.current = id;
           setOpen(false);
           return;
@@ -124,20 +153,44 @@ export function MarketingNav({
         return;
       }
 
-      // From /about, /knowledge/*, etc.
       pendingSectionIdRef.current = null;
       setOpen(false);
-      router.push(`/#${id}`);
+      router.push(locale === 'en' ? `/en/#${id}` : `/#${id}`);
     },
-    [open, resolveHref, router],
+    [locale, open, resolveHref, router],
   );
+
+  useEffect(() => {
+    if (!langOpen) return;
+    try {
+      router.prefetch(heLocaleHref);
+      router.prefetch(enLocaleHref);
+    } catch {
+      /* ignore */
+    }
+  }, [langOpen, heLocaleHref, enLocaleHref, router]);
+
+  /* Soft enter/exit — mount while open, stay mounted until fade-out finishes. */
+  useEffect(() => {
+    if (open) {
+      setMenuMounted(true);
+      const id = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setMenuVisible(true));
+      });
+      return () => window.cancelAnimationFrame(id);
+    }
+    setMenuVisible(false);
+    const t = window.setTimeout(() => setMenuMounted(false), 380);
+    return () => window.clearTimeout(t);
+  }, [open]);
 
   /*
    * Mobile menu scroll lock — position:fixed + restore scrollY.
    * Plain overflow:hidden on iOS jumps to top (hero) when unlocking.
+   * Lock for the full mount lifetime (including exit fade).
    */
   useEffect(() => {
-    if (!open) return;
+    if (!menuMounted) return;
 
     const html = document.documentElement;
     const body = document.body;
@@ -183,7 +236,54 @@ export function MarketingNav({
         });
       });
     };
-  }, [open]);
+  }, [menuMounted]);
+
+  useLayoutEffect(() => {
+    if (!langOpen) {
+      setLangMenuPos(null);
+      return;
+    }
+    const sync = () => {
+      const el = langTriggerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      /* Match prior absolute top-[43px] from trigger top */
+      setLangMenuPos(
+        isEn
+          ? { top: rect.top + 43, right: window.innerWidth - rect.right }
+          : { top: rect.top + 43, left: rect.left },
+      );
+    };
+    sync();
+    window.addEventListener('resize', sync);
+    window.addEventListener('scroll', sync, true);
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('scroll', sync, true);
+    };
+  }, [langOpen, isEn]);
+
+  useEffect(() => {
+    if (!langOpen) return;
+    const onPointer = (e: MouseEvent | TouchEvent) => {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (langTriggerRef.current?.contains(target)) return;
+      if (langMenuRef.current?.contains(target)) return;
+      setLangOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLangOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [langOpen]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -219,77 +319,135 @@ export function MarketingNav({
     <header
       className="pointer-events-none fixed inset-x-0 top-0 z-50 px-0 pt-[env(safe-area-inset-top)] lg:px-[var(--landing-gutter)] lg:pt-4"
       style={{ ['--landing-chrome-mobile' as string]: `${MOBILE_STATUS_BAR}px` }}
-      dir="rtl"
+      dir={isEn ? 'ltr' : 'rtl'}
     >
-      {!open ? (
+      {!menuMounted ? (
         <nav
           className={`pointer-events-auto flex h-[58px] w-full items-center justify-between px-6 lg:hidden ${barGlass}`}
-          aria-label="ניווט ראשי"
+          aria-label={ui.mainNav}
         >
-          {/* RTL: logo on the right (start) — Figma 15461:4447 */}
-          <MobileNavLogo />
+          <MobileNavLogo href={homePath} />
 
-          {/* RTL: actions on the left (end) — Figma 15461:4442 menu | sep | user */}
           <div className="flex items-center gap-4" dir="ltr">
-            <button
-              type="button"
-              className="flex size-6 shrink-0 items-center justify-center text-white"
-              aria-label="פתח תפריט"
-              onClick={() => setOpen(true)}
-            >
-              {/* Inline strokes — Figma menu-01.svg as <img> often fails to paint */}
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="size-6"
-                aria-hidden
-              >
-                <path
-                  d="M4 5H20"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M4 12H20"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M4 19H20"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <div
-              className="h-3.5 w-px shrink-0 bg-[#518ED4]"
-              aria-hidden
-            />
-            <Link
-              href="/login"
-              className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)]"
-              style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
-              aria-label="התחברות"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={LANDING_ASSETS.navUserIcon}
-                alt=""
-                width={17.5}
-                height={17.5}
-                className="block h-[17.5px] w-[17.5px] max-w-none"
-                draggable={false}
-              />
-            </Link>
+            {isEn ? (
+              <>
+                <Link
+                  href={loginGate.href}
+                  onClick={loginGate.onClick}
+                  className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
+                  style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
+                  aria-label={ui.login}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={LANDING_ASSETS.navUserIcon}
+                    alt=""
+                    width={17.5}
+                    height={17.5}
+                    className="block h-[17.5px] w-[17.5px] max-w-none"
+                    draggable={false}
+                  />
+                </Link>
+                <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
+                <button
+                  type="button"
+                  className="flex size-6 shrink-0 items-center justify-center text-white"
+                  aria-label={ui.openMenu}
+                  onClick={() => setOpen(true)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="size-6"
+                    aria-hidden
+                  >
+                    <path
+                      d="M4 5H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M4 12H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M4 19H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="flex size-6 shrink-0 items-center justify-center text-white"
+                  aria-label={ui.openMenu}
+                  onClick={() => setOpen(true)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    className="size-6"
+                    aria-hidden
+                  >
+                    <path
+                      d="M4 5H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M4 12H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M4 19H20"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
+                <Link
+                  href={loginGate.href}
+                  onClick={loginGate.onClick}
+                  className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
+                  style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
+                  aria-label={ui.login}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={LANDING_ASSETS.navUserIcon}
+                    alt=""
+                    width={17.5}
+                    height={17.5}
+                    className="block h-[17.5px] w-[17.5px] max-w-none"
+                    draggable={false}
+                  />
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       ) : null}
@@ -297,11 +455,11 @@ export function MarketingNav({
       {/* Desktop: logo + links on the right (start), CTAs on the left (end) */}
       <nav
         className={`pointer-events-auto mx-auto hidden max-w-[1200px] items-center justify-between gap-3 rounded-[25px] px-6 py-3 lg:flex lg:pl-[15px] lg:pr-[25px] ${desktopGlass}`}
-        aria-label="ניווט ראשי"
+        aria-label={ui.mainNav}
         data-chrome-offset={DESKTOP_BROWSER_CHROME}
       >
         <div className="flex flex-1 items-center justify-start gap-10">
-          <Link href="/" className="shrink-0" aria-label="Joystie">
+          <Link href={homePath} className="shrink-0" aria-label="Joystie">
             <Image
               src={LANDING_ASSETS.logoWordmark}
               alt="Joystie"
@@ -312,7 +470,7 @@ export function MarketingNav({
             />
           </Link>
           <div className="flex items-center gap-[30px] font-rubik text-base tracking-[-0.32px] text-[#f8f8f8]">
-            {LANDING_NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
               const isActive = activeHref === link.href;
               return (
                 <a
@@ -333,20 +491,131 @@ export function MarketingNav({
           </div>
         </div>
 
-        {/* Figma 15329:17364 — CTA pair: gap 8px, h 46, rounded 16, px 22 py 11 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+          <div className="relative" ref={langTriggerRef}>
+            <button
+              type="button"
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center text-white/90 transition-opacity hover:opacity-70"
+              aria-label={ui.language}
+              aria-expanded={langOpen}
+              aria-haspopup="menu"
+              onClick={() => setLangOpen((v) => !v)}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={LANDING_ASSETS.globeIconDesktop}
+                alt=""
+                width={20}
+                height={20}
+                className="h-5 w-5"
+                draggable={false}
+              />
+            </button>
+          </div>
+          {langOpen && langMenuPos && typeof document !== 'undefined'
+            ? createPortal(
+                <div
+                  ref={langMenuRef}
+                  role="menu"
+                  aria-label={ui.language}
+                  dir={isEn ? 'ltr' : 'rtl'}
+                  style={{
+                    position: 'fixed',
+                    top: langMenuPos.top,
+                    left: langMenuPos.left,
+                    right: langMenuPos.right,
+                    width: 153,
+                    minWidth: 153,
+                    maxWidth: 153,
+                    borderRadius: 24,
+                    border: '1px solid #FFF',
+                    background: 'rgba(120, 175, 215, 0.28)',
+                    backdropFilter: 'blur(15px)',
+                    WebkitBackdropFilter: 'blur(15px)',
+                    boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+                    zIndex: 80,
+                    overflow: 'hidden',
+                    pointerEvents: 'auto',
+                  }}
+                  className={`flex flex-col ${isEn ? 'marketing-en-sf' : ''}`}
+                >
+                  {(isEn
+                    ? ([
+                        {
+                          href: enLocaleHref,
+                          locale: 'en' as const,
+                          label: ui.langEnglish,
+                          font: 'font-sf',
+                        },
+                        {
+                          href: heLocaleHref,
+                          locale: 'he' as const,
+                          label: ui.langHebrew,
+                          font: 'font-rubik',
+                        },
+                      ] as const)
+                    : ([
+                        {
+                          href: heLocaleHref,
+                          locale: 'he' as const,
+                          label: ui.langHebrew,
+                          font: 'font-rubik',
+                        },
+                        {
+                          href: enLocaleHref,
+                          locale: 'en' as const,
+                          label: ui.langEnglish,
+                          font: 'font-sf',
+                        },
+                      ] as const)
+                  ).map((opt, i, arr) => (
+                    <Link
+                      key={opt.locale}
+                      href={opt.href}
+                      role="menuitem"
+                      prefetch
+                      aria-current={locale === opt.locale ? 'true' : undefined}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setLangOpen(false);
+                        switchLocale(opt.href, opt.locale);
+                      }}
+                      onMouseEnter={() => {
+                        try {
+                          router.prefetch(opt.href);
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
+                      className={`flex w-full items-center px-4 py-3 text-[15px] font-bold leading-none tracking-[-0.3px] text-white transition-colors duration-200 ease-out hover:bg-white/15 ${
+                        opt.font
+                      } ${isEn ? 'justify-start text-left' : 'justify-start text-right'} ${
+                        i < arr.length - 1 ? 'border-b border-white/35' : ''
+                      } ${i === 0 ? 'rounded-t-[24px]' : ''} ${
+                        i === arr.length - 1 ? 'rounded-b-[24px]' : ''
+                      }`}
+                    >
+                      {opt.label}
+                    </Link>
+                  ))}
+                </div>,
+                document.body,
+              )
+            : null}
           <Link
-            href="/login"
-            className="inline-flex h-[46px] w-[135px] items-center justify-center rounded-[16px] border border-white px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
+            href={loginGate.href}
+            onClick={loginGate.onClick}
+            className="inline-flex h-[46px] items-center justify-center gap-3 rounded-[16px] border border-white px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-white transition-colors duration-500 ease-out hover:bg-white/10"
           >
-            התחברות
+            {ui.login}
           </Link>
           <Link
-            href="/onboarding"
-            dir="rtl"
+            href={joinGate.href}
+            onClick={joinGate.onClick}
+            dir={isEn ? 'ltr' : 'rtl'}
             className="inline-flex h-[46px] flex-row items-center justify-center gap-3 rounded-[16px] bg-v03-turquoise-300 px-[22px] py-[11px] font-rubik text-[16px] font-bold leading-[1.28] tracking-[-0.32px] text-[#282828] transition-[filter,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:brightness-105 hover:-translate-y-0.5"
           >
-            להצטרפות
+            {ui.join}
             <span className="relative flex h-5 w-[15px] shrink-0 items-center justify-center" aria-hidden>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -354,7 +623,7 @@ export function MarketingNav({
                 height="20"
                 viewBox="0 0 15 20"
                 fill="none"
-                className="h-5 w-[15px]"
+                className={`h-5 w-[15px] ${isEn ? 'rotate-180' : ''}`}
               >
                 <path
                   d="M9.5 14.5L5.5 10.5L9.5 6.5"
@@ -369,39 +638,104 @@ export function MarketingNav({
         </div>
       </nav>
 
-      {open ? (
+      {menuMounted ? (
         <div
-          className="pointer-events-auto fixed inset-0 z-[60] flex h-[100dvh] w-[100vw] max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden bg-[#05161a] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className={`landing-mobile-menu pointer-events-auto fixed inset-0 z-[60] flex h-[100dvh] w-[100vw] max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden bg-[#05161a] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]${
+            menuVisible ? ' is-open' : ''
+          }`}
           role="dialog"
           aria-modal="true"
-          aria-label="תפריט"
+          aria-label={ui.menuDialog}
         >
           <LandingMenuGlow />
 
-          {/* Figma 15461:5021 — 58px bar, px 24 */}
           <div className="relative z-10 flex h-[58px] w-full shrink-0 items-center justify-between px-6">
-            <MobileNavLogo onClick={() => setOpen(false)} />
-            <button
-              type="button"
-              className="rounded-lg p-1 text-white"
-              aria-label="סגור תפריט"
-              onClick={() => setOpen(false)}
-            >
-              <X size={24} strokeWidth={2} />
-            </button>
+            <MobileNavLogo href={homePath} onClick={() => setOpen(false)} />
+            <div className="flex items-center gap-4" dir="ltr">
+              {isEn ? (
+                <>
+                  <Link
+                    href={loginGate.href}
+                    onClick={(event) => {
+                      loginGate.onClick?.(event);
+                      setOpen(false);
+                    }}
+                    className="relative z-10 flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
+                    style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
+                    aria-label={ui.login}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={LANDING_ASSETS.navUserIcon}
+                      alt=""
+                      width={17.5}
+                      height={17.5}
+                      className="block h-[17.5px] w-[17.5px] max-w-none"
+                      draggable={false}
+                    />
+                  </Link>
+                  <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
+                  <button
+                    type="button"
+                    className="rounded-lg p-1 text-white"
+                    aria-label={ui.closeMenu}
+                    onClick={() => setOpen(false)}
+                  >
+                    <X size={24} strokeWidth={2} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-lg p-1 text-white"
+                    aria-label={ui.closeMenu}
+                    onClick={() => setOpen(false)}
+                  >
+                    <X size={24} strokeWidth={2} />
+                  </button>
+                  <div className="h-3.5 w-px shrink-0 bg-[#518ED4]" aria-hidden />
+                  <Link
+                    href={loginGate.href}
+                    onClick={(event) => {
+                      loginGate.onClick?.(event);
+                      setOpen(false);
+                    }}
+                    className="relative z-10 flex shrink-0 items-center gap-2"
+                    aria-label={ui.login}
+                  >
+                    <span
+                      className="flex shrink-0 items-center justify-center rounded-full bg-[rgba(255,255,255,0.3)] backdrop-blur-[11.67px]"
+                      style={{ width: 28, height: 28, minWidth: 28, minHeight: 28 }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={LANDING_ASSETS.navUserIcon}
+                        alt=""
+                        width={17.5}
+                        height={17.5}
+                        className="block h-[17.5px] w-[17.5px] max-w-none"
+                        draggable={false}
+                      />
+                    </span>
+                    <span className="font-rubik text-sm font-bold leading-none tracking-[-0.28px] text-white">
+                      {ui.login}
+                    </span>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
 
-          {/*
-            Figma 15462:5511 — 24px side gutters + 327 content column.
-            Do NOT put px-6 on the 327 max-width itself (that made it ~279px / “narrow”).
-          */}
-          <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-y-auto px-6 pb-6 pt-2.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="mx-auto flex min-h-0 w-full max-w-[327px] flex-1 flex-col gap-[30px]">
-              {/* Menu list — flex-1 so rows share height; py 24 / px 20 */}
-              <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
-                {LANDING_NAV_LINKS.map((link) => {
+          <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden px-6 pb-6 pt-2.5">
+            <div className="mx-auto flex h-full min-h-0 w-full flex-1 flex-col gap-5">
+              {/* Select / nav links — fills leftover viewport; footer compresses on short screens */}
+              <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
+                {navLinks.map((link) => {
                   const showChevron =
-                    link.href === '#knowledge' || link.href === '/about';
+                    link.href === '#knowledge' ||
+                    link.href === '/about' ||
+                    link.href === '/en/about';
                   return (
                     <a
                       key={link.href}
@@ -410,9 +744,10 @@ export function MarketingNav({
                         e.preventDefault();
                         goTo(link.href);
                       }}
-                      className="relative flex min-h-0 flex-1 items-center justify-between border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-6 text-right backdrop-blur-[10px] last:border-b-0"
+                      className={`relative flex min-h-0 flex-1 items-center justify-between border-b border-[#093427] bg-[rgba(7,30,35,0.7)] px-5 py-3 backdrop-blur-[10px] last:border-b-0 sm:py-6 ${
+                        isEn ? 'text-left' : 'text-right'
+                      }`}
                     >
-                      {/* RTL: first = right (label + glow), second = left (chevron) */}
                       <span className="flex min-w-0 flex-1 items-center gap-3">
                         <Image
                           src={LANDING_ASSETS.menuGlow}
@@ -422,7 +757,11 @@ export function MarketingNav({
                           className="size-4 shrink-0"
                           unoptimized
                         />
-                        <span className="font-rubik text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-white">
+                        <span
+                          className={`font-rubik text-[18px] font-bold leading-[1.2] text-white ${
+                            isEn ? 'tracking-[-0.72px]' : 'tracking-[-0.36px]'
+                          }`}
+                        >
                           {link.label}
                         </span>
                       </span>
@@ -432,7 +771,7 @@ export function MarketingNav({
                           alt=""
                           width={6}
                           height={11}
-                          className="h-[11px] w-[6px] shrink-0 opacity-90"
+                          className={`h-[11px] w-[6px] shrink-0 opacity-90 ${isEn ? 'rotate-180' : ''}`}
                           unoptimized
                         />
                       ) : (
@@ -443,9 +782,8 @@ export function MarketingNav({
                 })}
               </div>
 
-              {/* Figma 15765:7029 — mountain CTA (upper crop) + login row */}
-              <div className="flex w-full shrink-0 flex-col items-center gap-5">
-                <div className="relative h-[194px] w-full overflow-hidden rounded-[36px]">
+              <div className="flex min-h-0 w-full shrink flex-col items-center gap-3 sm:gap-5">
+                <div className="relative h-[194px] max-h-[min(194px,28dvh)] min-h-[96px] w-full shrink overflow-hidden rounded-[36px]">
                   <Image
                     src={LANDING_ASSETS.footerMountainMobile}
                     alt=""
@@ -461,15 +799,32 @@ export function MarketingNav({
                     }}
                     aria-hidden
                   />
-                  <div className="absolute inset-x-0 top-1/2 z-10 flex w-full -translate-y-1/2 flex-col items-start justify-center gap-5 px-[22.5px] text-right">
-                    <p className="w-full max-w-[282px] font-rubik text-[30px] font-bold leading-[1.15] tracking-[-0.9px] text-white">
-                      הדרך החדשה לנהל הרגלי מסך בריאים
+                  <div
+                    className={`absolute inset-x-0 top-1/2 z-10 flex w-full -translate-y-1/2 flex-col justify-center gap-3 px-[22.5px] sm:gap-5 ${
+                      isEn ? 'items-start text-left' : 'items-start text-right'
+                    }`}
+                  >
+                    <p
+                      className={`w-full max-w-[282px] font-rubik font-bold leading-[1.15] text-white ${
+                        isEn
+                          ? 'text-[22px] tracking-[-0.88px] min-[390px]:text-[28px] min-[390px]:tracking-[-1.28px]'
+                          : 'text-[22px] tracking-[-0.66px] min-[390px]:text-[26px] min-[390px]:tracking-[-0.78px]'
+                      }`}
+                    >
+                      {isEn ? (
+                        ui.menuTagline
+                      ) : (
+                        <>
+                          הדרך החדשה לנהל
+                          <br />
+                          הרגלי מסך בריאים
+                        </>
+                      )}
                     </p>
-                    {/* RTL: justify/items-start → visual right (Figma CTA on the right) */}
                     <div className="inline-flex w-full items-start justify-start">
                       <MarketingCtaButton
                         href="/onboarding"
-                        label="הצטרפות לג׳ויסטי"
+                        label={ui.joinRevolution}
                         size="compact"
                         onClick={() => setOpen(false)}
                       />
@@ -477,39 +832,66 @@ export function MarketingNav({
                   </div>
                 </div>
 
-                <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className="flex w-full items-center justify-between ps-5 pe-[35px]"
-                  aria-label="התחברות לחשבון"
-                >
-                  <span className="flex items-center gap-3">
-                    <span
-                      className="flex shrink-0 items-center justify-center rounded-full bg-[#8c00ff]"
-                      style={{ width: 26, height: 26, minWidth: 26, minHeight: 26 }}
-                    >
+                {/* Language toggle — Figma globe-02 in purple circle */}
+                <div className="flex w-full shrink-0 items-center justify-between px-5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#8c00ff]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={LANDING_ASSETS.navUserWhite}
+                        src={LANDING_ASSETS.globeIcon}
                         alt=""
-                        width={16.25}
-                        height={16.25}
-                        className="block h-[16.25px] w-[16.25px] max-w-none"
+                        width={16}
+                        height={16}
+                        className="h-4 w-4"
                         draggable={false}
                       />
                     </span>
-                    <span className="font-rubik text-base font-bold leading-[1.28] tracking-[-0.32px] text-white">
-                      התחברות לחשבון
+                    <span className="font-rubik text-base tracking-[-0.64px] text-white">
+                      {ui.language}
                     </span>
-                  </span>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={LANDING_ASSETS.navLoginChevron}
-                    alt=""
-                    className="h-[9px] w-[4.5px] shrink-0"
-                    draggable={false}
-                  />
-                </Link>
+                  </div>
+                  <div
+                    className="flex items-center"
+                    role="group"
+                    aria-label={ui.language}
+                    dir="ltr"
+                  >
+                    <Link
+                      href={enLocaleHref}
+                      prefetch
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setOpen(false);
+                        switchLocale(enLocaleHref, 'en');
+                      }}
+                      aria-current={locale === 'en' ? 'true' : undefined}
+                      className={`inline-flex items-center justify-center gap-2.5 rounded-[300px] px-2.5 py-1.5 font-rubik text-sm tracking-[-0.56px] transition-colors ${
+                        locale === 'en'
+                          ? 'bg-[rgba(255,255,255,0.10)] font-bold text-white'
+                          : 'bg-[rgba(255,255,255,0)] font-normal text-[#abbec3]'
+                      }`}
+                    >
+                      {ui.langEnglish}
+                    </Link>
+                    <Link
+                      href={heLocaleHref}
+                      prefetch
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setOpen(false);
+                        switchLocale(heLocaleHref, 'he');
+                      }}
+                      aria-current={locale === 'he' ? 'true' : undefined}
+                      className={`inline-flex items-center justify-center gap-2.5 rounded-[300px] px-2.5 py-1.5 font-rubik text-sm tracking-[-0.56px] transition-colors ${
+                        locale === 'he'
+                          ? 'bg-[rgba(255,255,255,0.10)] font-bold text-white'
+                          : 'bg-[rgba(255,255,255,0)] font-normal text-[#abbec3]'
+                      }`}
+                    >
+                      {ui.langHebrew}
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
