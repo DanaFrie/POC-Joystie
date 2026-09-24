@@ -68,6 +68,9 @@ export function MarketingNav({
   chrome = 'onDark',
 }: MarketingNavProps = {}) {
   const [open, setOpen] = useState(false);
+  /** Keep menu mounted through exit so close can fade gently. */
+  const [menuMounted, setMenuMounted] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [showMobileSolidBar, setShowMobileSolidBar] = useState(false);
   const [langMenuPos, setLangMenuPos] = useState<{ top: number; left?: number; right?: number } | null>(
@@ -167,12 +170,27 @@ export function MarketingNav({
     }
   }, [langOpen, heLocaleHref, enLocaleHref, router]);
 
+  /* Soft enter/exit — mount while open, stay mounted until fade-out finishes. */
+  useEffect(() => {
+    if (open) {
+      setMenuMounted(true);
+      const id = window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => setMenuVisible(true));
+      });
+      return () => window.cancelAnimationFrame(id);
+    }
+    setMenuVisible(false);
+    const t = window.setTimeout(() => setMenuMounted(false), 380);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   /*
    * Mobile menu scroll lock — position:fixed + restore scrollY.
    * Plain overflow:hidden on iOS jumps to top (hero) when unlocking.
+   * Lock for the full mount lifetime (including exit fade).
    */
   useEffect(() => {
-    if (!open) return;
+    if (!menuMounted) return;
 
     const html = document.documentElement;
     const body = document.body;
@@ -218,7 +236,7 @@ export function MarketingNav({
         });
       });
     };
-  }, [open]);
+  }, [menuMounted]);
 
   useLayoutEffect(() => {
     if (!langOpen) {
@@ -303,7 +321,7 @@ export function MarketingNav({
       style={{ ['--landing-chrome-mobile' as string]: `${MOBILE_STATUS_BAR}px` }}
       dir={isEn ? 'ltr' : 'rtl'}
     >
-      {!open ? (
+      {!menuMounted ? (
         <nav
           className={`pointer-events-auto flex h-[58px] w-full items-center justify-between px-6 lg:hidden ${barGlass}`}
           aria-label={ui.mainNav}
@@ -620,9 +638,11 @@ export function MarketingNav({
         </div>
       </nav>
 
-      {open ? (
+      {menuMounted ? (
         <div
-          className="pointer-events-auto fixed inset-0 z-[60] flex h-[100dvh] w-[100vw] max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden bg-[#05161a] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className={`landing-mobile-menu pointer-events-auto fixed inset-0 z-[60] flex h-[100dvh] w-[100vw] max-h-[100dvh] max-w-[100vw] flex-col overflow-hidden bg-[#05161a] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]${
+            menuVisible ? ' is-open' : ''
+          }`}
           role="dialog"
           aria-modal="true"
           aria-label={ui.menuDialog}

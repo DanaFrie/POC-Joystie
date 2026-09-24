@@ -26,7 +26,9 @@ function useFitScaleX(localeKey: string) {
     if (!parent) return;
     const apply = () => {
       el.style.transform = '';
+      el.style.overflow = 'visible';
       parent.style.height = '';
+      parent.style.overflow = 'visible';
       const maxW = parent.clientWidth;
       const need = el.scrollWidth;
       if (need > maxW && maxW > 0) {
@@ -102,17 +104,43 @@ function HeroTitleMark({
   variant: 'mobile-en' | 'mobile-he' | 'desktop-en' | 'desktop-he';
 }) {
   const mobile = variant.startsWith('mobile');
-  const src = mobile
-    ? LANDING_ASSETS.heroUnderlineMobile
-    : LANDING_ASSETS.heroUnderline;
+  /* Desktop stroke art spans “screen time” better when stretched on mobile EN */
+  const src =
+    variant === 'mobile-en' || variant === 'desktop-en' || variant === 'desktop-he'
+      ? LANDING_ASSETS.heroUnderline
+      : LANDING_ASSETS.heroUnderlineMobile;
+
+  if (variant === 'mobile-en') {
+    return (
+      <span className="relative inline-block overflow-visible">
+        {children}
+        {/*
+          Stretch full stroke (incl. tapered ends) under “screen time”.
+          No bg-size zoom — that was clipping the marker edges.
+        */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={LANDING_ASSETS.heroUnderline}
+          alt=""
+          width={320}
+          height={28}
+          decoding="async"
+          fetchPriority="high"
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[calc(100%+3px)] z-[1] h-[24px] w-[122%] max-w-none -translate-x-1/2"
+          style={{ objectFit: 'fill' }}
+        />
+      </span>
+    );
+  }
+
   const markClass =
-    variant === 'mobile-en'
-      ? 'absolute left-1/2 top-[calc(100%-2px)] z-[1] h-5 w-[150%] max-w-none -translate-x-1/2'
-      : variant === 'mobile-he'
-        ? 'absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2'
-        : variant === 'desktop-en'
-          ? 'absolute left-1/2 top-[calc(100%-2px)] z-[1] h-7 w-[320px] max-w-none -translate-x-1/2'
-          : 'absolute left-1/2 top-[calc(100%-4px)] z-[1] w-[247px] max-w-none -translate-x-1/2';
+    variant === 'mobile-he'
+      ? 'absolute left-1/2 top-[calc(100%-1px)] z-[1] h-5 w-[144px] max-w-none -translate-x-1/2'
+      : variant === 'desktop-en'
+        ? /* lower 10px vs baseline */
+          'absolute left-1/2 top-[calc(100%+8px)] z-[1] h-7 w-[320px] max-w-none -translate-x-1/2'
+        : 'absolute left-1/2 top-[calc(100%-4px)] z-[1] w-[247px] max-w-none -translate-x-1/2';
 
   return (
     <span className="relative inline-block">
@@ -267,10 +295,10 @@ export function MarketingHero() {
                   <p className="landing-hero-item landing-hero-item--1 w-full font-rubik text-[13px] font-normal leading-[1.25] tracking-[3.9px] text-[rgba(237,239,239,0.45)]">
                     {ui.heroEyebrow}
                   </p>
-                  <div className="landing-hero-item landing-hero-item--2 flex w-full min-w-0 justify-center overflow-x-clip">
+                  <div className="landing-hero-item landing-hero-item--2 flex w-full min-w-0 justify-center overflow-visible px-2">
                     <h1
                       ref={mobileTitleRef}
-                      className="w-max origin-top text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
+                      className="w-max origin-top overflow-visible text-center font-rubik text-[40px] leading-[1.05] tracking-[-1.2px] text-white [text-shadow:2px_2px_10px_rgba(0,0,0,0.1)]"
                       style={{ fontWeight: 760 }}
                     >
                       <span className="block whitespace-nowrap">{ui.heroTitleLine1}</span>
@@ -363,9 +391,9 @@ export function MarketingHero() {
                     {ui.heroEyebrow}
                   </p>
                 </div>
-                <div className="landing-hero-item landing-hero-item--2 flex w-full justify-center">
+                <div className="landing-hero-item landing-hero-item--2 flex w-full justify-center overflow-visible">
                   <h1
-                    className="inline-flex flex-col items-center text-center font-rubik text-[75px] leading-[1.05] tracking-[-2.25px] text-[#06171B]"
+                    className="inline-flex flex-col items-center overflow-visible text-center font-rubik text-[75px] leading-[1.05] tracking-[-2.25px] text-[#06171B]"
                     style={{ fontWeight: 760 }}
                   >
                     <span className="whitespace-nowrap">{ui.heroTitleLine1}</span>
