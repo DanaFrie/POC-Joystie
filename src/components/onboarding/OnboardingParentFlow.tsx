@@ -23,6 +23,7 @@ import {
   OnboardingRevealStepContent,
   type RevealFlowStep,
 } from '@/components/onboarding/OnboardingRevealStepContent';
+import { BAD_NEWS_FOOTER_REVEAL_MS } from '@/components/onboarding/bad-news/OnboardingBadNewsStep';
 import { SignupChildInviteIntroStep } from '@/components/onboarding/signup/SignupChildInviteIntroStep';
 import { SignupChildInviteShareStep } from '@/components/onboarding/signup/SignupChildInviteShareStep';
 import { OnboardingWaitingScreenShell } from '@/components/onboarding/OnboardingWaitingScreenShell';
@@ -63,6 +64,7 @@ import {
   SIGNUP_JOURNEY_STAGE_COUNT,
   type SignupJourneyStageIndex,
 } from '@/constants/signup-journey';
+import { AnalyticsEvents, trackPreSignupCta } from '@/utils/analytics';
 import { setOnboardingChildrenPhoneCount } from '@/lib/onboarding/childrenPhoneCount';
 import {
   childrenDetailsComplete,
@@ -163,6 +165,7 @@ import {
 import {
   FUNNEL_FOREGROUND_PAD_BOTTOM_PX,
   FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
+  getFunnelStackedFooterShellHeightPx,
 } from '@/constants/funnel-vertical-layout';
 
 const logger = createContextLogger('OnboardingParentFlow');
@@ -359,6 +362,7 @@ export function OnboardingParentFlow({
     ]
   );
   const [journeyStage, setJourneyStage] = useState<SignupJourneyStageIndex>(0);
+  const [badNewsFooterVisible, setBadNewsFooterVisible] = useState(false);
   const [values, setValues] = useState<SignupFormValues>({
     firstName: '',
     lastName: '',
@@ -1175,10 +1179,12 @@ export function OnboardingParentFlow({
     if (step === 'role') {
       if (!role) return;
       setOnboardingParentRole(role);
+      trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_ROLE, { parent_role: role });
       setStep('whatAwaits');
       return;
     }
     if (step === 'whatAwaits') {
+      trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_WHAT_AWAITS);
       setStep('childSetup');
       return;
     }
@@ -1201,20 +1207,28 @@ export function OnboardingParentFlow({
       setChildren(single);
       setScreenTimes(times);
       setOnboardingChildrenScreenTime(times);
+      trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_CHILD_SETUP, {
+        child_gender: single[0]?.gender ?? 'boy',
+        child_age: single[0]?.age ?? ONBOARDING_CHILD_DEFAULT_AGE,
+        screen_time_hours: hours,
+      });
       setStep('calculating');
     }
   };
 
   const handleRevealContinue = () => {
     if (step === 'revealIntro') {
+      trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_REVEAL_INTRO);
       setStep('badNews');
       return;
     }
     if (step === 'badNews') {
+      trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_BAD_NEWS);
       setStep('goodNews');
       return;
     }
     if (step === 'goodNews') {
+      trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_GOOD_NEWS);
       // Already authenticated — sync kids then invite (signupIntro runs before form for guests).
       if (accountCreated) {
         void (async () => {
@@ -1241,6 +1255,7 @@ export function OnboardingParentFlow({
       setJourneyStage((s) => (s + 1) as SignupJourneyStageIndex);
       return;
     }
+    trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_SIGNUP_INTRO);
     if (accountCreated) {
       bindSingleChildForInvite();
       setStep('childInviteIntro');
@@ -1345,8 +1360,22 @@ export function OnboardingParentFlow({
     step === 'revealIntro'
       ? 'v03-funnel-enter-reveal-3'
       : step === 'badNews'
-        ? 'v03-funnel-enter-reveal-4'
+        ? badNewsFooterVisible
+          ? 'v03-funnel-enter-reveal-0'
+          : 'pointer-events-none opacity-0'
         : 'v03-funnel-enter-reveal-4';
+
+  useEffect(() => {
+    if (step !== 'badNews') {
+      setBadNewsFooterVisible(false);
+      return;
+    }
+    const timer = setTimeout(
+      () => setBadNewsFooterVisible(true),
+      BAD_NEWS_FOOTER_REVEAL_MS
+    );
+    return () => clearTimeout(timer);
+  }, [step]);
 
   const showBackButton =
     !(accountCreated && step === 'signupForm') &&
@@ -1564,7 +1593,7 @@ export function OnboardingParentFlow({
                       onClick={handleIntroContinue}
                       className="inline-flex h-[55px] w-full items-center justify-center rounded-[22px] bg-[var(--turquoise-200,#00FFB3)] px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-v03-green-900 shadow-[2px_2px_20px_0_rgba(109,109,109,0.15)] transition hover:brightness-95"
                     >
-                      יצאנו לדרך
+                      יצאנו לדרך!
                     </button>
                   }
                 />
@@ -1645,17 +1674,26 @@ export function OnboardingParentFlow({
         <OnboardingRevealBleedBackground />
         <OnboardingFunnelStepSlot
           stepKey={step}
-          clipOverflow
+          clipOverflow={step !== 'goodNews'}
           innerClassName={step === 'revealIntro' ? 'v03-reveal-intro-scope' : ''}
         >
-          <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
+          <FunnelStepRoot
+            fitViewport
+            className={`bg-transparent ${
+              step === 'goodNews' ? 'overflow-visible' : 'overflow-hidden'
+            }`}
+          >
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}
               padBottomPx={0}
               fitViewport
             >
-              <FunnelStepMain className="relative min-h-0 w-full flex-1 overflow-x-hidden overflow-y-hidden">
+              <FunnelStepMain
+                className={`relative min-h-0 w-full flex-1 overflow-x-hidden ${
+                  step === 'goodNews' ? 'overflow-y-visible' : 'overflow-y-hidden'
+                }`}
+              >
                 <OnboardingRevealStepContent step={step as RevealFlowStep} />
               </FunnelStepMain>
               <FunnelStepFooter
@@ -1664,6 +1702,7 @@ export function OnboardingParentFlow({
                 blur={false}
                 overlay={false}
                 onClick={handleRevealContinue}
+                disabled={step === 'badNews' && !badNewsFooterVisible}
               >
                 המשך
               </FunnelStepFooter>
@@ -1688,7 +1727,10 @@ export function OnboardingParentFlow({
             >
               <ScreenTimeCalculatingStep
                 flow
-                onComplete={() => setStep('revealIntro')}
+                onComplete={() => {
+                  trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_CALCULATING);
+                  setStep('revealIntro');
+                }}
               />
             </FunnelStepForeground>
           </FunnelStepRoot>
@@ -1703,12 +1745,13 @@ export function OnboardingParentFlow({
         <OnboardingMintGridBackdrop showGrid={false} />
         <OnboardingBackButton onClick={handleBack} />
         <OnboardingFunnelStepSlot stepKey="whatAwaits" clipOverflow={false}>
-          <FunnelStepRoot fitViewport aria-label="מה מחכה לנו">
+          <FunnelStepRoot fitViewport className="overflow-hidden" aria-label="מה מחכה לנו">
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}
               padBottomPx={0}
               fitViewport
+              className="!px-0"
             >
               <FunnelStepMain className="relative min-h-0 w-full flex-1 overflow-hidden">
                 <ParentWelcomeWhatAwaitsStep
@@ -1781,6 +1824,7 @@ export function OnboardingParentFlow({
                 scroll
                 scrollRef={funnelScrollRef}
                 className="relative min-h-0 w-full flex-1"
+                footerOverlayReservePx={getFunnelStackedFooterShellHeightPx()}
               >
                 <SingleChildSetupStep
                   child={child}

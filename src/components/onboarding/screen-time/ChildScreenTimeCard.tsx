@@ -33,7 +33,9 @@ export function ChildScreenTimeCard({
       <div className="flex w-full flex-col items-stretch gap-[15px] rounded-[18px] bg-white/5 px-[18px] pb-3.5 pt-4 shadow-[2px_2px_15px_rgba(0,0,0,0.08)] outline outline-1 outline-white/25 outline-offset-[-1px]">
         <div
           dir="ltr"
-          className="flex w-full items-center justify-between gap-2"
+          className={`flex w-full items-center gap-2 ${
+            name.trim() ? 'justify-between' : 'justify-center'
+          }`}
         >
           <div className="flex items-center gap-[5px] text-white">
             {display.kind === 'one' ? (
@@ -57,9 +59,11 @@ export function ChildScreenTimeCard({
               </>
             )}
           </div>
-          <span className="font-simpler text-2xl font-bold leading-[30px] text-white">
-            {name}
-          </span>
+          {name.trim() ? (
+            <span className="font-simpler text-2xl font-bold leading-[30px] text-white">
+              {name.trim()}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex w-full justify-end">

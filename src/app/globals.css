@@ -64,10 +64,20 @@
     .v03-funnel-enter-reveal-6,
     .v03-funnel-enter-reveal-hero-intro,
     .v03-oauth-terms-sheet,
+    .v03-welcome-enter-title,
+    .v03-welcome-enter-subtitle,
+    .v03-welcome-enter-sheet,
+    .v03-welcome-enter-bullet-0,
+    .v03-welcome-enter-bullet-1,
+    .v03-welcome-enter-bullet-2,
+    .v03-welcome-enter-divider-0,
+    .v03-welcome-enter-divider-1,
+    .v03-welcome-enter-cta,
     .v03-fade-in-quick {
       animation: none !important;
       opacity: 1 !important;
       transform: none !important;
+      will-change: auto !important;
     }
   }
 
@@ -82,6 +92,73 @@
 
   .v03-oauth-terms-sheet {
     animation: v03-oauth-terms-sheet 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  /* Welcome «מה מחכה לנו» — title → subtitle → slow drawer → top→down bullets */
+  @keyframes v03-welcome-sheet-up {
+    from {
+      transform: translate3d(0, 100%, 0);
+    }
+    to {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes v03-welcome-item-down {
+    from {
+      opacity: 0;
+      transform: translate3d(0, -18px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .v03-welcome-enter-title {
+    opacity: 0;
+    animation: v03-funnel-enter 600ms var(--v03-funnel-enter-ease) forwards;
+  }
+  .v03-welcome-enter-subtitle {
+    opacity: 0;
+    animation: v03-funnel-enter 600ms var(--v03-funnel-enter-ease) 220ms forwards;
+  }
+  .v03-welcome-enter-sheet {
+    transform: translate3d(0, 100%, 0);
+    animation: v03-welcome-sheet-up 1200ms cubic-bezier(0.22, 1, 0.36, 1) 480ms
+      forwards;
+    will-change: transform;
+  }
+  /* Items cascade top → down after drawer is mostly up (~1.5s) */
+  .v03-welcome-enter-bullet-0 {
+    opacity: 0;
+    animation: v03-welcome-item-down 900ms var(--v03-funnel-enter-ease) 1500ms
+      forwards;
+  }
+  .v03-welcome-enter-divider-0 {
+    opacity: 0;
+    animation: v03-welcome-item-down 900ms var(--v03-funnel-enter-ease) 1880ms
+      forwards;
+  }
+  .v03-welcome-enter-bullet-1 {
+    opacity: 0;
+    animation: v03-welcome-item-down 900ms var(--v03-funnel-enter-ease) 2260ms
+      forwards;
+  }
+  .v03-welcome-enter-divider-1 {
+    opacity: 0;
+    animation: v03-welcome-item-down 900ms var(--v03-funnel-enter-ease) 2640ms
+      forwards;
+  }
+  .v03-welcome-enter-bullet-2 {
+    opacity: 0;
+    animation: v03-welcome-item-down 900ms var(--v03-funnel-enter-ease) 3020ms
+      forwards;
+  }
+  .v03-welcome-enter-cta {
+    opacity: 0;
+    animation: v03-welcome-item-down 900ms var(--v03-funnel-enter-ease) 3400ms
+      forwards;
   }
 
   /* Unified asset entrance — opacity + subtle rise */

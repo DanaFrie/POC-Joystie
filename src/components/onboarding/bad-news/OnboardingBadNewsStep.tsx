@@ -19,12 +19,24 @@ import {
 } from '@/constants/reveal-typography';
 
 /** Match `--v03-funnel-enter-reveal-*` tokens (tokens.css). */
-const REVEAL_STAGGER_MS = 440;
-const REVEAL_DURATION_MS = 1040;
+export const BAD_NEWS_REVEAL_STAGGER_MS = 440;
+export const BAD_NEWS_REVEAL_DURATION_MS = 1040;
 /** Upper stack: hero → headline → body → «לפי החישוב» (indices 0–3). */
-const UPPER_REVEAL_LAST_INDEX = 3;
+export const BAD_NEWS_UPPER_REVEAL_LAST_INDEX = 3;
 /** Wait after upper elements finished, then show the card. */
-const CARD_AFTER_UPPER_MS = 1000;
+export const BAD_NEWS_CARD_AFTER_UPPER_MS = 1000;
+/** Card fade-in duration before footer may appear. */
+export const BAD_NEWS_CARD_FADE_MS = 500;
+
+/** When the calc card becomes visible. */
+export const BAD_NEWS_CARD_REVEAL_MS =
+  BAD_NEWS_UPPER_REVEAL_LAST_INDEX * BAD_NEWS_REVEAL_STAGGER_MS +
+  BAD_NEWS_REVEAL_DURATION_MS +
+  BAD_NEWS_CARD_AFTER_UPPER_MS;
+
+/** When the המשך footer should reveal (after card). */
+export const BAD_NEWS_FOOTER_REVEAL_MS =
+  BAD_NEWS_CARD_REVEAL_MS + BAD_NEWS_CARD_FADE_MS;
 
 const COPY_REPORT_GAP_MAX_PX = 65;
 const COPY_REPORT_GAP_MIN_PX = 20;
@@ -63,11 +75,7 @@ export function OnboardingBadNewsStep() {
   }, []);
 
   useEffect(() => {
-    const delayMs =
-      UPPER_REVEAL_LAST_INDEX * REVEAL_STAGGER_MS +
-      REVEAL_DURATION_MS +
-      CARD_AFTER_UPPER_MS;
-    const timer = setTimeout(() => setShowCard(true), delayMs);
+    const timer = setTimeout(() => setShowCard(true), BAD_NEWS_CARD_REVEAL_MS);
     return () => clearTimeout(timer);
   }, []);
 

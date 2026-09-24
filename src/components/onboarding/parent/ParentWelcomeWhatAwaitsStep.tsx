@@ -16,6 +16,7 @@ function IconWand() {
       viewBox="0 0 20 20"
       fill="none"
       aria-hidden
+      className="shrink-0"
     >
       <path
         d="M4.71424 9.16854L3.48893 11.9255C1.94304 15.4037 1.17009 17.1428 2.01369 17.9865C2.85729 18.83 4.59642 18.0571 8.07468 16.5112L10.8316 15.2859C12.9295 14.3535 13.9784 13.8873 14.1453 12.9884C14.3122 12.0895 13.5005 11.2778 11.8773 9.65454L10.3456 8.12287C8.72229 6.49957 7.91064 5.68792 7.01172 5.85483C6.11279 6.02174 5.64661 7.07066 4.71424 9.16854Z"
@@ -94,6 +95,7 @@ function IconPhone() {
       viewBox="0 0 15 21"
       fill="none"
       aria-hidden
+      className="shrink-0"
     >
       <path
         d="M11.0965 15.2456L13.0668 7.46519C13.6474 5.17287 13.9376 4.0267 13.4058 3.13423C12.874 2.24173 11.7279 1.95149 9.43552 1.37098C7.14319 0.790466 5.99703 0.500211 5.10455 1.032C4.21207 1.5638 3.92181 2.70997 3.3413 5.0023L1.37099 12.7827C0.790481 15.075 0.500228 16.2212 1.032 17.1137C1.56381 18.0062 2.70998 18.2964 5.00231 18.8769C7.29464 19.4575 8.44077 19.7477 9.33331 19.216C10.2258 18.6841 10.516 17.5379 11.0965 15.2456Z"
@@ -123,6 +125,7 @@ function IconKid() {
       viewBox="0 0 23 23"
       fill="none"
       aria-hidden
+      className="shrink-0"
     >
       <path
         d="M11.25 20.625C16.4277 20.625 20.625 16.4277 20.625 11.25C20.625 6.07233 16.4277 1.875 11.25 1.875C6.07233 1.875 1.875 6.07233 1.875 11.25C1.875 16.4277 6.07233 20.625 11.25 20.625Z"
@@ -175,69 +178,88 @@ const ROWS = [
   },
 ] as const;
 
+const BULLET_ENTER = [
+  'v03-welcome-enter-bullet-0',
+  'v03-welcome-enter-bullet-1',
+  'v03-welcome-enter-bullet-2',
+] as const;
+
 /**
  * Figma 14663:29231 — welcome / «מה מחכה לנו?» after parent role.
- * Ignore iPhone status chrome from Figma preview.
+ * Drawer matches Figma sheet HTML; fits 100vh with CTA (no internal scroll).
  */
 export function ParentWelcomeWhatAwaitsStep({
   role,
   onContinue,
 }: ParentWelcomeWhatAwaitsStepProps) {
-  const welcome =
-    role === 'father' ? 'ברוך הבא לג׳ויסטי' : 'ברוכה הבאה לג׳ויסטי';
+  const line1 = role === 'father' ? 'ברוך הבא' : 'ברוכה הבאה';
 
   return (
     <section
-      className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
+      className="relative z-[10] flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
       aria-label="מה מחכה לנו"
     >
-      <div className="v03-funnel-enter-0 mx-auto flex w-full max-w-[211px] shrink-0 flex-col items-center gap-1 px-v03-gutter pt-[93px] text-center">
-        <h1 className="w-full font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
-          {welcome}{' '}
-          <span className="text-[32px] tracking-[-0.96px]" aria-hidden>
-            👋
-          </span>
-        </h1>
-        <p className="w-full font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
-          מה מחכה לנו?
-        </p>
-      </div>
+      <header className="flex w-full shrink-0 flex-col items-center px-[82px] pb-2 pt-[max(28px,env(safe-area-inset-top))]">
+        <div className="flex w-[211px] flex-col items-center gap-1 text-center">
+          <h1 className="v03-welcome-enter-title w-full font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
+            <span className="block">{line1}</span>
+            <span className="block">
+              לג׳ויסטי{' '}
+              <span
+                className="inline-block text-[32px] font-bold leading-[1.1] tracking-[-0.96px]"
+                aria-hidden
+              >
+                👋
+              </span>
+            </span>
+          </h1>
+          <p className="v03-welcome-enter-subtitle w-full font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
+            מה מחכה לנו?
+          </p>
+        </div>
+      </header>
 
-      <div className="v03-funnel-enter-1 mt-auto flex w-full flex-col items-center rounded-t-[36px] border border-b-0 border-white/25 bg-[rgba(9,35,38,0.5)] px-[26px] pt-9 shadow-[2px_2px_15px_rgba(0,0,0,0.08)] backdrop-blur-[15px]">
-        <div className="flex w-full flex-col gap-10">
+      {/*
+        Figma Slider sheet:
+        pt 36 · px 26 · gap 40 · radius-t 36 · blur 15 · outline white/25
+      */}
+      <div className="v03-welcome-enter-sheet relative z-[12] flex min-h-0 w-full flex-1 flex-col items-center gap-10 overflow-hidden rounded-t-[36px] bg-[rgba(9,35,38,0.5)] px-[26px] pt-9 shadow-[2px_2px_15px_rgba(0,0,0,0.08)] outline outline-1 outline-white/25 outline-offset-[-1px] backdrop-blur-[15px]">
+        <div className="flex min-h-0 w-full flex-1 flex-col justify-between gap-10 overflow-hidden">
           {ROWS.map((row, index) => (
-            <div key={row.title} className="contents">
-              <div className="flex w-full items-start justify-end gap-3" dir="rtl">
-                <div className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-v03-turquoise-300">
-                  <row.Icon />
-                </div>
-                <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 text-right">
-                  <p className="w-full font-simpler text-[24px] font-bold leading-[1.1] tracking-[-0.72px] text-white">
-                    {row.title}
-                  </p>
-                  <p className="w-full font-simpler text-[18px] font-normal leading-[1.25] tracking-[-0.36px] text-[#dce4e6]">
-                    {row.body}
-                  </p>
-                </div>
+            <div
+              key={row.title}
+              className={`flex w-full shrink items-start justify-end gap-3 ${BULLET_ENTER[index]}`}
+              dir="rtl"
+            >
+              <div className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[#1BECAE]">
+                <row.Icon />
               </div>
-              {index < ROWS.length - 1 ? (
-                <div
-                  className="h-px w-full border-t border-dashed border-white/25"
-                  aria-hidden
-                />
-              ) : null}
+              <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 text-right">
+                <p className="w-full font-simpler text-[24px] font-bold leading-[26.4px] text-white">
+                  {row.title}
+                </p>
+                <p className="w-full font-simpler text-[18px] font-normal leading-[22.5px] text-[#dce4e6]">
+                  {row.body}
+                </p>
+              </div>
             </div>
           ))}
         </div>
 
-        <div className="flex w-full flex-col items-center gap-[15px] pb-[max(16px,env(safe-area-inset-bottom))] pt-10">
+        <div className="v03-welcome-enter-cta flex w-full shrink-0 flex-col items-center gap-[15px]">
           <button
             type="button"
             onClick={onContinue}
-            className="inline-flex h-[55px] w-full max-w-v03-content items-center justify-center overflow-hidden rounded-v03-button bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[1.2] tracking-[-0.36px] text-v03-green-900 shadow-v03-button transition hover:brightness-95"
+            className="inline-flex h-[55px] w-full max-w-v03-content items-center justify-center overflow-hidden rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
           >
             קדימה, מתחילים!
           </button>
+          {/* Figma lower spacer 32px — real safe-area only (no home-indicator chrome) */}
+          <div
+            className="w-full shrink-0"
+            style={{ height: 'max(32px, env(safe-area-inset-bottom))' }}
+            aria-hidden
+          />
         </div>
       </div>
     </section>

@@ -52,21 +52,21 @@ export function ChildDetailsFormBlock({
         ) : null}
       </div>
 
-      {/* LTR row — גיל on screen-left, מין on screen-right (Figma 12703:41660). */}
+      {/* LTR row — גיל left, מין right (Figma 14663:14696). Gender flexes; age stays intrinsic. */}
       <div
         dir="ltr"
-        className="flex w-full items-start"
+        className="flex w-full min-w-0 items-start"
         style={{ gap: rowGapPx }}
       >
-        <div className="flex shrink-0 flex-col items-end gap-0.5 self-stretch">
-          <span className={fieldLabelClass}>גיל</span>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          <span className={`${fieldLabelClass} w-auto`}>גיל</span>
           <ChildAgeStepper
             value={child.age}
             onChange={(age) => onChange({ ...child, age })}
           />
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5">
+        <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5 overflow-hidden">
           <span className={fieldLabelClass}>מין</span>
           <ChildGenderPicker
             value={child.gender}

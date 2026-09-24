@@ -47,7 +47,7 @@ export function ChildAgeStepper({ value, onChange }: ChildAgeStepperProps) {
   return (
     <div
       dir="ltr"
-      className="inline-flex flex-row items-center justify-center gap-4 rounded-[68px] bg-white/5 p-1.5 outline outline-1 outline-white/25 outline-offset-[-1px]"
+      className="inline-flex flex-row items-center justify-center gap-[15.92px] rounded-[68px] bg-white/5 p-1.5 outline outline-1 outline-white/25 outline-offset-[-1px]"
       role="group"
       aria-label="גיל"
     >

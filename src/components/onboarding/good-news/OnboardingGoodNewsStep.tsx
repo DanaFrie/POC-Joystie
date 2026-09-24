@@ -21,7 +21,7 @@ export function OnboardingGoodNewsStep() {
 
   return (
     <section
-      className="flex h-full min-h-0 w-full flex-col overflow-hidden"
+      className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-visible"
       aria-label="החדשות הטובות"
     >
       <div
@@ -53,28 +53,26 @@ export function OnboardingGoodNewsStep() {
       </div>
 
       <div
-        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-[35px] px-v03-gutter pb-2"
+        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-[35px] overflow-visible px-v03-gutter pb-2"
         style={{ marginTop: LOWER_BLOCK_GAP_PX }}
       >
         <div
-          className="flex w-full flex-col items-center gap-[35px]"
+          className="flex w-full flex-col items-center gap-[35px] overflow-visible"
           style={{ maxWidth: COPY_BLOCK_WIDTH_PX }}
         >
           <h1 className="v03-funnel-enter-reveal-2 w-full self-stretch text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-v03-text-on-light">
             שימוש ב-Joystie יכול לצמצם זמן מסך ב-
           </h1>
 
-          <div className="v03-funnel-enter-reveal-3 flex w-full items-center justify-center self-stretch">
-            <div className="relative inline-flex items-center gap-3">
-              <GoodNewsPercentArrow className="absolute left-[-27px] top-[8.5px]" />
-              <div className="text-center font-simpler" dir="ltr">
-                <span className="text-[80px] font-bold leading-[43.8px] text-[#8C00FF]">
-                  55
-                </span>
-                <span className="text-[35px] font-medium leading-[43.8px] text-[#8C00FF]">
+          <div className="v03-funnel-enter-reveal-3 flex w-full items-center justify-center self-stretch overflow-visible">
+            <div className="relative inline-flex min-h-[80px] items-center gap-3 overflow-visible">
+              <GoodNewsPercentArrow className="absolute left-[-39px] top-1/2 -translate-y-1/2" />
+              <p className="text-center font-simpler text-[#8C00FF]" dir="ltr">
+                <span className="text-[80px] font-bold leading-none">55</span>
+                <span className="align-top text-[35px] font-medium leading-none">
                   %
                 </span>
-              </div>
+              </p>
             </div>
           </div>
         </div>
