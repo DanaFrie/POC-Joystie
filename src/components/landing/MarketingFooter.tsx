@@ -109,7 +109,9 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
               <p className="w-full font-rubik text-[40px] font-bold leading-[1.05] tracking-[-1.2px] text-white sm:text-[45px] sm:tracking-[-1.35px] md:max-w-[min(900px,70%)] md:text-[52px] md:tracking-[-1.56px] lg:text-[75px] lg:tracking-[-2.25px]">
                 <span className="block md:hidden">{ui.footerMountainM1}</span>
                 <span className="block md:hidden">{ui.footerMountainM2}</span>
-                <span className="block md:hidden">{ui.footerMountainM3}</span>
+                {ui.footerMountainM3 ? (
+                  <span className="block md:hidden">{ui.footerMountainM3}</span>
+                ) : null}
                 <span className="hidden md:block md:whitespace-nowrap">{ui.footerMountainD1}</span>
                 <span className="hidden md:block md:whitespace-nowrap">{ui.footerMountainD2}</span>
               </p>

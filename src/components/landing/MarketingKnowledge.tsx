@@ -110,7 +110,7 @@ export function MarketingKnowledge() {
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6 md:gap-8">
         <LandingReveal className="flex flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between md:gap-10 md:px-0">
           <h2
-            className={`bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[40px] lg:text-[45px] ${textAlign}`}
+            className={`landing-gradient-title bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[28px] font-bold leading-[1.25] tracking-[-0.9px] text-transparent md:text-[40px] lg:text-[45px] ${textAlign}`}
           >
             {ui.knowledgeTitle}
           </h2>

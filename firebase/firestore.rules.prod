@@ -215,6 +215,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // English landing waitlist — create only (no client reads).
+    match /english_waitlist/{id} {
+      allow create: if request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.keys().hasOnly(['email', 'createdAt', 'source']);
+      allow read, update, delete: if false;
+    }
+
     // Notifications collection - users can read/write their own notifications
 
     match /notifications/{notificationId} {

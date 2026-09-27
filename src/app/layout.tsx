@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import { Suspense } from 'react'
-import { appRubik } from '@/lib/fonts'
+import { appRubik, plusJakarta } from '@/lib/fonts'
 import { isMetaPixelEnabled, META_PIXEL_ID } from '@/constants/meta-pixel'
 import ScrollToTop from '@/components/ui/ScrollToTop'
 import ConditionalMainWrapper from '@/components/ui/ConditionalMainWrapper'
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="he" dir="rtl" className={`layout-root ${appRubik.variable}`}>
+    <html lang="he" dir="rtl" className={`layout-root ${appRubik.variable} ${plusJakarta.variable}`}>
       <body className="layout-root font-rubik min-h-screen overflow-y-auto overflow-x-hidden">
         {isMetaPixelEnabled() ? (
           <Script id="meta-pixel-init" strategy="afterInteractive">

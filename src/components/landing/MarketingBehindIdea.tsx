@@ -57,7 +57,7 @@ export function MarketingBehindIdea() {
         >
           <div className="flex w-full flex-col gap-[35px]">
             <div className="flex w-full flex-col gap-4 md:gap-5">
-              <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[45px] md:tracking-[-1.35px]">
+              <h2 className="landing-gradient-title bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[28px] font-bold leading-[1.25] tracking-[-0.9px] text-transparent md:text-[45px] md:tracking-[-1.35px]">
                 {ui.behindTitle}
               </h2>
               <div className="relative flex w-full items-center gap-5">

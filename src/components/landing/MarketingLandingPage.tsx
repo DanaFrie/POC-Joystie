@@ -48,6 +48,19 @@ export function MarketingLandingPage({ locale = 'he' }: { locale?: LandingLocale
         />
         <link
           rel="preload"
+          href={LANDING_ASSETS.heroUnderline}
+          as="image"
+          type="image/svg+xml"
+        />
+        <link
+          rel="preload"
+          href={LANDING_ASSETS.heroUnderlineMobile}
+          as="image"
+          type="image/svg+xml"
+          media="(max-width: 1023px)"
+        />
+        <link
+          rel="preload"
           href={firstDiff}
           as="image"
           type="image/webp"

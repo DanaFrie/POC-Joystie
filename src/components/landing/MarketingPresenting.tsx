@@ -217,21 +217,23 @@ export function MarketingPresenting() {
 
               <LandingReveal
                 delayMs={80}
-                className={`relative z-10 order-2 flex w-full flex-col gap-4 text-center ${
-                  isEn ? 'lg:text-left' : 'lg:text-right'
+                className={`relative z-10 order-2 flex w-full flex-col gap-4 ${
+                  isEn
+                    ? 'items-center text-center lg:text-left'
+                    : 'items-center text-center lg:items-start lg:text-right'
                 } ${
                   isSection1
                     ? isEn
                       ? 'lg:min-w-0 lg:max-w-[560px] lg:w-full lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
-                      : 'lg:mr-0 lg:ml-auto lg:w-[431px] lg:items-end lg:justify-center lg:gap-6 lg:pt-[120px]'
+                      : 'lg:mr-0 lg:ml-auto lg:w-[431px] lg:items-start lg:justify-center lg:gap-6 lg:pt-[120px]'
                     : isSection2
                       ? isEn
                         ? 'lg:absolute lg:left-0 lg:top-[236px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
-                        : 'lg:absolute lg:left-[439px] lg:top-[279px] lg:order-none lg:w-[431px] lg:items-end lg:justify-center lg:gap-6'
+                        : 'lg:absolute lg:left-[439px] lg:top-[279px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
                       : isSection3
                         ? isEn
                           ? 'lg:absolute lg:left-[439px] lg:top-[25px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
-                          : 'lg:absolute lg:left-0 lg:top-[89px] lg:order-none lg:w-[431px] lg:items-end lg:justify-center lg:gap-6'
+                          : 'lg:absolute lg:left-0 lg:top-[89px] lg:order-none lg:w-[431px] lg:items-start lg:justify-center lg:gap-6'
                         : feature.reverse
                           ? 'lg:order-1 lg:gap-[30px]'
                           : 'lg:order-2 lg:gap-[30px]'
@@ -245,7 +247,7 @@ export function MarketingPresenting() {
                   </div>
                 </div>
                 <h2
-                  className={`font-rubik text-[28px] font-bold tracking-[-0.9px] text-white md:text-[36px] lg:text-[45px] lg:tracking-[-1.35px] ${
+                  className={`w-full font-rubik text-[28px] font-bold tracking-[-0.9px] text-white md:text-[36px] lg:text-[45px] lg:tracking-[-1.35px] ${
                     'breakBeforeAccent' in feature && feature.breakBeforeAccent
                       ? 'leading-[1.02]'
                       : 'leading-[1.15]'
@@ -266,7 +268,7 @@ export function MarketingPresenting() {
                   )}
                 </h2>
                 {feature.lead ? (
-                  <p className="font-rubik text-base font-semibold text-white md:text-[20px] lg:text-lg">
+                  <p className="w-full font-rubik text-base font-semibold text-white md:text-[20px] lg:text-lg">
                     {feature.lead}
                   </p>
                 ) : null}
@@ -280,7 +282,7 @@ export function MarketingPresenting() {
                     style={{ transform: 'rotate(-90deg)' }}
                   />
                 </div>
-                <p className="font-rubik text-sm leading-[1.33] tracking-[-0.3px] text-white/70 md:text-[20px] lg:text-base">
+                <p className="w-full font-rubik text-sm leading-[1.33] tracking-[-0.3px] text-white/70 md:text-[20px] lg:text-base">
                   {feature.body}
                 </p>
               </LandingReveal>

@@ -62,7 +62,7 @@ export function MarketingFaq() {
     >
       <div className="mx-auto flex max-w-[1000px] flex-col items-center gap-5">
         <LandingReveal>
-          <h2 className="bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text text-center font-rubik text-[28px] font-bold leading-[1.15] tracking-[-0.9px] text-transparent md:text-[45px] md:tracking-[-1px]">
+          <h2 className="landing-gradient-title bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text text-center font-rubik text-[28px] font-bold leading-[1.25] tracking-[-0.9px] text-transparent md:text-[45px] md:tracking-[-1px]">
             {ui.faqTitle}
           </h2>
         </LandingReveal>

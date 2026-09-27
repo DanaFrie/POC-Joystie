@@ -1,4 +1,4 @@
-import { Rubik } from 'next/font/google';
+import { Plus_Jakarta_Sans, Rubik } from 'next/font/google';
 
 /**
  * App-wide Rubik (Hebrew + Latin).
@@ -9,6 +9,17 @@ export const appRubik = Rubik({
   subsets: ['hebrew', 'latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-rubik',
+  display: 'swap',
+});
+
+/**
+ * English marketing typeface (replaces SF Pro system stack).
+ * CSS var `--font-plus-jakarta` — used by `.font-sf` / EN marketing roots.
+ */
+export const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta',
   display: 'swap',
 });
 
