@@ -10,6 +10,7 @@ import { useDashboardSubscribeMode } from '@/hooks/useDashboardSubscribeMode';
 import { isLoggedIn, updateLastActivity } from '@/utils/session';
 import { getDashboardData } from '@/lib/api/dashboard';
 import { validateChildDashboardToken } from '@/lib/auth/childDashboardToken';
+import { hideSessionWaiter } from '@/lib/auth/sessionRouteWaiter';
 import { readChildDashboardTokenFromLocation } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
 import { getCurrentUserId as getCurrentUserIdAsync, onAuthStateChange } from '@/utils/auth';
@@ -61,6 +62,10 @@ function DashboardChildPageContent() {
   const parentSubscribe = useDashboardSubscribeMode();
   const challengeEnabled =
     tokenChallengeEnabled != null ? tokenChallengeEnabled : parentSubscribe.challengeEnabled;
+
+  useEffect(() => {
+    hideSessionWaiter();
+  }, []);
 
   const loadForParentId = useCallback(
     async (
