@@ -143,7 +143,13 @@ export const onUserLifecycleMail = onDocumentWritten(
     if (!welcomeAlready && (becameReady || (signupReady(user) && !before))) {
       const parentName = parentNameFrom(user);
       const childName = childNameFrom(user);
-      await sendWelcomeEmail({ to: user.email!.trim(), parentName, childName });
+      const gender = await childGender(user);
+      await sendWelcomeEmail({
+        to: user.email!.trim(),
+        parentName,
+        childName,
+        childGender: gender,
+      });
       patch['lifecycleMail.welcomeAt'] = now;
       console.log('[lifecycleMail] welcome sent', afterSnap.id);
     }

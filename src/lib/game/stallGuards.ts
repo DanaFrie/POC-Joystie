@@ -30,17 +30,17 @@ export const RTDB_BALL_POS_MAX = 1;
 export const RTDB_BALL_VEL_MIN = -1;
 export const RTDB_BALL_VEL_MAX = 1;
 
-/** Loop still wakes every 50ms — visual speed was calibrated at this tick. */
+/** Physics + RTDB write cadence — 20 Hz. Visual motion was calibrated here. */
 export const PHYSICS_LOOP_INTERVAL_MS = 50;
-/** ~10 Hz per writer. The old 50ms interval was 20 writes/s before drops. */
-export const PHYSICS_MIN_WRITE_INTERVAL_MS = 100;
-export const PHYSICS_MAX_WRITES_PER_SEC = 10;
+/** One write per 50ms tick. 10 Hz made the ball hitch (catch-up jumps). */
+export const PHYSICS_MIN_WRITE_INTERVAL_MS = 50;
+export const PHYSICS_MAX_WRITES_PER_SEC = 20;
 /** Cap hitch catch-up so a long pause does not tunnel through a paddle. */
 export const PHYSICS_MAX_CATCHUP_STEPS = 4;
 
 /**
- * 10 Hz writes used to skip every other 50ms physics tick (half speed).
- * Run extra steps so court speed matches the original 20 Hz loop.
+ * Healthy ticks are 1 step. Extra steps only after a real hitch (lock/network),
+ * not as a substitute for a lower write rate.
  */
 export function physicsStepsForElapsed(elapsedMs: number): number {
   if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1;

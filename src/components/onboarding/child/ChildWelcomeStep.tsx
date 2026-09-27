@@ -26,6 +26,18 @@ type ChildWelcomeStepProps = {
   onComplete: () => void;
 };
 
+/** If `ended` never fires (autoplay blocked / 4G stall), still leave this screen. */
+const WELCOME_VIDEO_STALL_MS = 16_000;
+
+function kickWelcomeVideo(el: HTMLVideoElement) {
+  el.muted = true;
+  el.defaultMuted = true;
+  el.playsInline = true;
+  el.setAttribute('playsinline', 'true');
+  el.setAttribute('webkit-playsinline', 'true');
+  return el.play();
+}
+
 const WELCOME_ELLIPSE_MIN_LEFT = Math.min(
   CHILD_WELCOME_ELLIPSE_389.left,
   CHILD_WELCOME_ELLIPSE_391.left
@@ -55,29 +67,65 @@ export function ChildWelcomeStep({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
 
+  const finish = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onComplete();
+  }, [onComplete]);
+
   const markVideoReady = useCallback(() => {
     setVideoReady(true);
   }, []);
+
+  const tryPlay = useCallback(() => {
+    const el = videoRef.current;
+    if (!el || completedRef.current) return;
+    void kickWelcomeVideo(el)
+      .then(() => setVideoReady(true))
+      .catch(() => setVideoReady(true));
+  }, []);
+
+  useEffect(() => {
+    tryPlay();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') tryPlay();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [tryPlay]);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
     if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
       setVideoReady(true);
-      return;
     }
     const fallback = window.setTimeout(() => setVideoReady(true), 800);
     return () => window.clearTimeout(fallback);
   }, []);
 
+  useEffect(() => {
+    const el = videoRef.current;
+    let timeoutId = 0;
+    const arm = () => {
+      window.clearTimeout(timeoutId);
+      const duration = el?.duration;
+      const waitMs =
+        Number.isFinite(duration) && duration && duration > 0
+          ? Math.min((duration + 2.5) * 1000, 25_000)
+          : WELCOME_VIDEO_STALL_MS;
+      timeoutId = window.setTimeout(finish, waitMs);
+    };
+    arm();
+    el?.addEventListener('loadedmetadata', arm);
+    return () => {
+      window.clearTimeout(timeoutId);
+      el?.removeEventListener('loadedmetadata', arm);
+    };
+  }, [finish]);
+
   const ellipseLayerWidth =
     Math.max(designWidth, WELCOME_ELLIPSE_MAX_RIGHT) - WELCOME_ELLIPSE_MIN_LEFT;
-
-  const handleVideoEnd = () => {
-    if (completedRef.current) return;
-    completedRef.current = true;
-    onComplete();
-  };
 
   return (
     <FunnelStepRoot aria-label="ברוכים הבאים לג׳ויסטי" fitViewport>
@@ -92,10 +140,17 @@ export function ChildWelcomeStep({
             muted
             playsInline
             preload="auto"
-            onLoadedData={markVideoReady}
-            onCanPlay={markVideoReady}
+            onLoadedData={() => {
+              markVideoReady();
+              tryPlay();
+            }}
+            onCanPlay={() => {
+              markVideoReady();
+              tryPlay();
+            }}
             onPlaying={markVideoReady}
-            onEnded={handleVideoEnd}
+            onEnded={finish}
+            onError={finish}
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-200"
             style={{ opacity: videoReady ? 1 : 0 }}
             aria-hidden
@@ -145,6 +200,13 @@ export function ChildWelcomeStep({
         padBottomPx={0}
         fitViewport
       >
+        <button
+          type="button"
+          className="absolute inset-0 z-[5] cursor-pointer bg-transparent"
+          aria-label="הפעל"
+          onClick={tryPlay}
+        />
+
         <FunnelStepSection>
           <ChildWelcomeHeadline childName={childName} childGender={childGender} />
         </FunnelStepSection>

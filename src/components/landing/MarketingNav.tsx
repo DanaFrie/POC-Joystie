@@ -160,16 +160,6 @@ export function MarketingNav({
     [locale, open, resolveHref, router],
   );
 
-  useEffect(() => {
-    if (!langOpen) return;
-    try {
-      router.prefetch(heLocaleHref);
-      router.prefetch(enLocaleHref);
-    } catch {
-      /* ignore */
-    }
-  }, [langOpen, heLocaleHref, enLocaleHref, router]);
-
   /* Soft enter/exit — mount while open, stay mounted until fade-out finishes. */
   useEffect(() => {
     if (open) {
@@ -573,19 +563,12 @@ export function MarketingNav({
                       key={opt.locale}
                       href={opt.href}
                       role="menuitem"
-                      prefetch
+                      prefetch={false}
                       aria-current={locale === opt.locale ? 'true' : undefined}
                       onClick={(event) => {
                         event.preventDefault();
                         setLangOpen(false);
                         switchLocale(opt.href, opt.locale);
-                      }}
-                      onMouseEnter={() => {
-                        try {
-                          router.prefetch(opt.href);
-                        } catch {
-                          /* ignore */
-                        }
                       }}
                       className={`flex w-full items-center px-4 py-3 text-[15px] font-bold leading-none tracking-[-0.3px] text-white transition-colors duration-200 ease-out hover:bg-white/15 ${
                         opt.font
@@ -858,7 +841,7 @@ export function MarketingNav({
                   >
                     <Link
                       href={enLocaleHref}
-                      prefetch
+                      prefetch={false}
                       onClick={(event) => {
                         event.preventDefault();
                         setOpen(false);
@@ -875,7 +858,7 @@ export function MarketingNav({
                     </Link>
                     <Link
                       href={heLocaleHref}
-                      prefetch
+                      prefetch={false}
                       onClick={(event) => {
                         event.preventDefault();
                         setOpen(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useLayoutEffect, type ReactNode } from 'react';
 
 export type LandingLocale = 'he' | 'en';
 
@@ -13,6 +13,18 @@ export function LandingLocaleProvider({
   locale: LandingLocale;
   children: ReactNode;
 }) {
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    const prevLang = html.lang;
+    const prevDir = html.getAttribute('dir') ?? '';
+    html.lang = locale === 'en' ? 'en' : 'he';
+    html.dir = locale === 'en' ? 'ltr' : 'rtl';
+    return () => {
+      html.lang = prevLang;
+      html.setAttribute('dir', prevDir);
+    };
+  }, [locale]);
+
   return (
     <LandingLocaleContext.Provider value={locale}>{children}</LandingLocaleContext.Provider>
   );

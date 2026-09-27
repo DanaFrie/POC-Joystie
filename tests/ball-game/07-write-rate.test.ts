@@ -1,7 +1,8 @@
 /**
  * Type 7 — load simulation (RTDB write budget).
- * 50ms physics without a cap is 20 writes/s per game. Concurrent onboarding
- * games can exceed the 1000 writes/s database budget and stall every court.
+ * 20 Hz parent-only is the smooth cadence. Exclusive lock already stops
+ * overlapping writes; the 1000 writes/s budget is only a concern at ~50
+ * simultaneous live games.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -17,7 +18,7 @@ import {
 } from '@/lib/game/stallGuards';
 
 describe('RTDB write-rate (load simulation)', () => {
-  it('caps one writer at 10 Hz, not the old 20 Hz', () => {
+  it('caps one writer at 20 Hz (one write per 50ms tick)', () => {
     const limiter = createWriteRateLimiter();
     let allowed = 0;
     for (let t = 0; t < 1000; t += 50) {
@@ -26,17 +27,17 @@ describe('RTDB write-rate (load simulation)', () => {
         allowed += 1;
       }
     }
-    assert.equal(PHYSICS_MIN_WRITE_INTERVAL_MS, 100);
-    assert.equal(PHYSICS_MAX_WRITES_PER_SEC, 10);
-    assert.equal(allowed, 10);
+    assert.equal(PHYSICS_MIN_WRITE_INTERVAL_MS, 50);
+    assert.equal(PHYSICS_MAX_WRITES_PER_SEC, 20);
+    assert.equal(allowed, 20);
   });
 
   it('rejects a write that is closer than the min interval', () => {
-    const limiter = createWriteRateLimiter({ minIntervalMs: 100, maxPerSec: 10 });
+    const limiter = createWriteRateLimiter({ minIntervalMs: 50, maxPerSec: 20 });
     assert.equal(limiter.allow(0), true);
     limiter.record(0);
-    assert.equal(limiter.allow(50), false);
-    assert.equal(limiter.allow(100), true);
+    assert.equal(limiter.allow(25), false);
+    assert.equal(limiter.allow(50), true);
   });
 
   it('old uncapped loop blows the database budget at 50 concurrent games', () => {
@@ -57,15 +58,15 @@ describe('RTDB write-rate (load simulation)', () => {
     assert.equal(over.overBudget, true);
   });
 
-  it('capped 10 Hz parent-only stays under budget for 90 concurrent games', () => {
+  it('20 Hz parent-only stays under budget for 40 concurrent games', () => {
     const load = simulateRtdbWriteLoad({
-      concurrentGames: 90,
+      concurrentGames: 40,
       writersPerGame: 1,
       writesPerSecPerWriter: PHYSICS_MAX_WRITES_PER_SEC,
     });
-    assert.equal(load.totalWritesPerSec, 900);
+    assert.equal(load.totalWritesPerSec, 800);
     assert.equal(load.overBudget, false);
-    assert.equal(load.headroom, 100);
+    assert.equal(load.headroom, 200);
   });
 
   it('flags child+parent both writing (failover fight) as over budget', () => {
@@ -74,7 +75,7 @@ describe('RTDB write-rate (load simulation)', () => {
       writersPerGame: 2,
       writesPerSecPerWriter: PHYSICS_MAX_WRITES_PER_SEC,
     });
-    assert.equal(load.totalWritesPerSec, 1200);
+    assert.equal(load.totalWritesPerSec, 2400);
     assert.equal(load.overBudget, true);
   });
 
@@ -88,7 +89,7 @@ describe('RTDB write-rate (load simulation)', () => {
     assert.equal(load.overBudget, true);
   });
 
-  it('maps 10 Hz write gaps back onto the original 50ms physics ticks', () => {
+  it('healthy 50ms ticks stay 1 step; hitch gaps catch up', () => {
     assert.equal(PHYSICS_LOOP_INTERVAL_MS, 50);
     assert.equal(physicsStepsForElapsed(50), 1);
     assert.equal(physicsStepsForElapsed(100), 2);

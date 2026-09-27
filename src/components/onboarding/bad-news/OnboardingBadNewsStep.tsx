@@ -23,8 +23,8 @@ export const BAD_NEWS_REVEAL_STAGGER_MS = 440;
 export const BAD_NEWS_REVEAL_DURATION_MS = 1040;
 /** Upper stack: hero → headline → body → «לפי החישוב» (indices 0–3). */
 export const BAD_NEWS_UPPER_REVEAL_LAST_INDEX = 3;
-/** Wait after upper elements finished, then show the card. */
-export const BAD_NEWS_CARD_AFTER_UPPER_MS = 1000;
+/** Wait after upper elements finished, then show the card (was 1000ms; −40%). */
+export const BAD_NEWS_CARD_AFTER_UPPER_MS = 600;
 /** Card fade-in duration before footer may appear. */
 export const BAD_NEWS_CARD_FADE_MS = 500;
 
@@ -47,7 +47,7 @@ const HERO_MIN_PX = 112;
 
 /**
  * Figma Screen 7 — bad-news facts for the single child.
- * Upper copy reveals at a constant stagger; card waits 1s after that.
+ * Upper copy reveals at a constant stagger; card waits 600ms after that.
  */
 export function OnboardingBadNewsStep() {
   const { usableCanvasHeightPx } = useFunnelViewportMetrics();

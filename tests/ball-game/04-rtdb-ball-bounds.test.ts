@@ -69,7 +69,7 @@ describe('RTDB ball bounds (contract)', () => {
     assert.equal(isLegalRtdbBallWrite({ x: 0.5, y: 1.01, vx: 0, vy: 0.4 }), false);
   });
 
-  it('two catch-up steps match two 50ms ticks so 10 Hz writes keep original speed', () => {
+  it('two catch-up steps match two 50ms ticks after a hitch', () => {
     const input = {
       ball: { x: 0.5, y: 0.5, vx: 0.2, vy: -0.6, toward: 'child' as const },
       paddles,

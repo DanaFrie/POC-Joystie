@@ -2,19 +2,22 @@
 
 import { useCallback } from 'react';
 import type { LandingLocale } from '@/components/landing/LandingLocaleContext';
-import { useMarketingFadeNavigate } from '@/components/landing/useMarketingFadeNavigate';
+import { startMarketingExit } from '@/components/landing/useMarketingFadeNavigate';
 
 /**
- * Soft crossfade between HE ↔ EN marketing routes.
+ * HE ↔ EN crosses the `/en` client layout. Next 13.4 client navigation
+ * loads the other page chunk into the current webpack runtime and throws
+ * `TypeError: i[e] is not a function`. Full load keeps a fresh runtime.
  */
 export function useMarketingLocaleSwitch(currentLocale: LandingLocale) {
-  const fadeNavigate = useMarketingFadeNavigate();
-
   return useCallback(
     (href: string, targetLocale: LandingLocale) => {
       if (targetLocale === currentLocale) return;
-      fadeNavigate(href);
+      if (typeof window === 'undefined') return;
+      startMarketingExit(() => {
+        window.location.assign(href);
+      });
     },
-    [currentLocale, fadeNavigate],
+    [currentLocale],
   );
 }

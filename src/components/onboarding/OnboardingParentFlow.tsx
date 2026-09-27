@@ -1560,7 +1560,7 @@ export function OnboardingParentFlow({
         <OnboardingMintGridBackdrop showGrid />
         {showBackButton && <OnboardingBackButton onClick={handleBack} />}
         <OnboardingFunnelStepSlot stepKey="signupIntro" clipOverflow={false}>
-          <FunnelStepRoot fitViewport aria-label="איך זה עובד">
+          <FunnelStepRoot fitViewport aria-label="איך מתחילים?">
             <FunnelStepForeground
               distribution="between"
               padTopPx={0}

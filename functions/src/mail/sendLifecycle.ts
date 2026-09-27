@@ -48,8 +48,10 @@ export async function sendWelcomeEmail(params: {
   to: string;
   parentName: string;
   childName: string;
+  childGender?: 'boy' | 'girl';
 }): Promise<void> {
   const base = appBaseUrl();
+  const withChild = params.childGender === 'girl' ? 'איתה' : 'איתו';
   await sendPlain({
     to: params.to,
     lang: 'he',
@@ -59,7 +61,7 @@ export async function sendWelcomeEmail(params: {
       `היי ${params.parentName},`,
       'שמחים שהצטרפת אלינו!',
       'הגעתם לג׳ויסטי - הדרך חדשה להתמודד עם זמן מסך בבית: פחות חסימות ומלחמות, ויותר בחירה אמיתית ואחריות אישית.',
-      `בצעדים הבאים נכיר את ${params.childName}, נעבור יחד איתו חווית מסך משותפת ונפתח את הארנק הדיגיטלי!`,
+      `בצעדים הבאים נכיר את ${params.childName}, נעבור יחד ${withChild} חווית מסך משותפת ונפתח את הארנק הדיגיטלי!`,
     ],
     buttons: [{ label: 'ממשיכים ל־Joystie', href: `${base}/onboarding` }],
     after: ['נתראה בפנים,', 'צוות Joystie'],

@@ -167,17 +167,17 @@ function IconKid() {
 const ROWS = [
   {
     title: 'מצטרפים בתהליך כיפי',
-    body: 'בדרך נבקש קצת פרטים כדי להבין את הרגלי המסך היום, ולהתאים את החוויה',
+    body: 'בדרך נלמד את הרגלי המסך שלכם',
     Icon: IconWand,
   },
   {
-    title: 'חולקים חווית מסך משותפת',
-    body: 'עוד לפני פתיחת הארנק, נשבור חומות סביב המסך יחד עם הילדים',
+    title: 'מפעילים את הארנק',
+    body: 'ובונים יחד את הכללים שמתאימים לכם',
     Icon: IconPhone,
   },
   {
     title: 'מתחילים עם ילד אחד',
-    body: 'ולאחר פתיחת הארנק, תוכלו להוסיף ילדים או לשנות פרטים',
+    body: 'אח״כ תוכלו להוסיף ילדים נוספים',
     Icon: IconKid,
   },
 ] as const;
@@ -287,19 +287,19 @@ export function ParentWelcomeWhatAwaitsStep({
 
         <div className="relative z-[11] flex min-h-0 w-full flex-1 items-center justify-center px-[82px]">
           <header className="flex w-[211px] flex-col items-center gap-1 text-center">
-            <h1 className="v03-welcome-enter-title w-full font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
+            <h1 className="v03-welcome-enter-title w-full self-stretch text-center font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
               <span className="block">{line1}</span>
               <span className="block">
                 לג׳ויסטי{' '}
                 <span
-                  className="inline-block text-[32px] font-bold leading-[1.1] tracking-[-0.96px]"
+                  className="inline-block text-[40px] font-bold leading-[1.1] tracking-[-1.2px]"
                   aria-hidden
                 >
                   👋
                 </span>
               </span>
             </h1>
-            <p className="v03-welcome-enter-subtitle w-full font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
+            <p className="v03-welcome-enter-subtitle w-full self-stretch text-center font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
               מה מחכה לנו?
             </p>
           </header>
@@ -329,11 +329,11 @@ export function ParentWelcomeWhatAwaitsStep({
                   <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center gap-[9.375px] rounded-[281.25px] bg-[#1BECAE]">
                     <row.Icon />
                   </div>
-                  <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 text-right">
-                    <p className="w-full font-simpler text-[24px] font-bold leading-[26.4px] text-white">
+                  <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 self-stretch text-right">
+                    <p className="w-full self-stretch font-simpler text-[24px] font-bold leading-[1.1] tracking-[-0.72px] text-white">
                       {row.title}
                     </p>
-                    <p className="w-full font-simpler text-[18px] font-normal leading-[22.5px] text-[#dce4e6]">
+                    <p className="w-full self-stretch font-simpler text-[18px] font-normal leading-[1.25] tracking-[-0.36px] text-[#DCE4E6]">
                       {row.body}
                     </p>
                   </div>

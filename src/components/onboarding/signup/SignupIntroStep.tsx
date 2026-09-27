@@ -29,7 +29,7 @@ type SignupIntroStepProps = {
   onStageChange?: (stage: SignupJourneyStageIndex) => void;
   /** 100vh funnel — dots centered in gap between visual bottom and footer top. */
   flow?: boolean;
-  /** Shown in the top pill — «חולקים חווית מסך עם {name}». */
+  /** Shown historically in the top pill — pill is now fixed «איך מתחילים?». */
   childName?: string;
 };
 
@@ -84,7 +84,7 @@ function SignupIntroStageVisual({
   return <SignupJourneyStep3Visual scale={vhScale} />;
 }
 
-/** Signup «איך זה עובד» — שלב 1–3 (Figma 42217 / 42218 / 42219). */
+/** Signup «איך מתחילים?» — שלב 1–3 (Figma 42217 / 42218 / 42219). */
 export function SignupIntroStep({
   stage,
   onStageChange,
@@ -107,7 +107,7 @@ export function SignupIntroStep({
       <div
         className="flex h-full min-h-0 w-full flex-col items-center"
         style={{ width: SIGNUP_INTRO_COPY_WIDTH_PX }}
-        aria-label="איך זה עובד"
+        aria-label="איך מתחילים?"
       >
         <div className="w-full shrink-0" style={{ paddingTop: topPx }}>
           <SignupHowItWorksPill childName={childName} />
@@ -160,7 +160,7 @@ export function SignupIntroStep({
     <div
       className="flex h-full min-h-0 w-full max-w-v03-content flex-col items-center"
       style={{ width: SIGNUP_INTRO_COPY_WIDTH_PX }}
-      aria-label="איך זה עובד"
+      aria-label="איך מתחילים?"
     >
       <div className="w-full shrink-0" style={{ paddingTop: topPx }}>
         <SignupHowItWorksPill childName={childName} />

@@ -504,7 +504,7 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
   };
 }
 
-/** Run N 50ms physics ticks in one write so a 10 Hz cap does not slow the ball. */
+/** Run N 50ms physics ticks after a hitch so a delayed write does not slow the ball. */
 export function stepBallPhysicsN(
   input: PhysicsStepInput,
   steps: number
