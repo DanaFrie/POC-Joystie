@@ -171,9 +171,10 @@ export const cardcomWebhook = functions.https.onRequest(
         const existingSub = existing.data()?.subscription as
           | { trialEndsAt?: string; plan?: SubscriptionPlan }
           | undefined;
-        const trialEndsAt =
-          existingSub?.trialEndsAt ||
-          new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        // Trial starts when the card is stored, not when checkout was opened.
+        const trialEndsAt = new Date(
+          Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000
+        ).toISOString();
 
         const storedToken = extractTokenFromLpResult(verified, payload);
         if (!storedToken) {

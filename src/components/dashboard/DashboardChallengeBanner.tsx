@@ -18,8 +18,9 @@ type DashboardChallengeBannerProps = {
   dealActive?: boolean;
   countdownTarget?: Date | null;
   countdownStart?: Date | null;
-  /** Countdown finished — summary CTA that copies child URL. */
+  /** Countdown finished — week-summary CTA (parent redemption). */
   summaryMode?: boolean;
+  /** Optional copy helper — only used when summaryMode is false / no onClick. */
   onCopyChildUrl?: () => void;
   disabled?: boolean;
 };
@@ -89,6 +90,11 @@ export function DashboardChallengeBanner({
   const isDisabled = disabled || showingTimer;
   const handleClick = () => {
     if (isDisabled) return;
+    // Week summary — open parent redemption / onClick, never copy.
+    if (summaryMode) {
+      onClick?.();
+      return;
+    }
     if (countdownDone && onCopyChildUrl) {
       onCopyChildUrl();
       return;

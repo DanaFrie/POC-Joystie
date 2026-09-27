@@ -24,6 +24,11 @@ import { generateSelfie } from './selfie/generateSelfie';
 import { saveChildShareCard } from './shareCard/saveChildShareCard';
 import { getChildShareCardAccess } from './shareCard/getChildShareCardAccess';
 import { createCardcomTrialCheckout, cardcomWebhook } from './billing/cardcom/handlers';
+import {
+  onEnglishWaitlistCreated,
+  onUserLifecycleMail,
+  scheduledLifecycleMails,
+} from './mail/triggers';
 
 // Initialize Firebase Admin
 // In Firebase Functions Gen 2, this automatically uses the default service account
@@ -53,6 +58,9 @@ export {
   getChildShareCardAccess,
   createCardcomTrialCheckout,
   cardcomWebhook,
+  onUserLifecycleMail,
+  onEnglishWaitlistCreated,
+  scheduledLifecycleMails,
 };
 
 // Define secret for Cloud Run service URL

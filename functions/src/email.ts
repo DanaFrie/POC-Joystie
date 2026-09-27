@@ -16,15 +16,26 @@
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 
-// Email service configuration - using Google Workspace SMTP
-const EMAIL_USER = process.env.SERVICE_FUNCTION_EMAIL_USER;
-const EMAIL_PASSWORD = process.env.SERVICE_FUNCTION_EMAIL_PASSWORD;
+function emailUser(): string | undefined {
+  return process.env.SERVICE_FUNCTION_EMAIL_USER;
+}
+
+function emailPassword(): string | undefined {
+  return process.env.SERVICE_FUNCTION_EMAIL_PASSWORD;
+}
+
+interface EmailAttachment {
+  filename: string;
+  path: string;
+  cid: string;
+}
 
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
 }
 
 interface EmailProvider {
@@ -43,7 +54,9 @@ class WorkspaceSMTPProvider implements EmailProvider {
       return this.transporter;
     }
 
-    if (!EMAIL_USER || !EMAIL_PASSWORD) {
+    const user = emailUser();
+    const pass = emailPassword();
+    if (!user || !pass) {
       throw new Error(
         'SERVICE_FUNCTION_EMAIL_USER and SERVICE_FUNCTION_EMAIL_PASSWORD not configured. ' +
           'Set them using: firebase functions:secrets:set SERVICE_FUNCTION_EMAIL_USER and SERVICE_FUNCTION_EMAIL_PASSWORD'
@@ -53,8 +66,8 @@ class WorkspaceSMTPProvider implements EmailProvider {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: EMAIL_USER,
-        pass: EMAIL_PASSWORD, // App Password from Google Workspace
+        user,
+        pass, // App Password from Google Workspace
       },
     });
 
@@ -66,7 +79,7 @@ class WorkspaceSMTPProvider implements EmailProvider {
 
     try {
       // Use SERVICE_FUNCTION_EMAIL_FROM if set, otherwise use EMAIL_USER
-      const fromEmail = process.env.SERVICE_FUNCTION_EMAIL_FROM || EMAIL_USER;
+      const fromEmail = process.env.SERVICE_FUNCTION_EMAIL_FROM || emailUser();
       const mailOptions = {
         from: `"Joystie" <${fromEmail}>`,
         to: options.to,
@@ -74,6 +87,7 @@ class WorkspaceSMTPProvider implements EmailProvider {
         subject: options.subject,
         html: options.html,
         text: options.text || options.html.replace(/<[^>]*>/g, ''),
+        attachments: options.attachments,
       };
 
       const info = await transporter.sendMail(mailOptions);

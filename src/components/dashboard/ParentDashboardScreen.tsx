@@ -465,7 +465,8 @@ export function ParentDashboardScreen({
       setParentSetupOpen(true);
       return;
     }
-    if (countdownDone && weeklyUpload?.status === 'pending') {
+    // Week-summary banner — open parent redemption / week summary.
+    if (countdownDone) {
       setRedemptionDismissedAt(null);
       setParentRedemptionOpen(true);
     }
@@ -660,7 +661,6 @@ export function ParentDashboardScreen({
                           countdownTarget={countdownTarget}
                           countdownStart={countdownStart}
                           summaryMode
-                          onCopyChildUrl={handleCopyChildUrl}
                         />
                       </DashboardEnter>
                     ) : null}

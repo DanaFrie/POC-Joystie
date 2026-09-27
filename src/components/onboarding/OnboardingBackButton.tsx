@@ -34,7 +34,7 @@ function BackChevron({ tone }: { tone: BackTone }) {
 }
 
 const hitTargetClass =
-  'absolute right-v03-gutter flex items-center justify-center z-[60]';
+  'absolute right-v03-gutter flex items-center justify-center z-[80]';
 
 const controlStyle = {
   top: ONBOARDING_BACK_TOP_PX,
@@ -53,6 +53,8 @@ type OnboardingBackButtonProps = {
 /**
  * Back chevron — overlay on static steps; in-flow when `scrollWithContent` (inside scroll bodies).
  * Always `right-v03-gutter` + top 41px — same slot as non-scroll steps.
+ * Mount inside `OnboardingFunnelStepSlot` / a `relative` step root so light reveal
+ * screens don’t bury it under the full-bleed step stacking context.
  */
 export function OnboardingBackButton({
   href,
@@ -65,7 +67,7 @@ export function OnboardingBackButton({
       type="button"
       onClick={onClick}
       aria-label="חזרה"
-      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[60]'}`}
+      className={hitTargetClass}
       style={controlStyle}
     >
       <BackChevron tone={tone} />
@@ -74,7 +76,7 @@ export function OnboardingBackButton({
     <Link
       href={href ?? '/onboarding'}
       aria-label="חזרה"
-      className={`${hitTargetClass} ${scrollWithContent ? '' : 'z-[60]'}`}
+      className={hitTargetClass}
       style={controlStyle}
     >
       <BackChevron tone={tone} />

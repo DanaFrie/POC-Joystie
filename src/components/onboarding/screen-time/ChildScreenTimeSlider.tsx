@@ -1,17 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ONBOARDING_SCREEN_TIME_MAX,
   ONBOARDING_SCREEN_TIME_MIN,
   snapScreenTimeHours,
 } from '@/lib/onboarding/childrenScreenTime';
 
-const TRACK_WIDTH = 291;
 const THUMB_SIZE = 21;
 const TRACK_HEIGHT = 4;
 const TRACK_TOP = 11;
 const THUMB_TOP = TRACK_TOP + TRACK_HEIGHT / 2 - THUMB_SIZE / 2;
+/** Figma design track width — used until measured. */
+const DEFAULT_TRACK_WIDTH = 291;
 
 type ChildScreenTimeSliderProps = {
   value: number;
@@ -20,17 +21,17 @@ type ChildScreenTimeSliderProps = {
   onDragEnd?: () => void;
 };
 
-function thumbLeftPx(hours: number): number {
+function thumbLeftPx(hours: number, trackWidth: number): number {
   const range = ONBOARDING_SCREEN_TIME_MAX - ONBOARDING_SCREEN_TIME_MIN;
   const t = (hours - ONBOARDING_SCREEN_TIME_MIN) / range;
-  return t * (TRACK_WIDTH - THUMB_SIZE);
+  return t * (trackWidth - THUMB_SIZE);
 }
 
-function fillWidthPx(hours: number): number {
-  return thumbLeftPx(hours) + THUMB_SIZE / 2;
+function fillWidthPx(hours: number, trackWidth: number): number {
+  return thumbLeftPx(hours, trackWidth) + THUMB_SIZE / 2;
 }
 
-/** 0–12 hours; smooth drag, snaps to 0.5h steps on release. */
+/** 0–12 hours; track fills parent width; snaps to 0.5h on release. */
 export function ChildScreenTimeSlider({
   value,
   onChange,
@@ -39,9 +40,26 @@ export function ChildScreenTimeSlider({
 }: ChildScreenTimeSliderProps) {
   const safeValue = snapScreenTimeHours(value);
   const [liveValue, setLiveValue] = useState<number | null>(null);
+  const [trackWidth, setTrackWidth] = useState(DEFAULT_TRACK_WIDTH);
+  const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
 
   const displayValue = liveValue ?? safeValue;
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setTrackWidth(w);
+    };
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const commitValue = (raw: number) => {
     const snapped = snapScreenTimeHours(raw);
@@ -52,10 +70,10 @@ export function ChildScreenTimeSlider({
   };
 
   return (
-    <div dir="ltr" className="flex w-full flex-col items-stretch">
-      <div className="relative h-[21px] w-full max-w-[291px]">
+    <div dir="ltr" className="flex w-full min-w-0 flex-col items-stretch">
+      <div ref={trackRef} className="relative h-[21px] w-full min-w-0">
         <div
-          className="absolute left-0 w-[291px] rounded-full bg-white/25"
+          className="absolute left-0 right-0 rounded-full bg-white/25"
           style={{ top: TRACK_TOP, height: TRACK_HEIGHT }}
           aria-hidden
         />
@@ -63,14 +81,17 @@ export function ChildScreenTimeSlider({
           className="absolute left-0 rounded-full bg-v03-turquoise-300"
           style={{
             top: TRACK_TOP,
-            width: fillWidthPx(displayValue),
+            width: fillWidthPx(displayValue, trackWidth),
             height: TRACK_HEIGHT,
           }}
           aria-hidden
         />
         <div
           className="absolute h-[21px] w-[21px] rounded-full bg-white"
-          style={{ left: thumbLeftPx(displayValue), top: THUMB_TOP }}
+          style={{
+            left: thumbLeftPx(displayValue, trackWidth),
+            top: THUMB_TOP,
+          }}
           aria-hidden
         />
         <input
@@ -100,7 +121,7 @@ export function ChildScreenTimeSlider({
           className="absolute inset-0 h-[21px] w-full cursor-pointer opacity-0"
         />
       </div>
-      <div className="flex w-full max-w-[291px] items-start justify-between">
+      <div className="flex w-full items-start justify-between">
         <span className="font-simpler text-base font-normal leading-[30px] text-v03-green-100">
           {ONBOARDING_SCREEN_TIME_MIN}
         </span>

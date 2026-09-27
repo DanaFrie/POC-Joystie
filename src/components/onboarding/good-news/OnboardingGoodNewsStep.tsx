@@ -1,6 +1,9 @@
 'use client';
 
-import { GoodNewsPercentArrow } from '@/components/onboarding/good-news/GoodNewsPercentArrow';
+import {
+  GoodNewsPercentArrow,
+  GoodNewsPercentSideLine,
+} from '@/components/onboarding/good-news/GoodNewsPercentArrow';
 import { GoodNewsPhoneMockup } from '@/components/onboarding/good-news/GoodNewsPhoneMockup';
 import { useFunnelProportionalTopPx, useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
@@ -64,16 +67,23 @@ export function OnboardingGoodNewsStep() {
             שימוש ב-Joystie יכול לצמצם זמן מסך ב-
           </h1>
 
-          <div className="v03-funnel-enter-reveal-3 flex w-full items-center justify-center self-stretch overflow-visible">
-            <div className="relative inline-flex min-h-[80px] items-center gap-3 overflow-visible">
-              <GoodNewsPercentArrow className="absolute left-[-39px] top-1/2 -translate-y-1/2" />
-              <p className="text-center font-simpler text-[#8C00FF]" dir="ltr">
-                <span className="text-[80px] font-bold leading-none">55</span>
-                <span className="align-top text-[35px] font-medium leading-none">
-                  %
-                </span>
+          {/* [line] [dashed ↓] [55%] [line] — arrow always physical left of 55% */}
+          <div className="v03-funnel-enter-reveal-3 flex w-full items-center gap-3 self-stretch overflow-visible">
+            <GoodNewsPercentSideLine />
+            <div
+              className="relative flex shrink-0 items-center gap-3"
+              dir="ltr"
+            >
+              <GoodNewsPercentArrow className="shrink-0" />
+              <p
+                className="text-center font-simpler text-[#8C00FF]"
+                style={{ lineHeight: '43.8px' }}
+              >
+                <span className="text-[80px] font-bold">55</span>
+                <span className="align-top text-[35px] font-medium">%</span>
               </p>
             </div>
+            <GoodNewsPercentSideLine />
           </div>
         </div>
       </div>

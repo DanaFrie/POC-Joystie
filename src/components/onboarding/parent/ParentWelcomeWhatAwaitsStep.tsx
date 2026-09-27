@@ -1,5 +1,9 @@
 'use client';
 
+import {
+  useFunnelFullBleed,
+  useFunnelViewportMetrics,
+} from '@/components/ui/FunnelViewportContext';
 import type { OnboardingParentRole } from '@/lib/onboarding/parentRole';
 
 type ParentWelcomeWhatAwaitsStepProps = {
@@ -184,84 +188,185 @@ const BULLET_ENTER = [
   'v03-welcome-enter-bullet-2',
 ] as const;
 
+function WelcomeDashedDivider({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={`flex h-0 w-full shrink-0 items-center self-stretch ${className}`}
+      style={{ transform: 'rotate(-180deg)' }}
+      aria-hidden
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="327"
+        height="2"
+        viewBox="0 0 327 2"
+        fill="none"
+        className="w-full max-w-full"
+      >
+        <path
+          d="M326 1L0.999991 0.999972"
+          stroke="#00FFB3"
+          strokeOpacity="0.1"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray="8 8"
+        />
+      </svg>
+    </div>
+  );
+}
+
+const HEADER_BLOCK_PX = 122;
+/** Fixed air above title + below subtitle (never eaten by flex centering). */
+const HEADER_EDGE_GAP_PX = 20;
+const SHEET_CHROME_PX = 36 + 220 + 67;
+const GAP_SLOTS = 5;
+
 /**
  * Figma 14663:29231 — welcome / «מה מחכה לנו?» after parent role.
- * Drawer matches Figma sheet HTML; fits 100vh with CTA (no internal scroll).
+ * Full-bleed shell so the slider sits on the real screen bottom (no green gap).
+ * 20px above header + 20px below subtitle; prefer 40px frame gaps, shrink only if needed.
  */
 export function ParentWelcomeWhatAwaitsStep({
   role,
   onContinue,
 }: ParentWelcomeWhatAwaitsStepProps) {
   const line1 = role === 'father' ? 'ברוך הבא' : 'ברוכה הבאה';
+  const { usableCanvasHeightPx, viewportHeight, scale } =
+    useFunnelViewportMetrics();
+  const bleedStyle = useFunnelFullBleed();
+
+  /** Full-bleed height in canvas px — includes letterbox / safe-area under the artboard. */
+  const bleedHeightPx = Math.max(
+    usableCanvasHeightPx,
+    Math.round(viewportHeight / Math.max(scale, 0.0001))
+  );
+
+  const roomForGaps =
+    bleedHeightPx -
+    HEADER_EDGE_GAP_PX -
+    HEADER_BLOCK_PX -
+    HEADER_EDGE_GAP_PX -
+    SHEET_CHROME_PX;
+  const sliderGapPx = Math.max(
+    8,
+    Math.min(40, Math.floor(roomForGaps / GAP_SLOTS))
+  );
 
   return (
-    <section
-      className="relative z-[10] flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden"
-      aria-label="מה מחכה לנו"
-    >
-      <header className="flex w-full shrink-0 flex-col items-center px-[82px] pb-2 pt-[max(28px,env(safe-area-inset-top))]">
-        <div className="flex w-[211px] flex-col items-center gap-1 text-center">
-          <h1 className="v03-welcome-enter-title w-full font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
-            <span className="block">{line1}</span>
-            <span className="block">
-              לג׳ויסטי{' '}
-              <span
-                className="inline-block text-[32px] font-bold leading-[1.1] tracking-[-0.96px]"
-                aria-hidden
-              >
-                👋
-              </span>
-            </span>
-          </h1>
-          <p className="v03-welcome-enter-subtitle w-full font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
-            מה מחכה לנו?
-          </p>
-        </div>
-      </header>
-
+    <div className="relative h-full min-h-0 w-full">
       {/*
-        Figma Slider sheet:
-        pt 36 · px 26 · gap 40 · radius-t 36 · blur 15 · outline white/25
+        Absolute full-bleed shell — extends into bottom letterbox so the slider
+        can sit flush on the screen edge (CTA stays inside the sheet).
       */}
-      <div className="v03-welcome-enter-sheet relative z-[12] flex min-h-0 w-full flex-1 flex-col items-center gap-10 overflow-hidden rounded-t-[36px] bg-[rgba(9,35,38,0.5)] px-[26px] pt-9 shadow-[2px_2px_15px_rgba(0,0,0,0.08)] outline outline-1 outline-white/25 outline-offset-[-1px] backdrop-blur-[15px]">
-        <div className="flex min-h-0 w-full flex-1 flex-col justify-between gap-10 overflow-hidden">
-          {ROWS.map((row, index) => (
-            <div
-              key={row.title}
-              className={`flex w-full shrink items-start justify-end gap-3 ${BULLET_ENTER[index]}`}
-              dir="rtl"
-            >
-              <div className="flex size-[30px] shrink-0 items-center justify-center rounded-full bg-[#1BECAE]">
-                <row.Icon />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 text-right">
-                <p className="w-full font-simpler text-[24px] font-bold leading-[26.4px] text-white">
-                  {row.title}
-                </p>
-                <p className="w-full font-simpler text-[18px] font-normal leading-[22.5px] text-[#dce4e6]">
-                  {row.body}
-                </p>
-              </div>
-            </div>
-          ))}
+      <section
+        className="z-[10] flex flex-col overflow-hidden"
+        style={bleedStyle}
+        aria-label="מה מחכה לנו"
+      >
+        <div
+          className="pointer-events-none absolute z-[1]"
+          aria-hidden
+          style={{
+            top: 330,
+            left: 51,
+            width: 272,
+            height: 272,
+            borderRadius: 272,
+            background: 'rgba(0, 255, 179, 0.90)',
+            filter: 'blur(150px)',
+          }}
+        />
+
+        {/* Always ≥20px above the header */}
+        <div
+          className="relative z-[11] w-full shrink-0"
+          style={{ height: HEADER_EDGE_GAP_PX }}
+          aria-hidden
+        />
+
+        <div className="relative z-[11] flex min-h-0 w-full flex-1 items-center justify-center px-[82px]">
+          <header className="flex w-[211px] flex-col items-center gap-1 text-center">
+            <h1 className="v03-welcome-enter-title w-full font-simpler text-[40px] font-bold leading-[1.1] tracking-[-1.2px] text-white">
+              <span className="block">{line1}</span>
+              <span className="block">
+                לג׳ויסטי{' '}
+                <span
+                  className="inline-block text-[32px] font-bold leading-[1.1] tracking-[-0.96px]"
+                  aria-hidden
+                >
+                  👋
+                </span>
+              </span>
+            </h1>
+            <p className="v03-welcome-enter-subtitle w-full font-simpler text-[24px] font-normal leading-[1.35] tracking-[-0.72px] text-white/80">
+              מה מחכה לנו?
+            </p>
+          </header>
         </div>
 
-        <div className="v03-welcome-enter-cta flex w-full shrink-0 flex-col items-center gap-[15px]">
-          <button
-            type="button"
-            onClick={onContinue}
-            className="inline-flex h-[55px] w-full max-w-v03-content items-center justify-center overflow-hidden rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
-          >
-            קדימה, מתחילים!
-          </button>
-          {/* Figma lower spacer 32px — real safe-area only (no home-indicator chrome) */}
+        {/* Always ≥20px between subtitle and slider */}
+        <div
+          className="relative z-[11] w-full shrink-0"
+          style={{ height: HEADER_EDGE_GAP_PX }}
+          aria-hidden
+        />
+
+        <div
+          className="v03-welcome-enter-sheet relative z-[12] flex max-h-[min(566px,calc(100%-9rem))] w-full shrink-0 flex-col items-center overflow-hidden rounded-t-[36px] bg-[rgba(9,35,38,0.5)] px-[26px] pt-9 shadow-[2px_2px_15px_rgba(0,0,0,0.08)] outline outline-1 outline-white/25 outline-offset-[-1px] backdrop-blur-[15px]"
+          style={{ gap: sliderGapPx }}
+        >
           <div
-            className="w-full shrink-0"
-            style={{ height: 'max(32px, env(safe-area-inset-bottom))' }}
-            aria-hidden
-          />
+            className="flex w-full flex-col items-stretch"
+            style={{ gap: sliderGapPx }}
+          >
+            {ROWS.map((row, index) => (
+              <div key={row.title} className="contents">
+                <div
+                  className={`flex w-full items-start justify-end gap-3 ${BULLET_ENTER[index]}`}
+                  dir="rtl"
+                >
+                  <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center gap-[9.375px] rounded-[281.25px] bg-[#1BECAE]">
+                    <row.Icon />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 text-right">
+                    <p className="w-full font-simpler text-[24px] font-bold leading-[26.4px] text-white">
+                      {row.title}
+                    </p>
+                    <p className="w-full font-simpler text-[18px] font-normal leading-[22.5px] text-[#dce4e6]">
+                      {row.body}
+                    </p>
+                  </div>
+                </div>
+                {index < ROWS.length - 1 ? (
+                  <WelcomeDashedDivider
+                    className={
+                      index === 0
+                        ? 'v03-welcome-enter-divider-0'
+                        : 'v03-welcome-enter-divider-1'
+                    }
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="v03-welcome-enter-cta flex w-full shrink-0 flex-col items-center gap-[15px]"
+            style={{
+              paddingBottom: 'max(15px, env(safe-area-inset-bottom, 0px))',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onContinue}
+              className="inline-flex h-[55px] w-full max-w-v03-content items-center justify-center overflow-hidden rounded-[22px] bg-white px-[15px] py-2 font-simpler text-[18px] font-bold leading-[21.6px] text-v03-green-900 shadow-[2px_2px_20px_rgba(109,109,109,0.15)] transition hover:brightness-95"
+            >
+              קדימה, מתחילים!
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }

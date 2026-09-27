@@ -139,7 +139,6 @@ import {
   IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
-import { useScrollOverflow } from '@/hooks/useScrollOverflow';
 import { finishParentOnboardingAndGoToDashboard } from '@/lib/onboarding/finishParentOnboarding';
 import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHero';
 import {
@@ -165,7 +164,6 @@ import {
 import {
   FUNNEL_FOREGROUND_PAD_BOTTOM_PX,
   FUNNEL_FOOTER_HOME_INDICATOR_SPACER_PX,
-  getFunnelStackedFooterShellHeightPx,
 } from '@/constants/funnel-vertical-layout';
 
 const logger = createContextLogger('OnboardingParentFlow');
@@ -408,12 +406,6 @@ export function OnboardingParentFlow({
     enabled: accountCreated && oauthFinishing === null,
     onStep: applyPairingResumeStep,
   });
-
-  const funnelScrollOverflows = useScrollOverflow(funnelScrollRef, [
-    step,
-    children,
-    screenTimes,
-  ]);
 
   const selectedChildName = useMemo(() => {
     const fromDraft = children[0]?.name?.trim();
@@ -1677,6 +1669,7 @@ export function OnboardingParentFlow({
           clipOverflow={step !== 'goodNews'}
           innerClassName={step === 'revealIntro' ? 'v03-reveal-intro-scope' : ''}
         >
+          <OnboardingBackButton onClick={handleBack} tone="light" />
           <FunnelStepRoot
             fitViewport
             className={`bg-transparent ${
@@ -1742,18 +1735,18 @@ export function OnboardingParentFlow({
   if (step === 'whatAwaits') {
     return (
       <>
-        <OnboardingMintGridBackdrop showGrid={false} />
+        <OnboardingMintGridBackdrop showGrid={false} mintGlow={false} />
         <OnboardingBackButton onClick={handleBack} />
         <OnboardingFunnelStepSlot stepKey="whatAwaits" clipOverflow={false}>
-          <FunnelStepRoot fitViewport className="overflow-hidden" aria-label="מה מחכה לנו">
+          <FunnelStepRoot fitViewport className="overflow-visible" aria-label="מה מחכה לנו">
             <FunnelStepForeground
-              distribution="between"
+              distribution="start"
               padTopPx={0}
               padBottomPx={0}
               fitViewport
               className="!px-0"
             >
-              <FunnelStepMain className="relative min-h-0 w-full flex-1 overflow-hidden">
+              <FunnelStepMain className="relative min-h-0 w-full flex-1 overflow-visible">
                 <ParentWelcomeWhatAwaitsStep
                   role={role}
                   onContinue={handleParentContinue}
@@ -1815,7 +1808,7 @@ export function OnboardingParentFlow({
         <OnboardingFunnelStepSlot stepKey="childSetup" clipOverflow={false}>
           <FunnelStepRoot fitViewport aria-label="פרטי הילד">
             <FunnelStepForeground
-              distribution="between"
+              distribution="start"
               padTopPx={0}
               padBottomPx={0}
               fitViewport
@@ -1824,12 +1817,12 @@ export function OnboardingParentFlow({
                 scroll
                 scrollRef={funnelScrollRef}
                 className="relative min-h-0 w-full flex-1"
-                footerOverlayReservePx={getFunnelStackedFooterShellHeightPx()}
               >
                 <SingleChildSetupStep
                   child={child}
                   hours={hours}
                   nameError={childNameErrors[0]}
+                  continueDisabled={continueDisabled}
                   onChildChange={(next) => {
                     setChildren([next]);
                     setChildNameErrors(getChildrenHebrewNameErrors([next]));
@@ -1848,18 +1841,9 @@ export function OnboardingParentFlow({
                       },
                     ]);
                   }}
+                  onContinue={handleParentContinue}
                 />
               </FunnelStepMain>
-              <FunnelStepFooter
-                className="v03-funnel-enter-3"
-                variant="secondary"
-                blur={funnelScrollOverflows}
-                overlay
-                disabled={continueDisabled}
-                onClick={handleParentContinue}
-              >
-                המשך
-              </FunnelStepFooter>
             </FunnelStepForeground>
           </FunnelStepRoot>
         </OnboardingFunnelStepSlot>
