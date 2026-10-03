@@ -9,6 +9,7 @@ import {
   type OnboardingChildProgress,
 } from '@/lib/onboarding/childProgress';
 import { inviteWaitingVariantFromProgress } from '@/lib/onboarding/parentInviteWaitingCopy';
+import { isInviteWaitingTimedOut } from '@/lib/onboarding/parentFlowSession';
 import { getCurrentUserId } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -106,7 +107,7 @@ function applyProgress(
     (parentStep === 'childInviteWaiting' || parentStep === 'childInviteShare')
   ) {
     fired.link = true;
-    if (parentStep === 'childInviteShare') {
+    if (parentStep === 'childInviteShare' && !isInviteWaitingTimedOut()) {
       callbacks.onLinkOpened?.();
     }
   }
@@ -119,7 +120,7 @@ function applyProgress(
   if (
     isMissionReadyForSession(progress, sessionStartedAt) &&
     !fired.mission &&
-    parentStep === 'childInviteWaiting'
+    (parentStep === 'childInviteWaiting' || parentStep === 'childInviteShare')
   ) {
     // mission_ready is enough — do not require a fresh link_opened (reset/share races).
     fired.mission = true;

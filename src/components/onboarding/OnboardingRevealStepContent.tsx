@@ -3,9 +3,8 @@
 import { OnboardingBadNewsStep } from '@/components/onboarding/bad-news/OnboardingBadNewsStep';
 import { OnboardingGoodNewsStep } from '@/components/onboarding/good-news/OnboardingGoodNewsStep';
 import { OnboardingNewsStep } from '@/components/onboarding/news/OnboardingNewsStep';
-import { OnboardingRealDataStep } from '@/components/onboarding/real-data/OnboardingRealDataStep';
 
-export type RevealFlowStep = 'revealIntro' | 'badNews' | 'goodNews' | 'realData';
+export type RevealFlowStep = 'revealIntro' | 'badNews' | 'goodNews';
 
 type OnboardingRevealStepContentProps = {
   step: RevealFlowStep;
@@ -20,8 +19,6 @@ export function OnboardingRevealStepContent({ step }: OnboardingRevealStepConten
       return <OnboardingBadNewsStep />;
     case 'goodNews':
       return <OnboardingGoodNewsStep />;
-    case 'realData':
-      return <OnboardingRealDataStep />;
     default:
       return null;
   }

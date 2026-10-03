@@ -1,6 +1,9 @@
 'use client';
 
-import { GoodNewsPercentArrow } from '@/components/onboarding/good-news/GoodNewsPercentArrow';
+import {
+  GoodNewsPercentArrow,
+  GoodNewsPercentSideLine,
+} from '@/components/onboarding/good-news/GoodNewsPercentArrow';
 import { GoodNewsPhoneMockup } from '@/components/onboarding/good-news/GoodNewsPhoneMockup';
 import { useFunnelProportionalTopPx, useFunnelViewportMetrics } from '@/components/ui/FunnelViewportContext';
 import {
@@ -10,7 +13,6 @@ import {
 import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 
 const COPY_BLOCK_WIDTH_PX = 327;
-const PERCENT_ARROW_GAP_PX = 12;
 const LOWER_BLOCK_GAP_PX = 15;
 
 /** Figma — upper (phone + eyebrow) + lower (headline + 55%). */
@@ -22,7 +24,7 @@ export function OnboardingGoodNewsStep() {
 
   return (
     <section
-      className="flex h-full min-h-0 w-full flex-col overflow-hidden"
+      className="flex h-full min-h-0 w-full flex-col overflow-x-hidden overflow-y-visible"
       aria-label="החדשות הטובות"
     >
       <div
@@ -54,31 +56,34 @@ export function OnboardingGoodNewsStep() {
       </div>
 
       <div
-        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-[35px] px-v03-gutter pb-2"
+        className="flex min-h-0 flex-1 flex-col items-center justify-start gap-[35px] overflow-visible px-v03-gutter pb-2"
         style={{ marginTop: LOWER_BLOCK_GAP_PX }}
       >
         <div
-          className="flex w-full flex-col items-center gap-[35px]"
+          className="flex w-full flex-col items-center gap-[35px] overflow-visible"
           style={{ maxWidth: COPY_BLOCK_WIDTH_PX }}
         >
           <h1 className="v03-funnel-enter-reveal-2 w-full self-stretch text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-v03-text-on-light">
             שימוש ב-Joystie יכול לצמצם זמן מסך ב-
           </h1>
 
-          <div className="relative flex w-full self-stretch justify-center">
-            <div className="v03-funnel-enter-reveal-3 relative inline-flex items-center">
-              <GoodNewsPercentArrow
-                className="absolute top-1/2 h-[37px] w-[37px] -translate-y-1/2"
-                style={{ right: `calc(100% + ${PERCENT_ARROW_GAP_PX}px)` }}
-              />
-              <div
-                className="text-center font-simpler text-v03-accent-purple inline-flex items-center"
-                dir="ltr"
+          {/* [line] [dashed ↓] [55%] [line] — arrow always physical left of 55% */}
+          <div className="v03-funnel-enter-reveal-3 flex w-full items-center gap-3 self-stretch overflow-visible">
+            <GoodNewsPercentSideLine />
+            <div
+              className="relative flex shrink-0 items-center gap-3"
+              dir="ltr"
+            >
+              <GoodNewsPercentArrow className="shrink-0" />
+              <p
+                className="text-center font-simpler text-[#8C00FF]"
+                style={{ lineHeight: '43.8px' }}
               >
-                <span className="text-[80px] font-black leading-[43.8px]">55</span>
-                <span className="text-[35px] font-black leading-[43.8px]">%</span>
-              </div>
+                <span className="text-[80px] font-bold">55</span>
+                <span className="align-top text-[35px] font-medium">%</span>
+              </p>
             </div>
+            <GoodNewsPercentSideLine />
           </div>
         </div>
       </div>

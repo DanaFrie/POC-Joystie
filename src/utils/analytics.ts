@@ -112,10 +112,23 @@ export async function setUserId(userId: string | null): Promise<void> {
   }
 }
 
+/** Shared GA4 param — filter Explore / BigQuery for pre-signup stretch. */
+export const PRE_SIGNUP_FUNNEL = 'pre_signup' as const;
+
 /** Canonical funnel + dashboard event names (intgr + prod). */
 export const AnalyticsEvents = {
   LANDING_MARKETING: 'landing_marketing',
   LANDING_ONBOARDING: 'landing_onboarding',
+  /** Pre-signup CTA taps (shared param `funnel=pre_signup`). */
+  PRE_SIGNUP_ROLE: 'pre_signup_role',
+  PRE_SIGNUP_WHAT_AWAITS: 'pre_signup_what_awaits',
+  PRE_SIGNUP_CHILD_SETUP: 'pre_signup_child_setup',
+  PRE_SIGNUP_CALCULATING: 'pre_signup_calculating',
+  PRE_SIGNUP_REVEAL_INTRO: 'pre_signup_reveal_intro',
+  PRE_SIGNUP_BAD_NEWS: 'pre_signup_bad_news',
+  PRE_SIGNUP_GOOD_NEWS: 'pre_signup_good_news',
+  /** signupIntro — only final CTA "יצאנו לדרך!". */
+  PRE_SIGNUP_SIGNUP_INTRO: 'pre_signup_signup_intro',
   SIGNUP: 'signup',
   CHILD_INVITE_LINK: 'child_invite_link',
   GAME_START: 'game_start',
@@ -135,3 +148,15 @@ export const AnalyticsEvents = {
 
 export type AnalyticsEventName =
   (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
+
+/** Parent CTA in the pre-signup stretch — always tagged with `funnel=pre_signup`. */
+export function trackPreSignupCta(
+  eventName: AnalyticsEventName,
+  extra?: Record<string, string | number | boolean>
+): void {
+  void logEventOnce(
+    `pre_signup:${eventName}`,
+    eventName,
+    { funnel: PRE_SIGNUP_FUNNEL, ...extra }
+  );
+}

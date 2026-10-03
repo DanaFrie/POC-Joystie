@@ -39,7 +39,7 @@ function MiniStepButton({
   );
 }
 
-/** Compact age stepper — 6–14; LTR + left / − right. */
+/** Compact age stepper — 6–12; LTR + left / − right. */
 export function ChildAgeStepper({ value, onChange }: ChildAgeStepperProps) {
   const atMin = value <= ONBOARDING_CHILD_AGE_MIN;
   const atMax = value >= ONBOARDING_CHILD_AGE_MAX;
@@ -47,7 +47,7 @@ export function ChildAgeStepper({ value, onChange }: ChildAgeStepperProps) {
   return (
     <div
       dir="ltr"
-      className="inline-flex flex-row items-center justify-center gap-4 rounded-[68px] bg-white/5 p-1.5 outline outline-1 outline-white/25 outline-offset-[-1px]"
+      className="inline-flex flex-row items-center justify-center gap-[15.92px] rounded-[68px] bg-white/5 p-1.5 outline outline-1 outline-white/25 outline-offset-[-1px]"
       role="group"
       aria-label="גיל"
     >

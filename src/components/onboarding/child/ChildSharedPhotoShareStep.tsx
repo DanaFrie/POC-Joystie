@@ -166,6 +166,19 @@ export function ChildSharedPhotoShareStep({
                 lineHeight: 1.2,
                 letterSpacing: '-0.3012px',
               }}
+              onClick={(event) => {
+                // App Router hijacks same-origin <a> as client nav — token + dashboard
+                // chunk often never land, so the funnel stays on FunnelRouteLoading.
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                  return;
+                }
+                event.preventDefault();
+                if (onWallet) {
+                  onWallet();
+                  return;
+                }
+                window.location.assign(walletHref);
+              }}
             >
               {CHILD_SHARED_PHOTO_WALLET_LABEL}
             </a>

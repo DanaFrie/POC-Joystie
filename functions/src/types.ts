@@ -79,39 +79,5 @@ export interface FirestoreChallenge {
   redeemedAt?: string;
   createdAt: string;
   updatedAt: string;
-  notificationsSent?: {
-    first_day?: boolean;
-    first_upload_success?: boolean;
-    first_upload_failure?: boolean;
-    two_pending?: boolean;
-    missing_upload?: boolean;
-  };
-}
-
-export interface FirestoreDailyUpload {
-  id: string;
-  challengeId: string;
-  parentId: string;
-  childId: string;
-  date: string;
-  dayName: string;
-  screenTimeUsed: number;
-  screenTimeMinutes?: number;
-  screenTimeGoal: number;
-  coinsEarned: number;
-  coinsMaxPossible: number;
-  success: boolean;
-  screenshotUrl?: string;
-  requiresApproval: boolean;
-  parentAction?: 'approved' | null;
-  uploadedAt: string;
-  approvedAt?: string;
-  apps?: Array<{
-    name: string;
-    timeUsed: number;
-    icon?: string;
-  }>;
-  createdAt: string;
-  updatedAt: string;
 }
 

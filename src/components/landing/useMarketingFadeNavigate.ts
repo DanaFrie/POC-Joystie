@@ -45,9 +45,12 @@ export function useMarketingFadeNavigate() {
       if (typeof window === 'undefined') return;
 
       try {
-        router.prefetch(href);
+        const prefetched = router.prefetch(href) as unknown;
+        if (prefetched && typeof (prefetched as Promise<unknown>).then === 'function') {
+          void (prefetched as Promise<unknown>).catch(() => undefined);
+        }
       } catch {
-        /* prefetch best-effort */
+        /* prefetch best-effort — never throw into the click handler */
       }
 
       startMarketingExit(() => {

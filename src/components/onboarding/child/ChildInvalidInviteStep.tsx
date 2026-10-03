@@ -5,6 +5,10 @@ import { ChildMintFunnelBackground } from '@/components/onboarding/game/ChildMin
 import { BallGameSliderCard } from '@/components/onboarding/game/BallGameSliderCard';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
+import {
+  GAME_ROOM_EXPIRED_TITLE,
+  gameRoomExpiredDetail,
+} from '@/lib/onboarding/childBondingLabels';
 
 type ChildInvalidInviteStepProps = {
   title?: string;
@@ -15,6 +19,20 @@ type ChildInvalidInviteStepProps = {
 
 const DEFAULT_TITLE = 'הקישור לא תקין';
 const DEFAULT_DETAIL = 'בקשו מההורה לשלוח את הלינק פעם נוספת';
+
+/** Deleted / expired game room — same disappointed-Dori card as a bad invite. */
+export function GameRoomLostStep({
+  parentGender,
+}: {
+  parentGender?: 'female' | 'male' | null;
+}) {
+  return (
+    <ChildInvalidInviteStep
+      title={GAME_ROOM_EXPIRED_TITLE}
+      detail={gameRoomExpiredDetail(parentGender)}
+    />
+  );
+}
 
 export function ChildInviteAccessFailure({
   status,

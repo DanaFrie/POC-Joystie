@@ -8,7 +8,7 @@ export type OnboardingChildScreenTime = {
 export const ONBOARDING_SCREEN_TIME_MIN = 0;
 export const ONBOARDING_SCREEN_TIME_MAX = 12;
 export const ONBOARDING_SCREEN_TIME_STEP = 0.5;
-export const DEFAULT_ONBOARDING_SCREEN_TIME_HOURS = 1;
+export const DEFAULT_ONBOARDING_SCREEN_TIME_HOURS = 3;
 
 import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
 

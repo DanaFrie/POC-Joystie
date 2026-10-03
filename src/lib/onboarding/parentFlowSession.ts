@@ -5,6 +5,23 @@ export const OAUTH_SIGNUP_WELCOME_KEY = 'onboardingOAuthSignupWelcome';
 export const FRESH_PARENT_FLOW_START_KEY = 'onboardingParentFreshStart';
 /** Set when user returns to landing — blocks stale parent-flow restore. */
 export const LANDING_ACTIVE_KEY = 'onboardingLandingActive';
+/** Parent waited 3 min on link/dragon screens — stay on copy-invite, don't auto-bounce back. */
+export const INVITE_WAITING_TIMEOUT_KEY = 'onboardingInviteWaitingTimedOut';
+
+export function markInviteWaitingTimedOut() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(INVITE_WAITING_TIMEOUT_KEY, '1');
+}
+
+export function clearInviteWaitingTimedOut() {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(INVITE_WAITING_TIMEOUT_KEY);
+}
+
+export function isInviteWaitingTimedOut(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(INVITE_WAITING_TIMEOUT_KEY) === '1';
+}
 
 /** Funnel steps that must survive an `/onboarding` remount (auth gate, HMR). */
 const IN_PROGRESS_FUNNEL_STEPS = new Set([

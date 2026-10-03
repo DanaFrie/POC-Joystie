@@ -15,6 +15,7 @@ import {
   deriveChildPostGameStep,
   mergePostGameProgress,
 } from '@/lib/onboarding/postGameSync';
+import { isInviteWaitingTimedOut } from '@/lib/onboarding/parentFlowSession';
 
 export type PairingStage = 'invite' | 'child_funnel' | 'game' | 'post_game' | 'complete';
 
@@ -101,7 +102,8 @@ export async function readPairingSnapshot(parentId: string): Promise<PairingSnap
 export function parentResumeAction(
   stage: PairingStage,
   currentPath: '/onboarding' | '/game',
-  currentStep?: string | null
+  currentStep?: string | null,
+  options?: { inviteWaitingTimedOut?: boolean }
 ): ParentResumeAction {
   if (stage === 'complete' || stage === 'post_game') {
     if (
@@ -124,6 +126,15 @@ export function parentResumeAction(
 
   if (stage === 'child_funnel') {
     if (currentPath === '/onboarding' && currentStep === 'childInviteWaiting') {
+      return { type: 'stay' };
+    }
+    const timedOut =
+      options?.inviteWaitingTimedOut ?? isInviteWaitingTimedOut();
+    if (
+      timedOut &&
+      currentPath === '/onboarding' &&
+      currentStep === 'childInviteShare'
+    ) {
       return { type: 'stay' };
     }
     if (currentStep && PARENT_PRE_ACCOUNT_STEPS.has(currentStep)) return { type: 'stay' };
