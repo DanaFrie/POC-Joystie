@@ -26,8 +26,11 @@ export async function createUser(
       createdAt: now,
       updatedAt: now,
     };
-    
-    await setDoc(userRef, firestoreUser);
+
+    await setDoc(userRef, firestoreUser, { merge: true });
+
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    dataCache.set(cacheKeys.user(userId), firestoreUser, cacheTTL.user);
   } catch (error) {
     logger.error('Error creating user:', error);
     throw new Error('שגיאה ביצירת משתמש. נסה שוב.');
@@ -89,13 +92,10 @@ export async function getUser(userId: string, useCache: boolean = true): Promise
     
     const data = userSnap.data() ?? {};
     const user = { id: userSnap.id, ...data } as FirestoreUser;
-    
-    // Cache the result
-    if (useCache) {
-      const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
-      dataCache.set(cacheKeys.user(userId), user, cacheTTL.user);
-    }
-    
+
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    dataCache.set(cacheKeys.user(userId), user, cacheTTL.user);
+
     return user;
   } catch (error) {
     logger.error('Error getting user:', error);
@@ -114,13 +114,21 @@ export async function updateUser(
     const { doc, updateDoc } = await import('firebase/firestore');
     const db = await getFirestoreInstance();
     const userRef = doc(db, USERS_COLLECTION, userId);
+    const updatedAt = new Date().toISOString();
     await updateDoc(userRef, {
       ...updates,
-      updatedAt: new Date().toISOString(),
+      updatedAt,
     });
 
-    const { dataCache, cacheKeys } = await import('@/utils/data-cache');
-    dataCache.invalidate(cacheKeys.user(userId));
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    const cached = dataCache.get<FirestoreUser>(cacheKeys.user(userId));
+    if (cached) {
+      dataCache.set(
+        cacheKeys.user(userId),
+        { ...cached, ...updates, updatedAt },
+        cacheTTL.user
+      );
+    }
   } catch (error) {
     logger.error('Error updating user:', error);
     throw new Error('שגיאה בעדכון נתוני המשתמש.');

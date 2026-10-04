@@ -109,7 +109,7 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
   }
 
   if (finalizeDoneParentId === parentId) {
-    const user = await getUser(parentId, false);
+    const user = await getUser(parentId, true);
     return { childId: user?.primaryChildId ?? null };
   }
 
@@ -124,7 +124,7 @@ export async function finalizeParentOnboardingOnCompletionAppear(): Promise<{
 async function runFinalizeParentOnboarding(parentId: string): Promise<{
   childId: string | null;
 }> {
-  const user = await getUser(parentId, false);
+  const user = await getUser(parentId, true);
   if (user?.onboarding === true && user.primaryChildId) {
     finalizeDoneParentId = parentId;
     return { childId: user.primaryChildId };

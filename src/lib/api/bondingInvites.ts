@@ -70,7 +70,7 @@ export async function resolveDashboardChildShareUrl(params: {
       }
     }
     if (!childId) {
-      const user = await getUser(params.parentId, false);
+      const user = await getUser(params.parentId, true);
       const primary = user?.primaryChildId?.trim() || null;
       if (primary && !isDraftChildId(primary)) childId = primary;
     }

@@ -1,5 +1,5 @@
 import type { User } from 'firebase/auth';
-import { checkAuthEmailExists } from '@/lib/api/auth';
+import { authEmailHasSignInMethods } from '@/lib/api/auth';
 import { getUser, getUserByEmail } from '@/lib/api/users';
 import { isUserOnboardingComplete } from '@/lib/auth/postLoginNavigation';
 import {
@@ -72,7 +72,7 @@ export async function resolveSignupEmailAccountStatus(
     return statusFromRouteKind(classifyUserOnboarding(profile));
   }
 
-  const exists = await checkAuthEmailExists(normalized);
+  const exists = await authEmailHasSignInMethods(normalized);
   return exists ? 'incomplete' : 'new';
 }
 

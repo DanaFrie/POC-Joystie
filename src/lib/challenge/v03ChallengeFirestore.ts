@@ -71,26 +71,28 @@ export async function persistParentChallengeSetup(
   }
 
   // Refresh parent-facing child share URL with this challenge id (30-day token).
-  try {
-    const { updateUser } = await import('@/lib/api/users');
-    await updateUser(parentId, {
-      primaryChildId: resolvedChildId,
+  void import('@/lib/api/users')
+    .then(({ updateUser }) =>
+      updateUser(parentId, {
+        primaryChildId: resolvedChildId,
+      })
+    )
+    .catch(() => {
+      // non-critical
     });
-  } catch {
-    // non-critical
-  }
 
   if (created) {
-    try {
-      const { logEventOnce, AnalyticsEvents } = await import('@/utils/analytics');
-      await logEventOnce(
-        `challenge_created:${challengeId}`,
-        AnalyticsEvents.CHALLENGE_CREATED,
-        { week_number: weekNumber }
-      );
-    } catch {
-      // non-critical
-    }
+    void import('@/utils/analytics')
+      .then(({ logEventOnce, AnalyticsEvents }) =>
+        logEventOnce(
+          `challenge_created:${challengeId}`,
+          AnalyticsEvents.CHALLENGE_CREATED,
+          { week_number: weekNumber }
+        )
+      )
+      .catch(() => {
+        // non-critical
+      });
   }
 
   invalidateDashboardCache(parentId);

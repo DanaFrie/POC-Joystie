@@ -560,14 +560,17 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
     }
   }
   try {
-    const user = await getUser(parentId);
+    const [user, activeChallenge] = await Promise.all([
+      getUser(parentId),
+      getActiveChallenge(parentId, false),
+    ]);
     if (!user) {
       logger.warn('User not found in Firestore:', parentId);
       return null;
     }
 
     // Get challenge from Firestore only (no cache) so we have latest weeklyUpload after child upload
-    let challenge = await getActiveChallenge(parentId, false);
+    let challenge = activeChallenge;
     if (!challenge) {
       challenge = await getLatestChallenge(parentId);
       if (!challenge) {
@@ -578,14 +581,13 @@ export async function getDashboardData(parentId: string, useCache: boolean = tru
       }
     }
 
-    // Get child data
-    const child = await getChild(challenge.childId);
+    const [child, uploads] = await Promise.all([
+      getChild(challenge.childId),
+      getUploadsByChallenge(challenge.id, parentId),
+    ]);
     if (!child) {
       throw new Error('Child not found for challenge');
     }
-    
-    // Get uploads for current week (include parentId for security rules)
-    const uploads = await getUploadsByChallenge(challenge.id, parentId);
 
     // Check if challenge hasn't started yet
     const challengeNotStarted = !challenge.startDate || (() => {

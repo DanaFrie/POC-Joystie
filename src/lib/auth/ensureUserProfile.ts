@@ -75,8 +75,8 @@ async function mergeRicherEmailTwin(
  * Resolve Firestore profile after Auth sign-in. Creates or re-links a profile when missing at uid.
  */
 export async function ensureUserProfileForLogin(uid: string): Promise<FirestoreUser> {
-  // Fresh read — cached stubs (pre-terms) caused false "unknown account" after Apple signup.
-  const existing = await getUser(uid, false);
+  // Prefer cache after a fresh network read (login already fetched this uid).
+  const existing = await getUser(uid, true);
   if (existing) {
     if (
       typeof window !== 'undefined' &&

@@ -25,25 +25,20 @@ export async function finishParentOnboardingAndGoToDashboard(
     throw error;
   }
 
-  try {
-    const parentId = await getCurrentUserIdAsync();
-    if (parentId) {
-      const [{ consumeOnboardingInviteRecords }, { getOnboardingBondingInviteId }, { getUser }] =
-        await Promise.all([
-          import('@/lib/onboarding/consumeOnboardingInvite'),
-          import('@/lib/onboarding/bondingShare'),
-          import('@/lib/api/users'),
-        ]);
-      const user = await getUser(parentId, false);
-      await consumeOnboardingInviteRecords({
-        parentId,
-        inviteId: getOnboardingBondingInviteId() || user?.bondingInviteId,
-      });
-    }
-  } catch (error) {
-    logger.warn('Could not consume onboarding invite records before dashboard:', error);
-  }
+  const parentId = await getCurrentUserIdAsync();
+  const { getOnboardingBondingInviteId } = await import('@/lib/onboarding/bondingShare');
+  const inviteId = parentId ? getOnboardingBondingInviteId() : null;
 
   clearParentFlowSession();
   router.replace(options?.subscription ? '/dashboard?subscription=1' : '/dashboard');
+
+  if (parentId) {
+    void import('@/lib/onboarding/consumeOnboardingInvite')
+      .then(({ consumeOnboardingInviteRecords }) =>
+        consumeOnboardingInviteRecords({ parentId, inviteId })
+      )
+      .catch((error) => {
+        logger.warn('Could not consume onboarding invite records before dashboard:', error);
+      });
+  }
 }

@@ -19,7 +19,7 @@ import {
   markOnboardingAccountCreated,
   syncFunnelKidsAgesToUser,
 } from '@/lib/onboarding/persistOnboardingAccount';
-import type { FirestoreUser } from '@/types/firestore';
+import type { FirestoreChild, FirestoreUser } from '@/types/firestore';
 import { showSessionWaiter } from '@/lib/auth/sessionRouteWaiter';
 import { createSession } from '@/utils/session';
 import { createContextLogger } from '@/utils/logger';
@@ -56,6 +56,8 @@ export type NavigateAfterLoginOptions = {
   source?: 'login' | 'signup_existing' | 'onboarding_gate';
   /** Prefer replace so session-restore doesn't stack /login or /onboarding. */
   replace?: boolean;
+  /** Skip a second children query when login already loaded them. */
+  prefetchedChildren?: FirestoreChild[] | null;
 };
 
 /** Warm dashboard cache so /dashboard can paint without a second waiter. */
@@ -124,12 +126,16 @@ export async function resolveAuthenticatedUserDestination(
   const source = options?.source ?? 'login';
   const isSignupExisting = source === 'signup_existing';
 
-  let children: Awaited<ReturnType<typeof getChildrenByParent>> | null = null;
-  try {
-    children = await getChildrenByParent(user.id);
-  } catch (error) {
-    logger.warn('Could not load children for routing', error);
-    children = null;
+  let children: FirestoreChild[] | null;
+  if (options?.prefetchedChildren !== undefined) {
+    children = options.prefetchedChildren;
+  } else {
+    try {
+      children = await getChildrenByParent(user.id);
+    } catch (error) {
+      logger.warn('Could not load children for routing', error);
+      children = null;
+    }
   }
 
   let kind = classifyUserOnboarding(user, { children });
@@ -318,8 +324,14 @@ export async function finishAuthenticatedUserNavigation(
   options?: NavigateAfterLoginOptions
 ): Promise<UserOnboardingRouteKind> {
   createSession(uid);
-  const userData = await ensureUserProfileForLogin(uid);
-  return navigateAfterLogin(userData, router, options);
+  const [userData, prefetchedChildren] = await Promise.all([
+    ensureUserProfileForLogin(uid),
+    getChildrenByParent(uid).catch((error) => {
+      logger.warn('Could not load children for routing', error);
+      return null;
+    }),
+  ]);
+  return navigateAfterLogin(userData, router, { ...options, prefetchedChildren });
 }
 
 /**
@@ -333,9 +345,16 @@ export async function resolveOnboardingEntryForAuthenticatedUser(
   kind: UserOnboardingRouteKind;
   enterParentFlow: boolean;
 }> {
-  const userData = await ensureUserProfileForLogin(uid);
+  const [userData, prefetchedChildren] = await Promise.all([
+    ensureUserProfileForLogin(uid),
+    getChildrenByParent(uid).catch((error) => {
+      logger.warn('Could not load children for routing', error);
+      return null;
+    }),
+  ]);
   const { path, kind } = await resolveAuthenticatedUserDestination(userData, {
     source: 'onboarding_gate',
+    prefetchedChildren,
   });
 
   return {
