@@ -53,7 +53,7 @@ const ParentGamePostWinFlow = nextDynamic(
   { loading: () => <FunnelRouteLoading />, ssr: false }
 );
 import { getBondingChildName, getBondingChildGender, getSelectedFirstChildGender, getSelectedFirstChildName, setBondingChildGender, setBondingChildName, clearBondingChildUrl } from '@/lib/onboarding/bondingInvite';
-import { clearOnboardingBondingInviteId } from '@/lib/onboarding/bondingShare';
+import { clearOnboardingBondingInviteId, prepareBondingInvite } from '@/lib/onboarding/bondingShare';
 import { ONBOARDING_PARENT_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { SIGNUP_CHILD_INVITE_WAITING_STALL_MS } from '@/constants/signup-child-invite-layout';
 import type { OnboardingSubscriptionPlan } from '@/constants/onboarding-subscription-layout';
@@ -429,7 +429,7 @@ export function OnboardingParentFlow({
         const uid = await getCurrentUserIdAsync();
         if (!uid || cancelled) return;
 
-        const user = await getUser(uid, false);
+        const user = await getUser(uid, true);
         if (!user || cancelled) return;
         if (!(await hydrateSessionChildrenFromAccount(user))) return;
 
@@ -608,7 +608,11 @@ export function OnboardingParentFlow({
         throw new Error('ההתחברות לא הושלמה. נסו שוב.');
       }
 
-      await auth.currentUser!.getIdToken(true);
+      // Email signup already has a fresh token. Forced refresh adds a network
+      // round-trip that stacks with the first Firestore write.
+      if (params.oauthProvider) {
+        await auth.currentUser!.getIdToken(true);
+      }
       // Apple often hydrates providerData a tick late — reload before rejecting.
       if (
         params.oauthProvider &&
@@ -648,7 +652,14 @@ export function OnboardingParentFlow({
 
       clearOAuthSessionFlags();
       await persistOnboardingAccountAfterAuth(params);
-      const savedUser = await getUser(params.uid, false);
+      const draftChild = (getOnboardingChildrenDetails() ?? [])[0];
+      if (draftChild?.name?.trim()) {
+        void prepareBondingInvite({
+          childName: draftChild.name.trim(),
+          childGender: draftChild.gender,
+        }).catch((error) => logger.warn('prefetch bonding invite failed', error));
+      }
+      const savedUser = await getUser(params.uid, true);
       if (savedUser && (await hydrateSessionChildrenFromAccount(savedUser))) {
         const hydratedChildren = getOnboardingChildrenDetails();
         const hydratedTimes = getOnboardingChildrenScreenTime();

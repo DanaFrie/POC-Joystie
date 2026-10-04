@@ -41,6 +41,10 @@ export async function createChild(
     };
 
     await setDoc(childRef, child);
+
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    dataCache.set(cacheKeys.child(child.id), child, cacheTTL.child);
+
     return childRef.id;
   } catch (error) {
     logger.error('Error creating child:', error);
@@ -73,13 +77,10 @@ export async function getChild(childId: string, useCache: boolean = true): Promi
     }
     
     const child = childSnap.data() as FirestoreChild;
-    
-    // Cache the result
-    if (useCache) {
-      const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
-      dataCache.set(cacheKeys.child(childId), child, cacheTTL.child);
-    }
-    
+
+    const { dataCache, cacheKeys, cacheTTL } = await import('@/utils/data-cache');
+    dataCache.set(cacheKeys.child(childId), child, cacheTTL.child);
+
     return child;
   } catch (error) {
     logger.error('Error getting child:', error);
@@ -215,14 +216,15 @@ export async function updateChild(
  * Prefers user.primaryChildId, else first existing child, else creates from kidsAges[0].
  */
 export async function ensureChildForParent(parentId: string): Promise<FirestoreChild> {
-  const existing = await getChildrenByParent(parentId);
-  const { getUser } = await import('./users');
-  const user = await getUser(parentId, false);
+  const [existing, user] = await Promise.all([
+    getChildrenByParent(parentId),
+    import('./users').then(({ getUser }) => getUser(parentId, true)),
+  ]);
 
   if (user?.primaryChildId) {
     const primary = existing.find((c) => c.id === user.primaryChildId);
     if (primary) return primary;
-    const byId = await getChild(user.primaryChildId, false);
+    const byId = await getChild(user.primaryChildId, true);
     if (byId) return byId;
   }
 
@@ -243,7 +245,7 @@ export async function ensureChildForParent(parentId: string): Promise<FirestoreC
         : undefined,
   });
 
-  const child = await getChild(childId, false);
+  const child = await getChild(childId, true);
   if (!child) {
     throw new Error('שגיאה ביצירת פרופיל ילד.');
   }

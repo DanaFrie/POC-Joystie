@@ -1,11 +1,11 @@
 /**
  * Parent listens to bonding_invites for child milestones (Firestore).
- * Resolves invite id from user.bondingInviteId or latest invite by parentId —
- * not sessionStorage.
+ * Resolves invite id from session, then user.bondingInviteId, then latest invite.
  */
 import { doc, onSnapshot, type Unsubscribe } from 'firebase/firestore';
 import { getFirestoreInstance } from '@/lib/firebase';
 import { getUser } from '@/lib/api/users';
+import { getOnboardingBondingInviteId } from '@/lib/onboarding/bondingShare';
 import { getLatestBondingInviteForParent } from '@/lib/api/bondingInvites';
 import { createContextLogger } from '@/utils/logger';
 
@@ -32,8 +32,11 @@ function mapInviteData(data: Record<string, unknown>): BondingInviteProgress {
 }
 
 async function resolveInviteIdForParent(parentId: string): Promise<string | null> {
+  const fromSession = getOnboardingBondingInviteId()?.trim();
+  if (fromSession) return fromSession;
+
   try {
-    const user = await getUser(parentId, false);
+    const user = await getUser(parentId, true);
     if (user?.bondingInviteId?.trim()) return user.bondingInviteId.trim();
   } catch {
     // fall through

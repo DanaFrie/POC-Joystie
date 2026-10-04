@@ -169,14 +169,15 @@ function DashboardPageContent() {
         }
 
         const { getUser } = await import('@/lib/api/users');
-        const profile = await getUser(userId);
+        const dataPromise = loadDashboardDataShared(userId);
+        const profile = await getUser(userId, true);
         if (!profile || profile.onboarding !== true) {
           logger.warn('Onboarding incomplete — redirecting to onboarding');
           router.replace('/onboarding');
           return;
         }
 
-        const data = await loadDashboardDataShared(userId);
+        const data = await dataPromise;
 
         if (data) {
           setDashboardData(data);
@@ -249,7 +250,7 @@ function DashboardPageContent() {
 
         const { getUser } = await import('@/lib/api/users');
         const { resolveDashboardChildShareUrl } = await import('@/lib/api/bondingInvites');
-        const profile = await getUser(userId, false);
+        const profile = await getUser(userId, true);
         const url = await resolveDashboardChildShareUrl({
           parentId: userId,
           childId: dashboardData?.child.id || profile?.primaryChildId || null,

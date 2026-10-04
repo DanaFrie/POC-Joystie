@@ -247,11 +247,12 @@ async function initializeFirebase(): Promise<void> {
         primeOAuthRedirectCaptureWithAuth(authInstance);
       }
 
-      // Auto-detect long polling — Chrome QUIC idle timeouts on Listen/Write
-      // channels otherwise log ERR_QUIC_PROTOCOL_ERROR with HTTP 200.
+      // Force long polling. Auto-detect still opens a WebChannel first; on Chrome
+      // that Listen/Write often hangs on QUIC (ERR_QUIC_PROTOCOL_ERROR / HTTP 200)
+      // so the first Firestore read/write in onboarding looks stuck.
       try {
         dbInstance = initializeFirestore(app, {
-          experimentalAutoDetectLongPolling: true,
+          experimentalForceLongPolling: true,
         });
       } catch {
         dbInstance = getFirestore(app);

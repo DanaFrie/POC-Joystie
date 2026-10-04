@@ -171,7 +171,12 @@ export async function persistOnboardingAccountAfterAuth(params: {
 
   const normalizedEmail = email.trim().toLowerCase();
   const now = new Date().toISOString();
-  const existing = await getUser(uid, false);
+  const resumeKind =
+    typeof window !== 'undefined'
+      ? sessionStorage.getItem(ONBOARDING_RESUME_KIND_KEY)
+      : null;
+  // New signup: skip the extra getDoc (stub is merge-upserted). Resume still reads.
+  const existing = resumeKind ? await getUser(uid, true) : null;
 
   if (!existing) {
     await createUser(uid, {
@@ -185,10 +190,6 @@ export async function persistOnboardingAccountAfterAuth(params: {
       signupDate: now,
     });
   } else {
-    const resumeKind =
-      typeof window !== 'undefined'
-        ? sessionStorage.getItem(ONBOARDING_RESUME_KIND_KEY)
-        : null;
     // Prefer Firestore kids on v03 resume / empty funnel drafts.
     // v02_legacy: allow funnel kidsAges to replace legacy string/partial kids.
     const preferExistingKids =
@@ -227,15 +228,16 @@ export async function persistOnboardingAccountAfterAuth(params: {
     logger.warn('Meta tracking failed:', error);
   }
 
-  try {
-    const { logEventOnce, AnalyticsEvents, setUserId } = await import('@/utils/analytics');
-    await setUserId(uid);
-    await logEventOnce(`signup:${uid}`, AnalyticsEvents.SIGNUP, {
-      method: 'onboarding',
+  void import('@/utils/analytics')
+    .then(async ({ logEventOnce, AnalyticsEvents, setUserId }) => {
+      await setUserId(uid);
+      await logEventOnce(`signup:${uid}`, AnalyticsEvents.SIGNUP, {
+        method: 'onboarding',
+      });
+    })
+    .catch((error) => {
+      logger.warn('Signup analytics failed:', error);
     });
-  } catch (error) {
-    logger.warn('Signup analytics failed:', error);
-  }
 
   return { childSnapshots };
 }
@@ -264,7 +266,7 @@ export async function syncFunnelKidsAgesToUser(
     const { getChildrenByParent, updateChild } = await import('@/lib/api/children');
     const childDocs = await getChildrenByParent(uid);
     if (childDocs.length) {
-      const user = await getUser(uid, false);
+      const user = await getUser(uid, true);
       const ordered = [...childDocs];
       if (user?.primaryChildId) {
         ordered.sort((a, b) => {

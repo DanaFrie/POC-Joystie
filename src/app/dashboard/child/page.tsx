@@ -95,7 +95,7 @@ function DashboardChildPageContent() {
     }
 
     const { getUser } = await import('@/lib/api/users');
-    const user = await getUser(parentId, false);
+    const user = await getUser(parentId, true);
     if (!user) {
       throw new Error('לא נמצאו נתוני הורה');
     }

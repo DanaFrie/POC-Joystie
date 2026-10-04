@@ -1,5 +1,6 @@
 import { markBondingWhatsAppShared, recordBondingInvite, resolveBondingInvite } from '@/lib/api/bonding';
 import { getUser, updateUser } from '@/lib/api/users';
+import type { FirestoreUser } from '@/types/firestore';
 import { getOnboardingFirstChildIndex } from '@/lib/onboarding/pickFirstChild';
 import { getOnboardingChildIds } from '@/lib/onboarding/persistOnboardingAccount';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
@@ -52,55 +53,47 @@ function getSelectedChildId(): string | undefined {
   return ids[index];
 }
 
-async function resolveParentGender(parentId: string): Promise<'female' | 'male'> {
+async function loadParentProfile(parentId: string): Promise<FirestoreUser | null> {
+  try {
+    return await getUser(parentId, true);
+  } catch {
+    return null;
+  }
+}
+
+function resolveParentGender(profile: FirestoreUser | null): 'female' | 'male' {
   const role = getOnboardingParentRole();
   if (role) return parentRoleToGender(role);
-
-  try {
-    const profile = await getUser(parentId, false);
-    if (profile?.gender === 'male' || profile?.gender === 'female') {
-      return profile.gender;
-    }
-  } catch {
-    // fall through
+  if (profile?.gender === 'male' || profile?.gender === 'female') {
+    return profile.gender;
   }
-
   return 'male';
 }
 
-async function resolveParentName(parentId: string): Promise<string | undefined> {
-  try {
-    const profile = await getUser(parentId, false);
-    if (!profile) return undefined;
-    const full = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
-    return full || undefined;
-  } catch {
-    return undefined;
-  }
+function resolveParentName(profile: FirestoreUser | null): string | undefined {
+  if (!profile) return undefined;
+  const full = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
+  return full || undefined;
 }
 
-async function candidateInviteIds(parentId: string): Promise<string[]> {
+function candidateInviteIds(profile: FirestoreUser | null): string[] {
   const ids: string[] = [];
   const fromSession = getOnboardingBondingInviteId()?.trim();
   if (fromSession) ids.push(fromSession);
   const fromUrl = getBondingInviteIdFromUrl(getBondingChildUrl());
   if (fromUrl && !ids.includes(fromUrl)) ids.push(fromUrl);
-  try {
-    const profile = await getUser(parentId, false);
-    const fromUser = profile?.bondingInviteId?.trim();
-    if (fromUser && !ids.includes(fromUser)) ids.push(fromUser);
-  } catch {
-    // ignore
-  }
+  const fromUser = profile?.bondingInviteId?.trim();
+  if (fromUser && !ids.includes(fromUser)) ids.push(fromUser);
   return ids;
 }
 
 async function findReusableInviteId(
   parentId: string,
-  childName: string
+  childName: string,
+  inviteIds: string[]
 ): Promise<string | null> {
   const wanted = childName.trim();
-  for (const inviteId of await candidateInviteIds(parentId)) {
+  for (const inviteId of inviteIds) {
     try {
       const resolved = await resolveBondingInvite(inviteId);
       if (resolved.parentId !== parentId) continue;
@@ -137,8 +130,75 @@ function cachePreparedInvite(params: {
   setOnboardingBondingInviteId(params.inviteId);
 }
 
+function persistInviteSideEffects(params: {
+  parentId: string;
+  inviteId: string;
+  previousIds: string[];
+  resetProgress: boolean;
+  childName: string;
+  childGender?: 'boy' | 'girl';
+  parentName?: string;
+  parentGender: 'female' | 'male';
+}): void {
+  void (async () => {
+    try {
+      await updateUser(params.parentId, { bondingInviteId: params.inviteId });
+    } catch (error) {
+      logger.warn('Could not persist bondingInviteId on user:', error);
+    }
+
+    await Promise.all(
+      params.previousIds.map((id) => tombstoneSupersededInvite(id, params.inviteId))
+    );
+
+    if (params.resetProgress) {
+      try {
+        await resetOnboardingChildProgress(params.parentId);
+        await resetOnboardingParentProgress(params.parentId);
+      } catch (error) {
+        logger.warn('reset onboarding progress before invite failed', error);
+      }
+    }
+
+    if (params.parentName) {
+      await publishOnboardingBondingMeta(params.parentId, {
+        childName: params.childName,
+        childGender: params.childGender,
+        parentName: params.parentName,
+        parentGender: params.parentGender,
+      }).catch((e) => logger.warn('publishOnboardingBondingMeta failed', e));
+    }
+  })();
+}
+
+let prepareInFlight: {
+  key: string;
+  promise: Promise<{ childUrl: string; inviteId: string }>;
+} | null = null;
+
+function prepareInviteKey(params: { childName: string; childGender?: 'boy' | 'girl' }): string {
+  return `${params.childName.trim()}|${params.childGender ?? ''}`;
+}
+
 /** Record bonding invite (or reuse a still-open one) and build `?invite=` child URL. */
 export async function prepareBondingInvite(params: {
+  childName: string;
+  childGender?: 'boy' | 'girl';
+}): Promise<{ childUrl: string; inviteId: string }> {
+  const key = prepareInviteKey(params);
+  if (prepareInFlight?.key === key) {
+    return prepareInFlight.promise;
+  }
+  const promise = prepareBondingInviteOnce(params).finally(() => {
+    if (prepareInFlight?.promise === promise) {
+      prepareInFlight = null;
+    }
+  });
+  prepareInFlight = { key, promise };
+  return promise;
+}
+
+async function prepareBondingInviteOnce(params: {
   childName: string;
   childGender?: 'boy' | 'girl';
 }): Promise<{ childUrl: string; inviteId: string }> {
@@ -148,9 +208,11 @@ export async function prepareBondingInvite(params: {
   }
 
   const childId = getSelectedChildId();
-  const parentName = await resolveParentName(parentId);
-  const parentGender = await resolveParentGender(parentId);
+  const profile = await loadParentProfile(parentId);
+  const parentName = resolveParentName(profile);
+  const parentGender = resolveParentGender(profile);
   const baseUrl = getBondingShareBaseUrl();
+  const previousIds = candidateInviteIds(profile);
 
   const inviteMeta = {
     childName: params.childName,
@@ -159,7 +221,9 @@ export async function prepareBondingInvite(params: {
     parentGender,
   };
 
-  const reusableId = await findReusableInviteId(parentId, params.childName);
+  const reusableId = previousIds.length
+    ? await findReusableInviteId(parentId, params.childName, previousIds)
+    : null;
   if (reusableId) {
     const childUrl = withBondingInviteQueryParams(
       rewriteOnboardingChildUrlToCurrentOrigin(
@@ -173,16 +237,20 @@ export async function prepareBondingInvite(params: {
       childName: params.childName,
       childGender: params.childGender,
     });
-    try {
-      await updateUser(parentId, { bondingInviteId: reusableId });
-    } catch (error) {
-      logger.warn('Could not persist reused bondingInviteId on user:', error);
-    }
+    persistInviteSideEffects({
+      parentId,
+      inviteId: reusableId,
+      previousIds: [],
+      resetProgress: false,
+      childName: params.childName,
+      childGender: params.childGender,
+      parentName,
+      parentGender,
+    });
     logger.log('reused live bonding invite', { inviteId: reusableId });
     return { childUrl, inviteId: reusableId };
   }
 
-  const previousIds = await candidateInviteIds(parentId);
   const result = await recordBondingInvite({
     childId,
     childName: params.childName,
@@ -203,30 +271,16 @@ export async function prepareBondingInvite(params: {
     childGender: params.childGender,
   });
 
-  try {
-    await updateUser(parentId, { bondingInviteId: result.inviteId });
-  } catch (error) {
-    logger.warn('Could not persist bondingInviteId on user:', error);
-  }
-
-  await Promise.all(previousIds.map((id) => tombstoneSupersededInvite(id, result.inviteId)));
-
-  // New invite id — clear prior child milestones before share (not after WhatsApp).
-  try {
-    await resetOnboardingChildProgress(parentId);
-    await resetOnboardingParentProgress(parentId);
-  } catch (error) {
-    logger.warn('reset onboarding progress before invite failed', error);
-  }
-
-  if (parentName) {
-    await publishOnboardingBondingMeta(parentId, {
-      childName: params.childName,
-      childGender: params.childGender,
-      parentName,
-      parentGender,
-    }).catch((e) => logger.warn('publishOnboardingBondingMeta failed', e));
-  }
+  persistInviteSideEffects({
+    parentId,
+    inviteId: result.inviteId,
+    previousIds,
+    resetProgress: true,
+    childName: params.childName,
+    childGender: params.childGender,
+    parentName,
+    parentGender,
+  });
 
   return { childUrl, inviteId: result.inviteId };
 }

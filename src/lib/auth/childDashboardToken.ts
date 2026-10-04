@@ -39,9 +39,13 @@ export async function validateChildDashboardToken(
   }
 
   const { parentId, childId } = decoded;
+  const tokenChildId = isDraftChildId(childId) ? null : childId?.trim() || null;
 
   try {
-    const parent = await getUser(parentId, false);
+    const [parent, tokenChild] = await Promise.all([
+      getUser(parentId, true),
+      tokenChildId ? getChild(tokenChildId, true) : Promise.resolve(null),
+    ]);
     if (!parent) {
       return { isValid: false, error: 'לא נמצא חשבון הורה לקישור זה.' };
     }
@@ -53,16 +57,21 @@ export async function validateChildDashboardToken(
 
     // Prefer real Firestore child — ignore onboarding draft-* ids in old tokens.
     let resolvedChildId: string | null = null;
-    const candidates = [
-      isDraftChildId(childId) ? null : childId,
-      isDraftChildId(parent.primaryChildId) ? null : parent.primaryChildId || null,
-    ].filter((id): id is string => Boolean(id?.trim()));
+    if (tokenChild && tokenChild.parentId === parentId) {
+      resolvedChildId = tokenChild.id;
+    }
 
-    for (const candidate of candidates) {
-      const child = await getChild(candidate, false);
-      if (child && child.parentId === parentId) {
-        resolvedChildId = child.id;
-        break;
+    if (!resolvedChildId) {
+      const candidates = [
+        isDraftChildId(parent.primaryChildId) ? null : parent.primaryChildId || null,
+      ].filter((id): id is string => Boolean(id?.trim()) && id !== tokenChildId);
+
+      for (const candidate of candidates) {
+        const child = await getChild(candidate, true);
+        if (child && child.parentId === parentId) {
+          resolvedChildId = child.id;
+          break;
+        }
       }
     }
 
