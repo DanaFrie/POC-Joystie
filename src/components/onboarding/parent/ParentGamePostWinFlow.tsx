@@ -122,6 +122,7 @@ export function ParentGamePostWinFlow({
   const router = useRouter();
   const cleanupStarted = useRef(false);
   const completionPrefetchStarted = useRef(false);
+  const completionPrefetchStartedAt = useRef(0);
   const [fadeOpacity, setFadeOpacity] = useState(0);
   const [localAdditionalChange, setLocalAdditionalChange] = useState(false);
   const [awaitingChildOnProposal, setAwaitingChildOnProposal] = useState(false);
@@ -197,13 +198,25 @@ export function ParentGamePostWinFlow({
   const openCompletionAfterPrefetch = useCallback(() => {
     if (completionPrefetchStarted.current) return;
     completionPrefetchStarted.current = true;
+    completionPrefetchStartedAt.current = Date.now();
     if (phase !== 'waitingDoriSelfie') {
       onPhaseChange('waitingDoriSelfie');
     }
+    const PREFETCH_BUDGET_MS = 8_000;
     void (async () => {
       try {
-        const result = await prefetchParentCompletionAgreement(parentId);
-        setAgreementImageUrl(result.agreementImageUrl);
+        const result = await Promise.race([
+          prefetchParentCompletionAgreement(parentId),
+          new Promise<null>((resolve) => {
+            window.setTimeout(() => resolve(null), PREFETCH_BUDGET_MS);
+          }),
+        ]);
+        if (result) {
+          setAgreementImageUrl(result.agreementImageUrl);
+        } else {
+          logger.warn('Completion agreement prefetch timed out — showing defaults');
+          setAgreementImageUrl(null);
+        }
       } catch (error) {
         logger.warn('Completion agreement prefetch failed:', error);
         setAgreementImageUrl(null);
@@ -252,6 +265,16 @@ export function ParentGamePostWinFlow({
     // Stay on Dori selfie wait until Storage card URL is prefetched — no load on Screen 66.
     if (targetPhase === 'onboardingComplete') {
       if (phase === 'onboardingComplete') return;
+      // Prefetch hung past budget (tab sleep) — force Screen 66 with defaults.
+      if (
+        completionPrefetchStarted.current &&
+        phase === 'waitingDoriSelfie' &&
+        Date.now() - completionPrefetchStartedAt.current > 10_000
+      ) {
+        setAgreementImageUrl((prev) => (prev === undefined ? null : prev));
+        onPhaseChange('onboardingComplete');
+        return;
+      }
       openCompletionAfterPrefetch();
       return;
     }

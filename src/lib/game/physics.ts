@@ -6,11 +6,7 @@ import {
   PHYSICS_PARENT_PADDLE_SURFACE_Y,
   PHYSICS_PADDLE_HEIGHT_NORM,
 } from '@/lib/game/ballGameCourt';
-import {
-  velocityToward,
-  ballTowardFromVy,
-  randomChildServeStartX,
-} from '@/lib/game/ballDirection';
+import { velocityToward, ballTowardFromVy } from '@/lib/game/ballDirection';
 import type {
   GamePlayerRole,
   GamePaddlesState,
@@ -34,16 +30,20 @@ export const CHILD_PADDLE_Y = PHYSICS_CHILD_PADDLE_SURFACE_Y;
 export const DEFAULT_PADDLE_WIDTH = 92 / 327;
 
 export const PHYSICS_DT = 0.03;
-export const PHYSICS_SUBSTEPS = 4;
+/** Extra substeps so 8× serve does not tunnel through paddles. */
+export const PHYSICS_SUBSTEPS = 8;
 
 /** @deprecated use GAME_WIN_SCORE from @/constants/game */
 export const WIN_SCORE = GAME_WIN_SCORE;
 
 const MIN_SPEED = 0.21528;
-/** Raised with 2× serve so start speed is not immediately clamped. */
-const MAX_SPEED = 1.0;
-/** Per-hit speed multiplier — +5% vs prior 1.04. */
-const PADDLE_BOOST = 1.092;
+/**
+ * Headroom above serve so paddle hits can keep adding speed
+ * instead of clamping on the first bounce.
+ */
+const MAX_SPEED = 16;
+/** Per-hit speed multiplier. */
+const PADDLE_BOOST = 1.04;
 const PADDLE_ANGLE_GAIN = 0.28;
 const PADDLE_ANGLE_JITTER = 0.06;
 
@@ -71,10 +71,10 @@ export type PhysicsStepResult = PhysicsStepInput & {
   missedBy: GamePlayerRole | null;
 };
 
-/** Serve toward the child first — random lane X and left/right angle each try. */
+/** Serve from center toward the child paddle (shared y → 0). */
 export function createStartBall(): BallVector {
   const { vx, vy } = velocityToward('child');
-  return { x: randomChildServeStartX(), y: 0.5, vx, vy, toward: 'child' };
+  return { x: 0.5, y: 0.5, vx, vy, toward: 'child' };
 }
 
 /** Kick a stationary ball — preserve intended receiver. */
@@ -98,10 +98,7 @@ export function clampPaddleCenterX(x: number, paddleWidth: number): number {
 }
 
 export function clampBallCenter(x: number, y: number): { x: number; y: number } {
-  return {
-    x: clampBallX(x),
-    y: Math.min(1, Math.max(0, y)),
-  };
+  return { x: clampBallX(x), y: Math.min(1, Math.max(0, y)) };
 }
 
 function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
@@ -502,26 +499,6 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
     missed,
     missedBy,
   };
-}
-
-/** Run N 50ms physics ticks after a hitch so a delayed write does not slow the ball. */
-export function stepBallPhysicsN(
-  input: PhysicsStepInput,
-  steps: number
-): PhysicsStepResult {
-  const count = Math.max(1, Math.floor(steps));
-  let last = stepBallPhysics(input);
-  for (let i = 1; i < count; i += 1) {
-    if (last.phase !== 'playing' || last.missed || last.scored) break;
-    last = stepBallPhysics({
-      ...input,
-      ball: last.ball,
-      score: last.score,
-      phase: last.phase,
-      winner: last.winner,
-    });
-  }
-  return last;
 }
 
 /** Only the parent runs physics so both screens stay in sync. */

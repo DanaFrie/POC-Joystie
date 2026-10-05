@@ -9,10 +9,8 @@ import { describe, it } from 'node:test';
 import {
   createWriteRateLimiter,
   PHYSICS_LOOP_INTERVAL_MS,
-  PHYSICS_MAX_CATCHUP_STEPS,
   PHYSICS_MAX_WRITES_PER_SEC,
   PHYSICS_MIN_WRITE_INTERVAL_MS,
-  physicsStepsForElapsed,
   RTDB_WRITE_BUDGET_PER_SEC,
   simulateRtdbWriteLoad,
 } from '@/lib/game/stallGuards';
@@ -89,11 +87,8 @@ describe('RTDB write-rate (load simulation)', () => {
     assert.equal(load.overBudget, true);
   });
 
-  it('healthy 50ms ticks stay 1 step; hitch gaps catch up', () => {
+  it('healthy 50ms ticks are the serve cadence', () => {
     assert.equal(PHYSICS_LOOP_INTERVAL_MS, 50);
-    assert.equal(physicsStepsForElapsed(50), 1);
-    assert.equal(physicsStepsForElapsed(100), 2);
-    assert.equal(physicsStepsForElapsed(150), 3);
-    assert.equal(physicsStepsForElapsed(400), PHYSICS_MAX_CATCHUP_STEPS);
+    assert.equal(PHYSICS_MIN_WRITE_INTERVAL_MS, 50);
   });
 });

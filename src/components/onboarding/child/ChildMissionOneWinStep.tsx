@@ -32,6 +32,10 @@ export function ChildMissionOneWinStep({
   const [imageOpacity, setImageOpacity] = useState(0);
   const onContinueRef = useRef(onContinue);
   onContinueRef.current = onContinue;
+  const displayName = childName.trim();
+  const headline = displayName
+    ? `אליפות, כל הכבוד ${displayName}!`
+    : 'אליפות, כל הכבוד!';
 
   const contentTopPx = scaleY(layout.content.top);
   const contentGapPx = scaleY(layout.content.gap);
@@ -111,7 +115,7 @@ export function ChildMissionOneWinStep({
                 color: layout.headline.color,
               }}
             >
-              {`אליפות, כל הכבוד ${childName}!`}
+              {headline}
             </h1>
             <p
               className="w-full font-simpler font-normal"

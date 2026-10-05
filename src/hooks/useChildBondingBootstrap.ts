@@ -8,7 +8,14 @@ import {
   readOnboardingBondingPublic,
 } from '@/lib/game/bondingPublic';
 import { ensureAnonymousChildAuth } from '@/lib/game/anonymousChildAuth';
-import { setChildBondingContext } from '@/lib/onboarding/childBondingContext';
+import {
+  getChildBondingContext,
+  setChildBondingContext,
+} from '@/lib/onboarding/childBondingContext';
+import {
+  getBondingChildName,
+  setBondingChildName,
+} from '@/lib/onboarding/bondingInvite';
 import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
 import { parseBondingInviteQueryParams } from '@/utils/url-encoding';
 import { createContextLogger } from '@/utils/logger';
@@ -38,20 +45,26 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
     const urlParentName = urlMeta.parentName?.trim() || '';
     const urlParentGender = urlMeta.parentGender;
 
-    let childName = urlChildName;
-    let childGender = urlChildGender;
-    let parentName = urlParentName || 'אבא';
-    let parentGender = urlParentGender;
+    // Keep any already-known names (game → post-win handoff). Never clobber with "".
+    const existing = getChildBondingContext();
+    const storedChildName = getBondingChildName()?.trim() || '';
+    let childName =
+      urlChildName || existing?.childName?.trim() || storedChildName || '';
+    let childGender = urlChildGender ?? existing?.childGender;
+    let parentName =
+      urlParentName || existing?.parentName?.trim() || 'אבא';
+    let parentGender = urlParentGender ?? existing?.parentGender;
 
     setChildBondingContext({
       parentId: access.parentId,
-      childId: access.childId,
-      inviteId: access.inviteId,
+      childId: access.childId ?? existing?.childId ?? null,
+      inviteId: access.inviteId ?? existing?.inviteId,
       childName,
       childGender,
       parentName,
       parentGender,
     });
+    if (childName) setBondingChildName(childName);
 
     void (async () => {
       try {
@@ -60,7 +73,7 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
         logger.warn('anonymous auth failed on bootstrap', e);
       }
 
-      let inviteId = access.inviteId;
+      let inviteId = access.inviteId ?? existing?.inviteId;
 
       const meta = await readOnboardingBondingMeta(access.parentId);
       if (meta) {
@@ -100,11 +113,19 @@ export function useChildBondingBootstrap(access: ReadyInviteAccess | null) {
         if (!urlParentGender && pub.parentGender) parentGender = pub.parentGender;
       }
 
+      // Prefer non-empty: never publish a blank name over a known one.
+      const nextChildName =
+        childName.trim() ||
+        existing?.childName?.trim() ||
+        storedChildName ||
+        '';
+      if (nextChildName) setBondingChildName(nextChildName);
+
       setChildBondingContext({
         parentId: access.parentId,
-        childId: access.childId,
+        childId: access.childId ?? existing?.childId ?? null,
         inviteId,
-        childName,
+        childName: nextChildName,
         childGender,
         parentName,
         parentGender,

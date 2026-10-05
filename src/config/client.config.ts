@@ -11,8 +11,8 @@ export const clientConfig = {
 
   // Session configuration (localStorage — see utils/session.ts)
   session: {
-    durationDays: 8,
-    inactivityTimeoutMinutes: 48 * 60, // 48 hours
+    durationDays: 1,
+    inactivityTimeoutMinutes: 4 * 60, // 4 hours
   },
 } as const;
 

@@ -20,20 +20,12 @@ const ParentGamePostWinFlow = nextDynamic(
   { loading: () => <FunnelRouteLoading />, ssr: false }
 );
 
-function ParentGameInner() {
+/** Only mounts after parent auth — avoids auto-create error for logged-out `/game`. */
+function ParentGameAuthed({ parentId }: { parentId: string }) {
   const router = useRouter();
   const childName = getSelectedFirstChildName();
   const childGender = getBondingChildGender() ?? getSelectedFirstChildGender();
   const [postGamePhase, setPostGamePhase] = useState<ParentPostGamePhase>('game');
-  const [parentId, setParentId] = useState<string | null>(null);
-
-  useEffect(() => {
-    void import('@/utils/auth').then(({ getCurrentUserId }) => {
-      void getCurrentUserId().then((uid) => {
-        if (uid) setParentId(uid);
-      });
-    });
-  }, []);
 
   const onParentGameWon = useCallback(() => {
     void import('@/utils/analytics').then(({ logEventOnce, AnalyticsEvents }) => {
@@ -65,7 +57,7 @@ function ParentGameInner() {
     role: 'parent',
     parentId,
     currentPath: '/game',
-    enabled: Boolean(parentId) && postGamePhase === 'game',
+    enabled: postGamePhase === 'game',
   });
 
   const onWinFadeComplete = useCallback(() => {
@@ -98,6 +90,36 @@ function ParentGameInner() {
       parentId={parentId}
     />
   );
+}
+
+function ParentGameInner() {
+  const router = useRouter();
+  const [parentId, setParentId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void import('@/utils/auth').then(({ getCurrentUserId }) => {
+      void getCurrentUserId().then((uid) => {
+        if (cancelled) return;
+        if (!uid) {
+          router.replace('/onboarding');
+          return;
+        }
+        setParentId(uid);
+        setAuthChecked(true);
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (!authChecked || !parentId) {
+    return <FunnelRouteLoading />;
+  }
+
+  return <ParentGameAuthed parentId={parentId} />;
 }
 
 /** `/game` — parent cooperative ball game; win fade then `/onboarding` post-game funnel. */

@@ -13,14 +13,11 @@ import {
   logGameTransition,
   logOnboardingAdvanceReady,
 } from '@/lib/game/phaseLog';
-import { stepBallPhysicsN } from '@/lib/game/physics';
+import { stepBallPhysics } from '@/lib/game/physics';
 import {
   createExclusiveAsyncLock,
-  createWriteRateLimiter,
   GAME_ROOM_LOST_ERROR,
   nextGameRoomPresence,
-  PHYSICS_LOOP_INTERVAL_MS,
-  physicsStepsForElapsed,
   shouldRunPhysics,
   shouldStartPlayFromCountdown,
   type GameRoomPresence,
@@ -158,61 +155,34 @@ export function useGameSession({
     if (!roomId || !role) return;
 
     const physicsLock = createExclusiveAsyncLock();
-    const writeRate = createWriteRateLimiter();
-    let lastPhysicsAt = 0;
     const id = window.setInterval(() => {
       void physicsLock.run(async () => {
         const current = roomRef.current;
-        if (!current || current.phase !== 'playing') {
-          lastPhysicsAt = 0;
-          return;
-        }
-        const nowMs = Date.now();
-        if (!writeRate.allow(nowMs)) return;
+        if (!current || current.phase !== 'playing') return;
         if (
           !shouldRunPhysics({
             role,
             phase: current.phase,
             ballUpdatedAt: current.ball.updatedAt,
-            nowMs,
+            nowMs: Date.now(),
           })
         ) {
           return;
         }
 
         try {
-          const steps =
-            lastPhysicsAt === 0 ? 1 : physicsStepsForElapsed(nowMs - lastPhysicsAt);
-          const result = stepBallPhysicsN(
-            {
-              ball: current.ball,
-              paddles: current.paddles,
-              score: current.score,
-              phase: current.phase,
-              winner: current.winner,
-            },
-            steps
-          );
-          lastPhysicsAt = nowMs;
+          const result = stepBallPhysics({
+            ball: current.ball,
+            paddles: current.paddles,
+            score: current.score,
+            phase: current.phase,
+            winner: current.winner,
+          });
 
           const scoreChanged = result.score.shared !== current.score.shared;
           const phaseChanged =
             result.phase !== current.phase || result.winner !== current.winner;
 
-          roomRef.current = {
-            ...current,
-            ball: {
-              ...current.ball,
-              ...result.ball,
-              updatedBy: role,
-              updatedAt: new Date().toISOString(),
-            },
-            score: result.score,
-            phase: result.phase,
-            winner: result.winner,
-          };
-
-          writeRate.record(nowMs);
           await updateBallPosition(
             roomId,
             role,
@@ -237,7 +207,7 @@ export function useGameSession({
           );
         }
       });
-    }, PHYSICS_LOOP_INTERVAL_MS);
+    }, 50);
 
     return () => window.clearInterval(id);
   }, [roomId, role]);
@@ -254,7 +224,7 @@ export function useGameSession({
     try {
       const uid = await getCurrentUserId();
       if (!uid) {
-        setError('התחברו כהורה (אימייל) לפני יצירת חדר');
+        // `/game` page redirects unauthenticated users to onboarding — no error UI.
         autoCreateAttempted.current = false;
         return;
       }
@@ -423,14 +393,13 @@ export function useGameSession({
     if (!roomId || !room) return;
     if (room.phase !== 'countdown') return;
 
-    const countdownAt = room.countdownAt;
-    const key = `${roomId}:${countdownAt ?? 'missing'}`;
     const observedAtMs = Date.now();
+    const key = `${roomId}:${room.countdownAt ?? 'missing'}`;
     const fire = () => {
       if (
         !shouldStartPlayFromCountdown({
           phase: 'countdown',
-          countdownAt,
+          countdownAt: room.countdownAt,
           observedAtMs,
           nowMs: Date.now(),
         })
@@ -456,7 +425,7 @@ export function useGameSession({
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
     };
-  }, [roomId, room?.phase, room?.countdownAt]);
+  }, [roomId, room]);
 
   /** Parent only — both tapped retry after miss. */
   useEffect(() => {

@@ -1,14 +1,13 @@
 /**
  * Stall guards for the onboarding ball game.
  *
- * Countdown + serve freeze on every browser/OS when we:
- * - wait on wall-clock `countdownAt` vs `Date.now()` (phone clock skew)
- * - let child join rewind a live room back to waiting_ready
- * - run overlapping async physics writes from the same snapshot
- * - let parent-only physics die when the parent tab is backgrounded
- * - write a ball y/vx/vy that RTDB rules reject
- * - room / ball node deleted mid-rally (infinite «מתחברים למשחק»)
- * - physics write rate exceeding RTDB production budget
+ * These do not change the 50ms serve loop. They only stop:
+ * - wall-clock countdown never finishing
+ * - child join rewinding a live room
+ * - overlapping async physics writes from the same snapshot
+ * - parent-only physics dying when the parent tab is backgrounded
+ * - RTDB rejecting y∉[0,1] / |v|>1
+ * - a deleted room spinning on «מתחברים למשחק»
  */
 
 import type { GamePlayerRole } from '@/types/game';
@@ -22,31 +21,18 @@ export const LIVE_GAME_PHASES: ReadonlySet<string> = new Set([
 ]);
 
 /** Parent tab often sleeps; child takes over if ball updates go stale. */
-export const PHYSICS_PARENT_STALE_MS = 400;
+export const PHYSICS_PARENT_STALE_MS = 900;
 
 /** RTDB `gameRooms/$id/ball` validation (firebase/database.rules.json). */
 export const RTDB_BALL_POS_MIN = 0;
 export const RTDB_BALL_POS_MAX = 1;
-export const RTDB_BALL_VEL_MIN = -1;
-export const RTDB_BALL_VEL_MAX = 1;
+export const RTDB_BALL_VEL_MIN = -16;
+export const RTDB_BALL_VEL_MAX = 16;
 
 /** Physics + RTDB write cadence — 20 Hz. Visual motion was calibrated here. */
 export const PHYSICS_LOOP_INTERVAL_MS = 50;
-/** One write per 50ms tick. 10 Hz made the ball hitch (catch-up jumps). */
 export const PHYSICS_MIN_WRITE_INTERVAL_MS = 50;
 export const PHYSICS_MAX_WRITES_PER_SEC = 20;
-/** Cap hitch catch-up so a long pause does not tunnel through a paddle. */
-export const PHYSICS_MAX_CATCHUP_STEPS = 4;
-
-/**
- * Healthy ticks are 1 step. Extra steps only after a real hitch (lock/network),
- * not as a substitute for a lower write rate.
- */
-export function physicsStepsForElapsed(elapsedMs: number): number {
-  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1;
-  const steps = Math.round(elapsedMs / PHYSICS_LOOP_INTERVAL_MS);
-  return Math.min(PHYSICS_MAX_CATCHUP_STEPS, Math.max(1, steps));
-}
 
 /** Firebase RTDB documented simultaneous write budget for the whole database. */
 export const RTDB_WRITE_BUDGET_PER_SEC = 1000;
@@ -228,6 +214,46 @@ export function nextGameRoomPresence(
 
 export function shouldShowConnectingOverlay(presence: GameRoomPresence): boolean {
   return presence === 'unknown' || presence === 'missing';
+}
+
+/** Prefer a newer local physics tick over a slightly older RTDB echo. */
+export function shouldKeepLocalBall(input: {
+  localUpdatedAt?: string | null;
+  remoteUpdatedAt?: string | null;
+  localPhase: string;
+  remotePhase: string;
+  /** When set, own RTDB echoes must never replace local physics (write time > paint time). */
+  localUpdatedBy?: string | null;
+  remoteUpdatedBy?: string | null;
+  localRole?: string | null;
+}): boolean {
+  if (input.localPhase !== 'playing' || input.remotePhase !== 'playing') {
+    return false;
+  }
+
+  const role = input.localRole;
+  const localBy = input.localUpdatedBy;
+  const remoteBy = input.remoteUpdatedBy;
+
+  // Live parent sim: never yield the ball to RTDB (own echoes OR child failover writes).
+  // Dual writers were yanking the ball back and forth every tick.
+  if (role === 'parent' && localBy === 'parent') {
+    return true;
+  }
+
+  // Child must always follow a live parent stream.
+  if (role === 'child' && remoteBy === 'parent') {
+    return false;
+  }
+
+  // Child failover author: ignore own write echoes only.
+  if (role === 'child' && localBy === 'child' && remoteBy === 'child') {
+    return true;
+  }
+
+  const localAt = Date.parse(input.localUpdatedAt || '') || 0;
+  const remoteAt = Date.parse(input.remoteUpdatedAt || '') || 0;
+  return localAt >= remoteAt;
 }
 
 /** Parent dashboard cleanup must not yank a room the child is still playing. */

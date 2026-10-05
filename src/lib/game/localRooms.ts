@@ -9,6 +9,7 @@ import { readOnboardingBondingPublic } from '@/lib/game/bondingPublic';
 import { gameRoomPath, GAME_ROOMS_PATH } from '@/lib/game/paths';
 import { DEFAULT_PADDLE_WIDTH } from '@/lib/game/physics';
 import { beginCountdown } from '@/lib/game/rooms';
+import { shouldResetRoomToWaitingReady } from '@/lib/game/stallGuards';
 import { getCurrentUserId } from '@/utils/auth';
 import { createContextLogger } from '@/utils/logger';
 
@@ -164,25 +165,40 @@ export async function joinGameRoomLocal(roomId: string, joinCode: string) {
 
   const now = new Date().toISOString();
   const parentAlreadyReady = room.playReady?.parent === true;
-  // Do not rewrite playReady — parent may already have tapped consent.
-  await update(roomRef, {
+  const hasStartedRound = (room as { hasStartedRound?: boolean }).hasStartedRound === true;
+  const phase = String(room.phase ?? 'waiting_child');
+
+  const patch: Record<string, unknown> = {
     childUid: uid,
     parentId: room.parentId,
-    phase: 'waiting_ready',
     updatedAt: now,
-  });
+  };
+  if (shouldResetRoomToWaitingReady(phase, hasStartedRound)) {
+    patch.phase = 'waiting_ready';
+  }
+
+  await update(roomRef, patch);
 
   logger.log('joinGameRoomLocal', {
     roomId,
     childUid: uid,
     parentAlreadyReady,
+    phase: patch.phase ?? phase,
   });
 
-  if (parentAlreadyReady) {
+  if (
+    parentAlreadyReady &&
+    !hasStartedRound &&
+    (phase === 'waiting_child' || phase === 'waiting_ready' || patch.phase === 'waiting_ready')
+  ) {
     await beginCountdown(roomId);
   }
 
-  return { roomId, phase: 'waiting_ready' as const, winScore: GAME_WIN_SCORE };
+  return {
+    roomId,
+    phase: (patch.phase as 'waiting_ready') ?? (phase as 'waiting_ready'),
+    winScore: GAME_WIN_SCORE,
+  };
 }
 
 export async function completeGameOnboardingLocal(roomId: string) {

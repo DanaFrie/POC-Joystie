@@ -1,6 +1,6 @@
 /**
  * Type 4 — contract (RTDB rules).
- * Ball y was not clamped. A single write with y∉[0,1] or |v|>1 is rejected
+ * Ball y was not clamped. A single write with y∉[0,1] or |v|>16 is rejected
  * and the 50ms loop stops advancing — stuck after serve.
  */
 import assert from 'node:assert/strict';
@@ -10,7 +10,6 @@ import {
   createStartBall,
   DEFAULT_PADDLE_WIDTH,
   stepBallPhysics,
-  stepBallPhysicsN,
 } from '@/lib/game/physics';
 import type { GameWinner } from '@/types/game';
 import {
@@ -29,11 +28,11 @@ describe('RTDB ball bounds (contract)', () => {
     assert.equal(clampBallCenter(0.5, 1.2).y, 1);
   });
 
-  it('repairs illegal velocity so rules (.validate |v|<=1) accept the write', () => {
-    const repaired = clampBallForRtdbWrite({ x: 0.5, y: 0.5, vx: 1.8, vy: -2 });
+  it('repairs illegal velocity so rules (.validate |v|<=16) accept the write', () => {
+    const repaired = clampBallForRtdbWrite({ x: 0.5, y: 0.5, vx: 20, vy: -22 });
     assert.equal(isLegalRtdbBallWrite(repaired), true);
-    assert.equal(repaired.vx, 1);
-    assert.equal(repaired.vy, -1);
+    assert.equal(repaired.vx, 16);
+    assert.equal(repaired.vy, -16);
   });
 
   it('keeps a served ball legal for the first 80 physics ticks', () => {
@@ -69,7 +68,7 @@ describe('RTDB ball bounds (contract)', () => {
     assert.equal(isLegalRtdbBallWrite({ x: 0.5, y: 1.01, vx: 0, vy: 0.4 }), false);
   });
 
-  it('two catch-up steps match two 50ms ticks after a hitch', () => {
+  it('two sequential 50ms ticks move farther than one tick', () => {
     const input = {
       ball: { x: 0.5, y: 0.5, vx: 0.2, vy: -0.6, toward: 'child' as const },
       paddles,
@@ -85,12 +84,39 @@ describe('RTDB ball bounds (contract)', () => {
       phase: first.phase,
       winner: first.winner,
     });
-    const catchup = stepBallPhysicsN(input, 2);
-    assert.ok(Math.abs(catchup.ball.y - second.ball.y) < 1e-9);
-    assert.ok(Math.abs(catchup.ball.x - second.ball.x) < 1e-9);
-    assert.ok(
-      Math.abs(catchup.ball.y - first.ball.y) > 0.001,
-      'catch-up must travel farther than a single skipped tick'
-    );
+    assert.ok(Math.abs(second.ball.y - first.ball.y) > 0.001);
+  });
+
+  it('each paddle hit increases speed until the max', () => {
+    const wide = { parentX: 0.5, childX: 0.5, width: 1 };
+    let state = {
+      ball: createStartBall(),
+      paddles: wide,
+      score: { shared: 0 },
+      phase: 'playing' as const,
+      winner: null as GameWinner,
+    };
+    let lastSpeed = Math.hypot(state.ball.vx, state.ball.vy);
+    let hits = 0;
+    for (let i = 0; i < 500 && hits < 3 && state.phase === 'playing'; i += 1) {
+      const result = stepBallPhysics(state);
+      if (result.scored) {
+        hits += 1;
+        const nextSpeed = Math.hypot(result.ball.vx, result.ball.vy);
+        assert.ok(
+          nextSpeed > lastSpeed + 0.01,
+          `hit ${hits}: speed ${nextSpeed} should exceed ${lastSpeed}`
+        );
+        lastSpeed = nextSpeed;
+      }
+      state = {
+        ball: result.ball,
+        paddles: result.paddles,
+        score: result.score,
+        phase: result.phase,
+        winner: result.winner,
+      };
+    }
+    assert.ok(hits >= 2, `expected at least 2 paddle hits, got ${hits}`);
   });
 });

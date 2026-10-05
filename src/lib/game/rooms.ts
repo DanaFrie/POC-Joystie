@@ -28,20 +28,17 @@ import {
   createStartBall,
   DEFAULT_PADDLE_WIDTH,
 } from '@/lib/game/physics';
-import {
-  clampBallForRtdbWrite,
-  isUsableGameRoomRaw,
-  shouldResetRoomToWaitingReady,
-} from '@/lib/game/stallGuards';
+import { clampBallForRtdbWrite, shouldResetRoomToWaitingReady } from '@/lib/game/stallGuards';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('GameRooms');
 
 function parseRoom(roomId: string, raw: Record<string, unknown> | null): GameRoomState | null {
-  if (!isUsableGameRoomRaw(raw)) return null;
-  const ball = raw.ball as GameBallState;
+  if (!raw) return null;
+  const ball = raw.ball as GameBallState | undefined;
   const paddles = raw.paddles as GamePaddlesState | undefined;
   const score = raw.score as GameScoreState | undefined;
+  if (!ball) return null;
   const ballCenter = clampBallCenter(
     Number.isFinite(ball.x) ? ball.x : 0.5,
     Number.isFinite(ball.y) ? ball.y : 0.5
@@ -109,11 +106,11 @@ export function subscribeToGameRoom(
   roomId: string,
   onChange: (room: GameRoomState | null) => void
 ): Unsubscribe {
+  let dbPromise: ReturnType<typeof getDatabaseInstance> | null = null;
   let unsub: Unsubscribe | null = null;
-  let cancelled = false;
 
   void getDatabaseInstance().then((db) => {
-    if (cancelled) return;
+    dbPromise = Promise.resolve(db);
     const roomRef = ref(db, gameRoomPath(roomId));
     unsub = onValue(roomRef, (snap) => {
       onChange(parseRoom(roomId, snap.val() as Record<string, unknown> | null));
@@ -121,7 +118,6 @@ export function subscribeToGameRoom(
   });
 
   return () => {
-    cancelled = true;
     if (unsub) unsub();
   };
 }
@@ -141,15 +137,19 @@ export async function updateBallPosition(
   }
 ): Promise<void> {
   const db = await getDatabaseInstance();
-  const clamped = clampBallForRtdbWrite({ ...clampBallCenter(x, y), vx, vy });
+  const pos = clampBallForRtdbWrite({
+    ...clampBallCenter(x, y),
+    vx,
+    vy,
+  });
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {
     ball: {
-      x: clamped.x,
-      y: clamped.y,
-      vx: clamped.vx,
-      vy: clamped.vy,
-      toward: toward ?? ballTowardFromVy(vy),
+      x: pos.x,
+      y: pos.y,
+      vx: pos.vx,
+      vy: pos.vy,
+      toward: toward ?? ballTowardFromVy(pos.vy),
       updatedBy: role,
       updatedAt: now,
     },
@@ -226,11 +226,11 @@ export async function ensureWaitingReadyPhase(roomId: string): Promise<void> {
 
   const raw = snap.val() as Record<string, unknown>;
   const phase = String(raw.phase ?? '');
+  const hasStartedRound = raw.hasStartedRound === true;
   const existingReady = (raw.playReady as GamePlayReadyState | undefined) ?? {
     parent: false,
     child: false,
   };
-  const hasStartedRound = raw.hasStartedRound === true;
 
   if (!shouldResetRoomToWaitingReady(phase, hasStartedRound)) {
     if (phase === 'waiting_ready' && !raw.playReady) {

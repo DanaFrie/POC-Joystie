@@ -258,10 +258,15 @@ export function ChildSelfieMissionFlow({
     setPhase('pattern');
   }, []);
 
-  /** Persist to Storage after child doc exists — then signal parent. */
+  /** Persist to Storage after child doc exists — signal parent as soon as share opens. */
   useEffect(() => {
     if (phase !== 'share' || persistStartedRef.current) return;
     persistStartedRef.current = true;
+    // Unlock parent waiting-for-selfie immediately (don't wait on Storage).
+    if (!shareSignaledRef.current) {
+      shareSignaledRef.current = true;
+      onShareReached();
+    }
     const isDefault =
       !photoBlobRef.current ||
       photoSrcRef.current === skipPhotoSrc ||
@@ -273,18 +278,12 @@ export function ChildSelfieMissionFlow({
       const maxAttempts = 3;
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const ok = await persistShareCard(source, blob);
-        if (ok) {
-          if (!shareSignaledRef.current) {
-            shareSignaledRef.current = true;
-            onShareReached();
-          }
-          return;
-        }
+        if (ok) return;
         if (attempt < maxAttempts - 1) {
           await new Promise((r) => window.setTimeout(r, 800 * (attempt + 1)));
         }
       }
-      logger.error('Share card not stored — parent will stay on waiting');
+      logger.error('Share card not stored — parent completion uses gender default');
     })();
   }, [phase, persistShareCard, skipPhotoSrc, onShareReached]);
 

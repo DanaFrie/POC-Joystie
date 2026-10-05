@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { OnboardingLazyImage } from '@/components/onboarding/OnboardingLazyImage';
 import { SelectableOptionCard } from '@/components/onboarding/parent/SelectableOptionCard';
 import { SubscriptionJoyLogo } from '@/components/onboarding/parent/SubscriptionJoyLogo';
@@ -23,6 +23,11 @@ import {
 import { FUNNEL_CTA_HEIGHT_PX } from '@/constants/funnel-vertical-layout';
 import { V03_SCREEN_HEIGHT } from '@/constants/v03-screen';
 import { preloadSubscriptionHero } from '@/lib/onboarding/preloadSubscriptionHero';
+
+const SUBSCRIPTION_HEADLINE_LINES = [
+  'הצטרפו למשפחות שכבר',
+  'מנהלות את המסכים נכון',
+] as const;
 
 type ParentSubscriptionStepProps = {
   selectedPlan: OnboardingSubscriptionPlan | null;
@@ -51,6 +56,8 @@ export function ParentSubscriptionStep({
   const { hero, logo, topBar, copy, features, plans, planCard, cta } = layout;
   const { viewportHeight, scale } = useFunnelViewportMetrics();
   const bleedStyle = useFunnelFullBleed();
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+  const [fittedHeadlinePx, setFittedHeadlinePx] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     preloadSubscriptionHero();
@@ -66,6 +73,9 @@ export function ParentSubscriptionStep({
   const isShort = heightScale < 0.98;
   /** Extra canvas px on tall phones — stretch the hero so the stack fills 100vh. */
   const tallExtraPx = Math.max(0, fillH - V03_SCREEN_HEIGHT);
+
+  /** Shared column for headline → CTA (same edges as plans / green button). */
+  const contentWidthPx = plans.width;
 
   const heroH = sx(hero.height, heightScale, 280) + Math.round(tallExtraPx * 0.5);
   const heroBleedStyle = useFunnelHeroBleed(heroH);
@@ -84,8 +94,46 @@ export function ParentSubscriptionStep({
   );
   const copyGapPx = sx(copy.gap, heightScale, 6);
   const headlineGapPx = sx(copy.headlineGap, heightScale, 3);
-  const headlineSizePx = sx(copy.headlineSize, heightScale, 22);
+  /**
+   * Do NOT height-scale headline font — below ~729px that shrinks the glyphs so
+   * the 2 lines no longer span the 327 column (looks wider/narrower than plans).
+   * Width-fit below always sizes to `contentWidthPx`.
+   */
+  const headlineSizeMaxPx: number = copy.headlineSize;
   const subtitleSizePx = sx(copy.subtitleSize, heightScale, 13);
+  const headlineSizePx = fittedHeadlinePx ?? headlineSizeMaxPx;
+
+  // Size 2-line headline so the longest nowrap line spans the shared column.
+  useLayoutEffect(() => {
+    const el = headlineRef.current;
+    if (!el) return;
+
+    const maxW = contentWidthPx;
+    const lineEls = () =>
+      Array.from(el.querySelectorAll<HTMLElement>('[data-headline-line]'));
+
+    const fits = (sizePx: number) => {
+      el.style.fontSize = `${sizePx}px`;
+      return lineEls().every((line) => line.scrollWidth <= maxW + 0.5);
+    };
+
+    // Binary search the largest size ≤ max that fits the column (stable across heights).
+    let lo = 16;
+    let hi = headlineSizeMaxPx;
+    let best = 16;
+    while (hi - lo > 0.25) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid)) {
+        best = mid;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    if (fits(headlineSizeMaxPx)) best = headlineSizeMaxPx;
+    else fits(best);
+    setFittedHeadlinePx(Math.round(best * 10) / 10);
+  }, [contentWidthPx, headlineSizeMaxPx, fillH]);
 
   const featuresPadPx = sx(features.padding, heightScale, 10);
   const featuresGapPx = sx(features.gap, heightScale, 8);
@@ -237,35 +285,49 @@ export function ParentSubscriptionStep({
       ) : null}
 
       <div className="relative z-[10] flex h-full min-h-0 w-full flex-col overflow-hidden">
+        {/*
+          One content column — headline, features, plans, CTA share the same
+          left/right edges. min-w-0 prevents nowrap headline from expanding the flex box.
+        */}
         <div
-          className="flex min-h-0 w-full flex-1 flex-col"
-          style={{ paddingTop: padTopPx }}
+          className="mx-auto flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden box-border"
+          style={{
+            width: contentWidthPx,
+            maxWidth: contentWidthPx,
+            paddingTop: padTopPx,
+            paddingBottom: bottomSpacerPx,
+          }}
         >
           <div
-            className="mx-auto flex w-full shrink-0 flex-col items-center"
-            style={{
-              width: copy.width,
-              maxWidth: '100%',
-              gap: copyGapPx,
-            }}
+            className="flex min-w-0 w-full shrink-0 flex-col"
+            style={{ gap: copyGapPx }}
           >
             <div
-              className="flex w-full flex-col items-center"
+              className="flex min-w-0 w-full flex-col"
               style={{ gap: headlineGapPx }}
             >
               <h1
-                className="w-full text-center font-rubik font-extrabold leading-[1.1] tracking-[-0.9px] text-white"
+                ref={headlineRef}
+                className="box-border min-w-0 w-full max-w-full overflow-hidden text-center font-rubik font-extrabold leading-[1.1] tracking-[-0.9px] text-white"
                 style={{
+                  width: '100%',
+                  maxWidth: contentWidthPx,
                   fontSize: headlineSizePx,
                   textShadow: '0px 0px 10px rgba(0, 0, 0, 0.30)',
                 }}
               >
-                הצטרפו למשפחות שכבר
-                <br />
-                מנהלות את המסכים נכון
+                {SUBSCRIPTION_HEADLINE_LINES.map((line) => (
+                  <span
+                    key={line}
+                    data-headline-line
+                    className="box-border block w-full max-w-full overflow-hidden whitespace-nowrap"
+                  >
+                    {line}
+                  </span>
+                ))}
               </h1>
               <p
-                className="w-full text-center font-simpler font-normal leading-[1.28] tracking-[-0.32px] text-[#cadcd6]"
+                className="min-w-0 w-full max-w-full overflow-hidden text-center font-simpler font-normal leading-[1.28] tracking-[-0.32px] text-[#cadcd6]"
                 style={{ fontSize: subtitleSizePx }}
               >
                 יחד נייצר הרגלים דיגיטליים בריאים - ללא מאבקים
@@ -273,7 +335,7 @@ export function ParentSubscriptionStep({
             </div>
 
             <div
-              className="flex w-full flex-col items-stretch bg-white/[0.08]"
+              className="flex min-w-0 w-full flex-col items-stretch bg-white/[0.08]"
               style={{
                 padding: featuresPadPx,
                 gap: featuresGapPx,
@@ -331,12 +393,8 @@ export function ParentSubscriptionStep({
           />
 
           <div
-            className="mx-auto flex w-full shrink-0 flex-col"
-            style={{
-              width: plans.width,
-              maxWidth: '100%',
-              gap: plansGapPx,
-            }}
+            className="flex w-full shrink-0 flex-col"
+            style={{ gap: plansGapPx }}
             role="radiogroup"
             aria-label="בחירת מנוי"
           >
@@ -382,33 +440,24 @@ export function ParentSubscriptionStep({
           />
 
           <div
-            className="mx-auto w-full shrink-0"
-            style={{
-              width: cta.width,
-              maxWidth: '100%',
-              paddingBottom: bottomSpacerPx,
-            }}
+            className="flex w-full shrink-0 flex-col items-center"
+            style={{ gap: ctaGapPx }}
           >
-            <div
-              className="flex w-full flex-col items-center"
-              style={{ gap: ctaGapPx }}
+            <button
+              type="button"
+              disabled={selectedPlan === null}
+              onClick={onContinue}
+              className={`${ONBOARDING_SELECTABLE_OPTION.primaryCtaClass} w-full`}
+              style={{ minHeight: ctaMinH, height: ctaMinH }}
             >
-              <button
-                type="button"
-                disabled={selectedPlan === null}
-                onClick={onContinue}
-                className={`${ONBOARDING_SELECTABLE_OPTION.primaryCtaClass} w-full`}
-                style={{ minHeight: ctaMinH, height: ctaMinH }}
-              >
-                התחלת 30 ימים ניסיון בחינם
-              </button>
-              <p
-                className="w-full text-center font-simpler font-normal leading-[1.28] tracking-[-0.32px] text-v03-green-200"
-                style={{ fontSize: disclaimerPx }}
-              >
-                נזכיר לכם יומיים לפני שתקופת הניסיון נגמרת
-              </p>
-            </div>
+              התחלת 30 ימים ניסיון בחינם
+            </button>
+            <p
+              className="w-full text-center font-simpler font-normal leading-[1.28] tracking-[-0.32px] text-v03-green-200"
+              style={{ fontSize: disclaimerPx }}
+            >
+              נזכיר לכם יומיים לפני שתקופת הניסיון נגמרת
+            </p>
           </div>
         </div>
       </div>

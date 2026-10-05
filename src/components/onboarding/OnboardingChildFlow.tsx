@@ -81,6 +81,7 @@ import { usePostGameSync } from '@/hooks/usePostGameSync';
 import { signalChildOnboardingMilestone } from '@/lib/onboarding/childMilestones';
 
 import { getChildBondingContext } from '@/lib/onboarding/childBondingContext';
+import { getBondingChildName } from '@/lib/onboarding/bondingInvite';
 import {
   assignChildDashboard,
   buildGameChildUrlWithInvite,
@@ -228,7 +229,11 @@ export function OnboardingChildFlow() {
   // Invite URL wins over stored bonding (avoids RTDB/session flash flipping gender/art).
   const parentName = urlMeta.parentName ?? bonding?.parentName ?? 'אבא';
 
-  const childName = urlMeta.childName?.trim() || bonding?.childName?.trim() || 'הילד/ה';
+  const childName =
+    urlMeta.childName?.trim() ||
+    bonding?.childName?.trim() ||
+    getBondingChildName()?.trim() ||
+    '';
 
   const childGender = urlMeta.childGender ?? bonding?.childGender ?? 'boy';
 
