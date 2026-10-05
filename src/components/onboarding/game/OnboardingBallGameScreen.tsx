@@ -293,7 +293,7 @@ export function OnboardingBallGameScreen({
 
         {ballPos && (playing || showCelebrationBall) ? (
           <div
-            className="pointer-events-none absolute z-[8] -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-75 ease-linear"
+            className="pointer-events-none absolute z-[8] -translate-x-1/2 -translate-y-1/2"
             style={{
               left: ballPos.left,
               top: ballPos.top,

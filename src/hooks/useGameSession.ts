@@ -18,6 +18,7 @@ import {
   createExclusiveAsyncLock,
   GAME_ROOM_LOST_ERROR,
   nextGameRoomPresence,
+  shouldKeepLocalBall,
   shouldRunPhysics,
   shouldStartPlayFromCountdown,
   type GameRoomPresence,
@@ -90,6 +91,7 @@ export function useGameSession({
   const [childJoinBlocked, setChildJoinBlocked] = useState(false);
 
   const roomRef = useRef<GameRoomState | null>(null);
+  const roleRef = useRef<GamePlayerRole | null>(null);
   const presenceRef = useRef<GameRoomPresence>('unknown');
   const childJoinAttempted = useRef(false);
   const lastPhaseRef = useRef<GameRoomPhase | null>(null);
@@ -97,6 +99,10 @@ export function useGameSession({
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  useEffect(() => {
+    roleRef.current = role;
+  }, [role]);
 
   useEffect(() => {
     if (roomIdParam) setRoomId(roomIdParam);
@@ -124,7 +130,30 @@ export function useGameSession({
         setRoom(null);
         return;
       }
-      setRoom(next);
+      setRoom((prev) => {
+        if (
+          prev &&
+          next &&
+          shouldKeepLocalBall({
+            localUpdatedAt: prev.ball.updatedAt,
+            remoteUpdatedAt: next.ball.updatedAt,
+            localPhase: prev.phase,
+            remotePhase: next.phase,
+            localUpdatedBy: prev.ball.updatedBy,
+            remoteUpdatedBy: next.ball.updatedBy,
+            localRole: roleRef.current,
+          })
+        ) {
+          return {
+            ...next,
+            ball: prev.ball,
+            score: prev.score,
+            phase: prev.phase,
+            winner: prev.winner,
+          };
+        }
+        return next;
+      });
     });
   }, [roomId]);
 
@@ -182,6 +211,26 @@ export function useGameSession({
           const scoreChanged = result.score.shared !== current.score.shared;
           const phaseChanged =
             result.phase !== current.phase || result.winner !== current.winner;
+
+          const now = new Date().toISOString();
+          const nextState: GameRoomState = {
+            ...current,
+            ball: {
+              x: result.ball.x,
+              y: result.ball.y,
+              vx: result.ball.vx,
+              vy: result.ball.vy,
+              toward: result.ball.toward ?? current.ball.toward,
+              updatedBy: role,
+              updatedAt: now,
+            },
+            score: result.score,
+            phase: result.phase,
+            winner: result.winner,
+            updatedAt: now,
+          };
+          roomRef.current = nextState;
+          setRoom(nextState);
 
           await updateBallPosition(
             roomId,

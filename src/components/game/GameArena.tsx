@@ -72,7 +72,7 @@ export function GameArena({ room, role, onPointerMove }: GameArenaProps) {
           )}
         />
         <div
-          className="absolute rounded-full bg-[#273143] border-2 border-white shadow-md transition-[left,top] duration-75 ease-linear"
+          className="absolute rounded-full bg-[#273143] border-2 border-white shadow-md"
           style={{
             width: `${BALL_DIAMETER * 100}%`,
             height: `${BALL_DIAMETER * 100}%`,
