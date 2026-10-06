@@ -1,33 +1,46 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { ballFlightPosition } from '@/lib/game/ballFlight';
+import { lerpBallDraw } from '@/lib/game/ballDraw';
+import { stepLocalBall } from '@/lib/game/localBallMotion';
 
-describe('ball display flight', () => {
-  it('holds the snapshot at t=0', () => {
-    const pos = ballFlightPosition(
-      { x: 0.5, y: 0.4, vx: 0, vy: -2, updatedAt: '2026-01-01T00:00:00.000Z' },
-      Date.parse('2026-01-01T00:00:00.000Z')
+describe('physics ball draw (lerp only)', () => {
+  it('sits on the from snapshot at t=0', () => {
+    const pos = lerpBallDraw(
+      { x: 0.2, y: 0.2 },
+      { x: 0.8, y: 0.8 },
+      1000,
+      1000
     );
-    assert.equal(pos.x, 0.5);
-    assert.equal(pos.y, 0.4);
+    assert.equal(pos.x, 0.2);
+    assert.equal(pos.y, 0.2);
   });
 
-  it('advances along velocity until the lookahead cap', () => {
-    const t0 = Date.parse('2026-01-01T00:00:00.000Z');
-    const pos = ballFlightPosition(
-      { x: 0.5, y: 0.5, vx: 0, vy: -2, updatedAt: '2026-01-01T00:00:00.000Z' },
-      t0 + 40
+  it('reaches the physics snapshot after 50ms', () => {
+    const pos = lerpBallDraw(
+      { x: 0.2, y: 0.2 },
+      { x: 0.8, y: 0.8 },
+      1000,
+      1050
     );
-    assert.equal(pos.x, 0.5);
-    assert.ok(Math.abs(pos.y - (0.5 - 2 * 0.04)) < 1e-9);
+    assert.equal(pos.x, 0.8);
+    assert.equal(pos.y, 0.8);
   });
 
-  it('does not run more than 100ms ahead of the snapshot', () => {
-    const t0 = Date.parse('2026-01-01T00:00:00.000Z');
-    const pos = ballFlightPosition(
-      { x: 0.5, y: 0.5, vx: 0, vy: -2, updatedAt: '2026-01-01T00:00:00.000Z' },
-      t0 + 500
+  it('does not run past the physics snapshot', () => {
+    const pos = lerpBallDraw(
+      { x: 0.2, y: 0.2 },
+      { x: 0.8, y: 0.8 },
+      1000,
+      2000
     );
-    assert.ok(Math.abs(pos.y - (0.5 - 2 * 0.1)) < 1e-9);
+    assert.equal(pos.x, 0.8);
+    assert.equal(pos.y, 0.8);
+  });
+});
+
+describe('celebration wall stepper', () => {
+  it('bounces on all walls after a win', () => {
+    const next = stepLocalBall({ x: 0.01, y: 0.5, vx: -2, vy: 0 }, 'all');
+    assert.ok(next.vx > 0);
   });
 });

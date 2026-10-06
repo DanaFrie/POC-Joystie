@@ -15,8 +15,8 @@ import {
   BALL_GAME_COUNTDOWN_STEP_MS,
   BALL_GAME_COUNTDOWN_TOTAL_MS,
 } from '@/constants/ball-game-countdown';
-import { useBallFlightElement } from '@/hooks/useBallFlightElement';
 import { countdownElapsedMs } from '@/lib/game/stallGuards';
+import { usePhysicsBallDraw } from '@/hooks/usePhysicsBallDraw';
 import {
   useScaledBallGameBallSizePx,
   useScaledBallGameLayout,
@@ -214,14 +214,15 @@ export function OnboardingBallGameScreen({
     }
   };
 
-  const liveBall = celebrationBall ?? (room && playing ? room.ball : null);
+  const physicsBall = playing && room && !celebrationBall ? room.ball : null;
+  const liveBall = celebrationBall ?? physicsBall;
   const ballPos = liveBall
     ? courtPoint(liveBall.x, liveBall.y, role, playCourt)
     : null;
   const showCelebrationBall = Boolean(celebrationBall && ballPos);
-  const ballRef = useBallFlightElement(
-    liveBall,
-    Boolean(playing && liveBall && !celebrationBall),
+  const ballRef = usePhysicsBallDraw(
+    physicsBall,
+    Boolean(physicsBall),
     (el, x, y) => {
       const point = courtPoint(x, y, role, playCourt);
       el.style.left = `${point.left}px`;
@@ -306,10 +307,11 @@ export function OnboardingBallGameScreen({
             ref={ballRef}
             className="pointer-events-none absolute z-[8] -translate-x-1/2 -translate-y-1/2"
             style={{
-              left: ballPos.left,
-              top: ballPos.top,
               width: ballSizePx,
               height: ballSizePx,
+              ...(showCelebrationBall
+                ? { left: ballPos.left, top: ballPos.top }
+                : undefined),
             }}
           >
             <BallGameCourtBall sizePx={ballSizePx} />
