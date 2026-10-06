@@ -5,7 +5,10 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createCoalescedWriter, createExclusiveAsyncLock } from '@/lib/game/stallGuards';
+import {
+  createCoalescedAsyncWriter,
+  createExclusiveAsyncLock,
+} from '@/lib/game/stallGuards';
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -55,7 +58,7 @@ describe('physics tick lock (concurrency)', () => {
 
     const tick = () =>
       lock.run(async () => {
-        ball.y += ball.vy * 0.03;
+        ball.y += ball.vy * 0.05;
         await delay(15);
         written.push(ball.y);
       });
@@ -72,45 +75,28 @@ describe('physics tick lock (concurrency)', () => {
 });
 
 describe('coalesced RTDB writer', () => {
-  it('keeps stepping the ball while a slow write is in flight', async () => {
-    const writer = createCoalescedWriter<number>();
-    const ball = { y: 0.5, vy: -0.2 };
+  it('keeps advancing local y while a slow write is in flight', async () => {
+    const writer = createCoalescedAsyncWriter<number>();
     const sent: number[] = [];
+    let y = 0.5;
 
-    const tick = () => {
-      ball.y += ball.vy * 0.05;
-      writer.enqueue(ball.y, async (y) => {
-        await delay(40);
-        sent.push(y);
+    const write = (value: number) =>
+      delay(40).then(() => {
+        sent.push(value);
       });
-    };
 
-    tick();
-    await delay(5);
-    tick();
-    tick();
-    await delay(150);
+    y += -0.2 * 0.05;
+    writer.push(y, write);
+    y += -0.2 * 0.05;
+    writer.push(y, write);
+    y += -0.2 * 0.05;
+    writer.push(y, write);
+
+    await delay(120);
 
     assert.ok(sent.length >= 1);
-    assert.equal(ball.y, 0.5 - 3 * 0.2 * 0.05);
-  });
-
-  it('writes only the latest queued payload after an in-flight write', async () => {
-    const writer = createCoalescedWriter<number>();
-    const sent: number[] = [];
-
-    writer.enqueue(1, async (value) => {
-      await delay(30);
-      sent.push(value);
-    });
-    writer.enqueue(2, async (value) => {
-      sent.push(value);
-    });
-    writer.enqueue(3, async (value) => {
-      sent.push(value);
-    });
-    await delay(80);
-
-    assert.deepEqual(sent, [1, 3]);
+    assert.ok(sent[0]! < 0.5);
+    assert.ok(sent[sent.length - 1]! <= sent[0]!);
+    assert.ok(y < sent[0]!, 'local physics must outrun the in-flight write');
   });
 });

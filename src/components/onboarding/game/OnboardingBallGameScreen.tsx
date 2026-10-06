@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { BallGameCourtBall } from '@/components/onboarding/game/BallGameCourtBall';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BallGameLiveBall } from '@/components/onboarding/game/BallGameLiveBall';
 import { BallGameCourtLayer } from '@/components/onboarding/game/BallGameCourtLayer';
 import { BallGameCountdownOverlay } from '@/components/onboarding/game/BallGameCountdownOverlay';
 import { BallGameFailureOverlay } from '@/components/onboarding/game/BallGameFailureOverlay';
@@ -16,7 +16,6 @@ import {
   BALL_GAME_COUNTDOWN_TOTAL_MS,
 } from '@/constants/ball-game-countdown';
 import { countdownElapsedMs } from '@/lib/game/stallGuards';
-import { usePhysicsBallDraw } from '@/hooks/usePhysicsBallDraw';
 import {
   useScaledBallGameBallSizePx,
   useScaledBallGameLayout,
@@ -214,20 +213,21 @@ export function OnboardingBallGameScreen({
     }
   };
 
-  const physicsBall = playing && room && !celebrationBall ? room.ball : null;
-  const liveBall = celebrationBall ?? physicsBall;
-  const ballPos = liveBall
-    ? courtPoint(liveBall.x, liveBall.y, role, playCourt)
-    : null;
-  const showCelebrationBall = Boolean(celebrationBall && ballPos);
-  const ballRef = usePhysicsBallDraw(
-    physicsBall,
-    Boolean(physicsBall),
-    (el, x, y) => {
-      const point = courtPoint(x, y, role, playCourt);
-      el.style.left = `${point.left}px`;
-      el.style.top = `${point.top}px`;
-    }
+  const liveBall = celebrationBall ?? (room && playing ? room.ball : null);
+  const showCelebrationBall = Boolean(celebrationBall && liveBall);
+  const courtTop = playCourt.top;
+  const courtLeft = playCourt.left;
+  const courtWidth = playCourt.width;
+  const courtHeight = playCourt.height;
+  const toPixel = useCallback(
+    (x: number, y: number) =>
+      courtPoint(x, y, role, {
+        top: courtTop,
+        left: courtLeft,
+        width: courtWidth,
+        height: courtHeight,
+      }),
+    [role, courtTop, courtLeft, courtWidth, courtHeight]
   );
 
   const selfRole: GamePlayerRole = role;
@@ -302,20 +302,13 @@ export function OnboardingBallGameScreen({
           aria-label="מגרש המשחק"
         />
 
-        {ballPos && (playing || showCelebrationBall) ? (
-          <div
-            ref={ballRef}
-            className="pointer-events-none absolute z-[8] -translate-x-1/2 -translate-y-1/2"
-            style={{
-              width: ballSizePx,
-              height: ballSizePx,
-              ...(showCelebrationBall
-                ? { left: ballPos.left, top: ballPos.top }
-                : undefined),
-            }}
-          >
-            <BallGameCourtBall sizePx={ballSizePx} />
-          </div>
+        {liveBall && (playing || showCelebrationBall) ? (
+          <BallGameLiveBall
+            ball={liveBall}
+            sizePx={ballSizePx}
+            animate={playing || Boolean(celebrationBall)}
+            toPixel={toPixel}
+          />
         ) : null}
 
         {won && !hideWinBanner ? (

@@ -1,6 +1,14 @@
-import { BALL_RADIUS, PHYSICS_DT, type BallVector } from '@/lib/game/physics';
+import {
+  BALL_RADIUS,
+  BALL_RADIUS_X,
+  PHYSICS_DT,
+  type BallVector,
+} from '@/lib/game/physics';
 
 export type LocalBallBounds = 'all' | 'sides';
+
+/** Display-only: keep moving with last vx/vy between physics/RTDB snapshots. */
+export const DISPLAY_EXTRAPOLATE_MAX_S = 0.12;
 
 export function stepLocalBall(
   ball: BallVector,
@@ -29,4 +37,16 @@ export function stepLocalBall(
   }
 
   return { ...ball, x, y, vx, vy };
+}
+
+export function extrapolateBallForDisplay(
+  ball: Pick<BallVector, 'x' | 'y' | 'vx' | 'vy'>,
+  elapsedSec: number,
+  maxElapsedSec = DISPLAY_EXTRAPOLATE_MAX_S
+): { x: number; y: number } {
+  const dt = Math.min(Math.max(0, elapsedSec), maxElapsedSec);
+  return {
+    x: Math.min(1 - BALL_RADIUS_X, Math.max(BALL_RADIUS_X, ball.x + ball.vx * dt)),
+    y: Math.min(1, Math.max(0, ball.y + ball.vy * dt)),
+  };
 }

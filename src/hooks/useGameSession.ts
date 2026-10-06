@@ -15,9 +15,10 @@ import {
 } from '@/lib/game/phaseLog';
 import { stepBallPhysics } from '@/lib/game/physics';
 import {
-  createCoalescedWriter,
+  createCoalescedAsyncWriter,
   GAME_ROOM_LOST_ERROR,
   nextGameRoomPresence,
+  PHYSICS_LOOP_INTERVAL_MS,
   shouldKeepLocalBall,
   shouldRunPhysics,
   shouldStartPlayFromCountdown,
@@ -183,7 +184,7 @@ export function useGameSession({
   useEffect(() => {
     if (!roomId || !role) return;
 
-    type BallWrite = {
+    const writer = createCoalescedAsyncWriter<{
       x: number;
       y: number;
       vx: number;
@@ -194,9 +195,8 @@ export function useGameSession({
         phase: GameRoomState['phase'];
         winner: GameRoomState['winner'];
       };
-    };
+    }>();
 
-    const writer = createCoalescedWriter<BallWrite>();
     const id = window.setInterval(() => {
       const current = roomRef.current;
       if (!current || current.phase !== 'playing') return;
@@ -211,84 +211,76 @@ export function useGameSession({
         return;
       }
 
-      try {
-        const result = stepBallPhysics({
-          ball: current.ball,
-          paddles: current.paddles,
-          score: current.score,
-          phase: current.phase,
-          winner: current.winner,
-        });
+      const result = stepBallPhysics({
+        ball: current.ball,
+        paddles: current.paddles,
+        score: current.score,
+        phase: current.phase,
+        winner: current.winner,
+      });
 
-        const scoreChanged = result.score.shared !== current.score.shared;
-        const phaseChanged =
-          result.phase !== current.phase || result.winner !== current.winner;
+      const scoreChanged = result.score.shared !== current.score.shared;
+      const phaseChanged =
+        result.phase !== current.phase || result.winner !== current.winner;
 
-        const now = new Date().toISOString();
-        const nextState: GameRoomState = {
-          ...current,
-          ball: {
-            x: result.ball.x,
-            y: result.ball.y,
-            vx: result.ball.vx,
-            vy: result.ball.vy,
-            toward: result.ball.toward ?? current.ball.toward,
-            updatedBy: role,
-            updatedAt: now,
-          },
-          score: result.score,
-          phase: result.phase,
-          winner: result.winner,
+      const now = new Date().toISOString();
+      const nextState: GameRoomState = {
+        ...current,
+        ball: {
+          x: result.ball.x,
+          y: result.ball.y,
+          vx: result.ball.vx,
+          vy: result.ball.vy,
+          toward: result.ball.toward ?? current.ball.toward,
+          updatedBy: role,
           updatedAt: now,
-        };
-        roomRef.current = nextState;
-        setRoom(nextState);
+        },
+        score: result.score,
+        phase: result.phase,
+        winner: result.winner,
+        updatedAt: now,
+      };
+      roomRef.current = nextState;
+      setRoom(nextState);
 
-        writer.enqueue(
-          {
-            x: result.ball.x,
-            y: result.ball.y,
-            vx: result.ball.vx,
-            vy: result.ball.vy,
-            toward: result.ball.toward,
-            gamePatch:
-              scoreChanged || phaseChanged
-                ? {
-                    score: result.score,
-                    phase: result.phase,
-                    winner: result.winner,
-                  }
-                : undefined,
-          },
-          async (payload) => {
-            try {
-              await updateBallPosition(
-                roomId,
-                role,
-                payload.x,
-                payload.y,
-                payload.vx,
-                payload.vy,
-                payload.toward,
-                payload.gamePatch
-              );
-            } catch (err) {
-              setError(
-                err instanceof Error
-                  ? `עדכון כדור נכשל: ${err.message}`
-                  : 'עדכון כדור נכשל'
-              );
-            }
+      writer.push(
+        {
+          x: result.ball.x,
+          y: result.ball.y,
+          vx: result.ball.vx,
+          vy: result.ball.vy,
+          toward: result.ball.toward,
+          gamePatch:
+            scoreChanged || phaseChanged
+              ? {
+                  score: result.score,
+                  phase: result.phase,
+                  winner: result.winner,
+                }
+              : undefined,
+        },
+        async (payload) => {
+          try {
+            await updateBallPosition(
+              roomId,
+              role,
+              payload.x,
+              payload.y,
+              payload.vx,
+              payload.vy,
+              payload.toward,
+              payload.gamePatch
+            );
+          } catch (err) {
+            setError(
+              err instanceof Error
+                ? `עדכון כדור נכשל: ${err.message}`
+                : 'עדכון כדור נכשל'
+            );
           }
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? `עדכון כדור נכשל: ${err.message}`
-            : 'עדכון כדור נכשל'
-        );
-      }
-    }, 50);
+        }
+      );
+    }, PHYSICS_LOOP_INTERVAL_MS);
 
     return () => window.clearInterval(id);
   }, [roomId, role]);

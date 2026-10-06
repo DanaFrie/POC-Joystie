@@ -5,7 +5,6 @@
  * - wall-clock countdown never finishing
  * - child join rewinding a live room
  * - overlapping async physics writes from the same snapshot
- *   (physics ticks now stay local; RTDB writes are coalesced)
  * - parent-only physics dying when the parent tab is backgrounded
  * - RTDB rejecting y∉[0,1] / |v|>1
  * - a deleted room spinning on «מתחברים למשחק»
@@ -30,7 +29,7 @@ export const RTDB_BALL_POS_MAX = 1;
 export const RTDB_BALL_VEL_MIN = -16;
 export const RTDB_BALL_VEL_MAX = 16;
 
-/** Physics + RTDB write cadence — 20 Hz. Visual motion was calibrated here. */
+/** Physics steps at 20 Hz in realtime (dt matches the 50ms loop). Writes are coalesced. */
 export const PHYSICS_LOOP_INTERVAL_MS = 50;
 export const PHYSICS_MIN_WRITE_INTERVAL_MS = 50;
 export const PHYSICS_MAX_WRITES_PER_SEC = 20;
@@ -193,32 +192,35 @@ export function createExclusiveAsyncLock() {
 }
 
 /**
- * Keep accepting the latest payload while a write is in flight.
- * Physics ticks must not wait on RTDB — that made the ball look held back.
+ * Latest-wins writer: physics can keep stepping while a write is in flight.
+ * Only the newest payload is sent when the current write settles.
  */
-export function createCoalescedWriter<T>() {
-  let busy = false;
-  let queued: { value: T; run: (value: T) => Promise<void> } | null = null;
+export function createCoalescedAsyncWriter<T>() {
+  let inFlight = false;
+  let queued: T | undefined;
+  let hasQueued = false;
+  let send: ((payload: T) => Promise<void>) | null = null;
 
-  const pump = async () => {
-    if (busy) return;
-    busy = true;
+  const flush = async () => {
+    if (inFlight || !hasQueued || !send) return;
+    const payload = queued as T;
+    hasQueued = false;
+    queued = undefined;
+    inFlight = true;
     try {
-      while (queued) {
-        const job = queued;
-        queued = null;
-        await job.run(job.value);
-      }
+      await send(payload);
     } finally {
-      busy = false;
-      if (queued) void pump();
+      inFlight = false;
+      if (hasQueued) void flush();
     }
   };
 
   return {
-    enqueue(value: T, run: (value: T) => Promise<void>) {
-      queued = { value, run };
-      void pump();
+    push(payload: T, fn: (payload: T) => Promise<void>) {
+      send = fn;
+      queued = payload;
+      hasQueued = true;
+      void flush();
     },
   };
 }

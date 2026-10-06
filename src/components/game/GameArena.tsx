@@ -1,7 +1,6 @@
 'use client';
 
 import { GAME_WIN_SCORE } from '@/constants/game';
-import { usePhysicsBallDraw } from '@/hooks/usePhysicsBallDraw';
 import {
   BALL_DIAMETER,
   clampPaddleCenterX,
@@ -29,16 +28,6 @@ type GameArenaProps = {
 };
 
 export function GameArena({ room, role, onPointerMove }: GameArenaProps) {
-  const playing = room.phase === 'playing';
-  const ballRef = usePhysicsBallDraw(
-    room.ball,
-    playing,
-    (el, x, y) => {
-      el.style.left = `${x * 100}%`;
-      el.style.top = `${courtYForViewer(y, role) * 100}%`;
-    }
-  );
-
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     onPointerMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
   };
@@ -83,19 +72,14 @@ export function GameArena({ room, role, onPointerMove }: GameArenaProps) {
           )}
         />
         <div
-          ref={ballRef}
           className="absolute rounded-full bg-[#273143] border-2 border-white shadow-md"
           style={{
             width: `${BALL_DIAMETER * 100}%`,
             height: `${BALL_DIAMETER * 100}%`,
             marginLeft: `-${(BALL_DIAMETER * 100) / 2}%`,
             marginTop: `-${(BALL_DIAMETER * 100) / 2}%`,
-            ...(playing
-              ? {}
-              : {
-                  left: `${room.ball.x * 100}%`,
-                  top: `${courtYForViewer(room.ball.y, role) * 100}%`,
-                }),
+            left: `${room.ball.x * 100}%`,
+            top: `${courtYForViewer(room.ball.y, role) * 100}%`,
           }}
         />
       </div>
