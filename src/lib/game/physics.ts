@@ -29,8 +29,8 @@ export const CHILD_PADDLE_Y = PHYSICS_CHILD_PADDLE_SURFACE_Y;
 /** Paddle width in normalized court coords (0–1) — Figma 92px on 327px lane. */
 export const DEFAULT_PADDLE_WIDTH = 92 / 327;
 
-export const PHYSICS_DT = 0.03;
-/** Extra substeps so 8× serve does not tunnel through paddles. */
+export const PHYSICS_DT = 0.05;
+/** Extra substeps so a fast serve does not tunnel through paddles. */
 export const PHYSICS_SUBSTEPS = 8;
 
 /** @deprecated use GAME_WIN_SCORE from @/constants/game */

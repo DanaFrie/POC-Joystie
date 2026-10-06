@@ -5,6 +5,7 @@
  * - wall-clock countdown never finishing
  * - child join rewinding a live room
  * - overlapping async physics writes from the same snapshot
+ *   (physics ticks now stay local; RTDB writes are coalesced)
  * - parent-only physics dying when the parent tab is backgrounded
  * - RTDB rejecting y∉[0,1] / |v|>1
  * - a deleted room spinning on «מתחברים למשחק»
@@ -187,6 +188,37 @@ export function createExclusiveAsyncLock() {
       } finally {
         busy = false;
       }
+    },
+  };
+}
+
+/**
+ * Keep accepting the latest payload while a write is in flight.
+ * Physics ticks must not wait on RTDB — that made the ball look held back.
+ */
+export function createCoalescedWriter<T>() {
+  let busy = false;
+  let queued: { value: T; run: (value: T) => Promise<void> } | null = null;
+
+  const pump = async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      while (queued) {
+        const job = queued;
+        queued = null;
+        await job.run(job.value);
+      }
+    } finally {
+      busy = false;
+      if (queued) void pump();
+    }
+  };
+
+  return {
+    enqueue(value: T, run: (value: T) => Promise<void>) {
+      queued = { value, run };
+      void pump();
     },
   };
 }

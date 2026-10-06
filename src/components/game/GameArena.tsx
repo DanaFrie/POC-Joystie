@@ -1,6 +1,7 @@
 'use client';
 
 import { GAME_WIN_SCORE } from '@/constants/game';
+import { useBallFlightElement } from '@/hooks/useBallFlightElement';
 import {
   BALL_DIAMETER,
   clampPaddleCenterX,
@@ -28,6 +29,15 @@ type GameArenaProps = {
 };
 
 export function GameArena({ room, role, onPointerMove }: GameArenaProps) {
+  const ballRef = useBallFlightElement(
+    room.ball,
+    room.phase === 'playing',
+    (el, x, y) => {
+      el.style.left = `${x * 100}%`;
+      el.style.top = `${courtYForViewer(y, role) * 100}%`;
+    }
+  );
+
   const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     onPointerMove(e.clientX, e.clientY, e.currentTarget.getBoundingClientRect());
   };
@@ -72,6 +82,7 @@ export function GameArena({ room, role, onPointerMove }: GameArenaProps) {
           )}
         />
         <div
+          ref={ballRef}
           className="absolute rounded-full bg-[#273143] border-2 border-white shadow-md"
           style={{
             width: `${BALL_DIAMETER * 100}%`,

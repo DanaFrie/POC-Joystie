@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createExclusiveAsyncLock } from '@/lib/game/stallGuards';
+import { createCoalescedWriter, createExclusiveAsyncLock } from '@/lib/game/stallGuards';
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -68,5 +68,49 @@ describe('physics tick lock (concurrency)', () => {
     assert.ok(written[0]! < 0.5);
     assert.ok(written[1]! < written[0]!);
     assert.ok(written[2]! < written[1]!);
+  });
+});
+
+describe('coalesced RTDB writer', () => {
+  it('keeps stepping the ball while a slow write is in flight', async () => {
+    const writer = createCoalescedWriter<number>();
+    const ball = { y: 0.5, vy: -0.2 };
+    const sent: number[] = [];
+
+    const tick = () => {
+      ball.y += ball.vy * 0.05;
+      writer.enqueue(ball.y, async (y) => {
+        await delay(40);
+        sent.push(y);
+      });
+    };
+
+    tick();
+    await delay(5);
+    tick();
+    tick();
+    await delay(150);
+
+    assert.ok(sent.length >= 1);
+    assert.equal(ball.y, 0.5 - 3 * 0.2 * 0.05);
+  });
+
+  it('writes only the latest queued payload after an in-flight write', async () => {
+    const writer = createCoalescedWriter<number>();
+    const sent: number[] = [];
+
+    writer.enqueue(1, async (value) => {
+      await delay(30);
+      sent.push(value);
+    });
+    writer.enqueue(2, async (value) => {
+      sent.push(value);
+    });
+    writer.enqueue(3, async (value) => {
+      sent.push(value);
+    });
+    await delay(80);
+
+    assert.deepEqual(sent, [1, 3]);
   });
 });

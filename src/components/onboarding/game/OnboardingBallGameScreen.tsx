@@ -15,6 +15,7 @@ import {
   BALL_GAME_COUNTDOWN_STEP_MS,
   BALL_GAME_COUNTDOWN_TOTAL_MS,
 } from '@/constants/ball-game-countdown';
+import { useBallFlightElement } from '@/hooks/useBallFlightElement';
 import { countdownElapsedMs } from '@/lib/game/stallGuards';
 import {
   useScaledBallGameBallSizePx,
@@ -218,6 +219,15 @@ export function OnboardingBallGameScreen({
     ? courtPoint(liveBall.x, liveBall.y, role, playCourt)
     : null;
   const showCelebrationBall = Boolean(celebrationBall && ballPos);
+  const ballRef = useBallFlightElement(
+    liveBall,
+    Boolean(playing && liveBall && !celebrationBall),
+    (el, x, y) => {
+      const point = courtPoint(x, y, role, playCourt);
+      el.style.left = `${point.left}px`;
+      el.style.top = `${point.top}px`;
+    }
+  );
 
   const selfRole: GamePlayerRole = role;
   const rivalRole: GamePlayerRole = role === 'parent' ? 'child' : 'parent';
@@ -293,6 +303,7 @@ export function OnboardingBallGameScreen({
 
         {ballPos && (playing || showCelebrationBall) ? (
           <div
+            ref={ballRef}
             className="pointer-events-none absolute z-[8] -translate-x-1/2 -translate-y-1/2"
             style={{
               left: ballPos.left,
