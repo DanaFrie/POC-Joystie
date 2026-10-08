@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { ballFlightPosition, type FlightBall } from '@/lib/game/ballFlight';
+import { projectBallFlight, type FlightBall } from '@/lib/game/ballFlight';
 
 /** Drive a ball node's left/top from velocity between snapshots — no CSS ease. */
 export function useBallFlightElement(
@@ -34,9 +34,10 @@ export function useBallFlightElement(
       return;
     }
 
+    const receivedAt = Date.now();
     let raf = 0;
     const tick = () => {
-      const pos = ballFlightPosition(snapshot);
+      const pos = projectBallFlight(snapshot, Date.now(), receivedAt);
       apply(pos.x, pos.y);
       raf = requestAnimationFrame(tick);
     };

@@ -1,8 +1,16 @@
 import type { GamePlayerRole } from '@/types/game';
 
-/** Base serve speed — 8× the 9cbaea3 start, then −35%, then −20%. */
-export const BALL_START_VY = 0.602784 * 8 * 0.65 * 0.8;
-export const BALL_START_VX = 0.43056 * 8 * 0.65 * 0.8;
+/**
+ * Serve speed in court-heights per second.
+ * First returns stay readable. Each paddle hit multiplies speed
+ * (`PADDLE_SPEED_BOOST` in physics) so later rallies are faster.
+ * Nothing damps the ball between hits.
+ */
+/** Tuned on /game-motion-test (RTDB delay 0). Court-heights per second. */
+export const BALL_SERVE_SPEED = 0.54;
+export const BALL_START_VY = BALL_SERVE_SPEED;
+/** Serve angle scale — small so the ball crosses the court instead of sliding on a side wall. */
+export const BALL_START_VX = 0.32;
 
 /** Shared-court Y velocity sign → player who should receive the ball next. */
 export function ballTowardFromVy(vy: number): GamePlayerRole {

@@ -110,6 +110,7 @@ export function OnboardingBallGameScreen({
   const score = room?.score.shared ?? 0;
   const playing = room?.phase === 'playing';
   const countdown = room?.phase === 'countdown';
+  const courtActive = playing || countdown;
   const prePlay =
     room?.phase === 'waiting_child' ||
     room?.phase === 'waiting_ready' ||
@@ -197,13 +198,17 @@ export function OnboardingBallGameScreen({
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!playing) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    if (!courtActive) return;
     emitPointer(e.clientX, e.clientY);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer is already gone — the position was applied above.
+    }
   };
 
   const onPointerDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!playing || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (!courtActive || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
     emitPointer(e.clientX, e.clientY);
   };
 
@@ -267,7 +272,7 @@ export function OnboardingBallGameScreen({
           score={won ? GAME_WIN_SCORE : score}
           showScoreRing={playing || won || countdownGo}
           showPaddles={
-            !roundStarted && !playing && !showReadyModal && !showFailureCard
+            !roundStarted && !courtActive && !showReadyModal && !showFailureCard
           }
         />
 
@@ -275,7 +280,7 @@ export function OnboardingBallGameScreen({
           <div className="pointer-events-none absolute inset-0 z-[5] bg-[#092125]/25" aria-hidden />
         ) : null}
 
-        {playing && room ? (
+        {courtActive && room ? (
           <>
             {renderPaddle(rivalRole, 0.6, {
               centerX: rivalRole === 'parent' ? room.paddles.parentX : room.paddles.childX,
@@ -292,12 +297,12 @@ export function OnboardingBallGameScreen({
 
         <div
           ref={courtRef}
-          className={`absolute inset-0 ${playing ? 'z-[30]' : 'pointer-events-none z-[5]'}`}
-          style={{ touchAction: playing ? 'none' : undefined }}
-          onPointerDown={playing ? onPointerDown : undefined}
-          onPointerMove={playing ? onPointerDrag : undefined}
-          onPointerUp={playing ? onPointerUp : undefined}
-          onPointerCancel={playing ? onPointerUp : undefined}
+          className={`absolute inset-0 ${courtActive ? 'z-[30]' : 'pointer-events-none z-[5]'}`}
+          style={{ touchAction: courtActive ? 'none' : undefined }}
+          onPointerDown={courtActive ? onPointerDown : undefined}
+          onPointerMove={courtActive ? onPointerDrag : undefined}
+          onPointerUp={courtActive ? onPointerUp : undefined}
+          onPointerCancel={courtActive ? onPointerUp : undefined}
           role="presentation"
           aria-label="מגרש המשחק"
         />

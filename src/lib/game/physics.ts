@@ -6,7 +6,7 @@ import {
   PHYSICS_PARENT_PADDLE_SURFACE_Y,
   PHYSICS_PADDLE_HEIGHT_NORM,
 } from '@/lib/game/ballGameCourt';
-import { velocityToward, ballTowardFromVy } from '@/lib/game/ballDirection';
+import { BALL_START_VY, velocityToward, ballTowardFromVy } from '@/lib/game/ballDirection';
 import type {
   GamePlayerRole,
   GamePaddlesState,
@@ -42,10 +42,20 @@ const MIN_SPEED = 0.21528;
  * instead of clamping on the first bounce.
  */
 const MAX_SPEED = 16;
-/** Per-hit speed multiplier. */
-const PADDLE_BOOST = 1.04;
+/**
+ * Each successful return is this much faster than the previous one.
+ * Speed is constant for the whole flight between hits.
+ */
+/** Tuned on /game-motion-test. Each return is 5% faster than the last. */
+export const PADDLE_SPEED_BOOST = 1.05;
+/**
+ * 0 sends the ball straight back. 1 is a modest sideways kick.
+ * The live game uses 1.45 — wider serve and wider returns.
+ */
+export const BALL_EVASIVENESS = 1.45;
 const PADDLE_ANGLE_GAIN = 0.28;
 const PADDLE_ANGLE_JITTER = 0.06;
+const PADDLE_VX_SHARE = 0.42;
 
 const SUBSTEP_DT = PHYSICS_DT / PHYSICS_SUBSTEPS;
 
@@ -72,16 +82,19 @@ export type PhysicsStepResult = PhysicsStepInput & {
 };
 
 /** Serve from center toward the child paddle (shared y → 0). */
-export function createStartBall(): BallVector {
-  const { vx, vy } = velocityToward('child');
-  return { x: 0.5, y: 0.5, vx, vy, toward: 'child' };
+export function createStartBall(
+  serveSpeed = BALL_START_VY,
+  evasiveness = BALL_EVASIVENESS
+): BallVector {
+  const { vx, vy } = velocityToward('child', serveSpeed);
+  return { x: 0.5, y: 0.5, vx: vx * evasiveness, vy, toward: 'child' };
 }
 
 /** Kick a stationary ball — preserve intended receiver. */
-export function ensureBallMoving(ball: BallVector): BallVector {
+export function ensureBallMoving(ball: BallVector, serveSpeed = BALL_START_VY): BallVector {
   if (Math.hypot(ball.vx, ball.vy) < 0.02) {
     const toward = ball.toward ?? ballTowardFromVy(ball.vy);
-    const { vx, vy } = velocityToward(toward);
+    const { vx, vy } = velocityToward(toward, serveSpeed);
     return { ...ball, vx, vy, toward };
   }
   return { ...ball, toward: ball.toward ?? ballTowardFromVy(ball.vy) };
@@ -155,17 +168,27 @@ function reflectOffPaddle(
   paddleX: number,
   paddleHalf: number,
   defender: GamePlayerRole,
-  paddleY: number
+  paddleY: number,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
 ): { vx: number; vy: number; y: number; toward: GamePlayerRole } {
   const hitOffset = Math.max(-1, Math.min(1, (x - paddleX) / paddleHalf));
   const nextToward: GamePlayerRole = defender === 'parent' ? 'child' : 'parent';
-  const speed = Math.max(MIN_SPEED, Math.hypot(vx, vy) * PADDLE_BOOST);
+  const incoming = Math.max(MIN_SPEED, Math.hypot(vx, vy));
+  const nextSpeed = Math.min(MAX_SPEED, incoming * paddleBoost);
   const angleKick =
-    hitOffset * PADDLE_ANGLE_GAIN +
-    (Math.random() - 0.5) * PADDLE_ANGLE_JITTER;
-  const angledVx = vx + angleKick;
-  const towardVel = velocityToward(nextToward, speed, angledVx);
-  const normalized = normalizeSpeed(towardVel.vx, towardVel.vy);
+    (hitOffset * PADDLE_ANGLE_GAIN + (Math.random() - 0.5) * PADDLE_ANGLE_JITTER) *
+    evasiveness;
+  const incomingVxShare = incoming > 1e-6 ? vx / incoming : 0;
+  const maxShare = Math.min(0.9, PADDLE_VX_SHARE * evasiveness);
+  const vxShare = Math.max(
+    -maxShare,
+    Math.min(maxShare, incomingVxShare * 0.65 * evasiveness + angleKick)
+  );
+  const outVx = vxShare * nextSpeed;
+  const vyMag = Math.sqrt(Math.max(0, nextSpeed * nextSpeed - outVx * outVx));
+  const outVy = nextToward === 'child' ? -vyMag : vyMag;
+  const normalized = normalizeSpeed(outVx, outVy);
   const isBottomPaddle = paddleY > 0.5;
   const y = isBottomPaddle
     ? paddleY - BALL_RADIUS_Y
@@ -202,7 +225,9 @@ function tryPaddleBounce(
   paddleX: number,
   paddleHalf: number,
   paddleY: number,
-  defender: GamePlayerRole
+  defender: GamePlayerRole,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
 ): { hit: boolean; x: number; y: number; vx: number; vy: number; toward?: GamePlayerRole } {
   const isBottomPaddle = paddleY > 0.5;
 
@@ -223,7 +248,9 @@ function tryPaddleBounce(
       paddleX,
       paddleHalf,
       defender,
-      paddleY
+      paddleY,
+      paddleBoost,
+      evasiveness
     );
     return {
       hit: true,
@@ -251,7 +278,9 @@ function tryPaddleBounce(
     paddleX,
     paddleHalf,
     defender,
-    paddleY
+    paddleY,
+    paddleBoost,
+    evasiveness
   );
   return {
     hit: true,
@@ -317,7 +346,9 @@ function physicsSubstep(
   paddles: GamePaddlesState,
   score: GameScoreState,
   phase: GameRoomPhase,
-  winner: GameWinner
+  winner: GameWinner,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
 ): SubstepResult {
   let { x, y, vx, vy } = ball;
   let toward = ball.toward ?? ballTowardFromVy(vy);
@@ -346,7 +377,9 @@ function physicsSubstep(
     paddles.parentX,
     paddleHalf,
     PARENT_PADDLE_Y,
-    'parent'
+    'parent',
+    paddleBoost,
+    evasiveness
   );
 
   if (parentBounce.hit) {
@@ -372,7 +405,9 @@ function physicsSubstep(
       paddles.childX,
       paddleHalf,
       CHILD_PADDLE_Y,
-      'child'
+      'child',
+      paddleBoost,
+      evasiveness
     );
     if (childBounce.hit) {
       childHit = true;
@@ -455,8 +490,23 @@ function physicsSubstep(
  * Shared court — side walls bounce; top/bottom only via paddles.
  * Miss past a paddle → game over.
  */
-export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
-  let ball = ensureBallMoving(input.ball);
+export type BallPhysicsTune = {
+  /** Serve / restart speed in court-heights per second. */
+  serveSpeed?: number;
+  /** Multiplier applied on each paddle return. */
+  paddleBoost?: number;
+  /** 0 = straight returns. 1 = default sideways kick. Higher = wider and less predictable. */
+  evasiveness?: number;
+};
+
+export function stepBallPhysics(
+  input: PhysicsStepInput,
+  tune?: BallPhysicsTune
+): PhysicsStepResult {
+  const serveSpeed = tune?.serveSpeed ?? BALL_START_VY;
+  const paddleBoost = tune?.paddleBoost ?? PADDLE_SPEED_BOOST;
+  const evasiveness = tune?.evasiveness ?? BALL_EVASIVENESS;
+  let ball = ensureBallMoving(input.ball, serveSpeed);
   let score = { ...input.score };
   let phase = input.phase;
   let winner = input.winner;
@@ -467,7 +517,15 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
   for (let i = 0; i < PHYSICS_SUBSTEPS; i++) {
     if (phase !== 'playing') break;
 
-    const step = physicsSubstep(ball, input.paddles, score, phase, winner);
+    const step = physicsSubstep(
+      ball,
+      input.paddles,
+      score,
+      phase,
+      winner,
+      paddleBoost,
+      evasiveness
+    );
     ball = {
       x: step.x,
       y: step.y,

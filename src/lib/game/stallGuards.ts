@@ -31,6 +31,11 @@ export const RTDB_BALL_VEL_MAX = 16;
 
 /** Physics steps at 20 Hz in realtime (dt matches the 50ms loop). Writes are coalesced. */
 export const PHYSICS_LOOP_INTERVAL_MS = 50;
+/**
+ * Typical one-way RTDB delay on App Hosting (writer → the other phone).
+ * The subscriber must fly the ball across this gap; painting the raw sample stalls the rally.
+ */
+export const APP_HOSTING_RTDB_DELIVERY_MS = 120;
 export const PHYSICS_MIN_WRITE_INTERVAL_MS = 50;
 export const PHYSICS_MAX_WRITES_PER_SEC = 20;
 

@@ -2,17 +2,17 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import { BallGameCourtBall } from '@/components/onboarding/game/BallGameCourtBall';
-import { extrapolateBallForDisplay } from '@/lib/game/localBallMotion';
+import { projectBallFlight, type FlightBall } from '@/lib/game/ballFlight';
 import type { BallVector } from '@/lib/game/physics';
 
 type BallGameLiveBallProps = {
-  ball: BallVector;
+  ball: BallVector & { updatedAt?: string };
   sizePx: number;
   animate: boolean;
   toPixel: (x: number, y: number) => { left: number; top: number };
 };
 
-/** Paints the court ball; while playing, keeps sliding with last vx/vy between snapshots. */
+/** Paints the court ball and keeps it moving between physics / RTDB snapshots. */
 export function BallGameLiveBall({
   ball,
   sizePx,
@@ -20,31 +20,42 @@ export function BallGameLiveBall({
   toPixel,
 }: BallGameLiveBallProps) {
   const elRef = useRef<HTMLDivElement>(null);
+  const toPixelRef = useRef(toPixel);
+  toPixelRef.current = toPixel;
 
   useLayoutEffect(() => {
     const el = elRef.current;
     if (!el) return;
 
-    const origin = { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy };
+    const snapshot: FlightBall = {
+      x: ball.x,
+      y: ball.y,
+      vx: ball.vx,
+      vy: ball.vy,
+      updatedAt: ball.updatedAt,
+    };
+    const receivedAt = Date.now();
+
     const apply = (x: number, y: number) => {
-      const pos = toPixel(x, y);
+      const pos = toPixelRef.current(x, y);
       el.style.left = `${pos.left}px`;
       el.style.top = `${pos.top}px`;
     };
 
-    apply(origin.x, origin.y);
-    if (!animate) return;
+    if (!animate) {
+      apply(snapshot.x, snapshot.y);
+      return;
+    }
 
-    const started = performance.now();
     let raf = 0;
-    const tick = (now: number) => {
-      const next = extrapolateBallForDisplay(origin, (now - started) / 1000);
+    const tick = () => {
+      const next = projectBallFlight(snapshot, Date.now(), receivedAt);
       apply(next.x, next.y);
       raf = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
+    tick();
     return () => cancelAnimationFrame(raf);
-  }, [animate, ball.x, ball.y, ball.vx, ball.vy, sizePx, toPixel]);
+  }, [animate, ball.x, ball.y, ball.vx, ball.vy, ball.updatedAt, sizePx]);
 
   return (
     <div
