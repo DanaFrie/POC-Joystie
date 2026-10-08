@@ -6,7 +6,7 @@ import type { GamePlayerRole } from '@/types/game';
  * (`PADDLE_SPEED_BOOST` in physics) so later rallies are faster.
  * Nothing damps the ball between hits.
  */
-/** Tuned on /game-motion-test (RTDB delay 0). Court-heights per second. */
+/** Court-heights per second. */
 export const BALL_SERVE_SPEED = 0.54;
 export const BALL_START_VY = BALL_SERVE_SPEED;
 /** Serve angle scale — small so the ball crosses the court instead of sliding on a side wall. */

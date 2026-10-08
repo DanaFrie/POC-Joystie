@@ -46,7 +46,7 @@ const MAX_SPEED = 16;
  * Each successful return is this much faster than the previous one.
  * Speed is constant for the whole flight between hits.
  */
-/** Tuned on /game-motion-test. Each return is 5% faster than the last. */
+/** Each return is 5% faster than the last. */
 export const PADDLE_SPEED_BOOST = 1.05;
 /**
  * 0 sends the ball straight back. 1 is a modest sideways kick.
