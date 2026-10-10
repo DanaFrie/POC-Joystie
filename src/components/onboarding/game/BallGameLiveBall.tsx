@@ -2,11 +2,12 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import { BallGameCourtBall } from '@/components/onboarding/game/BallGameCourtBall';
-import { projectBallFlight, type FlightBall } from '@/lib/game/ballFlight';
+import { projectBallFlight, type FlightBall, type FlightPaddles } from '@/lib/game/ballFlight';
 import type { BallVector } from '@/lib/game/physics';
 
 type BallGameLiveBallProps = {
   ball: BallVector & { updatedAt?: string };
+  paddles?: FlightPaddles;
   sizePx: number;
   animate: boolean;
   toPixel: (x: number, y: number) => { left: number; top: number };
@@ -15,6 +16,7 @@ type BallGameLiveBallProps = {
 /** Paints the court ball and keeps it moving between physics / RTDB snapshots. */
 export function BallGameLiveBall({
   ball,
+  paddles,
   sizePx,
   animate,
   toPixel,
@@ -22,6 +24,8 @@ export function BallGameLiveBall({
   const elRef = useRef<HTMLDivElement>(null);
   const toPixelRef = useRef(toPixel);
   toPixelRef.current = toPixel;
+  const paddlesRef = useRef(paddles);
+  paddlesRef.current = paddles;
 
   useLayoutEffect(() => {
     const el = elRef.current;
@@ -49,7 +53,13 @@ export function BallGameLiveBall({
 
     let raf = 0;
     const tick = () => {
-      const next = projectBallFlight(snapshot, Date.now(), receivedAt);
+      const next = projectBallFlight(
+        snapshot,
+        Date.now(),
+        receivedAt,
+        undefined,
+        paddlesRef.current
+      );
       apply(next.x, next.y);
       raf = requestAnimationFrame(tick);
     };

@@ -54,7 +54,6 @@ export const PADDLE_SPEED_BOOST = 1.05;
  */
 export const BALL_EVASIVENESS = 1.45;
 const PADDLE_ANGLE_GAIN = 0.28;
-const PADDLE_ANGLE_JITTER = 0.06;
 const PADDLE_VX_SHARE = 0.42;
 
 const SUBSTEP_DT = PHYSICS_DT / PHYSICS_SUBSTEPS;
@@ -132,12 +131,44 @@ function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
 
 const PADDLE_HIT_EPS = 0.004;
 
-function overlapsPaddleX(
+export function overlapsPaddleX(
   x: number,
   paddleX: number,
   paddleHalf: number
 ): boolean {
   return Math.abs(x - paddleX) <= paddleHalf + BALL_RADIUS_X * 1.05;
+}
+
+/**
+ * Leave angle from where the ball meets the paddle.
+ * No random kick — the on-screen flight uses the same angle, so the
+ * return does not kink when the next snapshot arrives.
+ */
+export function paddleReturnVelocity(
+  x: number,
+  vx: number,
+  vy: number,
+  paddleX: number,
+  paddleHalf: number,
+  defender: GamePlayerRole,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
+): { vx: number; vy: number } {
+  const hitOffset = Math.max(-1, Math.min(1, (x - paddleX) / Math.max(paddleHalf, 1e-6)));
+  const nextToward: GamePlayerRole = defender === 'parent' ? 'child' : 'parent';
+  const incoming = Math.max(MIN_SPEED, Math.hypot(vx, vy));
+  const nextSpeed = Math.min(MAX_SPEED, incoming * paddleBoost);
+  const angleKick = hitOffset * PADDLE_ANGLE_GAIN * evasiveness;
+  const incomingVxShare = incoming > 1e-6 ? vx / incoming : 0;
+  const maxShare = Math.min(0.9, PADDLE_VX_SHARE * evasiveness);
+  const vxShare = Math.max(
+    -maxShare,
+    Math.min(maxShare, incomingVxShare * 0.65 * evasiveness + angleKick)
+  );
+  const outVx = vxShare * nextSpeed;
+  const vyMag = Math.sqrt(Math.max(0, nextSpeed * nextSpeed - outVx * outVx));
+  const outVy = nextToward === 'child' ? -vyMag : vyMag;
+  return normalizeSpeed(outVx, outVy);
 }
 
 function ballOverlapsPaddle(
@@ -172,23 +203,17 @@ function reflectOffPaddle(
   paddleBoost = PADDLE_SPEED_BOOST,
   evasiveness = BALL_EVASIVENESS
 ): { vx: number; vy: number; y: number; toward: GamePlayerRole } {
-  const hitOffset = Math.max(-1, Math.min(1, (x - paddleX) / paddleHalf));
   const nextToward: GamePlayerRole = defender === 'parent' ? 'child' : 'parent';
-  const incoming = Math.max(MIN_SPEED, Math.hypot(vx, vy));
-  const nextSpeed = Math.min(MAX_SPEED, incoming * paddleBoost);
-  const angleKick =
-    (hitOffset * PADDLE_ANGLE_GAIN + (Math.random() - 0.5) * PADDLE_ANGLE_JITTER) *
-    evasiveness;
-  const incomingVxShare = incoming > 1e-6 ? vx / incoming : 0;
-  const maxShare = Math.min(0.9, PADDLE_VX_SHARE * evasiveness);
-  const vxShare = Math.max(
-    -maxShare,
-    Math.min(maxShare, incomingVxShare * 0.65 * evasiveness + angleKick)
+  const normalized = paddleReturnVelocity(
+    x,
+    vx,
+    vy,
+    paddleX,
+    paddleHalf,
+    defender,
+    paddleBoost,
+    evasiveness
   );
-  const outVx = vxShare * nextSpeed;
-  const vyMag = Math.sqrt(Math.max(0, nextSpeed * nextSpeed - outVx * outVx));
-  const outVy = nextToward === 'child' ? -vyMag : vyMag;
-  const normalized = normalizeSpeed(outVx, outVy);
   const isBottomPaddle = paddleY > 0.5;
   const y = isBottomPaddle
     ? paddleY - BALL_RADIUS_Y
@@ -538,7 +563,6 @@ export function stepBallPhysics(
     winner = step.winner;
     if (step.scored) {
       scored = true;
-      break;
     }
     if (step.missed) {
       missed = true;

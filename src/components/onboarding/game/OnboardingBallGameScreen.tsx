@@ -310,6 +310,21 @@ export function OnboardingBallGameScreen({
         {liveBall && (playing || showCelebrationBall) ? (
           <BallGameLiveBall
             ball={liveBall}
+            paddles={
+              room
+                ? {
+                    parentX:
+                      role === 'parent'
+                        ? (localPaddleX ?? room.paddles.parentX)
+                        : room.paddles.parentX,
+                    childX:
+                      role === 'child'
+                        ? (localPaddleX ?? room.paddles.childX)
+                        : room.paddles.childX,
+                    width: room.paddles.width,
+                  }
+                : undefined
+            }
             sizePx={ballSizePx}
             animate={playing || Boolean(celebrationBall)}
             toPixel={toPixel}
