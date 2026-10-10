@@ -1,14 +1,13 @@
 /**
  * Stall guards for the onboarding ball game.
  *
- * Countdown + serve freeze on every browser/OS when we:
- * - wait on wall-clock `countdownAt` vs `Date.now()` (phone clock skew)
- * - let child join rewind a live room back to waiting_ready
- * - run overlapping async physics writes from the same snapshot
- * - let parent-only physics die when the parent tab is backgrounded
- * - write a ball y/vx/vy that RTDB rules reject
- * - room / ball node deleted mid-rally (infinite «מתחברים למשחק»)
- * - physics write rate exceeding RTDB production budget
+ * These do not change the 50ms serve loop. They only stop:
+ * - wall-clock countdown never finishing
+ * - child join rewinding a live room
+ * - overlapping async physics writes from the same snapshot
+ * - parent-only physics dying when the parent tab is backgrounded
+ * - RTDB rejecting y∉[0,1] / |v|>1
+ * - a deleted room spinning on «מתחברים למשחק»
  */
 
 import type { GamePlayerRole } from '@/types/game';
@@ -22,31 +21,23 @@ export const LIVE_GAME_PHASES: ReadonlySet<string> = new Set([
 ]);
 
 /** Parent tab often sleeps; child takes over if ball updates go stale. */
-export const PHYSICS_PARENT_STALE_MS = 400;
+export const PHYSICS_PARENT_STALE_MS = 900;
 
 /** RTDB `gameRooms/$id/ball` validation (firebase/database.rules.json). */
 export const RTDB_BALL_POS_MIN = 0;
 export const RTDB_BALL_POS_MAX = 1;
-export const RTDB_BALL_VEL_MIN = -1;
-export const RTDB_BALL_VEL_MAX = 1;
+export const RTDB_BALL_VEL_MIN = -16;
+export const RTDB_BALL_VEL_MAX = 16;
 
-/** Physics + RTDB write cadence — 20 Hz. Visual motion was calibrated here. */
+/** Physics steps at 20 Hz in realtime (dt matches the 50ms loop). Writes are coalesced. */
 export const PHYSICS_LOOP_INTERVAL_MS = 50;
-/** One write per 50ms tick. 10 Hz made the ball hitch (catch-up jumps). */
+/**
+ * Typical one-way RTDB delay on App Hosting (writer → the other phone).
+ * The subscriber must fly the ball across this gap; painting the raw sample stalls the rally.
+ */
+export const APP_HOSTING_RTDB_DELIVERY_MS = 120;
 export const PHYSICS_MIN_WRITE_INTERVAL_MS = 50;
 export const PHYSICS_MAX_WRITES_PER_SEC = 20;
-/** Cap hitch catch-up so a long pause does not tunnel through a paddle. */
-export const PHYSICS_MAX_CATCHUP_STEPS = 4;
-
-/**
- * Healthy ticks are 1 step. Extra steps only after a real hitch (lock/network),
- * not as a substitute for a lower write rate.
- */
-export function physicsStepsForElapsed(elapsedMs: number): number {
-  if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 1;
-  const steps = Math.round(elapsedMs / PHYSICS_LOOP_INTERVAL_MS);
-  return Math.min(PHYSICS_MAX_CATCHUP_STEPS, Math.max(1, steps));
-}
 
 /** Firebase RTDB documented simultaneous write budget for the whole database. */
 export const RTDB_WRITE_BUDGET_PER_SEC = 1000;
@@ -54,12 +45,24 @@ export const RTDB_WRITE_BUDGET_PER_SEC = 1000;
 /** Sentinel — UI maps this to the disappointed-Dori expired-game card. */
 export const GAME_ROOM_LOST_ERROR = 'game_room_lost';
 
+/** Sentinel — room already has a child / game already taken. */
+export const GAME_ROOM_OCCUPIED_ERROR = 'game_room_occupied';
+
 export function isGameRoomLostError(message?: string | null): boolean {
   if (!message) return false;
   return (
     message === GAME_ROOM_LOST_ERROR ||
     message.includes('החדר לא נמצא') ||
     /room not found/i.test(message)
+  );
+}
+
+export function isGameRoomOccupiedError(message?: string | null): boolean {
+  if (!message) return false;
+  return (
+    message === GAME_ROOM_OCCUPIED_ERROR ||
+    message.includes('תפוס על ידי ילד') ||
+    /room already has a child/i.test(message)
   );
 }
 
@@ -205,6 +208,40 @@ export function createExclusiveAsyncLock() {
   };
 }
 
+/**
+ * Latest-wins writer: physics can keep stepping while a write is in flight.
+ * Only the newest payload is sent when the current write settles.
+ */
+export function createCoalescedAsyncWriter<T>() {
+  let inFlight = false;
+  let queued: T | undefined;
+  let hasQueued = false;
+  let send: ((payload: T) => Promise<void>) | null = null;
+
+  const flush = async () => {
+    if (inFlight || !hasQueued || !send) return;
+    const payload = queued as T;
+    hasQueued = false;
+    queued = undefined;
+    inFlight = true;
+    try {
+      await send(payload);
+    } finally {
+      inFlight = false;
+      if (hasQueued) void flush();
+    }
+  };
+
+  return {
+    push(payload: T, fn: (payload: T) => Promise<void>) {
+      send = fn;
+      queued = payload;
+      hasQueued = true;
+      void flush();
+    },
+  };
+}
+
 export function isUsableGameRoomRaw(
   raw: unknown
 ): raw is Record<string, unknown> & { ball: object } {
@@ -228,6 +265,77 @@ export function nextGameRoomPresence(
 
 export function shouldShowConnectingOverlay(presence: GameRoomPresence): boolean {
   return presence === 'unknown' || presence === 'missing';
+}
+
+/**
+ * A miss is finished until both players tap retry.
+ * An older `playing` echo must not resume the rally; a real restart
+ * writes a newer ball stamp.
+ */
+export function shouldHoldFinishedRound(input: {
+  role?: string | null;
+  localPhase: string;
+  remotePhase: string;
+  localBallUpdatedAt?: string | null;
+  remoteBallUpdatedAt?: string | null;
+}): boolean {
+  if (input.role !== 'parent') return false;
+  if (input.localPhase !== 'finished' || input.remotePhase !== 'playing') return false;
+  const localAt = Date.parse(input.localBallUpdatedAt || '') || 0;
+  const remoteAt = Date.parse(input.remoteBallUpdatedAt || '') || 0;
+  return remoteAt <= localAt;
+}
+
+/** Both taps after a miss. Opening-game ready flags are not a retry. */
+export function canRestartAfterMiss(raw: {
+  phase?: unknown;
+  winner?: unknown;
+  playReady?: { parent?: boolean; child?: boolean } | null;
+}): boolean {
+  if (String(raw.phase ?? '') !== 'finished') return false;
+  if (raw.winner != null) return false;
+  const ready = raw.playReady;
+  return ready?.parent === true && ready?.child === true;
+}
+
+/** Prefer a newer local physics tick over a slightly older RTDB echo. */
+export function shouldKeepLocalBall(input: {
+  localUpdatedAt?: string | null;
+  remoteUpdatedAt?: string | null;
+  localPhase: string;
+  remotePhase: string;
+  /** When set, own RTDB echoes must never replace local physics (write time > paint time). */
+  localUpdatedBy?: string | null;
+  remoteUpdatedBy?: string | null;
+  localRole?: string | null;
+}): boolean {
+  if (input.localPhase !== 'playing' || input.remotePhase !== 'playing') {
+    return false;
+  }
+
+  const role = input.localRole;
+  const localBy = input.localUpdatedBy;
+  const remoteBy = input.remoteUpdatedBy;
+
+  // Live parent sim: never yield the ball to RTDB (own echoes OR child failover writes).
+  // Dual writers were yanking the ball back and forth every tick.
+  if (role === 'parent' && localBy === 'parent') {
+    return true;
+  }
+
+  // Child must always follow a live parent stream.
+  if (role === 'child' && remoteBy === 'parent') {
+    return false;
+  }
+
+  // Child failover author: ignore own write echoes only.
+  if (role === 'child' && localBy === 'child' && remoteBy === 'child') {
+    return true;
+  }
+
+  const localAt = Date.parse(input.localUpdatedAt || '') || 0;
+  const remoteAt = Date.parse(input.remoteUpdatedAt || '') || 0;
+  return localAt >= remoteAt;
 }
 
 /** Parent dashboard cleanup must not yank a room the child is still playing. */

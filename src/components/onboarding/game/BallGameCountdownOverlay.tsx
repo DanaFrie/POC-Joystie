@@ -2,10 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
-import {
-  ballGameCountdownStep,
-  type BallGameCountdownStep,
-} from '@/constants/ball-game-countdown';
+import { ballGameCountdownStep, type BallGameCountdownStep } from '@/constants/ball-game-countdown';
 import { countdownElapsedMs } from '@/lib/game/stallGuards';
 
 type BallGameCountdownOverlayProps = {

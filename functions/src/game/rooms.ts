@@ -154,14 +154,28 @@ export const joinGameRoom = functions.https.onCall(
     const now = new Date().toISOString();
     const parentAlreadyReady = room.playReady?.parent === true;
     const hasStartedRound = (room as { hasStartedRound?: boolean }).hasStartedRound === true;
-    await roomRef.update({
+    const phase = String(room.phase ?? 'waiting_child');
+    const live =
+      hasStartedRound ||
+      phase === 'countdown' ||
+      phase === 'playing' ||
+      phase === 'finished';
+
+    const patch: Record<string, unknown> = {
       childUid: uid,
       parentId: room.parentId,
-      phase: 'waiting_ready',
       updatedAt: now,
-    });
+    };
+    if (!live && phase !== 'waiting_ready') {
+      patch.phase = 'waiting_ready';
+    }
+    await roomRef.update(patch);
 
-    if (parentAlreadyReady && !hasStartedRound) {
+    if (
+      parentAlreadyReady &&
+      !hasStartedRound &&
+      (phase === 'waiting_child' || phase === 'waiting_ready')
+    ) {
       await roomRef.update({
         phase: 'countdown',
         countdownAt: now,
@@ -169,14 +183,21 @@ export const joinGameRoom = functions.https.onCall(
       });
     }
 
+    const nextPhase =
+      phase === 'countdown' || phase === 'playing' || phase === 'finished'
+        ? phase
+        : parentAlreadyReady && !hasStartedRound
+          ? 'countdown'
+          : 'waiting_ready';
+
     functions.logger.info('joinGameRoom', {
       roomId,
       childUid: uid,
-      phase: parentAlreadyReady ? 'countdown' : 'waiting_ready',
+      phase: nextPhase,
     });
     return {
       roomId,
-      phase: parentAlreadyReady ? ('countdown' as const) : ('waiting_ready' as const),
+      phase: nextPhase,
       winScore: GAME_WIN_SCORE,
     };
   }

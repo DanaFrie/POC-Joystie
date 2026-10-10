@@ -72,7 +72,8 @@ export const ONBOARDING_SUBSCRIPTION = {
   copy: {
     /** Space from top of canvas to headline (logo sits above). */
     padTop: 109,
-    width: 332,
+    /** Same as plans/cta — one content column (no wider headline). */
+    width: 327,
     gap: 12,
     headlineGap: 5,
     /** Features card → first plan card @ 812 (scales with viewport). */

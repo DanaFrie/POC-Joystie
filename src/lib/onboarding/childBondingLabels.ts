@@ -11,6 +11,10 @@ export function gameRoomExpiredDetail(
   return `נסה לבקש מ${parentCourtLabel(parentGender)} לינק חדש`;
 }
 
+/** Room already taken / game ended — disappointed Dori card. */
+export const GAME_ROOM_OCCUPIED_TITLE = 'המשחק כבר נתפס או הסתיים';
+export const GAME_ROOM_OCCUPIED_DETAIL = 'נסו מההתחלה דרך אמא או אבא';
+
 /** Court labels — never show raw `male` / `female` or profile names. */
 export function resolveParentCourtLabel(
   parentGender?: 'female' | 'male' | null,

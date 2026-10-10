@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { BALL_RADIUS, type BallVector } from '@/lib/game/physics';
 
-const STEP_DT = 0.03;
+const STEP_DT = 0.05;
 
 function stepWallBounce(ball: BallVector): BallVector {
   let { x, y, vx, vy } = ball;

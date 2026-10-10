@@ -142,9 +142,9 @@
 
           "y": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
 
-          "vx": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1" },
+          "vx": { ".validate": "newData.isNumber() && newData.val() >= -16 && newData.val() <= 16" },
 
-          "vy": { ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1" },
+          "vy": { ".validate": "newData.isNumber() && newData.val() >= -16 && newData.val() <= 16" },
 
           "updatedBy": { ".validate": "newData.isString()" },
 

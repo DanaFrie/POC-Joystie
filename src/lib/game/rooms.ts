@@ -6,6 +6,7 @@ import {
   onValue,
   update,
   get,
+  runTransaction,
   type Unsubscribe,
 } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
@@ -28,9 +29,10 @@ import {
   createStartBall,
   DEFAULT_PADDLE_WIDTH,
 } from '@/lib/game/physics';
+import { applyGameStart } from '@/lib/game/gameStart';
 import {
+  canRestartAfterMiss,
   clampBallForRtdbWrite,
-  isUsableGameRoomRaw,
   shouldResetRoomToWaitingReady,
 } from '@/lib/game/stallGuards';
 import { createContextLogger } from '@/utils/logger';
@@ -38,10 +40,11 @@ import { createContextLogger } from '@/utils/logger';
 const logger = createContextLogger('GameRooms');
 
 function parseRoom(roomId: string, raw: Record<string, unknown> | null): GameRoomState | null {
-  if (!isUsableGameRoomRaw(raw)) return null;
-  const ball = raw.ball as GameBallState;
+  if (!raw) return null;
+  const ball = raw.ball as GameBallState | undefined;
   const paddles = raw.paddles as GamePaddlesState | undefined;
   const score = raw.score as GameScoreState | undefined;
+  if (!ball) return null;
   const ballCenter = clampBallCenter(
     Number.isFinite(ball.x) ? ball.x : 0.5,
     Number.isFinite(ball.y) ? ball.y : 0.5
@@ -109,11 +112,11 @@ export function subscribeToGameRoom(
   roomId: string,
   onChange: (room: GameRoomState | null) => void
 ): Unsubscribe {
+  let dbPromise: ReturnType<typeof getDatabaseInstance> | null = null;
   let unsub: Unsubscribe | null = null;
-  let cancelled = false;
 
   void getDatabaseInstance().then((db) => {
-    if (cancelled) return;
+    dbPromise = Promise.resolve(db);
     const roomRef = ref(db, gameRoomPath(roomId));
     unsub = onValue(roomRef, (snap) => {
       onChange(parseRoom(roomId, snap.val() as Record<string, unknown> | null));
@@ -121,7 +124,6 @@ export function subscribeToGameRoom(
   });
 
   return () => {
-    cancelled = true;
     if (unsub) unsub();
   };
 }
@@ -141,15 +143,19 @@ export async function updateBallPosition(
   }
 ): Promise<void> {
   const db = await getDatabaseInstance();
-  const clamped = clampBallForRtdbWrite({ ...clampBallCenter(x, y), vx, vy });
+  const pos = clampBallForRtdbWrite({
+    ...clampBallCenter(x, y),
+    vx,
+    vy,
+  });
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {
     ball: {
-      x: clamped.x,
-      y: clamped.y,
-      vx: clamped.vx,
-      vy: clamped.vy,
-      toward: toward ?? ballTowardFromVy(vy),
+      x: pos.x,
+      y: pos.y,
+      vx: pos.vx,
+      vy: pos.vy,
+      toward: toward ?? ballTowardFromVy(pos.vy),
       updatedBy: role,
       updatedAt: now,
     },
@@ -226,11 +232,11 @@ export async function ensureWaitingReadyPhase(roomId: string): Promise<void> {
 
   const raw = snap.val() as Record<string, unknown>;
   const phase = String(raw.phase ?? '');
+  const hasStartedRound = raw.hasStartedRound === true;
   const existingReady = (raw.playReady as GamePlayReadyState | undefined) ?? {
     parent: false,
     child: false,
   };
-  const hasStartedRound = raw.hasStartedRound === true;
 
   if (!shouldResetRoomToWaitingReady(phase, hasStartedRound)) {
     if (phase === 'waiting_ready' && !raw.playReady) {
@@ -318,27 +324,37 @@ export async function startGamePlay(roomId: string): Promise<void> {
   if (String(raw.phase ?? '') !== 'countdown') return;
 
   const start = createStartBall();
-  const now = new Date().toISOString();
-  await update(roomRef, {
-    phase: 'playing',
-    hasStartedRound: true,
-    countdownAt: null,
-    ball: {
-      ...start,
-      updatedBy: 'parent',
-      updatedAt: now,
+  // Stamp inside the commit so the serve is not already hundreds of ms old
+  // when the first client paints it. Parent and child both fire; one commits.
+  const result = await runTransaction(
+    roomRef,
+    (current) => {
+      if (current == null) return current;
+      return applyGameStart(
+        current as Record<string, unknown>,
+        start,
+        new Date().toISOString()
+      );
     },
-    updatedAt: now,
-  });
+    { applyLocally: false }
+  );
+  if (!result.committed) return;
   logger.log('gameStart', { roomId });
 }
 
 /** After a miss — both tapped retry; reset score and serve toward child. */
 export async function restartAfterMiss(roomId: string): Promise<void> {
   const db = await getDatabaseInstance();
+  const roomRef = ref(db, gameRoomPath(roomId));
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+  // Opening ready flags are still true until the miss write lands.
+  // Restarting then serves straight through the failure.
+  if (!canRestartAfterMiss(snap.val() as Record<string, unknown>)) return;
+
   const start = createStartBall();
   const now = new Date().toISOString();
-  await update(ref(db, gameRoomPath(roomId)), {
+  await update(roomRef, {
     phase: 'playing',
     ball: {
       ...start,
@@ -348,6 +364,7 @@ export async function restartAfterMiss(roomId: string): Promise<void> {
     score: { shared: 0 },
     winner: null,
     gameOutcome: null,
+    playReady: { parent: false, child: false },
     countdownAt: null,
     updatedAt: now,
   });

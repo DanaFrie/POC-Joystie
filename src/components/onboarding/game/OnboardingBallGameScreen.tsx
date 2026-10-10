@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { BallGameCourtBall } from '@/components/onboarding/game/BallGameCourtBall';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { BallGameLiveBall } from '@/components/onboarding/game/BallGameLiveBall';
 import { BallGameCourtLayer } from '@/components/onboarding/game/BallGameCourtLayer';
 import { BallGameCountdownOverlay } from '@/components/onboarding/game/BallGameCountdownOverlay';
 import { BallGameFailureOverlay } from '@/components/onboarding/game/BallGameFailureOverlay';
@@ -110,6 +110,7 @@ export function OnboardingBallGameScreen({
   const score = room?.score.shared ?? 0;
   const playing = room?.phase === 'playing';
   const countdown = room?.phase === 'countdown';
+  const courtActive = playing || countdown;
   const prePlay =
     room?.phase === 'waiting_child' ||
     room?.phase === 'waiting_ready' ||
@@ -197,13 +198,17 @@ export function OnboardingBallGameScreen({
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!playing) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    if (!courtActive) return;
     emitPointer(e.clientX, e.clientY);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer is already gone — the position was applied above.
+    }
   };
 
   const onPointerDrag = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!playing || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    if (!courtActive || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
     emitPointer(e.clientX, e.clientY);
   };
 
@@ -214,10 +219,21 @@ export function OnboardingBallGameScreen({
   };
 
   const liveBall = celebrationBall ?? (room && playing ? room.ball : null);
-  const ballPos = liveBall
-    ? courtPoint(liveBall.x, liveBall.y, role, playCourt)
-    : null;
-  const showCelebrationBall = Boolean(celebrationBall && ballPos);
+  const showCelebrationBall = Boolean(celebrationBall && liveBall);
+  const courtTop = playCourt.top;
+  const courtLeft = playCourt.left;
+  const courtWidth = playCourt.width;
+  const courtHeight = playCourt.height;
+  const toPixel = useCallback(
+    (x: number, y: number) =>
+      courtPoint(x, y, role, {
+        top: courtTop,
+        left: courtLeft,
+        width: courtWidth,
+        height: courtHeight,
+      }),
+    [role, courtTop, courtLeft, courtWidth, courtHeight]
+  );
 
   const selfRole: GamePlayerRole = role;
   const rivalRole: GamePlayerRole = role === 'parent' ? 'child' : 'parent';
@@ -256,7 +272,7 @@ export function OnboardingBallGameScreen({
           score={won ? GAME_WIN_SCORE : score}
           showScoreRing={playing || won || countdownGo}
           showPaddles={
-            !roundStarted && !playing && !showReadyModal && !showFailureCard
+            !roundStarted && !courtActive && !showReadyModal && !showFailureCard
           }
         />
 
@@ -264,7 +280,7 @@ export function OnboardingBallGameScreen({
           <div className="pointer-events-none absolute inset-0 z-[5] bg-[#092125]/25" aria-hidden />
         ) : null}
 
-        {playing && room ? (
+        {courtActive && room ? (
           <>
             {renderPaddle(rivalRole, 0.6, {
               centerX: rivalRole === 'parent' ? room.paddles.parentX : room.paddles.childX,
@@ -281,28 +297,38 @@ export function OnboardingBallGameScreen({
 
         <div
           ref={courtRef}
-          className={`absolute inset-0 ${playing ? 'z-[30]' : 'pointer-events-none z-[5]'}`}
-          style={{ touchAction: playing ? 'none' : undefined }}
-          onPointerDown={playing ? onPointerDown : undefined}
-          onPointerMove={playing ? onPointerDrag : undefined}
-          onPointerUp={playing ? onPointerUp : undefined}
-          onPointerCancel={playing ? onPointerUp : undefined}
+          className={`absolute inset-0 ${courtActive ? 'z-[30]' : 'pointer-events-none z-[5]'}`}
+          style={{ touchAction: courtActive ? 'none' : undefined }}
+          onPointerDown={courtActive ? onPointerDown : undefined}
+          onPointerMove={courtActive ? onPointerDrag : undefined}
+          onPointerUp={courtActive ? onPointerUp : undefined}
+          onPointerCancel={courtActive ? onPointerUp : undefined}
           role="presentation"
           aria-label="מגרש המשחק"
         />
 
-        {ballPos && (playing || showCelebrationBall) ? (
-          <div
-            className="pointer-events-none absolute z-[8] -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-75 ease-linear"
-            style={{
-              left: ballPos.left,
-              top: ballPos.top,
-              width: ballSizePx,
-              height: ballSizePx,
-            }}
-          >
-            <BallGameCourtBall sizePx={ballSizePx} />
-          </div>
+        {liveBall && (playing || showCelebrationBall) ? (
+          <BallGameLiveBall
+            ball={liveBall}
+            paddles={
+              room
+                ? {
+                    parentX:
+                      role === 'parent'
+                        ? (localPaddleX ?? room.paddles.parentX)
+                        : room.paddles.parentX,
+                    childX:
+                      role === 'child'
+                        ? (localPaddleX ?? room.paddles.childX)
+                        : room.paddles.childX,
+                    width: room.paddles.width,
+                  }
+                : undefined
+            }
+            sizePx={ballSizePx}
+            animate={playing || Boolean(celebrationBall)}
+            toPixel={toPixel}
+          />
         ) : null}
 
         {won && !hideWinBanner ? (

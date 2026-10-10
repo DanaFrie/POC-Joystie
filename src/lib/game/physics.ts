@@ -6,11 +6,7 @@ import {
   PHYSICS_PARENT_PADDLE_SURFACE_Y,
   PHYSICS_PADDLE_HEIGHT_NORM,
 } from '@/lib/game/ballGameCourt';
-import {
-  velocityToward,
-  ballTowardFromVy,
-  randomChildServeStartX,
-} from '@/lib/game/ballDirection';
+import { BALL_START_VY, velocityToward, ballTowardFromVy } from '@/lib/game/ballDirection';
 import type {
   GamePlayerRole,
   GamePaddlesState,
@@ -30,22 +26,59 @@ export const BALL_DIAMETER = BALL_RADIUS_Y * 2;
 export const PARENT_PADDLE_Y = PHYSICS_PARENT_PADDLE_SURFACE_Y;
 export const CHILD_PADDLE_Y = PHYSICS_CHILD_PADDLE_SURFACE_Y;
 
+/**
+ * A miss rests with the ball on the paddle, not a gap above it.
+ * Half the paddle thickness pulls the 44px ring onto the bar.
+ */
+const MISS_SINK = PHYSICS_PADDLE_HEIGHT_NORM / 2;
+
+/** Ball-center Y where a miss should sit, on the paddle face. */
+export function missHoldCenterY(which: 'parent' | 'child'): number {
+  if (which === 'parent') {
+    return Math.min(1 - 1e-4, PARENT_PADDLE_Y - BALL_RADIUS_Y + MISS_SINK);
+  }
+  return Math.max(1e-4, CHILD_PADDLE_Y + BALL_RADIUS_Y - MISS_SINK);
+}
+
 /** Paddle width in normalized court coords (0–1) — Figma 92px on 327px lane. */
 export const DEFAULT_PADDLE_WIDTH = 92 / 327;
 
-export const PHYSICS_DT = 0.03;
-export const PHYSICS_SUBSTEPS = 4;
+export const PHYSICS_DT = 0.05;
+
+/**
+ * Ticks to simulate when a snapshot's stamp is older than one loop.
+ * The opening serve is stamped before the RTDB round trip, so one 50ms
+ * step would snap the sprite back after the display has already flown ahead.
+ */
+export function physicsCatchUpTicks(lagS: number): number {
+  if (!Number.isFinite(lagS) || lagS <= PHYSICS_DT) return 1;
+  return Math.min(10, Math.max(1, Math.round(lagS / PHYSICS_DT)));
+}
+/** Extra substeps so a fast serve does not tunnel through paddles. */
+export const PHYSICS_SUBSTEPS = 8;
 
 /** @deprecated use GAME_WIN_SCORE from @/constants/game */
 export const WIN_SCORE = GAME_WIN_SCORE;
 
 const MIN_SPEED = 0.21528;
-/** Raised with 2× serve so start speed is not immediately clamped. */
-const MAX_SPEED = 1.0;
-/** Per-hit speed multiplier — +5% vs prior 1.04. */
-const PADDLE_BOOST = 1.092;
+/**
+ * Headroom above serve so paddle hits can keep adding speed
+ * instead of clamping on the first bounce.
+ */
+const MAX_SPEED = 16;
+/**
+ * Each successful return is this much faster than the previous one.
+ * Speed is constant for the whole flight between hits.
+ */
+/** Each return is 5% faster than the last. */
+export const PADDLE_SPEED_BOOST = 1.05;
+/**
+ * 0 sends the ball straight back. 1 is a modest sideways kick.
+ * The live game uses 1.45 — wider serve and wider returns.
+ */
+export const BALL_EVASIVENESS = 1.45;
 const PADDLE_ANGLE_GAIN = 0.28;
-const PADDLE_ANGLE_JITTER = 0.06;
+const PADDLE_VX_SHARE = 0.42;
 
 const SUBSTEP_DT = PHYSICS_DT / PHYSICS_SUBSTEPS;
 
@@ -71,17 +104,20 @@ export type PhysicsStepResult = PhysicsStepInput & {
   missedBy: GamePlayerRole | null;
 };
 
-/** Serve toward the child first — random lane X and left/right angle each try. */
-export function createStartBall(): BallVector {
-  const { vx, vy } = velocityToward('child');
-  return { x: randomChildServeStartX(), y: 0.5, vx, vy, toward: 'child' };
+/** Serve from center toward the child paddle (shared y → 0). */
+export function createStartBall(
+  serveSpeed = BALL_START_VY,
+  evasiveness = BALL_EVASIVENESS
+): BallVector {
+  const { vx, vy } = velocityToward('child', serveSpeed);
+  return { x: 0.5, y: 0.5, vx: vx * evasiveness, vy, toward: 'child' };
 }
 
 /** Kick a stationary ball — preserve intended receiver. */
-export function ensureBallMoving(ball: BallVector): BallVector {
+export function ensureBallMoving(ball: BallVector, serveSpeed = BALL_START_VY): BallVector {
   if (Math.hypot(ball.vx, ball.vy) < 0.02) {
     const toward = ball.toward ?? ballTowardFromVy(ball.vy);
-    const { vx, vy } = velocityToward(toward);
+    const { vx, vy } = velocityToward(toward, serveSpeed);
     return { ...ball, vx, vy, toward };
   }
   return { ...ball, toward: ball.toward ?? ballTowardFromVy(ball.vy) };
@@ -98,10 +134,7 @@ export function clampPaddleCenterX(x: number, paddleWidth: number): number {
 }
 
 export function clampBallCenter(x: number, y: number): { x: number; y: number } {
-  return {
-    x: clampBallX(x),
-    y: Math.min(1, Math.max(0, y)),
-  };
+  return { x: clampBallX(x), y: Math.min(1, Math.max(0, y)) };
 }
 
 function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
@@ -122,12 +155,44 @@ function normalizeSpeed(vx: number, vy: number): { vx: number; vy: number } {
 
 const PADDLE_HIT_EPS = 0.004;
 
-function overlapsPaddleX(
+export function overlapsPaddleX(
   x: number,
   paddleX: number,
   paddleHalf: number
 ): boolean {
   return Math.abs(x - paddleX) <= paddleHalf + BALL_RADIUS_X * 1.05;
+}
+
+/**
+ * Leave angle from where the ball meets the paddle.
+ * No random kick — the on-screen flight uses the same angle, so the
+ * return does not kink when the next snapshot arrives.
+ */
+export function paddleReturnVelocity(
+  x: number,
+  vx: number,
+  vy: number,
+  paddleX: number,
+  paddleHalf: number,
+  defender: GamePlayerRole,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
+): { vx: number; vy: number } {
+  const hitOffset = Math.max(-1, Math.min(1, (x - paddleX) / Math.max(paddleHalf, 1e-6)));
+  const nextToward: GamePlayerRole = defender === 'parent' ? 'child' : 'parent';
+  const incoming = Math.max(MIN_SPEED, Math.hypot(vx, vy));
+  const nextSpeed = Math.min(MAX_SPEED, incoming * paddleBoost);
+  const angleKick = hitOffset * PADDLE_ANGLE_GAIN * evasiveness;
+  const incomingVxShare = incoming > 1e-6 ? vx / incoming : 0;
+  const maxShare = Math.min(0.9, PADDLE_VX_SHARE * evasiveness);
+  const vxShare = Math.max(
+    -maxShare,
+    Math.min(maxShare, incomingVxShare * 0.65 * evasiveness + angleKick)
+  );
+  const outVx = vxShare * nextSpeed;
+  const vyMag = Math.sqrt(Math.max(0, nextSpeed * nextSpeed - outVx * outVx));
+  const outVy = nextToward === 'child' ? -vyMag : vyMag;
+  return normalizeSpeed(outVx, outVy);
 }
 
 function ballOverlapsPaddle(
@@ -158,17 +223,21 @@ function reflectOffPaddle(
   paddleX: number,
   paddleHalf: number,
   defender: GamePlayerRole,
-  paddleY: number
+  paddleY: number,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
 ): { vx: number; vy: number; y: number; toward: GamePlayerRole } {
-  const hitOffset = Math.max(-1, Math.min(1, (x - paddleX) / paddleHalf));
   const nextToward: GamePlayerRole = defender === 'parent' ? 'child' : 'parent';
-  const speed = Math.max(MIN_SPEED, Math.hypot(vx, vy) * PADDLE_BOOST);
-  const angleKick =
-    hitOffset * PADDLE_ANGLE_GAIN +
-    (Math.random() - 0.5) * PADDLE_ANGLE_JITTER;
-  const angledVx = vx + angleKick;
-  const towardVel = velocityToward(nextToward, speed, angledVx);
-  const normalized = normalizeSpeed(towardVel.vx, towardVel.vy);
+  const normalized = paddleReturnVelocity(
+    x,
+    vx,
+    vy,
+    paddleX,
+    paddleHalf,
+    defender,
+    paddleBoost,
+    evasiveness
+  );
   const isBottomPaddle = paddleY > 0.5;
   const y = isBottomPaddle
     ? paddleY - BALL_RADIUS_Y
@@ -205,7 +274,9 @@ function tryPaddleBounce(
   paddleX: number,
   paddleHalf: number,
   paddleY: number,
-  defender: GamePlayerRole
+  defender: GamePlayerRole,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
 ): { hit: boolean; x: number; y: number; vx: number; vy: number; toward?: GamePlayerRole } {
   const isBottomPaddle = paddleY > 0.5;
 
@@ -226,7 +297,9 @@ function tryPaddleBounce(
       paddleX,
       paddleHalf,
       defender,
-      paddleY
+      paddleY,
+      paddleBoost,
+      evasiveness
     );
     return {
       hit: true,
@@ -254,7 +327,9 @@ function tryPaddleBounce(
     paddleX,
     paddleHalf,
     defender,
-    paddleY
+    paddleY,
+    paddleBoost,
+    evasiveness
   );
   return {
     hit: true,
@@ -320,7 +395,9 @@ function physicsSubstep(
   paddles: GamePaddlesState,
   score: GameScoreState,
   phase: GameRoomPhase,
-  winner: GameWinner
+  winner: GameWinner,
+  paddleBoost = PADDLE_SPEED_BOOST,
+  evasiveness = BALL_EVASIVENESS
 ): SubstepResult {
   let { x, y, vx, vy } = ball;
   let toward = ball.toward ?? ballTowardFromVy(vy);
@@ -349,7 +426,9 @@ function physicsSubstep(
     paddles.parentX,
     paddleHalf,
     PARENT_PADDLE_Y,
-    'parent'
+    'parent',
+    paddleBoost,
+    evasiveness
   );
 
   if (parentBounce.hit) {
@@ -375,7 +454,9 @@ function physicsSubstep(
       paddles.childX,
       paddleHalf,
       CHILD_PADDLE_Y,
-      'child'
+      'child',
+      paddleBoost,
+      evasiveness
     );
     if (childBounce.hit) {
       childHit = true;
@@ -410,7 +491,7 @@ function physicsSubstep(
       missedBy = parentMiss;
       phase = 'finished';
       winner = null;
-      y = Math.min(1 - BALL_RADIUS_Y * 0.5, y);
+      y = missHoldCenterY('parent');
       vx = 0;
       vy = 0;
     } else {
@@ -430,7 +511,7 @@ function physicsSubstep(
         missedBy = childMiss;
         phase = 'finished';
         winner = null;
-        y = Math.max(BALL_RADIUS_Y * 0.5, y);
+        y = missHoldCenterY('child');
         vx = 0;
         vy = 0;
       }
@@ -458,8 +539,23 @@ function physicsSubstep(
  * Shared court — side walls bounce; top/bottom only via paddles.
  * Miss past a paddle → game over.
  */
-export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
-  let ball = ensureBallMoving(input.ball);
+export type BallPhysicsTune = {
+  /** Serve / restart speed in court-heights per second. */
+  serveSpeed?: number;
+  /** Multiplier applied on each paddle return. */
+  paddleBoost?: number;
+  /** 0 = straight returns. 1 = default sideways kick. Higher = wider and less predictable. */
+  evasiveness?: number;
+};
+
+export function stepBallPhysics(
+  input: PhysicsStepInput,
+  tune?: BallPhysicsTune
+): PhysicsStepResult {
+  const serveSpeed = tune?.serveSpeed ?? BALL_START_VY;
+  const paddleBoost = tune?.paddleBoost ?? PADDLE_SPEED_BOOST;
+  const evasiveness = tune?.evasiveness ?? BALL_EVASIVENESS;
+  let ball = ensureBallMoving(input.ball, serveSpeed);
   let score = { ...input.score };
   let phase = input.phase;
   let winner = input.winner;
@@ -470,7 +566,15 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
   for (let i = 0; i < PHYSICS_SUBSTEPS; i++) {
     if (phase !== 'playing') break;
 
-    const step = physicsSubstep(ball, input.paddles, score, phase, winner);
+    const step = physicsSubstep(
+      ball,
+      input.paddles,
+      score,
+      phase,
+      winner,
+      paddleBoost,
+      evasiveness
+    );
     ball = {
       x: step.x,
       y: step.y,
@@ -483,7 +587,6 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
     winner = step.winner;
     if (step.scored) {
       scored = true;
-      break;
     }
     if (step.missed) {
       missed = true;
@@ -502,26 +605,6 @@ export function stepBallPhysics(input: PhysicsStepInput): PhysicsStepResult {
     missed,
     missedBy,
   };
-}
-
-/** Run N 50ms physics ticks after a hitch so a delayed write does not slow the ball. */
-export function stepBallPhysicsN(
-  input: PhysicsStepInput,
-  steps: number
-): PhysicsStepResult {
-  const count = Math.max(1, Math.floor(steps));
-  let last = stepBallPhysics(input);
-  for (let i = 1; i < count; i += 1) {
-    if (last.phase !== 'playing' || last.missed || last.scored) break;
-    last = stepBallPhysics({
-      ...input,
-      ball: last.ball,
-      score: last.score,
-      phase: last.phase,
-      winner: last.winner,
-    });
-  }
-  return last;
 }
 
 /** Only the parent runs physics so both screens stay in sync. */

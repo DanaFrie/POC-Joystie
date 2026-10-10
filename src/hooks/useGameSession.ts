@@ -13,14 +13,15 @@ import {
   logGameTransition,
   logOnboardingAdvanceReady,
 } from '@/lib/game/phaseLog';
-import { stepBallPhysicsN } from '@/lib/game/physics';
+import { physicsCatchUpTicks, stepBallPhysics } from '@/lib/game/physics';
 import {
-  createExclusiveAsyncLock,
-  createWriteRateLimiter,
+  createCoalescedAsyncWriter,
   GAME_ROOM_LOST_ERROR,
+  GAME_ROOM_OCCUPIED_ERROR,
   nextGameRoomPresence,
   PHYSICS_LOOP_INTERVAL_MS,
-  physicsStepsForElapsed,
+  shouldHoldFinishedRound,
+  shouldKeepLocalBall,
   shouldRunPhysics,
   shouldStartPlayFromCountdown,
   type GameRoomPresence,
@@ -51,7 +52,7 @@ function formatGameError(e: unknown): string {
       : 'שגיאה לא ידועה';
   if (msg.includes('Parent cannot join as child')) return PARENT_AS_CHILD_ERROR;
   if (msg.includes('Room already has a child')) {
-    return 'החדר כבר תפוס על ידי ילד אחר. צרו חדר חדש.';
+    return GAME_ROOM_OCCUPIED_ERROR;
   }
   if (msg.includes('admin-restricted-operation') || msg.includes('OPERATION_NOT_ALLOWED')) {
     return 'התחברות אנונימית לא מופעלת ב-Firebase. הפעילו Anonymous Auth בקונסול.';
@@ -93,6 +94,8 @@ export function useGameSession({
   const [childJoinBlocked, setChildJoinBlocked] = useState(false);
 
   const roomRef = useRef<GameRoomState | null>(null);
+  const roleRef = useRef<GamePlayerRole | null>(null);
+  const lastPaddleXRef = useRef<number | null>(null);
   const presenceRef = useRef<GameRoomPresence>('unknown');
   const childJoinAttempted = useRef(false);
   const lastPhaseRef = useRef<GameRoomPhase | null>(null);
@@ -100,6 +103,10 @@ export function useGameSession({
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
+
+  useEffect(() => {
+    roleRef.current = role;
+  }, [role]);
 
   useEffect(() => {
     if (roomIdParam) setRoomId(roomIdParam);
@@ -127,7 +134,43 @@ export function useGameSession({
         setRoom(null);
         return;
       }
-      setRoom(next);
+      setRoom((prev) => {
+        if (
+          prev &&
+          next &&
+          shouldHoldFinishedRound({
+            role: roleRef.current,
+            localPhase: prev.phase,
+            remotePhase: next.phase,
+            localBallUpdatedAt: prev.ball.updatedAt,
+            remoteBallUpdatedAt: next.ball.updatedAt,
+          })
+        ) {
+          return prev;
+        }
+        if (
+          prev &&
+          next &&
+          shouldKeepLocalBall({
+            localUpdatedAt: prev.ball.updatedAt,
+            remoteUpdatedAt: next.ball.updatedAt,
+            localPhase: prev.phase,
+            remotePhase: next.phase,
+            localUpdatedBy: prev.ball.updatedBy,
+            remoteUpdatedBy: next.ball.updatedBy,
+            localRole: roleRef.current,
+          })
+        ) {
+          return {
+            ...next,
+            ball: prev.ball,
+            score: prev.score,
+            phase: prev.phase,
+            winner: prev.winner,
+          };
+        }
+        return next;
+      });
     });
   }, [roomId]);
 
@@ -157,86 +200,128 @@ export function useGameSession({
   useEffect(() => {
     if (!roomId || !role) return;
 
-    const physicsLock = createExclusiveAsyncLock();
-    const writeRate = createWriteRateLimiter();
-    let lastPhysicsAt = 0;
+    const writer = createCoalescedAsyncWriter<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      toward?: GamePlayerRole;
+      gamePatch?: {
+        score: GameRoomState['score'];
+        phase: GameRoomState['phase'];
+        winner: GameRoomState['winner'];
+      };
+    }>();
+
     const id = window.setInterval(() => {
-      void physicsLock.run(async () => {
-        const current = roomRef.current;
-        if (!current || current.phase !== 'playing') {
-          lastPhysicsAt = 0;
-          return;
+      const current = roomRef.current;
+      if (!current || current.phase !== 'playing') return;
+      if (
+        !shouldRunPhysics({
+          role,
+          phase: current.phase,
+          ballUpdatedAt: current.ball.updatedAt,
+          nowMs: Date.now(),
+        })
+      ) {
+        return;
+      }
+
+      const paddles = { ...current.paddles };
+      const localPaddleX = lastPaddleXRef.current;
+      if (localPaddleX != null) {
+        if (role === 'parent') paddles.parentX = localPaddleX;
+        else paddles.childX = localPaddleX;
+      }
+
+      const stamped = Date.parse(current.ball.updatedAt || '');
+      const lagS = Number.isFinite(stamped) ? (Date.now() - stamped) / 1000 : 0;
+      const ticks = physicsCatchUpTicks(lagS);
+
+      let ball: {
+        x: number;
+        y: number;
+        vx: number;
+        vy: number;
+        toward?: GamePlayerRole;
+      } = current.ball;
+      let score = current.score;
+      let phase: GameRoomPhase = current.phase;
+      let winner = current.winner;
+      for (let tick = 0; tick < ticks; tick += 1) {
+        const stepped = stepBallPhysics({ ball, paddles, score, phase, winner });
+        ball = {
+          x: stepped.ball.x,
+          y: stepped.ball.y,
+          vx: stepped.ball.vx,
+          vy: stepped.ball.vy,
+          toward: stepped.ball.toward ?? ball.toward,
+        };
+        score = stepped.score;
+        phase = stepped.phase;
+        winner = stepped.winner;
+        if (phase !== 'playing') break;
+      }
+
+      const missedRound = phase === 'finished' && winner == null;
+
+      const now = new Date().toISOString();
+      const nextState: GameRoomState = {
+        ...current,
+        ball: {
+          x: ball.x,
+          y: ball.y,
+          vx: ball.vx,
+          vy: ball.vy,
+          toward: ball.toward ?? current.ball.toward,
+          updatedBy: role,
+          updatedAt: now,
+        },
+        score,
+        phase,
+        winner,
+        playReady: missedRound ? { parent: false, child: false } : current.playReady,
+        updatedAt: now,
+      };
+      roomRef.current = nextState;
+      setRoom(nextState);
+
+      writer.push(
+        {
+          x: ball.x,
+          y: ball.y,
+          vx: ball.vx,
+          vy: ball.vy,
+          toward: ball.toward,
+          // Every tick carries the rally count. A later position-only write
+          // used to replace a queued score bump, so the child board stayed put.
+          gamePatch: {
+            score,
+            phase,
+            winner,
+          },
+        },
+        async (payload) => {
+          try {
+            await updateBallPosition(
+              roomId,
+              role,
+              payload.x,
+              payload.y,
+              payload.vx,
+              payload.vy,
+              payload.toward,
+              payload.gamePatch
+            );
+          } catch (err) {
+            setError(
+              err instanceof Error
+                ? `עדכון כדור נכשל: ${err.message}`
+                : 'עדכון כדור נכשל'
+            );
+          }
         }
-        const nowMs = Date.now();
-        if (!writeRate.allow(nowMs)) return;
-        if (
-          !shouldRunPhysics({
-            role,
-            phase: current.phase,
-            ballUpdatedAt: current.ball.updatedAt,
-            nowMs,
-          })
-        ) {
-          return;
-        }
-
-        try {
-          const steps =
-            lastPhysicsAt === 0 ? 1 : physicsStepsForElapsed(nowMs - lastPhysicsAt);
-          const result = stepBallPhysicsN(
-            {
-              ball: current.ball,
-              paddles: current.paddles,
-              score: current.score,
-              phase: current.phase,
-              winner: current.winner,
-            },
-            steps
-          );
-          lastPhysicsAt = nowMs;
-
-          const scoreChanged = result.score.shared !== current.score.shared;
-          const phaseChanged =
-            result.phase !== current.phase || result.winner !== current.winner;
-
-          roomRef.current = {
-            ...current,
-            ball: {
-              ...current.ball,
-              ...result.ball,
-              updatedBy: role,
-              updatedAt: new Date().toISOString(),
-            },
-            score: result.score,
-            phase: result.phase,
-            winner: result.winner,
-          };
-
-          writeRate.record(nowMs);
-          await updateBallPosition(
-            roomId,
-            role,
-            result.ball.x,
-            result.ball.y,
-            result.ball.vx,
-            result.ball.vy,
-            result.ball.toward,
-            scoreChanged || phaseChanged
-              ? {
-                  score: result.score,
-                  phase: result.phase,
-                  winner: result.winner,
-                }
-              : undefined
-          );
-        } catch (err) {
-          setError(
-            err instanceof Error
-              ? `עדכון כדור נכשל: ${err.message}`
-              : 'עדכון כדור נכשל'
-          );
-        }
-      });
+      );
     }, PHYSICS_LOOP_INTERVAL_MS);
 
     return () => window.clearInterval(id);
@@ -254,7 +339,7 @@ export function useGameSession({
     try {
       const uid = await getCurrentUserId();
       if (!uid) {
-        setError('התחברו כהורה (אימייל) לפני יצירת חדר');
+        // `/game` page redirects unauthenticated users to onboarding — no error UI.
         autoCreateAttempted.current = false;
         return;
       }
@@ -328,8 +413,12 @@ export function useGameSession({
 
   const onArenaPointer = useCallback(
     (clientX: number, _clientY: number, rect: DOMRect) => {
-      if (!roomId || !role || !room || room.phase !== 'playing') return;
+      if (!roomId || !role || !room) return;
+      // Countdown is when the paddle is placed. Writes used to wait for
+      // `playing`, so the opening serve still saw the center paddle.
+      if (room.phase !== 'playing' && room.phase !== 'countdown') return;
       const x = pointerXToCourt(clientX, rect);
+      lastPaddleXRef.current = x;
       const now = performance.now();
       if (now - lastPaddleWriteAt.current < 32) return;
       lastPaddleWriteAt.current = now;
@@ -339,6 +428,17 @@ export function useGameSession({
     },
     [roomId, role, room]
   );
+
+  /** Flush the countdown placement as soon as the serve starts. */
+  useEffect(() => {
+    if (!roomId || !role || room?.phase !== 'playing') return;
+    const x = lastPaddleXRef.current;
+    const width = roomRef.current?.paddles.width;
+    if (x == null || width == null) return;
+    void updatePaddlePosition(roomId, role, x, width).catch((err) => {
+      setError(err instanceof Error ? err.message : 'עדכון מגש נכשל');
+    });
+  }, [roomId, role, room?.phase]);
 
   const playReadyInFlight = useRef(false);
   const countdownStartedRef = useRef<string | null>(null);
@@ -423,14 +523,13 @@ export function useGameSession({
     if (!roomId || !room) return;
     if (room.phase !== 'countdown') return;
 
-    const countdownAt = room.countdownAt;
-    const key = `${roomId}:${countdownAt ?? 'missing'}`;
     const observedAtMs = Date.now();
+    const key = `${roomId}:${room.countdownAt ?? 'missing'}`;
     const fire = () => {
       if (
         !shouldStartPlayFromCountdown({
           phase: 'countdown',
-          countdownAt,
+          countdownAt: room.countdownAt,
           observedAtMs,
           nowMs: Date.now(),
         })
@@ -456,7 +555,7 @@ export function useGameSession({
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
     };
-  }, [roomId, room?.phase, room?.countdownAt]);
+  }, [roomId, room]);
 
   /** Parent only — both tapped retry after miss. */
   useEffect(() => {

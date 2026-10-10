@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BallGameWinFadeOverlay } from '@/components/onboarding/game/BallGameWinFadeOverlay';
 import { BallGameFunnelBackground } from '@/components/onboarding/game/BallGameFunnelBackground';
-import { GameRoomLostStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
+import { GameRoomLostStep, GameRoomOccupiedStep } from '@/components/onboarding/child/ChildInvalidInviteStep';
 import { OnboardingBallGameScreen } from '@/components/onboarding/game/OnboardingBallGameScreen';
 import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunnelStepSlot';
 import { FunnelRouteLoading } from '@/components/onboarding/FunnelRouteLoading';
@@ -12,7 +12,15 @@ import { FunnelStepRoot } from '@/components/ui/funnel-layout';
 import { CHILD_POST_GAME_WIN_FADE_MS } from '@/constants/child-post-game-layout';
 import { ONBOARDING_CHILD_GAME_WON_KEY } from '@/constants/onboarding-game';
 import { useCelebrationBall } from '@/hooks/useCelebrationBall';
-import { isGameRoomLostError } from '@/lib/game/stallGuards';
+import {
+  isGameRoomLostError,
+  isGameRoomOccupiedError,
+} from '@/lib/game/stallGuards';
+import { setBondingChildName } from '@/lib/onboarding/bondingInvite';
+import {
+  getChildBondingContext,
+  setChildBondingContext,
+} from '@/lib/onboarding/childBondingContext';
 import type { BallVector } from '@/lib/game/physics';
 import type { GameRoomState } from '@/types/game';
 
@@ -74,10 +82,18 @@ export function ChildGamePostWinFlow({
   const navigateToPostGame = useCallback(() => {
     if (navigated.current) return;
     navigated.current = true;
+    const trimmed = childName.trim();
+    if (trimmed) {
+      setBondingChildName(trimmed);
+      const existing = getChildBondingContext();
+      if (existing) {
+        setChildBondingContext({ ...existing, childName: trimmed });
+      }
+    }
     sessionStorage.setItem(ONBOARDING_CHILD_GAME_WON_KEY, '1');
     const path = `/onboarding/child${window.location.search}`;
     router.push(path, { scroll: false });
-  }, [router]);
+  }, [router, childName]);
 
   useEffect(() => {
     if (phase !== 'winFadeOut') return;
@@ -101,6 +117,8 @@ export function ChildGamePostWinFlow({
           </FunnelStepRoot>
         ) : setupError && isGameRoomLostError(setupError) ? (
           <GameRoomLostStep parentGender={parentGender} />
+        ) : setupError && isGameRoomOccupiedError(setupError) ? (
+          <GameRoomOccupiedStep />
         ) : setupError ? (
           <FunnelStepRoot fitViewport className="overflow-hidden bg-transparent">
             <BallGameFunnelBackground />
