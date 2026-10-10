@@ -30,6 +30,16 @@ export const CHILD_PADDLE_Y = PHYSICS_CHILD_PADDLE_SURFACE_Y;
 export const DEFAULT_PADDLE_WIDTH = 92 / 327;
 
 export const PHYSICS_DT = 0.05;
+
+/**
+ * Ticks to simulate when a snapshot's stamp is older than one loop.
+ * The opening serve is stamped before the RTDB round trip, so one 50ms
+ * step would snap the sprite back after the display has already flown ahead.
+ */
+export function physicsCatchUpTicks(lagS: number): number {
+  if (!Number.isFinite(lagS) || lagS <= PHYSICS_DT) return 1;
+  return Math.min(10, Math.max(1, Math.round(lagS / PHYSICS_DT)));
+}
 /** Extra substeps so a fast serve does not tunnel through paddles. */
 export const PHYSICS_SUBSTEPS = 8;
 

@@ -59,15 +59,17 @@ function turnAtPaddle(state: FlightState, paddles: FlightPaddles | undefined, wh
  * If a snapshot is already sitting on a paddle and still moving into it,
  * leave immediately. Parking there is what reads as rolling along the paddle.
  */
+function holdMiss(state: FlightState, which: 'parent' | 'child') {
+  state.y = which === 'parent' ? PARENT_CONTACT_Y : CHILD_CONTACT_Y;
+  state.vx = 0;
+  state.vy = 0;
+}
+
 function releaseEmbedded(state: FlightState, paddles: FlightPaddles | undefined) {
   if (state.vy > 0 && state.y >= PARENT_CONTACT_Y - 1e-6) {
-    if (!turnAtPaddle(state, paddles, 'parent')) {
-      state.y = Math.max(state.y, PARENT_CONTACT_Y + 1e-4);
-    }
+    if (!turnAtPaddle(state, paddles, 'parent')) holdMiss(state, 'parent');
   } else if (state.vy < 0 && state.y <= CHILD_CONTACT_Y + 1e-6) {
-    if (!turnAtPaddle(state, paddles, 'child')) {
-      state.y = Math.min(state.y, CHILD_CONTACT_Y - 1e-4);
-    }
+    if (!turnAtPaddle(state, paddles, 'child')) holdMiss(state, 'child');
   }
 }
 
@@ -134,8 +136,8 @@ export function integrateBallFlight(
       state.y = event === 'parent' ? PARENT_CONTACT_Y : CHILD_CONTACT_Y;
       const turned = turnAtPaddle(state, paddles, event);
       if (!turned) {
-        state.y =
-          event === 'parent' ? PARENT_CONTACT_Y + 1e-4 : CHILD_CONTACT_Y - 1e-4;
+        holdMiss(state, event);
+        break;
       }
     } else if (dt <= 1e-8) {
       break;

@@ -13,13 +13,14 @@ import {
   logGameTransition,
   logOnboardingAdvanceReady,
 } from '@/lib/game/phaseLog';
-import { stepBallPhysics } from '@/lib/game/physics';
+import { physicsCatchUpTicks, stepBallPhysics } from '@/lib/game/physics';
 import {
   createCoalescedAsyncWriter,
   GAME_ROOM_LOST_ERROR,
   GAME_ROOM_OCCUPIED_ERROR,
   nextGameRoomPresence,
   PHYSICS_LOOP_INTERVAL_MS,
+  shouldHoldFinishedRound,
   shouldKeepLocalBall,
   shouldRunPhysics,
   shouldStartPlayFromCountdown,
@@ -94,6 +95,7 @@ export function useGameSession({
 
   const roomRef = useRef<GameRoomState | null>(null);
   const roleRef = useRef<GamePlayerRole | null>(null);
+  const lastPaddleXRef = useRef<number | null>(null);
   const presenceRef = useRef<GameRoomPresence>('unknown');
   const childJoinAttempted = useRef(false);
   const lastPhaseRef = useRef<GameRoomPhase | null>(null);
@@ -133,6 +135,19 @@ export function useGameSession({
         return;
       }
       setRoom((prev) => {
+        if (
+          prev &&
+          next &&
+          shouldHoldFinishedRound({
+            role: roleRef.current,
+            localPhase: prev.phase,
+            remotePhase: next.phase,
+            localBallUpdatedAt: prev.ball.updatedAt,
+            remoteBallUpdatedAt: next.ball.updatedAt,
+          })
+        ) {
+          return prev;
+        }
         if (
           prev &&
           next &&
@@ -212,33 +227,62 @@ export function useGameSession({
         return;
       }
 
-      const result = stepBallPhysics({
-        ball: current.ball,
-        paddles: current.paddles,
-        score: current.score,
-        phase: current.phase,
-        winner: current.winner,
-      });
+      const paddles = { ...current.paddles };
+      const localPaddleX = lastPaddleXRef.current;
+      if (localPaddleX != null) {
+        if (role === 'parent') paddles.parentX = localPaddleX;
+        else paddles.childX = localPaddleX;
+      }
 
-      const scoreChanged = result.score.shared !== current.score.shared;
-      const phaseChanged =
-        result.phase !== current.phase || result.winner !== current.winner;
+      const stamped = Date.parse(current.ball.updatedAt || '');
+      const lagS = Number.isFinite(stamped) ? (Date.now() - stamped) / 1000 : 0;
+      const ticks = physicsCatchUpTicks(lagS);
+
+      let ball: {
+        x: number;
+        y: number;
+        vx: number;
+        vy: number;
+        toward?: GamePlayerRole;
+      } = current.ball;
+      let score = current.score;
+      let phase: GameRoomPhase = current.phase;
+      let winner = current.winner;
+      for (let tick = 0; tick < ticks; tick += 1) {
+        const stepped = stepBallPhysics({ ball, paddles, score, phase, winner });
+        ball = {
+          x: stepped.ball.x,
+          y: stepped.ball.y,
+          vx: stepped.ball.vx,
+          vy: stepped.ball.vy,
+          toward: stepped.ball.toward ?? ball.toward,
+        };
+        score = stepped.score;
+        phase = stepped.phase;
+        winner = stepped.winner;
+        if (phase !== 'playing') break;
+      }
+
+      const scoreChanged = score.shared !== current.score.shared;
+      const phaseChanged = phase !== current.phase || winner !== current.winner;
+      const missedRound = phase === 'finished' && winner == null;
 
       const now = new Date().toISOString();
       const nextState: GameRoomState = {
         ...current,
         ball: {
-          x: result.ball.x,
-          y: result.ball.y,
-          vx: result.ball.vx,
-          vy: result.ball.vy,
-          toward: result.ball.toward ?? current.ball.toward,
+          x: ball.x,
+          y: ball.y,
+          vx: ball.vx,
+          vy: ball.vy,
+          toward: ball.toward ?? current.ball.toward,
           updatedBy: role,
           updatedAt: now,
         },
-        score: result.score,
-        phase: result.phase,
-        winner: result.winner,
+        score,
+        phase,
+        winner,
+        playReady: missedRound ? { parent: false, child: false } : current.playReady,
         updatedAt: now,
       };
       roomRef.current = nextState;
@@ -246,17 +290,17 @@ export function useGameSession({
 
       writer.push(
         {
-          x: result.ball.x,
-          y: result.ball.y,
-          vx: result.ball.vx,
-          vy: result.ball.vy,
-          toward: result.ball.toward,
+          x: ball.x,
+          y: ball.y,
+          vx: ball.vx,
+          vy: ball.vy,
+          toward: ball.toward,
           gamePatch:
             scoreChanged || phaseChanged
               ? {
-                  score: result.score,
-                  phase: result.phase,
-                  winner: result.winner,
+                  score,
+                  phase,
+                  winner,
                 }
               : undefined,
         },
@@ -369,7 +413,6 @@ export function useGameSession({
   }, [mode, roomIdParam, joinCodeParam, role, roomId, attemptChildJoin]);
 
   const lastPaddleWriteAt = useRef(0);
-  const lastPaddleXRef = useRef<number | null>(null);
 
   const onArenaPointer = useCallback(
     (clientX: number, _clientY: number, rect: DOMRect) => {

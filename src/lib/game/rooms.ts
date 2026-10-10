@@ -30,7 +30,11 @@ import {
   DEFAULT_PADDLE_WIDTH,
 } from '@/lib/game/physics';
 import { applyGameStart } from '@/lib/game/gameStart';
-import { clampBallForRtdbWrite, shouldResetRoomToWaitingReady } from '@/lib/game/stallGuards';
+import {
+  canRestartAfterMiss,
+  clampBallForRtdbWrite,
+  shouldResetRoomToWaitingReady,
+} from '@/lib/game/stallGuards';
 import { createContextLogger } from '@/utils/logger';
 
 const logger = createContextLogger('GameRooms');
@@ -320,14 +324,17 @@ export async function startGamePlay(roomId: string): Promise<void> {
   if (String(raw.phase ?? '') !== 'countdown') return;
 
   const start = createStartBall();
-  const now = new Date().toISOString();
-  // Atomic: parent and child both fire when the countdown ends.
-  // The loser must not overwrite the serve that is already in flight.
+  // Stamp inside the commit so the serve is not already hundreds of ms old
+  // when the first client paints it. Parent and child both fire; one commits.
   const result = await runTransaction(
     roomRef,
     (current) => {
       if (current == null) return current;
-      return applyGameStart(current as Record<string, unknown>, start, now);
+      return applyGameStart(
+        current as Record<string, unknown>,
+        start,
+        new Date().toISOString()
+      );
     },
     { applyLocally: false }
   );
@@ -338,9 +345,16 @@ export async function startGamePlay(roomId: string): Promise<void> {
 /** After a miss — both tapped retry; reset score and serve toward child. */
 export async function restartAfterMiss(roomId: string): Promise<void> {
   const db = await getDatabaseInstance();
+  const roomRef = ref(db, gameRoomPath(roomId));
+  const snap = await get(roomRef);
+  if (!snap.exists()) return;
+  // Opening ready flags are still true until the miss write lands.
+  // Restarting then serves straight through the failure.
+  if (!canRestartAfterMiss(snap.val() as Record<string, unknown>)) return;
+
   const start = createStartBall();
   const now = new Date().toISOString();
-  await update(ref(db, gameRoomPath(roomId)), {
+  await update(roomRef, {
     phase: 'playing',
     ball: {
       ...start,
@@ -350,6 +364,7 @@ export async function restartAfterMiss(roomId: string): Promise<void> {
     score: { shared: 0 },
     winner: null,
     gameOutcome: null,
+    playReady: { parent: false, child: false },
     countdownAt: null,
     updatedAt: now,
   });

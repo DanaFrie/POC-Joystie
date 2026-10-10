@@ -267,6 +267,37 @@ export function shouldShowConnectingOverlay(presence: GameRoomPresence): boolean
   return presence === 'unknown' || presence === 'missing';
 }
 
+/**
+ * A miss is finished until both players tap retry.
+ * An older `playing` echo must not resume the rally; a real restart
+ * writes a newer ball stamp.
+ */
+export function shouldHoldFinishedRound(input: {
+  role?: string | null;
+  localPhase: string;
+  remotePhase: string;
+  localBallUpdatedAt?: string | null;
+  remoteBallUpdatedAt?: string | null;
+}): boolean {
+  if (input.role !== 'parent') return false;
+  if (input.localPhase !== 'finished' || input.remotePhase !== 'playing') return false;
+  const localAt = Date.parse(input.localBallUpdatedAt || '') || 0;
+  const remoteAt = Date.parse(input.remoteBallUpdatedAt || '') || 0;
+  return remoteAt <= localAt;
+}
+
+/** Both taps after a miss. Opening-game ready flags are not a retry. */
+export function canRestartAfterMiss(raw: {
+  phase?: unknown;
+  winner?: unknown;
+  playReady?: { parent?: boolean; child?: boolean } | null;
+}): boolean {
+  if (String(raw.phase ?? '') !== 'finished') return false;
+  if (raw.winner != null) return false;
+  const ready = raw.playReady;
+  return ready?.parent === true && ready?.child === true;
+}
+
 /** Prefer a newer local physics tick over a slightly older RTDB echo. */
 export function shouldKeepLocalBall(input: {
   localUpdatedAt?: string | null;
