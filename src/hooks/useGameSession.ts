@@ -17,6 +17,7 @@ import { stepBallPhysics } from '@/lib/game/physics';
 import {
   createCoalescedAsyncWriter,
   GAME_ROOM_LOST_ERROR,
+  GAME_ROOM_OCCUPIED_ERROR,
   nextGameRoomPresence,
   PHYSICS_LOOP_INTERVAL_MS,
   shouldKeepLocalBall,
@@ -50,7 +51,7 @@ function formatGameError(e: unknown): string {
       : 'שגיאה לא ידועה';
   if (msg.includes('Parent cannot join as child')) return PARENT_AS_CHILD_ERROR;
   if (msg.includes('Room already has a child')) {
-    return 'החדר כבר תפוס על ידי ילד אחר. צרו חדר חדש.';
+    return GAME_ROOM_OCCUPIED_ERROR;
   }
   if (msg.includes('admin-restricted-operation') || msg.includes('OPERATION_NOT_ALLOWED')) {
     return 'התחברות אנונימית לא מופעלת ב-Firebase. הפעילו Anonymous Auth בקונסול.';
@@ -368,11 +369,16 @@ export function useGameSession({
   }, [mode, roomIdParam, joinCodeParam, role, roomId, attemptChildJoin]);
 
   const lastPaddleWriteAt = useRef(0);
+  const lastPaddleXRef = useRef<number | null>(null);
 
   const onArenaPointer = useCallback(
     (clientX: number, _clientY: number, rect: DOMRect) => {
-      if (!roomId || !role || !room || room.phase !== 'playing') return;
+      if (!roomId || !role || !room) return;
+      // Countdown is when the paddle is placed. Writes used to wait for
+      // `playing`, so the opening serve still saw the center paddle.
+      if (room.phase !== 'playing' && room.phase !== 'countdown') return;
       const x = pointerXToCourt(clientX, rect);
+      lastPaddleXRef.current = x;
       const now = performance.now();
       if (now - lastPaddleWriteAt.current < 32) return;
       lastPaddleWriteAt.current = now;
@@ -382,6 +388,17 @@ export function useGameSession({
     },
     [roomId, role, room]
   );
+
+  /** Flush the countdown placement as soon as the serve starts. */
+  useEffect(() => {
+    if (!roomId || !role || room?.phase !== 'playing') return;
+    const x = lastPaddleXRef.current;
+    const width = roomRef.current?.paddles.width;
+    if (x == null || width == null) return;
+    void updatePaddlePosition(roomId, role, x, width).catch((err) => {
+      setError(err instanceof Error ? err.message : 'עדכון מגש נכשל');
+    });
+  }, [roomId, role, room?.phase]);
 
   const playReadyInFlight = useRef(false);
   const countdownStartedRef = useRef<string | null>(null);

@@ -6,6 +6,7 @@ import {
   onValue,
   update,
   get,
+  runTransaction,
   type Unsubscribe,
 } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
@@ -28,6 +29,7 @@ import {
   createStartBall,
   DEFAULT_PADDLE_WIDTH,
 } from '@/lib/game/physics';
+import { applyGameStart } from '@/lib/game/gameStart';
 import { clampBallForRtdbWrite, shouldResetRoomToWaitingReady } from '@/lib/game/stallGuards';
 import { createContextLogger } from '@/utils/logger';
 
@@ -319,17 +321,17 @@ export async function startGamePlay(roomId: string): Promise<void> {
 
   const start = createStartBall();
   const now = new Date().toISOString();
-  await update(roomRef, {
-    phase: 'playing',
-    hasStartedRound: true,
-    countdownAt: null,
-    ball: {
-      ...start,
-      updatedBy: 'parent',
-      updatedAt: now,
+  // Atomic: parent and child both fire when the countdown ends.
+  // The loser must not overwrite the serve that is already in flight.
+  const result = await runTransaction(
+    roomRef,
+    (current) => {
+      if (current == null) return current;
+      return applyGameStart(current as Record<string, unknown>, start, now);
     },
-    updatedAt: now,
-  });
+    { applyLocally: false }
+  );
+  if (!result.committed) return;
   logger.log('gameStart', { roomId });
 }
 

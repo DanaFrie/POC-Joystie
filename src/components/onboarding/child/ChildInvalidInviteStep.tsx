@@ -7,6 +7,8 @@ import { OnboardingFunnelStepSlot } from '@/components/onboarding/OnboardingFunn
 import { CHILD_ONBOARDING_ASSETS } from '@/constants/child-onboarding-assets';
 import {
   GAME_ROOM_EXPIRED_TITLE,
+  GAME_ROOM_OCCUPIED_DETAIL,
+  GAME_ROOM_OCCUPIED_TITLE,
   gameRoomExpiredDetail,
 } from '@/lib/onboarding/childBondingLabels';
 
@@ -30,6 +32,16 @@ export function GameRoomLostStep({
     <ChildInvalidInviteStep
       title={GAME_ROOM_EXPIRED_TITLE}
       detail={gameRoomExpiredDetail(parentGender)}
+    />
+  );
+}
+
+/** Room already has a child / game already taken — disappointed Dori. */
+export function GameRoomOccupiedStep() {
+  return (
+    <ChildInvalidInviteStep
+      title={GAME_ROOM_OCCUPIED_TITLE}
+      detail={GAME_ROOM_OCCUPIED_DETAIL}
     />
   );
 }

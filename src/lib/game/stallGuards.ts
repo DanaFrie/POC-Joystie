@@ -45,12 +45,24 @@ export const RTDB_WRITE_BUDGET_PER_SEC = 1000;
 /** Sentinel — UI maps this to the disappointed-Dori expired-game card. */
 export const GAME_ROOM_LOST_ERROR = 'game_room_lost';
 
+/** Sentinel — room already has a child / game already taken. */
+export const GAME_ROOM_OCCUPIED_ERROR = 'game_room_occupied';
+
 export function isGameRoomLostError(message?: string | null): boolean {
   if (!message) return false;
   return (
     message === GAME_ROOM_LOST_ERROR ||
     message.includes('החדר לא נמצא') ||
     /room not found/i.test(message)
+  );
+}
+
+export function isGameRoomOccupiedError(message?: string | null): boolean {
+  if (!message) return false;
+  return (
+    message === GAME_ROOM_OCCUPIED_ERROR ||
+    message.includes('תפוס על ידי ילד') ||
+    /room already has a child/i.test(message)
   );
 }
 
