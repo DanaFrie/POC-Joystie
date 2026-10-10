@@ -4,6 +4,7 @@ import {
   BALL_RADIUS_X,
   BALL_RADIUS_Y,
   CHILD_PADDLE_Y,
+  missHoldCenterY,
   overlapsPaddleX,
   paddleReturnVelocity,
   PARENT_PADDLE_Y,
@@ -60,7 +61,7 @@ function turnAtPaddle(state: FlightState, paddles: FlightPaddles | undefined, wh
  * leave immediately. Parking there is what reads as rolling along the paddle.
  */
 function holdMiss(state: FlightState, which: 'parent' | 'child') {
-  state.y = which === 'parent' ? PARENT_CONTACT_Y : CHILD_CONTACT_Y;
+  state.y = missHoldCenterY(which);
   state.vx = 0;
   state.vy = 0;
 }

@@ -26,6 +26,20 @@ export const BALL_DIAMETER = BALL_RADIUS_Y * 2;
 export const PARENT_PADDLE_Y = PHYSICS_PARENT_PADDLE_SURFACE_Y;
 export const CHILD_PADDLE_Y = PHYSICS_CHILD_PADDLE_SURFACE_Y;
 
+/**
+ * A miss rests with the ball on the paddle, not a gap above it.
+ * Half the paddle thickness pulls the 44px ring onto the bar.
+ */
+const MISS_SINK = PHYSICS_PADDLE_HEIGHT_NORM / 2;
+
+/** Ball-center Y where a miss should sit, on the paddle face. */
+export function missHoldCenterY(which: 'parent' | 'child'): number {
+  if (which === 'parent') {
+    return Math.min(1 - 1e-4, PARENT_PADDLE_Y - BALL_RADIUS_Y + MISS_SINK);
+  }
+  return Math.max(1e-4, CHILD_PADDLE_Y + BALL_RADIUS_Y - MISS_SINK);
+}
+
 /** Paddle width in normalized court coords (0–1) — Figma 92px on 327px lane. */
 export const DEFAULT_PADDLE_WIDTH = 92 / 327;
 
@@ -477,7 +491,7 @@ function physicsSubstep(
       missedBy = parentMiss;
       phase = 'finished';
       winner = null;
-      y = Math.min(1 - BALL_RADIUS_Y * 0.5, y);
+      y = missHoldCenterY('parent');
       vx = 0;
       vy = 0;
     } else {
@@ -497,7 +511,7 @@ function physicsSubstep(
         missedBy = childMiss;
         phase = 'finished';
         winner = null;
-        y = Math.max(BALL_RADIUS_Y * 0.5, y);
+        y = missHoldCenterY('child');
         vx = 0;
         vy = 0;
       }

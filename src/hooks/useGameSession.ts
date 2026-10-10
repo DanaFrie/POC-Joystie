@@ -263,8 +263,6 @@ export function useGameSession({
         if (phase !== 'playing') break;
       }
 
-      const scoreChanged = score.shared !== current.score.shared;
-      const phaseChanged = phase !== current.phase || winner !== current.winner;
       const missedRound = phase === 'finished' && winner == null;
 
       const now = new Date().toISOString();
@@ -295,14 +293,13 @@ export function useGameSession({
           vx: ball.vx,
           vy: ball.vy,
           toward: ball.toward,
-          gamePatch:
-            scoreChanged || phaseChanged
-              ? {
-                  score,
-                  phase,
-                  winner,
-                }
-              : undefined,
+          // Every tick carries the rally count. A later position-only write
+          // used to replace a queued score bump, so the child board stayed put.
+          gamePatch: {
+            score,
+            phase,
+            winner,
+          },
         },
         async (payload) => {
           try {
