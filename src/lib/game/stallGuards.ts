@@ -74,6 +74,8 @@ export type CountdownClockInput = {
   /** When this client first observed `phase === 'countdown'`. */
   observedAtMs: number;
   nowMs: number;
+  /** `Date.now() + clockOffsetMs` is Firebase server time. */
+  clockOffsetMs?: number;
   totalMs?: number;
 };
 
@@ -118,20 +120,23 @@ export function parseTimestampMs(value: string | number | null | undefined): num
 }
 
 /**
- * Elapsed countdown time that cannot go negative from clock skew.
- * Uses the later of (stamp elapsed, time since this client saw countdown).
+ * Elapsed countdown on the shared Firebase clock.
+ * A stamp still in the future (offset not ready, or the other phone's wall
+ * clock) falls back to time since this phone saw the countdown, so the
+ * overlay cannot freeze on «מוכנים?». A fast wall clock must not run ahead.
  */
 export function countdownElapsedMs(input: {
   countdownAt?: string | number | null;
   observedAtMs: number;
   nowMs: number;
+  clockOffsetMs?: number;
 }): number {
   const fromObserve = Math.max(0, input.nowMs - input.observedAtMs);
   const start = parseTimestampMs(input.countdownAt);
   if (start == null) return fromObserve;
-  const fromStamp = input.nowMs - start;
+  const fromStamp = input.nowMs + (input.clockOffsetMs ?? 0) - start;
   if (fromStamp <= 0) return fromObserve;
-  return Math.max(fromStamp, fromObserve);
+  return fromStamp;
 }
 
 export function shouldStartPlayFromCountdown(input: CountdownClockInput): boolean {

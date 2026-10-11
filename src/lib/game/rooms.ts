@@ -7,6 +7,7 @@ import {
   update,
   get,
   runTransaction,
+  serverTimestamp,
   type Unsubscribe,
 } from 'firebase/database';
 import { getDatabaseInstance } from '@/lib/firebase';
@@ -306,11 +307,11 @@ export async function beginCountdown(roomId: string): Promise<void> {
   // First rally — parent tap only; retries use restartAfterMiss (no countdown).
   if (hasStartedRound) return;
 
-  const now = new Date().toISOString();
+  // Server clock, not this phone's wall clock. The other phone is often a second off.
   await update(roomRef, {
     phase: 'countdown',
-    countdownAt: now,
-    updatedAt: now,
+    countdownAt: serverTimestamp(),
+    updatedAt: new Date().toISOString(),
   });
   logger.log('countdownStart', { roomId });
 }
