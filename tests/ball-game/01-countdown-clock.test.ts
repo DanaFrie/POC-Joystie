@@ -96,6 +96,25 @@ describe('countdown clock (unit)', () => {
     assert.equal(ballGameCountdownStep(4_000), 'go');
   });
 
+  it('keeps two phones on the same step when their wall clocks disagree', () => {
+    const countdownAt = 1_800_000_000_000;
+    const elapsedAhead = countdownElapsedMs({
+      countdownAt,
+      observedAtMs: countdownAt + 2_500,
+      nowMs: countdownAt + 3_200,
+      clockOffsetMs: -2_000,
+    });
+    const elapsedBehind = countdownElapsedMs({
+      countdownAt,
+      observedAtMs: countdownAt - 600,
+      nowMs: countdownAt + 400,
+      clockOffsetMs: 800,
+    });
+    assert.equal(elapsedAhead, 1_200);
+    assert.equal(elapsedBehind, 1_200);
+    assert.equal(ballGameCountdownStep(elapsedAhead), ballGameCountdownStep(elapsedBehind));
+  });
+
   it('ignores non-countdown phases', () => {
     assert.equal(
       shouldStartPlayFromCountdown({

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useFunnelProportionalTopPx } from '@/components/ui/FunnelViewportContext';
 import { ballGameCountdownStep, type BallGameCountdownStep } from '@/constants/ball-game-countdown';
+import { subscribeServerClock } from '@/lib/game/serverClock';
 import { countdownElapsedMs } from '@/lib/game/stallGuards';
 
 type BallGameCountdownOverlayProps = {
@@ -52,12 +53,14 @@ export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverl
   useEffect(() => {
     const observedAtMs = Date.now();
     let lastStep: BallGameCountdownStep | null = null;
+    let clockOffsetMs = 0;
 
     const tick = () => {
       const elapsed = countdownElapsedMs({
         countdownAt,
         observedAtMs,
         nowMs: Date.now(),
+        clockOffsetMs,
       });
       const next = ballGameCountdownStep(elapsed);
       if (next !== lastStep) {
@@ -68,7 +71,14 @@ export function BallGameCountdownOverlay({ countdownAt }: BallGameCountdownOverl
     };
     tick();
     const id = window.setInterval(tick, 40);
-    return () => window.clearInterval(id);
+    const unsubscribe = subscribeServerClock((offset) => {
+      clockOffsetMs = offset;
+      tick();
+    });
+    return () => {
+      window.clearInterval(id);
+      unsubscribe();
+    };
   }, [countdownAt]);
 
   const showReady = step !== 'go';
