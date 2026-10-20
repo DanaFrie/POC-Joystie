@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { LandingBlogPost } from '@/constants/landing-marketing';
 import { getLandingBlog, getLandingUi } from '@/constants/landing-i18n';
 import {
+  landingConsultantPath,
   landingKnowledgePath,
   useLandingLocale,
 } from '@/components/landing/LandingLocaleContext';
@@ -114,6 +115,14 @@ export function MarketingKnowledge() {
           >
             {ui.knowledgeTitle}
           </h2>
+          {!isEn ? (
+            <Link
+              href={landingConsultantPath(locale)}
+              className={`shrink-0 font-rubik text-[15px] font-bold leading-none tracking-[-0.3px] text-[#00ffb3] underline-offset-4 transition hover:underline ${textAlign}`}
+            >
+              לייעוץ אישי וקבוצתי
+            </Link>
+          ) : null}
         </LandingReveal>
 
         {/*

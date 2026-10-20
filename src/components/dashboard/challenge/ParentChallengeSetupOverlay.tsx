@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ChallengeBody,
@@ -13,6 +14,7 @@ import {
 } from '@/components/dashboard/challenge/DashboardBlurCardOverlay';
 import { BudgetStepper } from '@/components/dashboard/challenge/BudgetStepper';
 import { ChallengeParentDealSentCard } from '@/components/dashboard/challenge/ChallengeParentDealSentCard';
+import { landingConsultantPath } from '@/components/landing/LandingLocaleContext';
 import {
   V03_CHALLENGE_BUDGET,
   V03_CHALLENGE_HOURLY_RATE,
@@ -272,6 +274,18 @@ export function ParentChallengeSetupOverlay({
             hourlyRate={hourlyRate}
             startDateLabel={formatHeDate(startDate)}
           />
+
+          {isFirstDeal ? (
+            <p className="w-full text-center font-simpler text-[14px] font-normal leading-[1.35] text-white/80">
+              רוצים ליווי נוסף?{' '}
+              <Link
+                href={landingConsultantPath()}
+                className="font-bold text-[#00FFB3] underline-offset-2 hover:underline"
+              >
+                לייעוץ אישי וקבוצתי
+              </Link>
+            </p>
+          ) : null}
         </>
       )}
     </DashboardBlurCardOverlay>

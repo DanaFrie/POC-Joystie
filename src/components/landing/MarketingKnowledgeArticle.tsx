@@ -6,6 +6,7 @@ import type { LandingBlogBlock, LandingBlogPost } from '@/constants/landing-mark
 import { getLandingBlog } from '@/constants/landing-i18n';
 import {
   LandingLocaleProvider,
+  landingConsultantPath,
   landingHomePath,
   landingKnowledgePath,
   type LandingLocale,
@@ -274,6 +275,23 @@ function KnowledgeArticleInner({ post }: { post: LandingBlogPost }) {
           ) : null}
 
           <ArticleBrowseNav post={post} />
+
+          {!isEn ? (
+            <div className="mt-12 rounded-[24px] border border-[#092125]/10 bg-v03-bg-light px-5 py-6 text-right md:mt-16">
+              <p className="mb-2 font-rubik text-[18px] font-bold leading-[1.25] tracking-[-0.36px] text-[#05161a]">
+                רוצים ליווי אישי?
+              </p>
+              <p className="mb-4 font-rubik text-[15px] font-normal leading-[1.4] tracking-[-0.3px] text-[#434343]">
+                ייעוץ פרטי או קבוצתי בזום / פרונטלי — קביעה ותשלום.
+              </p>
+              <Link
+                href={landingConsultantPath(locale)}
+                className="inline-flex h-[48px] items-center justify-center rounded-[22px] bg-[#00FFB3] px-5 font-rubik text-[16px] font-bold tracking-[-0.32px] text-v03-green-900 transition hover:brightness-95"
+              >
+                לעמוד הייעוץ
+              </Link>
+            </div>
+          ) : null}
         </main>
 
         <div className="pt-10 md:pt-[80px]">
