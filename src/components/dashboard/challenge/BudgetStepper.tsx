@@ -9,8 +9,12 @@ type BudgetStepperProps = {
   max: number;
   step: number;
   onChange: (value: number) => void;
-  /** Prefix shown before the value (default ₪). */
+  /** Prefix shown before the value (default ₪). Pass '' for unit-free. */
   prefix?: string;
+  /** Suffix shown after the value (e.g. ש'). */
+  suffix?: string;
+  /** When true, value+suffix render RTL (Hebrew units). */
+  rtlValue?: boolean;
   /** Decimal places for display and step rounding (default 0). */
   decimals?: number;
 };
@@ -56,6 +60,8 @@ export function BudgetStepper({
   step,
   onChange,
   prefix = '₪',
+  suffix = '',
+  rtlValue = false,
   decimals = 0,
 }: BudgetStepperProps) {
   const atMin = value <= min;
@@ -64,6 +70,8 @@ export function BudgetStepper({
   const bump = (delta: number) => {
     onChange(roundToStep(Math.min(max, Math.max(min, value + delta)), step, decimals));
   };
+
+  const formatted = formatNumber(value, decimals);
 
   return (
     <div
@@ -88,12 +96,23 @@ export function BudgetStepper({
       </CircleButton>
 
       <span
+        dir={rtlValue ? 'rtl' : 'ltr'}
         className="min-w-[4ch] text-center font-simpler text-[40px] font-black leading-[44px] text-white"
         aria-live="polite"
         aria-atomic="true"
       >
-        {prefix}
-        {formatNumber(value, decimals)}
+        {rtlValue ? (
+          <>
+            <bdi>{formatted}</bdi>
+            {suffix ? ` ${suffix}` : null}
+          </>
+        ) : (
+          <>
+            {prefix}
+            {formatted}
+            {suffix}
+          </>
+        )}
       </span>
 
       <CircleButton

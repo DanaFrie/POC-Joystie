@@ -491,7 +491,7 @@ export function ParentDashboardScreen({
       if (!parentId) return;
       try {
         await persistParentChallengeSetup(parentId, dashboardData.child.id || undefined, result);
-        setParentSetupOpen(false);
+        // Overlay stays on «נשלח» ~15s, then calls onClose.
         await onRefresh();
       } catch (error) {
         logger.error('Parent challenge setup failed:', error);
@@ -711,8 +711,8 @@ export function ParentDashboardScreen({
           visible
           childName={displayChildName}
           childGender={dashboardData.child.gender || PLACEHOLDER_CHILD.gender}
+          parentGender={dashboardData.parent.gender === 'male' ? 'male' : 'female'}
           estimatedDailyHours={estimatedDailyHours}
-          isFirstDeal={completedChallenges.length === 0}
           onClose={() => setParentSetupOpen(false)}
           onSubmit={handleParentSetupSubmit}
         />      ) : null}

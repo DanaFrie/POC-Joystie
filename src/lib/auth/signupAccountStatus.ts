@@ -12,8 +12,9 @@ import { getOAuthUserEmail } from '@/utils/auth-oauth';
 export type SignupEmailAccountStatus = 'new' | 'incomplete' | 'complete' | 'legacy';
 
 /**
- * Stub from `authOnUserCreated` is not enough — login OAuth must only succeed
- * after a real Joystie signup (terms / kids / finished onboarding).
+ * Stub from `authOnUserCreated` is not enough — Google/Apple login must only
+ * succeed after a real Joystie onboarding signup (terms / kids / finished).
+ * OAuth on `/login` must not create or admit a new account.
  */
 export function hasJoystieSignupEvidence(
   user: Pick<
@@ -33,24 +34,28 @@ export async function isRegisteredJoystieAccount(
   uid: string,
   email?: string | null
 ): Promise<boolean> {
-  // Prefer fresh read — cache can keep a deleted/recreated Auth uid looking registered.
-  const byUid = await getUser(uid, false);
-  if (byUid && hasJoystieSignupEvidence(byUid)) return true;
+  try {
+    // Prefer fresh read — cache can keep a deleted/recreated Auth uid looking registered.
+    const byUid = await getUser(uid, false);
+    if (byUid && hasJoystieSignupEvidence(byUid)) return true;
 
-  // Apple re-auth after a prior Auth delete: new uid, same email, old Firestore profile.
-  const normalized = (email ?? '').trim().toLowerCase() || null;
-  if (!normalized) return false;
+    // Apple re-auth after a prior Auth delete: new uid, same email, old Firestore profile.
+    const normalized = (email ?? '').trim().toLowerCase() || null;
+    if (!normalized) return false;
 
-  const byEmail = await getUserByEmail(normalized);
-  if (
-    byEmail &&
-    byEmail.id !== uid &&
-    hasJoystieSignupEvidence(byEmail)
-  ) {
-    return true;
+    const byEmail = await getUserByEmail(normalized);
+    if (
+      byEmail &&
+      byEmail.id !== uid &&
+      hasJoystieSignupEvidence(byEmail)
+    ) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
   }
-
-  return false;
 }
 
 function statusFromRouteKind(kind: UserOnboardingRouteKind): SignupEmailAccountStatus {

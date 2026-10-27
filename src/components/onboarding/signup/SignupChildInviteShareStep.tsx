@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { TrackAnalyticsEvent } from '@/components/analytics/TrackAnalyticsEvent';
-import { SignupChildInviteHeroBlock } from '@/components/onboarding/signup/SignupChildInviteHeroBlock';
 import {
   SignupCopyLinkIcon,
   SignupWhatsAppIcon,
@@ -11,6 +10,12 @@ import {
   SIGNUP_CHILD_INVITE_ACTION_BTN_CLASS,
   SIGNUP_CHILD_INVITE_BUTTONS_GAP_PX,
   SIGNUP_CHILD_INVITE_FOOTNOTE_MAX_W_PX,
+  SIGNUP_CHILD_INVITE_QR_FRAME_PX,
+  SIGNUP_CHILD_INVITE_QR_FRAME_RADIUS_PX,
+  SIGNUP_CHILD_INVITE_QR_INNER_PX,
+  SIGNUP_CHILD_INVITE_QR_INNER_RADIUS_PX,
+  SIGNUP_CHILD_INVITE_QR_PAD_PX,
+  SIGNUP_CHILD_INVITE_SHARE_HERO_GAP_PX,
   SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX,
   SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX,
 } from '@/constants/signup-child-invite-layout';
@@ -30,6 +35,11 @@ function getParentGenderForMessage(): 'female' | 'male' {
   return role ? parentRoleToGender(role) : 'male';
 }
 
+/** Same QR endpoint as FunnelDesktopOverlay — encodes the invite URL. */
+function qrImageUrl(data: string): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=12&color=05161A&bgcolor=FFFFFF&data=${encodeURIComponent(data)}`;
+}
+
 /** True when cached invite URL already matches this child name/gender. */
 function inviteMatchesChild(
   url: string,
@@ -38,7 +48,10 @@ function inviteMatchesChild(
 ): boolean {
   if (!url.includes('invite=')) return false;
   try {
-    const parsed = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'https://joystie.com');
+    const parsed = new URL(
+      url,
+      typeof window !== 'undefined' ? window.location.origin : 'https://joystie.com'
+    );
     const meta = parseBondingInviteQueryParams(parsed.searchParams);
     if (meta.childName?.trim() !== childName.trim()) return false;
     if (childGender && meta.childGender && meta.childGender !== childGender) return false;
@@ -49,6 +62,60 @@ function inviteMatchesChild(
   }
 }
 
+function InviteQrFrame({ url, childName }: { url: string; childName: string }) {
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center border-[1.25px] border-solid border-[#00FFB3] bg-[#14353C]"
+      style={{
+        width: SIGNUP_CHILD_INVITE_QR_FRAME_PX,
+        height: SIGNUP_CHILD_INVITE_QR_FRAME_PX,
+        borderRadius: SIGNUP_CHILD_INVITE_QR_FRAME_RADIUS_PX,
+        padding: SIGNUP_CHILD_INVITE_QR_PAD_PX,
+      }}
+      aria-hidden={!url}
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={qrImageUrl(url)}
+          alt={`קוד QR להזמנת ${childName}`}
+          width={SIGNUP_CHILD_INVITE_QR_INNER_PX}
+          height={SIGNUP_CHILD_INVITE_QR_INNER_PX}
+          className="bg-white/90 object-contain"
+          style={{
+            width: SIGNUP_CHILD_INVITE_QR_INNER_PX,
+            height: SIGNUP_CHILD_INVITE_QR_INNER_PX,
+            borderRadius: SIGNUP_CHILD_INVITE_QR_INNER_RADIUS_PX,
+          }}
+          decoding="async"
+        />
+      ) : (
+        <div
+          className="animate-pulse bg-white/15"
+          style={{
+            width: SIGNUP_CHILD_INVITE_QR_INNER_PX,
+            height: SIGNUP_CHILD_INVITE_QR_INNER_PX,
+            borderRadius: SIGNUP_CHILD_INVITE_QR_INNER_RADIUS_PX,
+          }}
+          aria-hidden
+        />
+      )}
+    </div>
+  );
+}
+
+function OrDivider() {
+  return (
+    <div className="flex w-full items-center justify-center gap-5">
+      <span className="h-px min-w-0 flex-1 bg-[#90A79F]/50" aria-hidden />
+      <span className="shrink-0 font-simpler text-[14px] font-normal uppercase leading-5 text-[#90A79F]">
+        או
+      </span>
+      <span className="h-px min-w-0 flex-1 bg-[#90A79F]/50" aria-hidden />
+    </div>
+  );
+}
+
 type SignupChildInviteShareStepProps = {
   childName: string;
   childGender?: 'boy' | 'girl';
@@ -57,7 +124,7 @@ type SignupChildInviteShareStepProps = {
   flow?: boolean;
 };
 
-/** Figma 12703:42221 — hero, WhatsApp / copy link, footnote. */
+/** Figma 12703:42221 — QR (same invite link), WhatsApp / copy link, footnote. */
 export function SignupChildInviteShareStep({
   childName,
   childGender,
@@ -151,7 +218,21 @@ export function SignupChildInviteShareStep({
         className="flex w-full flex-col items-stretch"
         style={{ gap: SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX }}
       >
-        <SignupChildInviteHeroBlock childName={childName} />
+        <div
+          className="flex w-full flex-col items-center"
+          style={{ gap: SIGNUP_CHILD_INVITE_SHARE_HERO_GAP_PX }}
+        >
+          <div className="v03-funnel-enter-0">
+            <InviteQrFrame url={inviteReady ? childUrl : ''} childName={childName} />
+          </div>
+          <h1 className="v03-funnel-enter-1 w-full text-center font-simpler text-[40px] font-black leading-[1.1] tracking-[-1.2px] text-white">
+            זה הזמן של {childName} לסרוק :)
+          </h1>
+        </div>
+
+        <div className="v03-funnel-enter-2 w-full">
+          <OrDivider />
+        </div>
 
         <div
           className="v03-funnel-enter-2 flex w-full flex-col"
@@ -194,7 +275,7 @@ export function SignupChildInviteShareStep({
       ) : null}
 
       <p
-        className="v03-funnel-enter-3 shrink-0 text-center font-simpler text-base font-normal leading-[1.35] tracking-[-0.24px] text-v03-green-200"
+        className="v03-funnel-enter-3 shrink-0 text-center font-simpler text-base font-normal leading-[1.28] tracking-[-0.32px] text-v03-green-200"
         style={{ maxWidth: SIGNUP_CHILD_INVITE_FOOTNOTE_MAX_W_PX }}
       >
         דרך הלינק שישותף עם {childName}, יתחיל התהליך המשותף שלכם

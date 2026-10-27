@@ -1,59 +1,146 @@
 /**
- * Consultant sales page — `/consultant`
- * Personal + group Zoom sessions.
+ * Consultant / accompaniment programs — `/consultant` (Hebrew only).
+ * Desktop Figma 16348:20486 (scroll / expanded) · Mobile 16348:21470.
+ * Booking CTAs open Google Calendar appointment pages (אישי / סדנה).
  */
 
-/** Interim booking — same calendar as landing «שיחה איתנו». */
-export const CONSULTANT_BOOKING_URL =
-  'https://calendar.app.google/XxKAvtFC2Na2zipD9';
+export const CONSULTANT_ASSETS = {
+  /** Meir avatar for bio banner — outdoor crop (visible on dark UI). */
+  meirCircle: '/landing/consultant/meir-circle.png',
+  /**
+   * Desktop dots vector mask — Figma Frame 1597882804 (16348:20486 right side).
+   * Used with CSS mask + gradient so dots stay visible on #05161A.
+   */
+  dotsMask: '/landing/consultant/dots-mask.svg',
+  /** Families-tell carousel — Figma Reviews 16374:3264 */
+  storyImages: [
+    '/landing/consultant/story-circle.jpg',
+    '/landing/consultant/story-hall.jpg',
+  ] as const,
+} as const;
 
-export type ConsultantOfferId = 'private_zoom' | 'group_zoom';
+export type ConsultantOfferId = 'private' | 'group';
 
 export type ConsultantOffer = {
   id: ConsultantOfferId;
+  /** Desktop title */
   title: string;
-  /** Meta line under title (e.g. duration · format · capacity). */
+  /** Mobile title (falls back to title) */
+  titleMobile?: string;
+  subtitle: string;
+  /** Mobile subtitle (falls back to subtitle) */
+  subtitleMobile?: string;
   meta: string;
-  description?: string;
+  /** Mobile meta (falls back to meta) */
+  metaMobile?: string;
+  /** Display price (payment may be via Calendar / CardCom pay-start). */
   priceShekels: number;
   priceLabel: string;
-  ctaLabel: string;
-  bookingUrl: string;
+  /** Google Calendar appointment booking URL. */
+  calendarBookingHref: string;
 };
 
 export const CONSULTANT_PAGE = {
-  title: 'ייעוץ פרטי וקבוצתי',
-  subtitle: 'מכירת ייעוץ עם מאיר ניצן — קביעה ותשלום',
-  intro:
-    'ליווי אישי או קבוצתי להורים שרוצים לבנות הרגלים דיגיטליים בריאים בבית.',
-  consultantName: 'מאיר ניצן',
-  consultantRole: "מלווה הורים להגיע לאיזון דיגיטלי ומייסד ג'ויסטי",
-  consultantNote: 'הייעוץ מתקיים עם',
-  offersHeading: 'שתי אופציות לייעוץ',
-  ctaLabel: 'קביעה ותשלום',
-  ctaDisabledHint: 'בחרו סוג מפגש כדי להמשיך',
-  footnote: 'לאחר הבחירה תועברו לקביעת מועד ותשלום.',
+  backLabel: 'חזרה לג׳ויסטי',
+  headlineMint: 'תוכניות ליווי אישיות',
+  headlineRest: 'לרווחה דיגיטלית במשפחה',
+  intro: 'מתאים להורים שרוצים לקחת את השינוי לשלב הבא',
+  meirEyebrow: 'תוכניות ליווי',
+  meirTitle: 'בהובלת מאיר ניצן',
+  meirTitleDesktop: 'תוכניות ליווי בהובלת מאיר ניצן',
+  meirBio:
+    'מדריך הורים לרווחה דיגיטלית וממייסדי Joystie, עבד עם הורים ביותר מ־65 קהילות ברחבי הארץ. מתמחה בבניית הרגלי מסך בריאים וביצירת שגרה דיגיטלית שמתאימה לחיים של משפחות בעידן הנוכחי',
+  offersHeading: 'תוכניות הליווי שלנו:',
+  ctaLabel: 'לקביעת תאריך ותשלום',
+  joinLabel: 'הצטרפות לג׳ויסטי',
 } as const;
 
 export const CONSULTANT_OFFERS: readonly ConsultantOffer[] = [
   {
-    id: 'private_zoom',
-    title: 'ייעוץ אישי – עושים סדר',
-    meta: '45 דקות - אונליין',
-    description:
-      'פגישה בה נבין את הדינמיקה אצלכם בבית, נשתמש בכלים הקיימים היום ונגדיר גבולות נכונים.',
+    id: 'private',
+    title: 'פגישה אישית',
+    titleMobile: 'פגישה אישית',
+    subtitle: 'יצירת תוכנית מותאמת אישית לדיאטה דיגיטלית',
+    subtitleMobile: 'יצירת תוכנית מותאמת אישית לדיאטה דיגיטלית',
+    meta: '60 דקות  ·  אונליין',
     priceShekels: 260,
     priceLabel: '₪260',
-    ctaLabel: 'קביעה ותשלום',
-    bookingUrl: CONSULTANT_BOOKING_URL,
+    calendarBookingHref: 'https://calendar.app.google/ZzeFiQETsjUUZG6h7',
   },
   {
-    id: 'group_zoom',
-    title: 'מפגש ייעוץ קבוצתי',
-    meta: 'שעה - אונליין - עד 4 משתתפים',
+    id: 'group',
+    title: 'סדנת הורים בקבוצה קטנה',
+    subtitle: 'עקרונות וכלים מעשיים לניהול מסכים בבית',
+    meta: 'עד 4 משפחות · 75 דקות · אונליין',
+    metaMobile: "עד 4 משפחות · 75 דק׳ · אונליין",
     priceShekels: 100,
     priceLabel: '₪100 למשתתף',
-    ctaLabel: 'קביעה ותשלום',
-    bookingUrl: CONSULTANT_BOOKING_URL,
+    calendarBookingHref: 'https://calendar.app.google/hdLcqRc4S2oYK4xeA',
+  },
+] as const;
+
+export type ConsultantFaqId = 'about' | 'stories' | 'contact';
+
+export type ConsultantStory = {
+  quote: string;
+  attribution: string;
+  image: string;
+};
+
+/** «משפחות מספרות» carousel — Figma Reviews 16374:3264 (4 dots) */
+export const CONSULTANT_STORIES: readonly ConsultantStory[] = [
+  {
+    quote:
+      '"התגובות היו מצוינות. אנשים נהנו מהשיח, היה ברור שאכפת להם ושיש רצון להמשך ואף לעוד מפגשים. נראה שחשוב להמשיך בקרוב ולא לתת לתנופה לדעוך.\n\nתודה לך מאיר"',
+    attribution: 'דניאל, בן 36 מרמת גן, הורה לילד בן 9',
+    image: CONSULTANT_ASSETS.storyImages[0],
+  },
+  {
+    quote:
+      '"התגובות היו מצוינות. אנשים נהנו מהשיח, היה ברור שאכפת להם ושיש רצון להמשך ואף לעוד מפגשים. נראה שחשוב להמשיך בקרוב ולא לתת לתנופה לדעוך.\n\nתודה לך מאיר"',
+    attribution: 'דניאל, בן 36 מרמת גן, הורה לילד בן 9',
+    image: CONSULTANT_ASSETS.storyImages[1],
+  },
+  {
+    quote:
+      '"התגובות היו מצוינות. אנשים נהנו מהשיח, היה ברור שאכפת להם ושיש רצון להמשך ואף לעוד מפגשים. נראה שחשוב להמשיך בקרוב ולא לתת לתנופה לדעוך.\n\nתודה לך מאיר"',
+    attribution: 'דניאל, בן 36 מרמת גן, הורה לילד בן 9',
+    image: CONSULTANT_ASSETS.storyImages[0],
+  },
+  {
+    quote:
+      '"התגובות היו מצוינות. אנשים נהנו מהשיח, היה ברור שאכפת להם ושיש רצון להמשך ואף לעוד מפגשים. נראה שחשוב להמשיך בקרוב ולא לתת לתנופה לדעוך.\n\nתודה לך מאיר"',
+    attribution: 'דניאל, בן 36 מרמת גן, הורה לילד בן 9',
+    image: CONSULTANT_ASSETS.storyImages[1],
+  },
+] as const;
+
+export const CONSULTANT_FAQ: readonly {
+  id: ConsultantFaqId;
+  title: string;
+  titleMobile?: string;
+  /** Plain paragraphs for about / contact */
+  paragraphs?: readonly string[];
+}[] = [
+  {
+    id: 'about',
+    title: 'על תוכניות הליווי שלנו',
+    paragraphs: [
+      'בתוכנית נעבור יחד על שגרת המסכים בבית, נזהה את נקודות החיכוך וההרגלים שכבר לא עובדים, ונבנה תוכנית משפחתית מעשית שמתאימה לילדים ולשגרה שלכם.',
+      'בתוכניות שלנו אנחנו תמיד נמשיך ליישום בפועל, עם הגדרת גבולות, הסכמות וכלים דיגיטליים שיעזרו להפוך את התוכנית להרגל שאפשר באמת להתמיד בו.',
+    ],
+  },
+  {
+    id: 'stories',
+    title: 'משפחות מספרות',
+  },
+  {
+    id: 'contact',
+    title: 'פרטים נוספים ויצירת קשר',
+    titleMobile: 'יצירת קשר ופרטים נוספים',
+    paragraphs: [
+      'מרגישים שחסר לכם עוד פרטים? מוזמנים ליצור קשר ישירות עם מאיר.\nטלפון: 055-883-8664',
+      'אימייל: nnmeir@gmail.com',
+    ],
   },
 ] as const;

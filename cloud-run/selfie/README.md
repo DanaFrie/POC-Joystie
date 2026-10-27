@@ -34,18 +34,21 @@ Restart `npm run dev` after changing env (Next inlines `NEXT_PUBLIC_*` at startu
 
 Unset / remove the var to go back to Firebase callable → deployed Cloud Run.
 
-### 3. Open the test UI
+### 3. Exercise via the real child funnel
+
+There is no separate selfie test route. With `NEXT_PUBLIC_SELFIE_SERVICE_URL` set, run the child onboarding selfie mission:
 
 ```
-http://localhost:3000/onboarding/child/selfie-generate-test
+http://localhost:3000/onboarding/child
 ```
 
-| Mode | Use |
-|------|-----|
-| **Mission UI** | Full pattern → camera → preparing → review → share |
-| **API scratchpad** | Upload two face crops → generate (faster prompt/resize iteration) |
+Reach Mission 3 (pattern → camera → preparing → review → share). The app posts to the local service instead of the Firebase callable.
 
-Banner shows `local service` when the env override is active.
+For faster prompt/resize iteration without the UI, `POST` face crops to the local endpoint directly:
+
+```
+POST http://127.0.0.1:8081/generate-selfie-json
+```
 
 ### Flow
 

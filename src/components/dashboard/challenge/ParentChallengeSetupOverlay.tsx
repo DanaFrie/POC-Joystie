@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChallengeBody,
   ChallengeCardHero,
@@ -13,8 +12,8 @@ import {
   OverlayPrimaryButton,
 } from '@/components/dashboard/challenge/DashboardBlurCardOverlay';
 import { BudgetStepper } from '@/components/dashboard/challenge/BudgetStepper';
+import { ChallengeDealSummaryCard } from '@/components/dashboard/challenge/ChallengeDealSummary';
 import { ChallengeParentDealSentCard } from '@/components/dashboard/challenge/ChallengeParentDealSentCard';
-import { landingConsultantPath } from '@/components/landing/LandingLocaleContext';
 import {
   V03_CHALLENGE_BUDGET,
   V03_CHALLENGE_HOURLY_RATE,
@@ -25,13 +24,28 @@ import {
 } from '@/constants/v03-challenge-layout';
 import {
   challengeStartDateFromSetup,
-  projectedRemainingAtEstimatedUsage,
   redemptionOpenDateFromStart,
   remainingOnCard,
   roundMoney,
   V03_CHALLENGE_DAYS,
 } from '@/lib/challenge/v03ChallengeMath';
 import { formatHebrewHoursLabel, formatNumber } from '@/utils/formatting';
+
+/** Default target screentime = 30% less than estimation (70% of baseline). */
+const DEFAULT_TARGET_RATIO = 0.7;
+const TARGET_HOURS_STEP = 0.5;
+const TARGET_HOURS_MIN = 0.5;
+
+/** Auto-dismiss sent summary after submit confirmation UI. */
+const SENT_AUTO_DISMISS_MS = 15_000;
+
+function defaultTargetDailyHours(estimatedDailyHours: number): number {
+  const baseline = Math.max(0, estimatedDailyHours);
+  if (baseline <= 0) return 1;
+  const raw = baseline * DEFAULT_TARGET_RATIO;
+  const stepped = Math.round(raw / TARGET_HOURS_STEP) * TARGET_HOURS_STEP;
+  return Math.max(TARGET_HOURS_MIN, roundMoney(stepped, 1));
+}
 
 export type ParentChallengeSetupResult = {
   weeklyBudget: number;
@@ -46,114 +60,128 @@ type ParentChallengeSetupOverlayProps = {
   visible: boolean;
   childName: string;
   childGender?: 'boy' | 'girl';
+  /** Parent gender for את/אתה copy. */
+  parentGender?: 'male' | 'female';
   estimatedDailyHours: number;
-  /** First-ever deal — show onboarding estimate + onboarding-based savings copy. */
-  isFirstDeal?: boolean;
   onClose: () => void;
   onSubmit: (result: ParentChallengeSetupResult) => void;
 };
 
-type SetupStep = 'intro' | 'configure' | 'sent';
+type SetupStep = 'intro' | 'explain' | 'configure' | 'sent';
 
-function formatHeDate(d: Date): string {
-  const weekday = d.toLocaleDateString('he-IL', { weekday: 'long' });
-  const day = d.getDate();
-  const month = d.getMonth() + 1;
-  const year = String(d.getFullYear()).slice(-2);
-  return `${weekday} ${day}/${month}/${year}`;
+/** Weekday only — strip leading «יום» so copy can say «ביום ראשון». */
+function hebrewWeekdayLabel(d: Date): string {
+  return d.toLocaleDateString('he-IL', { weekday: 'long' }).replace(/^יום\s+/, '');
 }
 
 /**
- * Parent challenge setup — intro → live configure (budget + rate + savings) → sent summary.
+ * Parent challenge setup — intro → explain → configure → sent (auto-dismiss 15s).
  */
 export function ParentChallengeSetupOverlay({
   visible,
   childName,
   childGender = 'boy',
+  parentGender = 'female',
   estimatedDailyHours,
-  isFirstDeal = true,
   onClose,
   onSubmit,
 }: ParentChallengeSetupOverlayProps) {
   const [step, setStep] = useState<SetupStep>('intro');
   const [weeklyBudget, setWeeklyBudget] = useState<number>(V03_CHALLENGE_BUDGET.default);
   const [hourlyRate, setHourlyRate] = useState<number>(V03_CHALLENGE_HOURLY_RATE.default);
+  const [targetDailyHours, setTargetDailyHours] = useState<number>(() =>
+    defaultTargetDailyHours(estimatedDailyHours)
+  );
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setStep('intro');
     setWeeklyBudget(V03_CHALLENGE_BUDGET.default);
     setHourlyRate(V03_CHALLENGE_HOURLY_RATE.default);
-  }, [visible]);
+    setTargetDailyHours(defaultTargetDailyHours(estimatedDailyHours));
+    setSubmitted(false);
+  }, [visible, estimatedDailyHours]);
 
-  const projected = useMemo(
-    () =>
-      roundMoney(
-        projectedRemainingAtEstimatedUsage({
-          weeklyBudget,
-          hourlyRate,
-          estimatedDailyHours,
-        })
-      ),
-    [weeklyBudget, hourlyRate, estimatedDailyHours]
+  const isMother = parentGender === 'female';
+  const isGirl = childGender === 'girl';
+  /** Singular parent address. */
+  const you = isMother ? 'את' : 'אתה';
+  const defining = isMother ? 'מגדירה' : 'מגדיר';
+  const setting = isMother ? 'קובעת' : 'קובע';
+  /** Parent-facing plural — always masculine (אתם / בוחרים). */
+  const youPluralParents = 'אתם';
+  /** Parent + child together — feminine only if mother + daughter. */
+  const dyadFeminine = isMother && isGirl;
+  const youPluralDyad = dyadFeminine ? 'אתן' : 'אתם';
+  const meeting = dyadFeminine ? 'נפגשות' : 'נפגשים';
+  const uploading = dyadFeminine ? 'מעלות' : 'מעלים';
+
+  const keepVerb = isGirl ? 'תשמור' : 'ישמור';
+  const beOnScreen = isGirl ? 'תהיה' : 'יהיה';
+
+  const baselineDaily = roundMoney(Math.max(0, estimatedDailyHours), 1);
+  const targetHoursMax = Math.max(
+    TARGET_HOURS_MIN,
+    roundMoney(Math.max(baselineDaily * 1.5, baselineDaily || 4), 1)
   );
-
-  /** Hours that empty the wallet at the current rate — daily (not weekly total). */
-  const hoursUntilEmptyDaily =
-    hourlyRate > 0
-      ? roundMoney(weeklyBudget / hourlyRate / V03_CHALLENGE_DAYS, 1)
-      : 0;
-
-  /** Example daily usage for the savings line — onboarding (first) or 2h/day (return). */
-  const exampleDailyHours = isFirstDeal
-    ? roundMoney(Math.max(0, estimatedDailyHours), 1)
-    : 2;
-  const exampleWeeklyHours = roundMoney(exampleDailyHours * V03_CHALLENGE_DAYS, 1);
+  const targetWeeklyHours = roundMoney(targetDailyHours * V03_CHALLENGE_DAYS, 1);
   const exampleSaveAmount = roundMoney(
-    remainingOnCard(weeklyBudget, exampleWeeklyHours, hourlyRate)
+    remainingOnCard(weeklyBudget, targetWeeklyHours, hourlyRate)
   );
-  const exampleHoursLabel = formatHebrewHoursLabel(exampleDailyHours);
-  const emptyHoursLabel = formatHebrewHoursLabel(hoursUntilEmptyDaily);
-
-  const beOnScreen = childGender === 'girl' ? 'תהיה' : 'יהיה';
-  const pronoun = childGender === 'girl' ? 'היא' : 'הוא';
-  const canBe = childGender === 'girl' ? 'יכולה' : 'יכול';
-  const canSave = childGender === 'girl' ? 'תוכל' : 'יוכל';
-  const possessive = childGender === 'girl' ? 'שלה' : 'שלו';
+  const targetHoursLabel = formatHebrewHoursLabel(targetDailyHours);
+  const baselineHoursLabel = formatHebrewHoursLabel(baselineDaily);
 
   const startDate = challengeStartDateFromSetup();
   const redemptionOpen = redemptionOpenDateFromStart(startDate);
+  const redemptionWeekdayLabel = hebrewWeekdayLabel(redemptionOpen);
   const titleId = 'parent-challenge-setup-title';
 
   const handleConfirmSend = () => {
+    if (submitted) return;
+    setSubmitted(true);
     onSubmit({
       weeklyBudget,
       hourlyRate,
       estimatedDailyHours,
-      projectedRemaining: projected,
+      projectedRemaining: exampleSaveAmount,
       startDateIso: startDate.toISOString(),
       redemptionOpenIso: redemptionOpen.toISOString(),
     });
   };
 
+  useEffect(() => {
+    if (step !== 'sent') return;
+    handleConfirmSend();
+    const id = window.setTimeout(() => {
+      onClose();
+    }, SENT_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once on enter sent
+  }, [step]);
+
   const footer = (() => {
     switch (step) {
       case 'intro':
         return (
+          <OverlayPrimaryButton onClick={() => setStep('explain')}>
+            המשך
+          </OverlayPrimaryButton>
+        );
+      case 'explain':
+        return (
           <OverlayPrimaryButton onClick={() => setStep('configure')}>
-            בואו נגדיר את השבוע
+            בואו נגדיר את הדיל השבוע
           </OverlayPrimaryButton>
         );
       case 'configure':
         return (
           <OverlayPrimaryButton onClick={() => setStep('sent')}>
-            שליחה ל{childName}
+            אישור ושליחה ל{childName}
           </OverlayPrimaryButton>
         );
       case 'sent':
-        return (
-          <OverlayPrimaryButton onClick={handleConfirmSend}>מעולה, נתחיל!</OverlayPrimaryButton>
-        );
+        return null;
     }
   })();
 
@@ -174,26 +202,40 @@ export function ParentChallengeSetupOverlay({
           />
           <ChallengeEyebrow>הדיל השבועי</ChallengeEyebrow>
           <ChallengeTitle id={titleId}>
-            בואו נטען את דמי הכיס של {childName} לארנק
+            בואו נטען את דמי הכיס לארנק, {you} {defining} את הדיל
           </ChallengeTitle>
+          <ul
+            className="w-full list-disc space-y-1 pr-5 text-right font-simpler text-[15px] leading-[22px] text-white/85 marker:text-white/60"
+            dir="rtl"
+          >
+            <li>
+              כמה דמי כיס {youPluralParents} טוענים ל{childName} לארנק?
+            </li>
+            <li>
+              מה העלות של כל שימוש בשעת מסך? {you} {setting}!
+            </li>
+          </ul>
+        </>
+      )}
+
+      {step === 'explain' && (
+        <>
+          <ChallengeEyebrow>הדיל השבועי</ChallengeEyebrow>
+          <ChallengeTitle id={titleId}>איך זה עובד?</ChallengeTitle>
           <div className="flex w-full flex-col gap-3">
             <ChallengeBody>
-              בשלב הבא תגדירו את הדיל:
-            </ChallengeBody>
-            <ul
-              className="w-full list-disc space-y-1 pr-5 text-right font-simpler text-[15px] leading-[22px] text-white/85 marker:text-white/60"
-              dir="rtl"
-            >
-              <li>כמה דמי כיס נטענים לארנק?</li>
-              <li>כמה כסף שווה כל שימוש בשעת מסך?</li>
-            </ul>
-            <ChallengeBody>
-              ככל ש{childName} {childGender === 'girl' ? 'תשמור' : 'ישמור'} על פחות זמן מסך, יישאר
-              יותר כסף בארנק. זה העיקרון שעוזר לבחור בחוכמה.
+              ככל ש{childName} {keepVerb} על פחות זמן מסך, יישאר יותר כסף בארנק…
             </ChallengeBody>
             <ChallengeBody>
-              הארנק וירטואלי, בסוף השבוע מעלים צילום מסך של גרף השימוש במסך ובוחרים יחד מה לעשות
-              עם הכסף שנשאר בארנק.
+              הארנק מדמה את הכסף שנטען ל{childName} בתחילת השבוע
+            </ChallengeBody>
+            <ChallengeBody>
+              לאחר 6 ימים, ביום השביעי {youPluralDyad} {meeting} ו{uploading}{' '}
+              צילום מסך מ-Family Link / Screen Time של גרף השימוש השבועי
+            </ChallengeBody>
+            <ChallengeBody>
+              בוחרים יחד מה לעשות עם הכסף שנשאר, ואז {childName} פודה מכם את הכסף
+              :)
             </ChallengeBody>
           </div>
         </>
@@ -204,20 +246,33 @@ export function ParentChallengeSetupOverlay({
           <ChallengeEyebrow>הגדרת הדיל</ChallengeEyebrow>
           <ChallengeTitle id={titleId}>שחקו עם המספרים</ChallengeTitle>
 
-          {isFirstDeal ? (
+          {estimatedDailyHours > 0 ? (
             <ChallengeBody>
-              {`הערכת את זמן המסך בכ־${exampleHoursLabel} ביום.`}
+              {`הערכת את זמן המסך של ${childName} בכ-${baselineHoursLabel}`}
             </ChallengeBody>
           ) : null}
 
           <div className="flex w-full flex-col items-center gap-4">
-            <p className="w-full text-right font-simpler text-[15px] font-bold text-white" dir="rtl">
-              הדיל שאתה מציע:
-            </p>
+            <div className="flex w-full flex-col items-center gap-2">
+              <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
+                {`כמה זמן מסך ${youPluralParents} רוצים ל${childName}?`}
+              </p>
+              <BudgetStepper
+                value={targetDailyHours}
+                min={TARGET_HOURS_MIN}
+                max={targetHoursMax}
+                step={TARGET_HOURS_STEP}
+                decimals={1}
+                prefix=""
+                suffix="ש'"
+                rtlValue
+                onChange={setTargetDailyHours}
+              />
+            </div>
 
             <div className="flex w-full flex-col items-center gap-2">
               <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
-                דמי כיס לארנק
+                דמי כיס השבוע
               </p>
               <BudgetStepper
                 value={weeklyBudget}
@@ -230,7 +285,7 @@ export function ParentChallengeSetupOverlay({
 
             <div className="flex w-full flex-col items-center gap-2">
               <p className="text-center font-simpler text-[13px] font-semibold text-white/70">
-                שקלים לשעת מסך
+                עלות שעת מסך
               </p>
               <BudgetStepper
                 value={hourlyRate}
@@ -243,17 +298,11 @@ export function ParentChallengeSetupOverlay({
             </div>
           </div>
 
-          <div
-            className="flex w-full flex-col gap-3 rounded-[16px] bg-white/5 px-4 py-4 text-right outline outline-1 outline-white/15"
-            dir="rtl"
-          >
+          <ChallengeDealSummaryCard>
             <ChallengeBody>
-              {`כמה זמן ${childName} ${beOnScreen} במסך? ${exampleHoursLabel} ביום? ${pronoun} ${canSave} לחסוך ${formatNumber(exampleSaveAmount)} ש״ח.`}
+              {`אם ${childName} ${beOnScreen} במסך כ־${targetHoursLabel} ביום, יישאר בארנק כ־${formatNumber(exampleSaveAmount)} ש״ח.`}
             </ChallengeBody>
-            <ChallengeBody>
-              {`${pronoun} גם ${canBe} להיות ${emptyHoursLabel} ביום ולהישאר בלי דמי כיס השבוע, הבחירה ${possessive}, שבוע הבא שבוע חדש.`}
-            </ChallengeBody>
-          </div>
+          </ChallengeDealSummaryCard>
         </>
       )}
 
@@ -265,30 +314,17 @@ export function ParentChallengeSetupOverlay({
             frameHeight={V03_CHALLENGE_SETUP_LAYOUT.parentSentHero.height}
           />
           <ChallengeEyebrow>נשלח ל{childName}</ChallengeEyebrow>
-          <ChallengeTitle id={titleId}>השבוע עומד להתחיל!</ChallengeTitle>
+          <ChallengeTitle id={titleId}>השבוע מתחיל מחר!</ChallengeTitle>
 
           <ChallengeParentDealSentCard
             childName={childName}
             childGender={childGender}
             weeklyBudget={weeklyBudget}
             hourlyRate={hourlyRate}
-            startDateLabel={formatHeDate(startDate)}
+            redemptionWeekdayLabel={redemptionWeekdayLabel}
           />
-
-          {isFirstDeal ? (
-            <p className="w-full text-center font-simpler text-[14px] font-normal leading-[1.35] text-white/80">
-              רוצים ליווי נוסף?{' '}
-              <Link
-                href={landingConsultantPath()}
-                className="font-bold text-[#00FFB3] underline-offset-2 hover:underline"
-              >
-                לייעוץ אישי וקבוצתי
-              </Link>
-            </p>
-          ) : null}
         </>
       )}
     </DashboardBlurCardOverlay>
   );
 }
-

@@ -6,14 +6,19 @@ import type { Metadata } from 'next';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'ייעוץ | Joystie',
+  title: 'תוכניות ליווי | Joystie',
   description:
-    'שתי אופציות לייעוץ: ייעוץ אישי – עושים סדר, ומפגש ייעוץ קבוצתי — קביעה ותשלום.',
+    'תוכניות ליווי אישיות לרווחה דיגיטלית במשפחה — פגישה אישית וסדנת הורים בקבוצה קטנה בהובלת מאיר ניצן.',
   alternates: {
     canonical: '/consultant',
   },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
+/** Hebrew-only accompaniment programs page. */
 export default function ConsultantPage() {
   return (
     <div className={marketingRubik.variable}>

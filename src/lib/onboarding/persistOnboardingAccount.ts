@@ -7,6 +7,7 @@ import {
 } from '@/lib/onboarding/childrenScreenTime';
 import {
   getOnboardingChildrenDetails,
+  isHebrewChildName,
   type OnboardingChildDraft,
 } from '@/lib/onboarding/childrenDetails';
 import { readOnboardingJson, writeOnboardingJson } from '@/lib/onboarding/onboardingStorage';
@@ -75,12 +76,16 @@ function buildKidsAgesFromFunnel(
   children: OnboardingChildDraft[],
   screenTimes: OnboardingChildScreenTime[]
 ): UserKidAgeScreenTime[] {
-  return children.map((child, index) => ({
-    name: child.name.trim(),
-    age: String(child.age),
-    gender: child.gender,
-    dailyScreenTimeHours: screenTimes[index]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
-  }));
+  return children
+    .map((child, index) => ({ child, index }))
+    .filter(({ child }) => isHebrewChildName(child.name))
+    .map(({ child, index }) => ({
+      name: child.name.trim(),
+      age: String(child.age),
+      gender: child.gender,
+      dailyScreenTimeHours:
+        screenTimes[index]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS,
+    }));
 }
 
 /** Keep funnel child data in session/local storage only — no Firestore children yet. */

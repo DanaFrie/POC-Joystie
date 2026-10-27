@@ -23,7 +23,12 @@ import {
 import { generateSelfie } from './selfie/generateSelfie';
 import { saveChildShareCard } from './shareCard/saveChildShareCard';
 import { getChildShareCardAccess } from './shareCard/getChildShareCardAccess';
-import { createCardcomTrialCheckout, cardcomWebhook } from './billing/cardcom/handlers';
+import {
+  createCardcomTrialCheckout,
+  createCardcomConsultantCheckout,
+  getConsultantCheckoutStatus,
+  cardcomWebhook,
+} from './billing/cardcom/handlers';
 import {
   onEnglishWaitlistCreated,
   onUserLifecycleMail,
@@ -57,6 +62,8 @@ export {
   saveChildShareCard,
   getChildShareCardAccess,
   createCardcomTrialCheckout,
+  createCardcomConsultantCheckout,
+  getConsultantCheckoutStatus,
   cardcomWebhook,
   onUserLifecycleMail,
   onEnglishWaitlistCreated,

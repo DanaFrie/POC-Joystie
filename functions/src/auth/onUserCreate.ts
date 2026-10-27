@@ -31,5 +31,13 @@ export const authOnUserCreated = functions.auth.user().onCreate(async (user) => 
     authProviders: user.providerData.map((p) => p.providerId),
   });
 
+  try {
+    await admin.auth().getUser(user.uid);
+  } catch {
+    await ref.delete();
+    console.log('[authOnUserCreated] Auth user already deleted, removed stub', user.uid);
+    return;
+  }
+
   console.log('[authOnUserCreated] Created user profile for', user.uid);
 });

@@ -1,11 +1,43 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { getLandingFaq, getLandingUi } from '@/constants/landing-i18n';
 import { useLandingLocale } from '@/components/landing/LandingLocaleContext';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 
 const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+function FaqAnswerLine({
+  line,
+  link,
+}: {
+  line: string;
+  link?: { phrase: string; href: string };
+}) {
+  if (!link || !line.includes(link.phrase)) {
+    return <>{line}</>;
+  }
+
+  const parts = line.split(link.phrase);
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 ? (
+            <Link
+              href={link.href}
+              className="underline underline-offset-2 decoration-white/70 transition-colors hover:text-v03-turquoise-300 hover:decoration-v03-turquoise-300"
+            >
+              {link.phrase}
+            </Link>
+          ) : null}
+        </span>
+      ))}
+    </>
+  );
+}
 
 /** Figma FAQ toggle — gray 35.5² box + chevron (closed ↓, open ↑) */
 function FaqArrow({ open }: { open: boolean }) {
@@ -106,7 +138,10 @@ export function MarketingFaq() {
                           {item.a.split('\n').map((line, lineIdx) =>
                             line ? (
                               <p key={lineIdx} className={lineIdx > 0 ? 'mt-3' : ''}>
-                                {line}
+                                <FaqAnswerLine
+                                  line={line}
+                                  link={'link' in item ? item.link : undefined}
+                                />
                               </p>
                             ) : null,
                           )}

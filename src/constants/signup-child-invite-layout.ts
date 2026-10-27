@@ -23,11 +23,18 @@ export const SIGNUP_CHILD_INVITE_INTRO_BUTTONS_GAP_PX = 12;
 export const SIGNUP_CHILD_INVITE_INTRO_ACTIONS_PT_PX = 20;
 export const SIGNUP_CHILD_INVITE_INTRO_ACTIONS_GAP_PX = 15;
 
-/** Child invite share — Figma 12703:42221 */
-export const SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX = 20;
+/** Child invite share — Figma 12703:42221 (QR + WhatsApp / copy) */
+export const SIGNUP_CHILD_INVITE_SHARE_OUTER_GAP_PX = 15;
 export const SIGNUP_CHILD_INVITE_SHARE_INNER_GAP_PX = 29;
+export const SIGNUP_CHILD_INVITE_SHARE_HERO_GAP_PX = 20;
 export const SIGNUP_CHILD_INVITE_BUTTONS_GAP_PX = 15;
 export const SIGNUP_CHILD_INVITE_FOOTNOTE_MAX_W_PX = 297;
+/** QR frame — Figma 14865:38931 */
+export const SIGNUP_CHILD_INVITE_QR_FRAME_PX = 162;
+export const SIGNUP_CHILD_INVITE_QR_INNER_PX = 142;
+export const SIGNUP_CHILD_INVITE_QR_FRAME_RADIUS_PX = 15.6;
+export const SIGNUP_CHILD_INVITE_QR_INNER_RADIUS_PX = 13.6;
+export const SIGNUP_CHILD_INVITE_QR_PAD_PX = 4;
 
 /** Child invite waiting — Screen 29 */
 export type SignupChildInviteWaitingVariant = 'linkOpen' | 'companionPick';
