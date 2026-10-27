@@ -10,6 +10,7 @@ import {
   LANDING_FOOTER_LINKS,
   LANDING_HOW_STEPS,
   LANDING_NAV_LINKS,
+  LANDING_NAV_LINKS_MOBILE,
   LANDING_SCIENCE,
   LANDING_SOCIAL,
   type LandingBlogPost,
@@ -133,6 +134,15 @@ const FAQ_EN = [
   {
     q: 'Can we try Joystie before committing?',
     a: 'Yes. You can start with a trial, experience the process with your kids, and only then decide if it’s right for your family.',
+  },
+  {
+    q: 'How much does Joystie cost?',
+    a: 'Start with a free 30-day trial to see if Joystie fits your family. Then you can choose a monthly plan at ₪25/month, or an annual plan at ₪180/year (₪15 monthly equivalent).',
+  },
+  {
+    q: 'How do you protect my family’s information?',
+    a: 'We only collect what’s needed to run Joystie and tailor the experience that helps you find balance in digital life at home. We handle access to information according to our privacy and security policy.',
+    link: { phrase: 'privacy and security policy', href: '/privacy' },
   },
 ] as const;
 
@@ -300,8 +310,12 @@ export function getLandingUi(locale: LandingLocale): LandingUiCopy {
   return (locale === 'en' ? UI_EN : UI_HE) as LandingUiCopy;
 }
 
-export function getLandingNavLinks(locale: LandingLocale): readonly LandingNavLink[] {
-  return locale === 'en' ? NAV_EN : LANDING_NAV_LINKS;
+export function getLandingNavLinks(
+  locale: LandingLocale,
+  variant: 'desktop' | 'mobile' = 'desktop'
+): readonly LandingNavLink[] {
+  if (locale === 'en') return NAV_EN;
+  return variant === 'mobile' ? LANDING_NAV_LINKS_MOBILE : LANDING_NAV_LINKS;
 }
 
 export function getLandingFeatures(locale: LandingLocale) {

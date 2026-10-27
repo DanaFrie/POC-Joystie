@@ -131,12 +131,12 @@ export const ONBOARDING_SUBSCRIPTION_PLANS: {
   {
     id: 'annual',
     title: 'מנוי שנתי',
-    price: '₪244.99 (₪14.90 לחודש)',
+    price: '₪180 (₪15 לחודש)',
   },
   {
     id: 'monthly',
     title: 'מנוי חודשי',
-    price: '₪24.90 לחודש',
+    price: '₪25 לחודש',
   },
 ];
 

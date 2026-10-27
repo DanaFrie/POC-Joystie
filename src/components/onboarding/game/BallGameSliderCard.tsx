@@ -26,11 +26,7 @@ export function BallGameSliderCard({
   fillViewport = false,
   contentBleed = false,
 }: BallGameSliderCardProps) {
-  const overflowClass = contentBleed
-    ? 'overflow-visible'
-    : fillViewport
-      ? 'overflow-hidden'
-      : 'overflow-y-auto overflow-x-hidden v03-scroll-hidden';
+  const overflowClass = contentBleed ? 'overflow-visible' : 'overflow-hidden';
 
   const shellHeightClass = fillViewport
     ? 'min-h-[calc(100dvh-48px-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] max-h-[calc(100dvh-48px)] justify-between'
@@ -49,9 +45,13 @@ export function BallGameSliderCard({
           <OverlayCloseButton onClick={onClose} />
         ) : null}
         <div
-          className={`flex w-full flex-col items-center gap-[15px] self-stretch ${
-            fillViewport ? 'min-h-0 flex-1 justify-between' : 'min-h-0 shrink-0'
-          } ${contentBleed ? 'overflow-visible' : ''}`}
+          className={`flex w-full min-h-0 flex-col items-center gap-[15px] self-stretch ${
+            contentBleed
+              ? 'overflow-visible'
+              : fillViewport
+                ? 'flex-1 justify-between'
+                : 'shrink overflow-y-auto overflow-x-hidden v03-scroll-hidden'
+          }`}
         >
           {children}
         </div>

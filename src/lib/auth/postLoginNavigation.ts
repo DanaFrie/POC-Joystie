@@ -92,6 +92,17 @@ export function prepareOnboardingIntroReturn(kind: UserOnboardingRouteKind = 'v0
   setResumeKind(kind);
 }
 
+/** Logged-in but no child details — collect kids before invite/game. */
+export function prepareOnboardingChildDetailsReturn(
+  kind: UserOnboardingRouteKind = 'fresh'
+): void {
+  if (typeof window === 'undefined') return;
+  markOnboardingAccountCreated();
+  sessionStorage.removeItem(LANDING_ACTIVE_KEY);
+  sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'childSetup');
+  setResumeKind(kind);
+}
+
 /** Logged-in but no kids to resume — open landing (or stay) without forcing signupIntro. */
 export function prepareFreshOnboardingEntry(): void {
   if (typeof window === 'undefined') return;
@@ -228,6 +239,15 @@ export async function resolveAuthenticatedUserDestination(
     await hydrateSessionChildrenFromAccount(resolvedUser, children);
     const resumeKind: UserOnboardingRouteKind =
       kind === 'v03_resume' ? kind : 'fresh';
+    if (!hasOnboardingChildrenDetails()) {
+      prepareOnboardingChildDetailsReturn(resumeKind);
+      logger.log('Incomplete session → childSetup (אין פרטי ילד)', {
+        uid: resolvedUser.id,
+        source,
+        resumeKind,
+      });
+      return { path: '/onboarding', kind: resumeKind, user: resolvedUser };
+    }
     prepareOnboardingIntroReturn(resumeKind);
     logger.log('Incomplete session → signupIntro (איך מתחילים?)', {
       uid: resolvedUser.id,

@@ -152,21 +152,25 @@ export function MarketingFooter({ surface = 'dark' }: MarketingFooterProps) {
                 light ? 'text-[#092125]' : 'text-white'
               }`}
             >
-              {footerLinks.map((item) => (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`shrink-0 whitespace-nowrap transition-colors duration-500 ease-out visited:text-inherit focus:text-inherit active:text-inherit ${
-                    light
-                      ? 'text-[#092125] [@media(hover:hover)_and_(pointer:fine)]:hover:text-[#092125]/70'
-                      : 'text-white [@media(hover:hover)_and_(pointer:fine)]:hover:text-v03-turquoise-300'
-                  }`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {item.label}
-                </a>
-              ))}
+              {footerLinks.map((item) => {
+                const external = item.href.startsWith('http');
+                return (
+                  <a
+                    key={item.label}
+                    href={item.href}
+                    className={`shrink-0 whitespace-nowrap transition-colors duration-500 ease-out visited:text-inherit focus:text-inherit active:text-inherit ${
+                      light
+                        ? 'text-[#092125] [@media(hover:hover)_and_(pointer:fine)]:hover:text-[#092125]/70'
+                        : 'text-white [@media(hover:hover)_and_(pointer:fine)]:hover:text-v03-turquoise-300'
+                    }`}
+                    {...(external
+                      ? { target: '_blank', rel: 'noreferrer' }
+                      : {})}
+                  >
+                    {item.label}
+                  </a>
+                );
+              })}
             </div>
           </div>
           <p

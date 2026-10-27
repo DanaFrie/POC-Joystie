@@ -10,6 +10,7 @@ alwaysApply: true
 - **Work in repo root** — not the user home directory
 - **Integration branch:** `intgrV0.3`
 - **Language:** Hebrew for user-facing copy and auth errors
+- **Dashes in copy:** use ASCII hyphen `-` only — never em dash `—` or en dash `–` in user-facing strings (Help, FAQ, landing, onboarding, errors, etc.)
 
 ## Git branches (do not mix scopes)
 

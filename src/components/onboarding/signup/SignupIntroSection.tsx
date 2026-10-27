@@ -42,7 +42,41 @@ type SignupIntroSectionProps = {
   oauthLoading?: 'google' | 'apple' | null;
 };
 
-/** Title + OAuth — starts on ellipse 391 baseline (Figma gap 16 / 12). */
+/** Figma Ellipse 489 — 4px turquoise separator between pricing cues. */
+function PricingCueDot() {
+  return (
+    <span
+      className="inline-block h-[4px] w-[4px] min-h-[4px] min-w-[4px] shrink-0 rounded-full bg-[#00FFB3]"
+      aria-hidden
+    />
+  );
+}
+
+/** Pricing cue — Figma 14853:38112 (signup screen 14663:27409). */
+function SignupPricingCue() {
+  return (
+    <div
+      className="flex h-[30px] w-full items-center justify-center rounded-[8px] bg-white/5 px-1.5 backdrop-blur-[7.5px]"
+      aria-label="30 ימי ניסיון בחינם, ללא התחייבות, החל מ־₪15 לחודש"
+    >
+      <div className="flex w-full items-center justify-between gap-1.5">
+        <span className="shrink-0 whitespace-nowrap text-center font-simpler text-[14px] font-normal leading-[1.25] tracking-[-0.28px] text-white/80">
+          30 ימי ניסיון בחינם
+        </span>
+        <PricingCueDot />
+        <span className="shrink-0 whitespace-nowrap text-center font-simpler text-[14px] font-normal leading-[1.25] tracking-[-0.28px] text-white/80">
+          ללא התחייבות
+        </span>
+        <PricingCueDot />
+        <span className="shrink-0 whitespace-nowrap text-center font-simpler text-[14px] font-normal leading-[1.25] tracking-[-0.28px] text-white/80">
+          החל מ₪15 לחודש
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Title + pricing cue + OAuth — Figma 14663:27409 (gap 16 / 12). */
 export function SignupIntroSection({
   onOAuthGoogle,
   onOAuthApple,
@@ -51,34 +85,38 @@ export function SignupIntroSection({
 }: SignupIntroSectionProps) {
   return (
     <div className="flex w-full flex-col items-stretch gap-4 v03-funnel-enter-1">
-      <div className="flex w-full flex-col items-end">
-        <div className="flex w-full flex-col items-end gap-1 self-stretch">
-          <h1 className="w-full text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
-            יצירת חשבון בגו׳יסטי
-          </h1>
+      <div className="flex w-full flex-col items-stretch gap-4">
+        <div className="flex w-full flex-col items-end">
+          <div className="flex w-full flex-col items-end gap-1 self-stretch">
+            <h1 className="w-full text-center font-simpler text-[30px] font-extrabold leading-[1.1] tracking-[-0.9px] text-white">
+              יצירת חשבון בגו׳יסטי
+            </h1>
+          </div>
+          <p className="w-full self-stretch text-center font-simpler text-[18px] font-normal leading-[24.3px] tracking-[-0.27px] text-white">
+            הצטרפו להורים שכבר עשו את השינוי
+          </p>
         </div>
-        <p className="w-full self-stretch text-center font-simpler text-[18px] font-normal leading-[24.3px] text-white">
-          הצטרפו להורים שכבר עשו את השינוי
-        </p>
-      </div>
 
-      <div className="flex w-full flex-col items-stretch gap-3">
-        <OAuthButton
-          label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
-          icon={<GoogleIcon />}
-          onClick={onOAuthGoogle}
-          disabled={oauthDisabled || oauthLoading !== null}
-        />
-        <OAuthButton
-          label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
-          icon={<AppleIcon />}
-          onClick={onOAuthApple}
-          disabled={
-            !IS_APPLE_OAUTH_ENABLED ||
-            oauthDisabled ||
-            oauthLoading !== null
-          }
-        />
+        <SignupPricingCue />
+
+        <div className="flex w-full flex-col items-stretch gap-3">
+          <OAuthButton
+            label={oauthLoading === 'google' ? 'מתחבר...' : 'המשך עם Google'}
+            icon={<GoogleIcon />}
+            onClick={onOAuthGoogle}
+            disabled={oauthDisabled || oauthLoading !== null}
+          />
+          <OAuthButton
+            label={oauthLoading === 'apple' ? 'מתחבר...' : 'המשך עם Apple'}
+            icon={<AppleIcon />}
+            onClick={onOAuthApple}
+            disabled={
+              !IS_APPLE_OAUTH_ENABLED ||
+              oauthDisabled ||
+              oauthLoading !== null
+            }
+          />
+        </div>
       </div>
     </div>
   );

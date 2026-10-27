@@ -1,6 +1,7 @@
 import { markBondingWhatsAppShared, recordBondingInvite, resolveBondingInvite } from '@/lib/api/bonding';
 import { getUser, updateUser } from '@/lib/api/users';
 import type { FirestoreUser } from '@/types/firestore';
+import { isHebrewChildName } from '@/lib/onboarding/childrenDetails';
 import { getOnboardingFirstChildIndex } from '@/lib/onboarding/pickFirstChild';
 import { getOnboardingChildIds } from '@/lib/onboarding/persistOnboardingAccount';
 import { getOnboardingParentRole, parentRoleToGender } from '@/lib/onboarding/parentRole';
@@ -202,6 +203,11 @@ async function prepareBondingInviteOnce(params: {
   childName: string;
   childGender?: 'boy' | 'girl';
 }): Promise<{ childUrl: string; inviteId: string }> {
+  const childName = params.childName.trim();
+  if (!childName || childName === 'הילד/ה' || !isHebrewChildName(childName)) {
+    throw new Error('יש למלא את שם הילד לפני שיתוף ההזמנה');
+  }
+
   const parentId = await getCurrentUserId();
   if (!parentId) {
     throw new Error('יש להירשם לפני שיתוף ההזמנה');
@@ -215,14 +221,14 @@ async function prepareBondingInviteOnce(params: {
   const previousIds = candidateInviteIds(profile);
 
   const inviteMeta = {
-    childName: params.childName,
+    childName,
     childGender: params.childGender,
     parentName,
     parentGender,
   };
 
   const reusableId = previousIds.length
-    ? await findReusableInviteId(parentId, params.childName, previousIds)
+    ? await findReusableInviteId(parentId, childName, previousIds)
     : null;
   if (reusableId) {
     const childUrl = withBondingInviteQueryParams(
@@ -234,7 +240,7 @@ async function prepareBondingInviteOnce(params: {
     cachePreparedInvite({
       childUrl,
       inviteId: reusableId,
-      childName: params.childName,
+      childName,
       childGender: params.childGender,
     });
     persistInviteSideEffects({
@@ -242,7 +248,7 @@ async function prepareBondingInviteOnce(params: {
       inviteId: reusableId,
       previousIds: [],
       resetProgress: false,
-      childName: params.childName,
+      childName,
       childGender: params.childGender,
       parentName,
       parentGender,
@@ -253,7 +259,7 @@ async function prepareBondingInviteOnce(params: {
 
   const result = await recordBondingInvite({
     childId,
-    childName: params.childName,
+    childName,
     parentName,
     parentGender,
     baseUrl,
@@ -267,7 +273,7 @@ async function prepareBondingInviteOnce(params: {
   cachePreparedInvite({
     childUrl,
     inviteId: result.inviteId,
-    childName: params.childName,
+    childName,
     childGender: params.childGender,
   });
 
@@ -276,7 +282,7 @@ async function prepareBondingInviteOnce(params: {
     inviteId: result.inviteId,
     previousIds,
     resetProgress: true,
-    childName: params.childName,
+    childName,
     childGender: params.childGender,
     parentName,
     parentGender,

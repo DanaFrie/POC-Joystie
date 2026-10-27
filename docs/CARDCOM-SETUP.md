@@ -71,11 +71,11 @@ The handler always verifies with `GetLpResult` before updating Firestore.
 
 Client: `src/lib/api/billing.ts` → `createCardcomTrialCheckout({ plan })`.
 
-## Test route (frontend)
+## Manual test (frontend)
 
-Requires a logged-in parent:
+Requires a logged-in parent. Open the subscription gate on the real dashboard:
 
-`/dashboard/subscription/test`
+`/dashboard?subscription=1`
 
 1. Pick annual / monthly plan  
 2. Tap **התחלת 30 ימים ניסיון בחינם**  
@@ -164,7 +164,7 @@ Same for `cardcomwebhook` if webhooks should receive Cardcom POSTs.
    ```
 
 3. Terminal 2: `npm run dev`
-4. Test `/dashboard/subscription/test`
+4. Open `/dashboard?subscription=1` (logged-in parent) and run checkout
 
 The emulator loads Cardcom secrets from Secret Manager (needs `firebase login`). Cardcom API calls use real HTTPS from the emulator.
 

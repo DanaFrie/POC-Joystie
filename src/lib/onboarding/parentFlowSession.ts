@@ -28,6 +28,7 @@ const IN_PROGRESS_FUNNEL_STEPS = new Set([
   'role',
   'phoneCount',
   'details',
+  'childSetup',
   'screenTime',
   'calculating',
   'revealIntro',

@@ -28,9 +28,10 @@ type ChallengeDealSummaryCardProps = {
   children: ReactNode;
 };
 
+/** Glass frame — matches onboarding screen-time cards (inset outline + soft shadow). */
 export function ChallengeDealSummaryCard({ children }: ChallengeDealSummaryCardProps) {
   return (
-    <div className="flex w-full flex-col gap-3 rounded-[16px] bg-white/5 px-4 py-4 outline outline-1 outline-white/15">
+    <div className="flex w-full flex-col gap-3 rounded-[18px] bg-white/5 px-[18px] py-4 shadow-[2px_2px_15px_rgba(0,0,0,0.08)] outline outline-1 outline-white/25 outline-offset-[-1px]">
       {children}
     </div>
   );

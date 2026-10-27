@@ -103,6 +103,19 @@ export async function getUser(userId: string, useCache: boolean = true): Promise
   }
 }
 
+/** Remove a `users/{uid}` doc (login rollback of an OAuth Auth stub). */
+export async function deleteUserDocument(userId: string): Promise<void> {
+  try {
+    const { doc, deleteDoc } = await import('firebase/firestore');
+    const db = await getFirestoreInstance();
+    await deleteDoc(doc(db, USERS_COLLECTION, userId));
+    const { dataCache, cacheKeys } = await import('@/utils/data-cache');
+    dataCache.invalidate(cacheKeys.user(userId));
+  } catch (error) {
+    logger.warn('Error deleting user document:', error);
+  }
+}
+
 /**
  * Update user data
  */
