@@ -494,8 +494,8 @@ function ConsultantPageInner() {
     >
       <TrackAnalyticsEvent event={AnalyticsEvents.REACH_CONSULTANT_PAGE} />
 
-      {/* —— Mobile —— Figma 16348:21470 */}
-      <div className="relative z-[1] mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-x-hidden overflow-y-auto v03-scroll-hidden md:hidden">
+      {/* —— Mobile —— Figma 16348:21470 (document scroll; body lock is md+ only) */}
+      <div className="relative z-[1] mx-auto flex w-full max-w-[480px] flex-col overflow-x-hidden md:hidden">
         <div className="fixed inset-x-0 top-0 z-20">
           <div className="relative mx-auto max-w-[480px] bg-v03-green-900 pt-[max(20px,env(safe-area-inset-top))]">
             <div className="flex justify-start px-5 pb-3">

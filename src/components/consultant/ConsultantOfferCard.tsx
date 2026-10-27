@@ -49,11 +49,11 @@ export function ConsultantOfferCard({
   const TitleTag = titleAs;
 
   const articleClass = isResponsive
-    ? 'relative flex min-h-[260px] w-full flex-col justify-center gap-2.5 overflow-hidden rounded-[45px] border border-white/10 bg-[rgba(5,22,26,0.10)] px-[35px] py-[30px] md:min-h-[310px] md:justify-between md:gap-0 md:bg-white/[0.08] md:px-10 md:py-[35px] md:backdrop-blur-[12px]'
-    : `relative flex w-full flex-col overflow-hidden ${
+    ? 'relative flex min-h-[260px] w-full flex-col justify-between overflow-hidden rounded-[45px] border border-white/10 bg-[rgba(5,22,26,0.10)] px-[35px] py-[30px] md:min-h-[310px] md:bg-white/[0.08] md:px-10 md:py-[35px] md:backdrop-blur-[12px]'
+    : `relative flex w-full flex-col justify-between overflow-hidden ${
         isMobile
-          ? 'min-h-[260px] justify-center gap-2.5 rounded-[45px] border border-white/10 px-[35px] py-[30px]'
-          : 'min-h-[310px] justify-between rounded-[45px] border border-white/10 bg-white/[0.08] px-10 py-[35px] backdrop-blur-[12px]'
+          ? 'min-h-[260px] rounded-[45px] border border-white/10 px-[35px] py-[30px]'
+          : 'min-h-[310px] rounded-[45px] border border-white/10 bg-white/[0.08] px-10 py-[35px] backdrop-blur-[12px]'
       }`;
 
   const titleClass = isResponsive
@@ -78,7 +78,7 @@ export function ConsultantOfferCard({
           : 'gap-3 text-[24px] leading-[1.17] tracking-[-0.72px]'
       }`;
 
-  const defaultActionClass = `flex w-full justify-start ${isMobile ? 'mt-0' : 'mt-6'}`;
+  const defaultActionClass = 'mt-6 flex w-full justify-start';
 
   return (
     <article
