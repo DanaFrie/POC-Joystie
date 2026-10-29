@@ -70,12 +70,22 @@ export const LANDING_ASSETS = {
   doriJoyApp: '/landing/dori-joy-app.webp',
 } as const;
 
+/** Desktop header — «ליווי אישי» last. Hebrew only (no «איך זה עובד?»). */
 export const LANDING_NAV_LINKS = [
   { href: '#what-is-joystie', label: 'מה זה ג׳ויסטי?' },
-  { href: '#how-it-works', label: 'איך זה עובד?' },
   { href: '#questions', label: 'שאלות ותשובות' },
   { href: '#knowledge', label: 'מרכז הידע' },
   { href: '/about', label: 'קצת עלינו' },
+  { href: '/consultant', label: 'ליווי אישי' },
+] as const;
+
+/** Mobile full-screen menu — «ליווי אישי» at the bottom; no «איך זה עובד?». */
+export const LANDING_NAV_LINKS_MOBILE = [
+  { href: '#what-is-joystie', label: 'מה זה ג׳ויסטי?' },
+  { href: '#questions', label: 'שאלות ותשובות' },
+  { href: '#knowledge', label: 'מרכז הידע' },
+  { href: '/about', label: 'קצת עלינו' },
+  { href: '/consultant', label: 'ליווי אישי' },
 ] as const;
 
 export const LANDING_FEATURES = [
@@ -180,6 +190,15 @@ export const LANDING_FAQ = [
   {
     q: 'האם אפשר לנסות את Joystie לפני שמתחייבים?',
     a: 'כן. אפשר להתחיל בתקופת ניסיון, להכיר את התהליך יחד עם הילדים, ורק אחר כך להחליט אם זה מתאים למשפחה שלכם.',
+  },
+  {
+    q: 'כמה עולה השימוש ב-Joystie?',
+    a: 'מתחילים ב־30 ימי ניסיון בחינם, כדי לבדוק אם Joystie מתאימה למשפחה שלכם. לאחר מכן אפשר לבחור בין מנוי חודשי ב־₪25 לחודש, או מנוי שנתי ב־₪180 לשנה (₪15 בחישוב חודשי).',
+  },
+  {
+    q: 'איך אתם שומרים על המידע של המשפחה שלי?',
+    a: 'אנחנו אוספים רק את מה שנדרש כדי להפעיל את Joystie ולהתאים את החוויה שתקנה לכם איזון דיגיטלי בבית. אנחנו שומרים על הגישה למידע בהתאם למדיניות הפרטיות והאבטחה שלנו.',
+    link: { phrase: 'מדיניות הפרטיות והאבטחה', href: '/privacy' },
   },
 ] as const;
 
@@ -657,9 +676,13 @@ export const LANDING_SOCIAL = [
   { href: 'https://www.facebook.com/profile.php?id=61586594025586', label: 'פייסבוק' },
 ] as const;
 
-/** Page + desktop footer bar — Figma links + שיחה איתנו */
+/**
+ * Page + desktop footer bar — LinkedIn, Facebook, ליווי אישי, דברו איתנו.
+ * (Not the mobile hamburger menu — mountain footer strip only.)
+ */
 export const LANDING_FOOTER_LINKS = [
-  { href: 'https://calendar.app.google/XxKAvtFC2Na2zipD9', label: 'שיחה איתנו' },
-  { href: 'https://www.facebook.com/profile.php?id=61586594025586', label: 'פייסבוק' },
   { href: 'https://www.linkedin.com/company/joystie', label: 'לינקדאין' },
+  { href: 'https://www.facebook.com/profile.php?id=61586594025586', label: 'פייסבוק' },
+  { href: '/consultant', label: 'ליווי אישי' },
+  { href: 'https://calendar.app.google/XxKAvtFC2Na2zipD9', label: 'דברו איתנו' },
 ] as const;

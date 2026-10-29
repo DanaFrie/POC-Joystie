@@ -43,7 +43,10 @@ import {
   parentLabelFromGender,
   parentWalletGateHeadline,
 } from '@/lib/challenge/v03DashboardChallenge';
-import { remainingOnCard } from '@/lib/challenge/v03ChallengeMath';
+import {
+  redemptionOpenDateFromStart,
+  remainingOnCard,
+} from '@/lib/challenge/v03ChallengeMath';
 import type { DashboardState, WeekDay } from '@/types/dashboard';
 import { formatNumber } from '@/utils/formatting';
 import { getChildShareCardAccess } from '@/lib/api/shareCard';
@@ -153,6 +156,12 @@ export function ChildDashboardScreen({
 
   const weeklyBudget = deriveWeeklyBudget(challenge);
   const hourlyRate = deriveHourlyRate(challenge);
+  const redemptionWeekdayLabel = useMemo(() => {
+    if (!challenge.startDate) return undefined;
+    return redemptionOpenDateFromStart(new Date(challenge.startDate))
+      .toLocaleDateString('he-IL', { weekday: 'long' })
+      .replace(/^יום\s+/, '');
+  }, [challenge.startDate]);
   const childDealComplete = isChildDealSetupComplete(challenge);
   const parentChallengeSet = isParentChallengeSet(challenge, noChallengeExists);
   const dealLive = isV03DealLive(challengeEnabled, challenge, challengeNotStarted);
@@ -517,6 +526,7 @@ export function ChildDashboardScreen({
           childGender={dashboardData.child.gender || PLACEHOLDER_CHILD.gender}
           weeklyBudget={weeklyBudget}
           hourlyRate={hourlyRate}
+          redemptionWeekdayLabel={redemptionWeekdayLabel}
           onClose={() => setSetupOpen(false)}
           onSubmit={handleSetupSubmit}
         />      ) : null}

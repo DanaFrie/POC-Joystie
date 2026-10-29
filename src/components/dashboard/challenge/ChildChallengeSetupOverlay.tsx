@@ -34,6 +34,8 @@ type ChildChallengeSetupOverlayProps = {
   childGender?: 'boy' | 'girl';
   weeklyBudget: number;
   hourlyRate: number;
+  /** Hebrew weekday for redemption meetup, e.g. `ראשון`. */
+  redemptionWeekdayLabel?: string;
   onClose: () => void;
   onSubmit: (result: ChildChallengeSetupResult) => void;
 };
@@ -47,6 +49,7 @@ export function ChildChallengeSetupOverlay({
   childGender = 'boy',
   weeklyBudget,
   hourlyRate,
+  redemptionWeekdayLabel,
   onClose,
   onSubmit,
 }: ChildChallengeSetupOverlayProps) {
@@ -165,6 +168,11 @@ export function ChildChallengeSetupOverlay({
               {childGender === 'girl' ? 'את אלופה' : 'אתה אלוף'}?
             </ChallengeTitle>
             <ChallengeBody>אני אגיד לך את זה שוב!</ChallengeBody>
+            {redemptionWeekdayLabel ? (
+              <ChallengeBody>
+                נפגשים כאן ביום {redemptionWeekdayLabel} כדי לפדות את הכסף!
+              </ChallengeBody>
+            ) : null}
 
             <video
               src={V03_REDEMPTION_CELEBRATE_VIDEO}
@@ -242,7 +250,8 @@ export function ChildChallengeSetupOverlay({
           <ChallengeBody>
             כל שעת מסך שווה כסף מתוך דמי הכיס שבארנק שלך.
             <br />
-            פחות זמן מסך זה יותר כסף בארנק שתוכל לנצל בסוף השבוע.
+            פחות זמן מסך זה יותר כסף בארנק ש
+            {childGender === 'girl' ? 'תוכלי' : 'תוכל'} לנצל בסוף השבוע.
           </ChallengeBody>
 
           {goalChipLabels.length > 0 ? (

@@ -139,6 +139,10 @@ export const AnalyticsEvents = {
   DASHBOARD_REACHED: 'dashboard_reached',
   TRIAL_PAYMENT_SUCCESS: 'trial_payment_success',
   CHALLENGE_CREATED: 'challenge_created',
+  /** `/consultant` page view */
+  REACH_CONSULTANT_PAGE: 'reach_consultant_page',
+  /** Booking CTA on one of the two offer cards (private | group). */
+  CLICK_CONSULTANT_PURCHASE: 'click_consultant_purchase',
 } as const;
 
 /**

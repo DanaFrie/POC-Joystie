@@ -15,6 +15,9 @@ export function billingCallableErrorMessage(err: unknown): string {
         '(functions + firestore יחד), לא functions בלבד. אחרת ודאו deploy ב-joystie-poc.'
       );
     }
+    if (err.code === 'functions/resource-exhausted') {
+      return 'יותר מדי ניסיונות תשלום. נסו שוב מאוחר יותר.';
+    }
     if (err.code === 'functions/failed-precondition') {
       return err.message;
     }

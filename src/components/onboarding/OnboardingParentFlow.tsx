@@ -71,6 +71,7 @@ import {
   createEmptyChildren,
   getChildrenHebrewNameErrors,
   getOnboardingChildrenDetails,
+  hasOnboardingChildrenDetails,
   isHebrewChildName,
   ONBOARDING_CHILD_DEFAULT_AGE,
   ONBOARDING_HEBREW_ONLY_ERROR,
@@ -210,6 +211,8 @@ function isPostSignupStep(step: ParentFlowStep) {
 function normalizeStoredFlowStep(raw: string | null): ParentFlowStep | null {
   if (!raw) return null;
   if (raw === 'childInviteWaitingCompanion') return 'childInviteWaiting';
+  // «מה מחכה לנו» removed from funnel — skip to child setup (component kept).
+  if (raw === 'whatAwaits') return 'childSetup';
   // Legacy multi-child / pick / real-data steps → new single-child flow.
   if (
     raw === 'phoneCount' ||
@@ -296,7 +299,7 @@ function readInitialFlowStep(): ParentFlowStep {
     }
     if (isV02LegacyKidsResume()) return 'childSetup';
     if (shouldShowOAuthSignupWelcome()) return 'signupWelcome';
-    return 'childInviteIntro';
+    return hasOnboardingChildrenDetails() ? 'childInviteIntro' : 'childSetup';
   }
   if (readOAuthPending()) {
     return 'signupForm';
@@ -507,9 +510,12 @@ export function OnboardingParentFlow({
     clearOnboardingBondingInviteId();
     if (draft?.name?.trim()) setBondingChildName(draft.name.trim());
     if (draft?.gender) setBondingChildGender(draft.gender);
-    setStep('childInviteIntro');
+    const next: ParentFlowStep = hasOnboardingChildrenDetails()
+      ? 'childInviteIntro'
+      : 'childSetup';
+    setStep(next);
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, 'childInviteIntro');
+      sessionStorage.setItem(FLOW_STEP_STORAGE_KEY, next);
     }
   }, []);
 
@@ -530,7 +536,16 @@ export function OnboardingParentFlow({
       );
     }
 
-    const next = resolveStoredResumeStep();
+    let next = resolveStoredResumeStep();
+    if (
+      !hasOnboardingChildrenDetails() &&
+      (next === 'childInviteIntro' ||
+        next === 'childInviteShare' ||
+        next === 'childInviteWaiting' ||
+        next === 'signupIntro')
+    ) {
+      next = 'childSetup';
+    }
     setAccountCreated(true);
     if (next === 'signupIntro') {
       postSignupIntroNavigatedRef.current = true;
@@ -723,7 +738,9 @@ export function OnboardingParentFlow({
             ? ('signupWelcome' as const)
             : isV02LegacyKidsResume()
               ? ('childSetup' as const)
-              : ('childInviteIntro' as const);
+              : hasOnboardingChildrenDetails()
+                ? ('childInviteIntro' as const)
+                : ('childSetup' as const);
       if (targetStep === 'signupWelcome') {
         // keep welcome path
       }
@@ -1116,6 +1133,19 @@ export function OnboardingParentFlow({
     setErrors({});
 
     try {
+      if (childrenDetailsComplete(children)) {
+        const single = children.slice(0, 1);
+        const hours = screenTimes[0]?.hours ?? DEFAULT_ONBOARDING_SCREEN_TIME_HOURS;
+        setOnboardingChildrenDetails(single);
+        setOnboardingChildrenScreenTime([
+          { name: single[0]?.name.trim() ?? '', hours },
+        ]);
+      }
+      if (!hasOnboardingChildrenDetails()) {
+        setStep('childSetup');
+        return;
+      }
+
       const email = values.email.trim().toLowerCase();
       const accountStatus = await resolveSignupEmailAccountStatus(email);
       if (accountStatus === 'incomplete' || accountStatus === 'legacy') {
@@ -1183,10 +1213,11 @@ export function OnboardingParentFlow({
       if (!role) return;
       setOnboardingParentRole(role);
       trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_ROLE, { parent_role: role });
-      setStep('whatAwaits');
+      setStep('childSetup');
       return;
     }
     if (step === 'whatAwaits') {
+      // Kept for legacy sessions; funnel skips this step.
       trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_WHAT_AWAITS);
       setStep('childSetup');
       return;
@@ -1243,7 +1274,7 @@ export function OnboardingParentFlow({
             logger.warn('Could not sync kidsAges after reveal', error);
           }
           bindSingleChildForInvite();
-          setStep('childInviteIntro');
+          setStep(hasOnboardingChildrenDetails() ? 'childInviteIntro' : 'childSetup');
         })();
         return;
       }
@@ -1261,7 +1292,7 @@ export function OnboardingParentFlow({
     trackPreSignupCta(AnalyticsEvents.PRE_SIGNUP_SIGNUP_INTRO);
     if (accountCreated) {
       bindSingleChildForInvite();
-      setStep('childInviteIntro');
+      setStep(hasOnboardingChildrenDetails() ? 'childInviteIntro' : 'childSetup');
       return;
     }
     setStep('signupForm');
@@ -1339,10 +1370,11 @@ export function OnboardingParentFlow({
       return;
     }
     if (step === 'childSetup') {
-      setStep('whatAwaits');
+      setStep('role');
       return;
     }
     if (step === 'whatAwaits') {
+      // Kept for legacy sessions; funnel skips this step.
       setStep('role');
       return;
     }

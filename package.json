@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "archive-user": "node scripts/archive-user.mjs",
     "firebase:use:intgr": "firebase use intgr",
     "firebase:use:prod": "firebase use prod",
     "deploy:rules:intgr": "firebase use intgr && firebase deploy --only firestore:rules",

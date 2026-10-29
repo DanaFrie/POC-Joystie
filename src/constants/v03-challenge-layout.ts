@@ -25,9 +25,10 @@ export const V03_CHALLENGE_SETUP_LAYOUT = {
     width: Math.round(SIGNUP_JOURNEY_STEP3_FRAME_W_PX / 2),
     height: Math.round(SIGNUP_JOURNEY_STEP3_FRAME_H_PX / 2),
   },
+  /** Compact news icon — leaves room for full deal summary on sent step. */
   parentSentHero: {
-    width: Math.round(SIGNUP_JOURNEY_STEP3_FRAME_W_PX / 2),
-    height: Math.round(SIGNUP_JOURNEY_STEP3_FRAME_H_PX / 2),
+    width: 88,
+    height: 88,
   },
   childHero: {
     width: 140,

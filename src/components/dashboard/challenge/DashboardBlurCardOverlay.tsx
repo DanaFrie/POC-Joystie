@@ -65,7 +65,7 @@ export function DashboardBlurCardOverlay({
 
   return (
     <div
-      className="v03-scroll-hidden absolute inset-0 z-[60] isolate flex items-center justify-center overflow-x-hidden overflow-y-auto px-v03-gutter transition-opacity duration-700 ease-out"
+      className="v03-scroll-hidden absolute inset-0 z-[60] isolate flex justify-center overflow-x-hidden overflow-y-auto px-v03-gutter transition-opacity duration-700 ease-out"
       style={{
         background: 'rgba(0, 0, 0, 0.35)',
         backdropFilter: 'blur(15px)',
@@ -79,7 +79,7 @@ export function DashboardBlurCardOverlay({
       aria-labelledby={titleId}
     >
       <div
-        className="relative transition-all duration-700 ease-out"
+        className="relative my-auto transition-all duration-700 ease-out"
         style={{
           opacity: shellOpacity,
           transform: exiting ? 'scale(0.96) translateY(12px)' : 'scale(1) translateY(0)',

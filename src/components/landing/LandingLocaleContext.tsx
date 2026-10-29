@@ -42,6 +42,11 @@ export function landingAboutPath(locale: LandingLocale): string {
   return locale === 'en' ? '/en/about' : '/about';
 }
 
+/** Hebrew sales page for now — EN can mirror later. */
+export function landingConsultantPath(_locale?: LandingLocale): string {
+  return '/consultant';
+}
+
 export function landingKnowledgePath(locale: LandingLocale, slug: string): string {
   return locale === 'en' ? `/en/knowledge/${slug}` : `/knowledge/${slug}`;
 }
@@ -58,6 +63,7 @@ export function landingPathForLocale(
   const path = pathname ?? '/';
   if (path === '/' || path === '/en') return landingHomePath(target);
   if (path === '/about' || path === '/en/about') return landingAboutPath(target);
+  if (path === '/consultant') return landingConsultantPath(target);
   const knowledge = path.match(/^\/(?:en\/)?knowledge\/([^/]+)/);
   if (knowledge?.[1]) return landingKnowledgePath(target, knowledge[1]);
   return landingHomePath(target);

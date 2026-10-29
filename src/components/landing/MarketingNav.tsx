@@ -80,7 +80,8 @@ export function MarketingNav({
   const locale = useLandingLocale();
   const pathname = usePathname();
   const ui = getLandingUi(locale);
-  const navLinks = getLandingNavLinks(locale);
+  const navLinksDesktop = getLandingNavLinks(locale, 'desktop');
+  const navLinksMobile = getLandingNavLinks(locale, 'mobile');
   const homePath = landingHomePath(locale);
   const isEn = locale === 'en';
   const heLocaleHref = landingPathForLocale('he', pathname);
@@ -460,7 +461,7 @@ export function MarketingNav({
             />
           </Link>
           <div className="flex items-center gap-[30px] font-rubik text-base tracking-[-0.32px] text-[#f8f8f8]">
-            {navLinks.map((link) => {
+            {navLinksDesktop.map((link) => {
               const isActive = activeHref === link.href;
               return (
                 <a
@@ -714,11 +715,12 @@ export function MarketingNav({
             <div className="mx-auto flex h-full min-h-0 w-full flex-1 flex-col gap-5">
               {/* Select / nav links — fills leftover viewport; footer compresses on short screens */}
               <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[36px] border border-[#093427]">
-                {navLinks.map((link) => {
+                {navLinksMobile.map((link) => {
                   const showChevron =
                     link.href === '#knowledge' ||
                     link.href === '/about' ||
-                    link.href === '/en/about';
+                    link.href === '/en/about' ||
+                    link.href === '/consultant';
                   return (
                     <a
                       key={link.href}

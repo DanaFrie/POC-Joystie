@@ -15,6 +15,7 @@ import {
   BALL_GAME_COUNTDOWN_STEP_MS,
   BALL_GAME_COUNTDOWN_TOTAL_MS,
 } from '@/constants/ball-game-countdown';
+import { subscribeServerClock } from '@/lib/game/serverClock';
 import { countdownElapsedMs } from '@/lib/game/stallGuards';
 import {
   useScaledBallGameBallSizePx,
@@ -173,11 +174,13 @@ export function OnboardingBallGameScreen({
       return;
     }
     const observedAtMs = Date.now();
+    let clockOffsetMs = 0;
     const tick = () => {
       const elapsed = countdownElapsedMs({
         countdownAt: room?.countdownAt,
         observedAtMs,
         nowMs: Date.now(),
+        clockOffsetMs,
       });
       setCountdownGo(
         elapsed >= BALL_GAME_COUNTDOWN_STEP_MS * 4 &&
@@ -186,7 +189,14 @@ export function OnboardingBallGameScreen({
     };
     tick();
     const id = window.setInterval(tick, 40);
-    return () => window.clearInterval(id);
+    const unsubscribe = subscribeServerClock((offset) => {
+      clockOffsetMs = offset;
+      tick();
+    });
+    return () => {
+      window.clearInterval(id);
+      unsubscribe();
+    };
   }, [countdown, room?.countdownAt]);
 
   const emitPointer = (clientX: number, clientY: number) => {

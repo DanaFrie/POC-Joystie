@@ -12,11 +12,8 @@ import {
   showSessionWaiter,
 } from '@/lib/auth/sessionRouteWaiter';
 import {
-  isRegisteredJoystieAccount,
-} from '@/lib/auth/signupAccountStatus';
-import {
+  admitExistingJoystieOAuthLogin,
   getUnknownOAuthAccountMessage,
-  rejectUnknownOAuthLogin,
 } from '@/lib/auth/rejectUnknownOAuthLogin';
 import { beginOnboardingSignupFromLogin } from '@/lib/onboarding/parentFlowSession';
 import { getAuthErrorFromUnknown } from '@/utils/auth-errors';
@@ -31,6 +28,7 @@ import {
   getRestrictedOAuthMessage,
   isLikelyOAuthRedirectReturn,
   getOAuthUserEmail,
+  userHasOAuthProvider,
   IS_APPLE_OAUTH_ENABLED,
 } from '@/utils/auth-oauth';
 import type { User } from 'firebase/auth';
@@ -99,22 +97,9 @@ function LoginPageContent() {
         }
       }
 
-      const registered = await isRegisteredJoystieAccount(
-        user.uid,
-        getOAuthUserEmail(user)
-      );
-
-      if (!registered) {
-        const auth = await import('@/utils/auth');
-        const { getAuthInstance } = await import('@/lib/firebase');
-        const firebaseAuth = await getAuthInstance();
-        const firebaseUser = firebaseAuth.currentUser;
-        if (firebaseUser) {
-          await rejectUnknownOAuthLogin(firebaseUser);
-        } else {
-          await auth.signOutUser();
-          clearSession();
-        }
+      const admitted = await admitExistingJoystieOAuthLogin(user, result.isNewUser);
+      if (!admitted) {
+        hideSessionWaiter();
         setOauthError(getUnknownOAuthAccountMessage());
         return;
       }
@@ -128,6 +113,13 @@ function LoginPageContent() {
     showSessionWaiter();
     const checkAuthAndRedirect = async () => {
       try {
+        // OAuth redirect return owns admission — avoid racing finishLogin past the gate.
+        if (isOAuthRedirectRecoverable() || isLikelyOAuthRedirectReturn()) {
+          hideSessionWaiter();
+          setSessionChecking(false);
+          return;
+        }
+
         // Prefer Auth restore over localStorage-only session (avoids false "logged out").
         const userId = await getCurrentUserIdAsync();
         if (!userId) {
@@ -144,6 +136,30 @@ function LoginPageContent() {
           hideSessionWaiter();
           setSessionChecking(false);
           return;
+        }
+
+        const { getAuthInstance } = await import('@/lib/firebase');
+        const firebaseAuth = await getAuthInstance();
+        let firebaseUser = firebaseAuth.currentUser;
+        if (firebaseUser) {
+          try {
+            await firebaseUser.reload();
+            firebaseUser = firebaseAuth.currentUser ?? firebaseUser;
+          } catch (reloadError) {
+            logger.warn('Session restore reload failed:', reloadError);
+          }
+          const oauthLike =
+            userHasOAuthProvider(firebaseUser) ||
+            firebaseUser.providerData.length === 0;
+          if (oauthLike) {
+            const admitted = await admitExistingJoystieOAuthLogin(firebaseUser);
+            if (!admitted) {
+              setOauthError(getUnknownOAuthAccountMessage());
+              hideSessionWaiter();
+              setSessionChecking(false);
+              return;
+            }
+          }
         }
 
         await finishLogin(userId);
@@ -178,6 +194,12 @@ function LoginPageContent() {
         trustAnySignedInUser: true,
       });
       if (!result?.ok) {
+        const { getAuthInstance } = await import('@/lib/firebase');
+        const firebaseAuth = await getAuthInstance();
+        const firebaseUser = firebaseAuth.currentUser;
+        if (firebaseUser && userHasOAuthProvider(firebaseUser)) {
+          await handleOAuthLoginResult({ user: firebaseUser, isNewUser: true });
+        }
         return;
       }
 

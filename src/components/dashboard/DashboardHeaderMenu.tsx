@@ -121,6 +121,14 @@ export function DashboardHeaderMenu({
               className="absolute right-0 top-10 z-50 min-w-[160px] overflow-hidden rounded-[18px] border border-white/20 bg-v03-green-900/95 shadow-v03-display backdrop-blur-md"
             >
               <Link
+                href="/consultant"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className="block px-4 py-3 text-right font-simpler text-[15px] font-bold text-white transition hover:bg-white/10"
+              >
+                ייעוץ
+              </Link>
+              <Link
                 href="/help"
                 role="menuitem"
                 onClick={() => setOpen(false)}

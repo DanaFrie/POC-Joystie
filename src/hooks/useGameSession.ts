@@ -14,6 +14,7 @@ import {
   logOnboardingAdvanceReady,
 } from '@/lib/game/phaseLog';
 import { physicsCatchUpTicks, stepBallPhysics } from '@/lib/game/physics';
+import { subscribeServerClock } from '@/lib/game/serverClock';
 import {
   createCoalescedAsyncWriter,
   GAME_ROOM_LOST_ERROR,
@@ -525,6 +526,7 @@ export function useGameSession({
 
     const observedAtMs = Date.now();
     const key = `${roomId}:${room.countdownAt ?? 'missing'}`;
+    let clockOffsetMs = 0;
     const fire = () => {
       if (
         !shouldStartPlayFromCountdown({
@@ -532,6 +534,7 @@ export function useGameSession({
           countdownAt: room.countdownAt,
           observedAtMs,
           nowMs: Date.now(),
+          clockOffsetMs,
         })
       ) {
         return;
@@ -545,6 +548,10 @@ export function useGameSession({
     };
     fire();
     const id = window.setInterval(fire, 100);
+    const unsubscribeClock = subscribeServerClock((offset) => {
+      clockOffsetMs = offset;
+      fire();
+    });
     const onVisible = () => {
       if (document.visibilityState === 'visible') fire();
     };
@@ -552,6 +559,7 @@ export function useGameSession({
     window.addEventListener('pageshow', onVisible);
     return () => {
       window.clearInterval(id);
+      unsubscribeClock();
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('pageshow', onVisible);
     };

@@ -14,31 +14,47 @@ import { useGrowFunnelCanvasHeight } from '@/hooks/useGrowFunnelCanvasHeight';
 
 const FAQ_ITEMS = [
   {
-    question: 'איך הילד שלי מעלה את צילום המסך?',
+    question: 'איך מתחילים דיל?',
     answer:
-      'הילד נכנס לקישור שהעברתם לו ומעלה צילום מסך של זמן המסך. המערכת קוראת את הצילום ומעדכנת את הסטטוס.',
+      'בלוח הבקרה בוחרים יצירת דיל או טעינת ארנק. מגדירים דמי כיס לארנק ומחיר לשעת מסך, ושולחים לילד/ה. הארנק נטען רק אחרי שהילד/ה מאשרים - והשבוע מתחיל למחרת.',
   },
   {
-    question: 'מה קורה אם הילד לא מעלה צילום מסך?',
+    question: 'מה הילד/ה צריכים לעשות במהלך השבוע?',
     answer:
-      'אם לא הועלה צילום עד סוף היום, היום יסומן כ"חסר". רק ימים שהועלו ואושרו על ידכם נספרים לתקציב השבועי.',
+      'אין העלאות יומיות. הארנק כבר טעון, וכל שעת מסך מורידה מהתקציב לפי המחיר שהגדרתם. בסוף 6 הימים מעלים צילום מסך אחד של זמן המסך (Screen Time / Family Link).',
   },
   {
-    question: 'איך מאשרים או דוחים צילום מסך?',
+    question: 'מה מעלים בסוף השבוע?',
     answer:
-      'בלוח הבקרה תראו צילומים בסטטוס "ממתין לאישור", עם זמן המסך שזוהה והכסף שהילד הרוויח או הפסיד.',
+      'צילום של סיכום זמן המסך לשבוע. המערכת קוראת את הצילום ומציגה כמה נשאר בארנק - ואז מאשרים ב«אישור השבוע».',
   },
   {
-    question: 'מה קורה בסוף השבוע?',
+    question: 'מה קורה אחרי אישור השבוע?',
     answer:
-      'אם הילד עמד ביעדים, הוא יוכל לבחור מה לעשות עם הכסף: מזומן, מתנה, פעילות משותפת או חיסכון.',
+      'זה הרגע המשותף שלכם - מפגש סיום קצר של הורה וילד/ה: עוברים יחד על השבוע, סוגרים את הדיל, ואם נשאר כסף בארנק הילד/ה מסמנים מה לעשות איתו: מזומן, פעילות משותפת, תרומה או חיסכון.',
+  },
+  {
+    question: 'איך מחשבים כמה נשאר בארנק?',
+    answer:
+      'דמי הכיס שהטענתם פחות (שעות מסך × מחיר לשעה). ככל שפחות שעות מסך - נשאר יותר בארנק.',
+  },
+  {
+    question: 'הילד/ה לא רואים דילים או שהארנק סגור',
+    answer:
+      'לרוב חסרה גישה מצד ההורה (מנוי), או שהילד/ה עדיין לא אישרו את הדיל שנשלח. בדקו שהגישה לדילים פתוחה ושנשלח דיל פעיל.',
+  },
+  {
+    question: 'הילד/ה לא מוצאים את הקישור לארנק',
+    answer:
+      'בלוח הבקרה שלכם אפשר להעתיק את הלינק לארנק של הילד/ה (פעולה מהירה: «העתקת לינק לארנק») ולשלוח אותו בהודעה או בוואטסאפ - כך הם נכנסים ישירות לארנק שלהם.',
   },
 ] as const;
 
 const contentTopPadPx =
   ONBOARDING_BACK_TOP_PX + ONBOARDING_BACK_HEIGHT_PX + ONBOARDING_BACK_SCROLL_GAP_PX;
 
-const meetingLink = LANDING_FOOTER_LINKS.find((link) => link.label === 'שיחה איתנו');
+const linkedinLink = LANDING_FOOTER_LINKS.find((link) => link.label === 'לינקדאין');
+const facebookLink = LANDING_FOOTER_LINKS.find((link) => link.label === 'פייסבוק');
 const contactLinkClass =
   'font-simpler text-[16px] text-white underline decoration-solid underline-offset-2';
 
@@ -62,34 +78,7 @@ export function HelpScreen() {
           עזרה
         </h1>
 
-        <div className="flex w-full flex-col gap-3 rounded-[18px] border border-white/20 bg-v03-green-900/40 px-4 py-4 text-center backdrop-blur-[2px] v03-funnel-enter-3">
-          <h2 className="font-simpler text-[16px] font-bold leading-[21.6px] text-white">
-            צור קשר
-          </h2>
-          {meetingLink ? (
-            <a
-              href={meetingLink.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={contactLinkClass}
-            >
-              {meetingLink.label}
-            </a>
-          ) : null}
-          <a href="mailto:info@joystie.com" className={contactLinkClass}>
-            info@joystie.com
-          </a>
-          <a
-            href="https://www.linkedin.com/company/joystie"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={contactLinkClass}
-          >
-            Linkedin
-          </a>
-        </div>
-
-        <div className="flex w-full flex-col gap-4 v03-funnel-enter-4">
+        <div className="flex w-full flex-col gap-4 v03-funnel-enter-3">
           {FAQ_ITEMS.map((item) => (
             <section
               key={item.question}
@@ -103,6 +92,42 @@ export function HelpScreen() {
               </p>
             </section>
           ))}
+        </div>
+
+        <div className="flex w-full flex-col gap-3 rounded-[18px] border border-white/20 bg-v03-green-900/40 px-4 py-4 text-center backdrop-blur-[2px] v03-funnel-enter-4">
+          <h2 className="font-simpler text-[16px] font-bold leading-[21.6px] text-white">
+            עדיין לא מצאתם?
+          </h2>
+          <p className="font-simpler text-[14px] font-normal leading-[17.5px] text-[#E3EDEA]">
+            מוזמנים ליצור איתנו קשר באחת מהדרכים:
+          </p>
+          <p className="flex flex-wrap items-center justify-center gap-x-2 font-simpler text-[16px] text-white">
+            {linkedinLink ? (
+              <a
+                href={linkedinLink.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={contactLinkClass}
+              >
+                לינקדין
+              </a>
+            ) : null}
+            {linkedinLink && facebookLink ? <span aria-hidden>·</span> : null}
+            {facebookLink ? (
+              <a
+                href={facebookLink.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={contactLinkClass}
+              >
+                פייסבוק
+              </a>
+            ) : null}
+            {(linkedinLink || facebookLink) ? <span aria-hidden>·</span> : null}
+            <a href="mailto:info@joystie.com" className={contactLinkClass}>
+              מייל
+            </a>
+          </p>
         </div>
       </div>
     </div>

@@ -148,6 +148,26 @@ export async function sendEnglishWaitlistEmail(to: string): Promise<void> {
   });
 }
 
+/** After private consultant ChargeOnly. Logo on top, plain confirmation, Meir sign-off. */
+export async function sendConsultantMeetingConfirmedEmail(params: {
+  to: string;
+  name: string;
+}): Promise<void> {
+  const firstName = params.name.split(' ')[0];
+  await sendPlain({
+    to: params.to,
+    lang: 'he',
+    subject: 'המפגש מאושר',
+    preview: 'התשלום התקבל! המפגש מאושר ואנחנו מתראים ממש בקרוב',
+    before: [
+      `היי ${firstName},`,
+      'התשלום התקבל!',
+      'המפגש מאושר ואנחנו מתראים ממש בקרוב',
+    ],
+    after: ['בברכה,', 'מאיר ניצן', 'מייסד Joystie'],
+  });
+}
+
 export async function sendTrialEndingEmail(params: {
   to: string;
   parentName: string;
