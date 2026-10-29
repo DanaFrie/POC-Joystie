@@ -173,11 +173,7 @@ function StoriesCarousel() {
             alt=""
             width={162}
             height={162}
-            className={`block h-full w-full object-cover ${
-              story.image.includes('hall')
-                ? 'object-[70%_40%]'
-                : 'object-center'
-            }`}
+            className="block h-full w-full object-cover object-center"
             draggable={false}
           />
         </div>

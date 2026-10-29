@@ -70,22 +70,22 @@ export const LANDING_ASSETS = {
   doriJoyApp: '/landing/dori-joy-app.webp',
 } as const;
 
-/** Desktop header — «תוכניות ליווי» last. Hebrew only (no «איך זה עובד?»). */
+/** Desktop header — «ליווי אישי» last. Hebrew only (no «איך זה עובד?»). */
 export const LANDING_NAV_LINKS = [
   { href: '#what-is-joystie', label: 'מה זה ג׳ויסטי?' },
   { href: '#questions', label: 'שאלות ותשובות' },
   { href: '#knowledge', label: 'מרכז הידע' },
   { href: '/about', label: 'קצת עלינו' },
-  { href: '/consultant', label: 'תוכניות ליווי' },
+  { href: '/consultant', label: 'ליווי אישי' },
 ] as const;
 
-/** Mobile full-screen menu — «תוכניות ליווי» at the bottom; no «איך זה עובד?». */
+/** Mobile full-screen menu — «ליווי אישי» at the bottom; no «איך זה עובד?». */
 export const LANDING_NAV_LINKS_MOBILE = [
   { href: '#what-is-joystie', label: 'מה זה ג׳ויסטי?' },
   { href: '#questions', label: 'שאלות ותשובות' },
   { href: '#knowledge', label: 'מרכז הידע' },
   { href: '/about', label: 'קצת עלינו' },
-  { href: '/consultant', label: 'תוכניות ליווי' },
+  { href: '/consultant', label: 'ליווי אישי' },
 ] as const;
 
 export const LANDING_FEATURES = [
@@ -677,12 +677,12 @@ export const LANDING_SOCIAL = [
 ] as const;
 
 /**
- * Page + desktop footer bar — LinkedIn, Facebook, תוכניות ליווי, דברו איתנו.
+ * Page + desktop footer bar — LinkedIn, Facebook, ליווי אישי, דברו איתנו.
  * (Not the mobile hamburger menu — mountain footer strip only.)
  */
 export const LANDING_FOOTER_LINKS = [
   { href: 'https://www.linkedin.com/company/joystie', label: 'לינקדאין' },
   { href: 'https://www.facebook.com/profile.php?id=61586594025586', label: 'פייסבוק' },
-  { href: '/consultant', label: 'תוכניות ליווי' },
+  { href: '/consultant', label: 'ליווי אישי' },
   { href: 'https://calendar.app.google/XxKAvtFC2Na2zipD9', label: 'דברו איתנו' },
 ] as const;

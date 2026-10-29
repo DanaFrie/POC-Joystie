@@ -6,9 +6,9 @@ import type { Metadata } from 'next';
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'תוכניות ליווי | Joystie',
+  title: 'ליווי אישי | Joystie',
   description:
-    'תוכניות ליווי אישיות לרווחה דיגיטלית במשפחה — פגישה אישית וסדנת הורים בקבוצה קטנה בהובלת מאיר ניצן.',
+    'ליווי אישי לרווחה דיגיטלית במשפחה - פגישה אישית וסדנת הורים בקבוצה קטנה בהובלת מאיר ניצן.',
   alternates: {
     canonical: '/consultant',
   },
