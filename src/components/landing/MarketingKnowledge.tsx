@@ -5,7 +5,6 @@ import Link from 'next/link';
 import type { LandingBlogPost } from '@/constants/landing-marketing';
 import { getLandingBlog, getLandingUi } from '@/constants/landing-i18n';
 import {
-  landingConsultantPath,
   landingKnowledgePath,
   useLandingLocale,
 } from '@/components/landing/LandingLocaleContext';
@@ -109,20 +108,12 @@ export function MarketingKnowledge() {
       dir={isEn ? 'ltr' : 'rtl'}
     >
       <div className="mx-auto flex max-w-[1200px] flex-col gap-6 md:gap-8">
-        <LandingReveal className="flex flex-col gap-4 px-6 md:flex-row md:items-center md:justify-between md:gap-10 md:px-0">
+        <LandingReveal className="flex flex-col gap-4 px-6 md:px-0">
           <h2
             className={`landing-gradient-title bg-gradient-to-b from-[#efefef] from-[10%] to-[#d1d1d1] to-[94%] bg-clip-text font-rubik text-[28px] font-bold leading-[1.25] tracking-[-0.9px] text-transparent md:text-[40px] lg:text-[45px] ${textAlign}`}
           >
             {ui.knowledgeTitle}
           </h2>
-          {!isEn ? (
-            <Link
-              href={landingConsultantPath(locale)}
-              className={`shrink-0 font-rubik text-[15px] font-bold leading-none tracking-[-0.3px] text-[#00ffb3] underline-offset-4 transition hover:underline ${textAlign}`}
-            >
-              לייעוץ אישי וקבוצתי
-            </Link>
-          ) : null}
         </LandingReveal>
 
         {/*
