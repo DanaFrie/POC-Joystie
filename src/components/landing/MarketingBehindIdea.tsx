@@ -5,12 +5,10 @@ import { getLandingUi } from '@/constants/landing-i18n';
 import {
   useLandingLocale,
   landingAboutPath,
-  landingConsultantPath,
 } from '@/components/landing/LandingLocaleContext';
 import { MarketingCtaButton } from '@/components/landing/MarketingCtaButton';
 import { LandingReveal } from '@/components/landing/LandingReveal';
 import { LandingAuthorAvatar } from '@/components/landing/LandingAuthorAvatar';
-import Link from 'next/link';
 
 /**
  * Behind the idea photo — Figma 15329:16728
@@ -117,14 +115,6 @@ export function MarketingBehindIdea() {
               label={ui.behindCta}
               className="hidden lg:inline-flex"
             />
-            {!isEn ? (
-              <Link
-                href={landingConsultantPath(locale)}
-                className="font-rubik text-[15px] font-bold leading-none tracking-[-0.3px] text-[#00ffb3] underline-offset-4 transition hover:underline"
-              >
-                לייעוץ אישי וקבוצתי
-              </Link>
-            ) : null}
           </div>
         </LandingReveal>
       </div>
