@@ -12,10 +12,10 @@ export const CONSULTANT_ASSETS = {
    * Used with CSS mask + gradient so dots stay visible on #05161A.
    */
   dotsMask: '/landing/consultant/dots-mask.svg',
-  /** Families-tell carousel — Figma Reviews 16374:3264 */
+  /** Families-tell carousel — Figma Reviews 16374:3264 / 16374:3263 (עם טשטוש + hall) */
   storyImages: [
-    '/landing/consultant/story-circle.jpg',
-    '/landing/consultant/story-hall.jpg',
+    '/landing/consultant/story-circle.png',
+    '/landing/consultant/story-hall.png',
   ] as const,
 } as const;
 
